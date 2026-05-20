@@ -88,11 +88,6 @@ Deno.serve(async (req) => {
         for (const r of results) if (r.error) throw new Error(`${t}: ${r.error.message}`);
       }
     };
-    // dummy line to preserve original line offsets
-    const _noop = async () => {
-        if (error) throw new Error(`${t}: ${error.message}`);
-      }
-    };
 
     // Warehouses
     const WH = U(), WHC = U();
