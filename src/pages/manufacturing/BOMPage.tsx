@@ -216,7 +216,72 @@ const BOMPage = () => {
     setPreviewExp(((exRes.data || []) as any[]) as any);
   };
 
-  const handlePrint = () => window.print();
+  const handleDownloadPdf = () => {
+    if (!previewBom) return;
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    doc.setFontSize(14); doc.setFont("helvetica", "bold");
+    doc.text("Bill of Materials", pageW / 2, 30, { align: "center" });
+    doc.setFontSize(9); doc.setFont("helvetica", "normal");
+
+    const headerRows: [string, string][] = [
+      ["Bill of Materials SL", previewBom.bom_number || "—"],
+      ["Finished Product", previewBom.product?.item_name || "—"],
+      ["UOM", previewBom.uom?.abbreviation || previewBom.uom?.name || "—"],
+      ["Previous Rate", fmt(Number(previewBom.previous_rate) || 0, 4)],
+      ["Current Rate", fmt(Number(previewBom.current_rate) || 0, 4)],
+    ];
+    autoTable(doc, {
+      startY: 45, body: headerRows, theme: "grid",
+      styles: { fontSize: 9, cellPadding: 3 },
+      columnStyles: { 0: { fontStyle: "bold", cellWidth: 130 } },
+    });
+
+    const rmStart = (doc as any).lastAutoTable.finalY + 14;
+    doc.setFont("helvetica", "bold"); doc.text("RM/PM List", 40, rmStart);
+    autoTable(doc, {
+      startY: rmStart + 4,
+      head: [["Code", "Name", "UOM", "Required QTY", "Wastage %", "Wastage QTY", "Actual QTY", "Unit Price", "Total Amount"]],
+      body: previewItems.map((i: any) => [
+        i.material?.item_code || "—",
+        i.material?.item_name || "—",
+        i.unit || "",
+        fmt(i.required_qty), fmt(i.wastage_pct, 2),
+        fmt(wastageQty(i)), fmt(actualQty(i)),
+        fmt(i.unit_price), fmt(actualQty(i) * i.unit_price),
+      ]),
+      foot: [[
+        "", "", "Total",
+        fmt(previewItems.reduce((s, i) => s + i.required_qty, 0)), "",
+        fmt(previewItems.reduce((s, i) => s + wastageQty(i), 0)),
+        fmt(previewItems.reduce((s, i) => s + actualQty(i), 0)),
+        "",
+        fmt(previewItems.reduce((s, i) => s + actualQty(i) * i.unit_price, 0)),
+      ]],
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [230, 230, 230], textColor: 20 },
+      footStyles: { fillColor: [245, 245, 245], textColor: 20, fontStyle: "bold" },
+    });
+
+    const expStart = (doc as any).lastAutoTable.finalY + 14;
+    doc.setFont("helvetica", "bold"); doc.text("Expenses", 40, expStart);
+    autoTable(doc, {
+      startY: expStart + 4,
+      head: [["EXP Code", "Expenses Name", "Rate"]],
+      body: previewExp.map((e: any) => [
+        e.account?.account_code || "—",
+        e.account?.account_name || "—",
+        fmt(Number(e.rate) || 0),
+      ]),
+      foot: [["", "Total", fmt(previewExp.reduce((s, e: any) => s + (Number(e.rate) || 0), 0))]],
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [230, 230, 230], textColor: 20 },
+      footStyles: { fillColor: [245, 245, 245], textColor: 20, fontStyle: "bold" },
+      tableWidth: 320,
+    });
+
+    doc.save(`${previewBom.bom_number || "bom"}.pdf`);
+  };
 
   const filtered = boms.filter((b) =>
     b.name.toLowerCase().includes(search.toLowerCase()) ||
