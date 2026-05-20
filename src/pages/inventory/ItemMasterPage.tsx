@@ -62,7 +62,7 @@ const ItemMasterPage = () => {
 
   const openCreate = () => {
     setEditItem(null);
-    setF({ item_code: "", item_name: "", item_type: "product", category_id: "", unit_id: "", cost_price: "0", selling_price: "0", min_stock_level: "0", status: "active", description: "" });
+    setF({ item_code: "", item_name: "", item_type: "product", category_id: "", unit_id: "", stock_group_id: "", cost_price: "0", selling_price: "0", min_stock_level: "0", status: "active", description: "" });
     setDialogOpen(true);
   };
 
