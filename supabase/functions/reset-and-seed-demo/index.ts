@@ -254,9 +254,9 @@ Deno.serve(async (req) => {
         pinv.push({ id:pId, purchase_number:pnum, purchase_date:ds, supplier_id:sup.id, branch_id:BR_DHK,
           total_amount:total, payment_method:credit?"credit":"cash", status:"approved", created_by:UID });
         for (const r of rows) {
-          pitems.push({ id:U(), purchase_id:pId, product_id:r[0], quantity:r[1], unit_price:r[2], total:r[3] });
-          smov.push({ id:U(), product_id:r[0], item_id:r[4], warehouse_id:WH, branch_id:BR_DHK,
-            movement_type:"in", reference_type:"purchase", reference_id:pId, quantity:r[1] });
+          pitems.push({ id:U(), purchase_id:pId, product_id:r[4], quantity:r[1], unit_price:r[2], total:r[3] });
+          smov.push({ id:U(), product_id:r[4], item_id:r[4], warehouse_id:WH, branch_id:BR_DHK,
+            movement_type:"purchase", reference_type:"purchase", reference_id:pId, quantity:r[1] });
         }
         const cr = credit ? A.ap : A.cash;
         addV(credit?"journal":"payment", ds, `Purchase ${pnum}`,
