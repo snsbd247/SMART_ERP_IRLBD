@@ -89,10 +89,12 @@ Deno.serve(async (req) => {
     const uIds: Record<string,string> = {};
     await bulk("units", ud.map(([a,n]) => { const id=U(); uIds[a]=id; return {id,name:n,abbreviation:a}; }));
 
-    // Categories
+    // Categories (seed both product_categories for products FK and item_categories for item_master)
     const cd = ["Electronics","Office Supplies","Furniture","Stationery","Hardware"];
     const cIds: Record<string,string> = {};
-    await bulk("item_categories", cd.map(n => { const id=U(); cIds[n]=id; return {id,name:n,is_active:true}; }));
+    const catRows = cd.map(n => { const id=U(); cIds[n]=id; return {id,name:n}; });
+    await bulk("product_categories", catRows);
+    await bulk("item_categories", catRows.map(c => ({ ...c, is_active:true })));
 
     // Products
     const PD: [string,string,string,number,number][] = [
