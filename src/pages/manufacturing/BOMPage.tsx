@@ -358,7 +358,7 @@ const BOMPage = () => {
                               placeholder="Search material..."
                             />
                           </td>
-                          <td className="p-1">{it.unit || "—"}</td>
+                          <td className="p-1"><Input className="h-8 text-xs w-16" value={it.unit} onChange={(e) => { const n = [...items]; n[idx].unit = e.target.value; setItems(n); }} /></td>
                           <td className="p-1"><Input type="number" step="0.0001" className="h-8 text-right text-xs" value={it.required_qty} onChange={(e) => { const n = [...items]; n[idx].required_qty = Number(e.target.value); setItems(n); }} /></td>
                           <td className="p-1 text-right">{fmt(itemTotal(it), 4)}</td>
                           <td className="p-1"><Input type="number" step="0.01" className="h-8 text-right text-xs" value={it.wastage_pct} onChange={(e) => { const n = [...items]; n[idx].wastage_pct = Number(e.target.value); setItems(n); }} /></td>
