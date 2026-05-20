@@ -70,7 +70,7 @@ const ItemMasterPage = () => {
     setEditItem(i);
     setF({
       item_code: i.item_code, item_name: i.item_name, item_type: i.item_type,
-      category_id: i.category_id || "", unit_id: i.unit_id || "",
+      category_id: i.category_id || "", unit_id: i.unit_id || "", stock_group_id: i.stock_group_id || "",
       cost_price: String(i.cost_price), selling_price: String(i.selling_price),
       min_stock_level: String(i.min_stock_level), status: i.status, description: i.description || "",
     });
