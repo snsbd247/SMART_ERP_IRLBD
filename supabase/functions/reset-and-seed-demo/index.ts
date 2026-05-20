@@ -62,9 +62,14 @@ Deno.serve(async (req) => {
       "audit_log","login_logs","backup_history","conversations","conversation_participants","messages","number_sequences"];
     // Delete groups sequentially (to respect FK), but parallelize within group
     const resetGroups: string[][] = [
+      // Group 1: leaf tables (children of everything)
       ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","purchase_items","purchase_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","bom_items","fund_transactions","employee_fund_settings","overtime_records","leave_requests","attendance","employee_documents","employee_bank_info","employee_education","employee_experience","employee_emergency_contacts","salary_structures","face_data","biometric_logs","payroll","party_notes","audit_log","login_logs","backup_history","messages","conversation_participants"],
+      // Group 2: parent docs
       ["acc_vouchers","party_payments","sales_invoices","sales_returns","purchases","purchase_returns","production_entries","bill_of_materials","employees","conversations","number_sequences"],
-      ["customers","suppliers","item_master","products","item_categories","units","warehouses","product_categories","raw_materials"],
+      // Group 3: masters that ref base
+      ["customers","suppliers","item_master","products","raw_materials"],
+      // Group 4: base masters
+      ["item_categories","units","warehouses","product_categories"],
     ];
     for (const grp of resetGroups) {
       await Promise.all(grp.map(async (t) => {
