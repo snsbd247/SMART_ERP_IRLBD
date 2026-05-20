@@ -349,15 +349,14 @@ const BOMPage = () => {
                       return (
                         <tr key={idx} className="border-t">
                           <td className="p-1 font-mono text-[11px]">{mat?.item_code || "—"}</td>
-                          <td className="p-1">
-                            <select
-                              className="w-full h-8 rounded border border-input bg-background px-2 text-xs"
+                          <td className="p-1 min-w-[200px]">
+                            <ItemCombobox
+                              items={materials}
                               value={it.material_id}
-                              onChange={(e) => handleMaterialChange(idx, e.target.value)}
-                            >
-                              <option value="">-- Select --</option>
-                              {materials.map((m) => <option key={m.id} value={m.id}>{m.item_name}</option>)}
-                            </select>
+                              onChange={(v) => handleMaterialChange(idx, v)}
+                              size="sm"
+                              placeholder="Search material..."
+                            />
                           </td>
                           <td className="p-1">{it.unit || "—"}</td>
                           <td className="p-1"><Input type="number" step="0.0001" className="h-8 text-right text-xs" value={it.required_qty} onChange={(e) => { const n = [...items]; n[idx].required_qty = Number(e.target.value); setItems(n); }} /></td>
