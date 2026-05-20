@@ -20,15 +20,17 @@ const ITEM_TYPES = [
   { value: "consumable", label: "Consumable" },
 ];
 
-interface Item { id: string; item_code: string; item_name: string; item_type: string; category_id: string | null; unit_id: string | null; cost_price: number; selling_price: number; min_stock_level: number; status: string; description: string | null; }
+interface Item { id: string; item_code: string; item_name: string; item_type: string; category_id: string | null; unit_id: string | null; stock_group_id: string | null; cost_price: number; selling_price: number; min_stock_level: number; status: string; description: string | null; }
 interface Category { id: string; name: string; }
 interface Unit { id: string; name: string; abbreviation: string; }
+interface StockGroup { id: string; name: string; }
 
 const ItemMasterPage = () => {
   const [items, setItems] = useState<Item[]>([]);
   const { fc } = useCurrency();
   const [categories, setCategories] = useState<Category[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [stockGroups, setStockGroups] = useState<StockGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<Item | null>(null);
@@ -38,19 +40,21 @@ const ItemMasterPage = () => {
   const { toast } = useToast();
 
   // Form
-  const [f, setF] = useState({ item_code: "", item_name: "", item_type: "product", category_id: "", unit_id: "", cost_price: "0", selling_price: "0", min_stock_level: "0", status: "active", description: "" });
+  const [f, setF] = useState({ item_code: "", item_name: "", item_type: "product", category_id: "", unit_id: "", stock_group_id: "", cost_price: "0", selling_price: "0", min_stock_level: "0", status: "active", description: "" });
   const upd = (key: string, val: string) => setF((p) => ({ ...p, [key]: val }));
 
   const fetchData = async () => {
     setLoading(true);
-    const [iRes, cRes, uRes] = await Promise.all([
+    const [iRes, cRes, uRes, sgRes] = await Promise.all([
       supabase.from("item_master" as any).select("*").order("item_code"),
       supabase.from("item_categories" as any).select("id, name").eq("is_active", true).order("name"),
       supabase.from("units" as any).select("*").order("name"),
+      (supabase.from as any)("stock_groups").select("id, name").eq("is_active", true).order("name"),
     ]);
     setItems((iRes.data || []) as any);
     setCategories((cRes.data || []) as any);
     setUnits((uRes.data || []) as any);
+    setStockGroups((sgRes.data || []) as any);
     setLoading(false);
   };
 
@@ -58,7 +62,7 @@ const ItemMasterPage = () => {
 
   const openCreate = () => {
     setEditItem(null);
-    setF({ item_code: "", item_name: "", item_type: "product", category_id: "", unit_id: "", cost_price: "0", selling_price: "0", min_stock_level: "0", status: "active", description: "" });
+    setF({ item_code: "", item_name: "", item_type: "product", category_id: "", unit_id: "", stock_group_id: "", cost_price: "0", selling_price: "0", min_stock_level: "0", status: "active", description: "" });
     setDialogOpen(true);
   };
 
@@ -66,7 +70,7 @@ const ItemMasterPage = () => {
     setEditItem(i);
     setF({
       item_code: i.item_code, item_name: i.item_name, item_type: i.item_type,
-      category_id: i.category_id || "", unit_id: i.unit_id || "",
+      category_id: i.category_id || "", unit_id: i.unit_id || "", stock_group_id: i.stock_group_id || "",
       cost_price: String(i.cost_price), selling_price: String(i.selling_price),
       min_stock_level: String(i.min_stock_level), status: i.status, description: i.description || "",
     });
@@ -79,7 +83,7 @@ const ItemMasterPage = () => {
     try {
       const payload: any = {
         item_code: f.item_code, item_name: f.item_name, item_type: f.item_type,
-        category_id: f.category_id || null, unit_id: f.unit_id || null,
+        category_id: f.category_id || null, unit_id: f.unit_id || null, stock_group_id: f.stock_group_id || null,
         cost_price: parseFloat(f.cost_price) || 0, selling_price: parseFloat(f.selling_price) || 0,
         min_stock_level: parseFloat(f.min_stock_level) || 0, status: f.status,
         description: f.description || null, updated_at: new Date().toISOString(),
@@ -191,6 +195,15 @@ const ItemMasterPage = () => {
                 <SelectContent>
                   <SelectItem value="__none__">None</SelectItem>
                   {units.map((u) => <SelectItem key={u.id} value={u.id}>{u.name} ({u.abbreviation})</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2"><Label>Stock Group</Label>
+              <Select value={f.stock_group_id || "__none__"} onValueChange={(v) => upd("stock_group_id", v === "__none__" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Select stock group" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {stockGroups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

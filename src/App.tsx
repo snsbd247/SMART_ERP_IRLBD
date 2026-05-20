@@ -34,6 +34,8 @@ import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
 import ItemMasterPage from "./pages/inventory/ItemMasterPage";
+import StockGroupsPage from "./pages/inventory/StockGroupsPage";
+import ChartOfInventoryPage from "./pages/inventory/ChartOfInventoryPage";
 import WarehousesPage from "./pages/inventory/WarehousesPage";
 import StockTransferPage from "./pages/inventory/StockTransferPage";
 import FinancialReports from "./pages/reports/FinancialReports";
@@ -169,6 +171,8 @@ const App = () => (
                 <Route path="/inventory" element={<P perm="inventory.view"><InventoryPage /></P>} />
                 <Route path="/inventory/items" element={<P perm="inventory.view"><ItemMasterPage /></P>} />
                 <Route path="/inventory/categories" element={<P perm="inventory.view"><ItemCategoriesPage /></P>} />
+                <Route path="/inventory/stock-groups" element={<P perm="inventory.view"><StockGroupsPage /></P>} />
+                <Route path="/inventory/chart" element={<P perm="inventory.view"><ChartOfInventoryPage /></P>} />
                 <Route path="/inventory/units" element={<P perm="inventory.view"><UnitsPage /></P>} />
                 <Route path="/inventory/warehouses" element={<P perm="inventory.view"><WarehousesPage /></P>} />
                 <Route path="/inventory/transfers" element={<P perm="inventory.view"><StockTransferPage /></P>} />
