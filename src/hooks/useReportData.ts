@@ -68,7 +68,7 @@ export function useReportData() {
   );
 
   const handleExportExcel = useCallback(
-    (data: Record<string, any>[], columns: ReportColumn[], filename: string) => {
+    (data: Record<string, unknown>[], columns: ReportColumn[], filename: string) => {
       exportToExcel(data, columns, filename);
     },
     []
