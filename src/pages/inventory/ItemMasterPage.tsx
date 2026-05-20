@@ -206,6 +206,7 @@ const ItemMasterPage = () => {
                   {stockGroups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
             <div className="space-y-2"><Label>Status</Label>
               <Select value={f.status} onValueChange={(v) => upd("status", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
