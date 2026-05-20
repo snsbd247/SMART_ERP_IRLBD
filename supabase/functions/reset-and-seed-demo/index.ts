@@ -60,9 +60,22 @@ Deno.serve(async (req) => {
       "customers","suppliers",
       "item_master","products","item_categories","units","warehouses","product_categories","raw_materials",
       "audit_log","login_logs","backup_history","conversations","conversation_participants","messages","number_sequences"];
-    for (const t of reset) {
-      const { error } = await db.from(t).delete().not("id", "is", null);
-      if (error) log.push(`del ${t}: ${error.message}`);
+    // Delete groups sequentially (to respect FK), but parallelize within group
+    const resetGroups: string[][] = [
+      // Group 1: leaf tables (children of everything)
+      ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","purchase_items","purchase_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","bom_items","fund_transactions","employee_fund_settings","overtime_records","leave_requests","attendance","employee_documents","employee_bank_info","employee_education","employee_experience","employee_emergency_contacts","salary_structures","face_data","biometric_logs","payroll","party_notes","audit_log","login_logs","backup_history","messages","conversation_participants"],
+      // Group 2: parent docs
+      ["acc_vouchers","party_payments","sales_invoices","sales_returns","purchases","purchase_returns","production_entries","bill_of_materials","employees","conversations","number_sequences"],
+      // Group 3: masters that ref base
+      ["customers","suppliers","item_master","products","raw_materials"],
+      // Group 4: base masters
+      ["item_categories","units","warehouses","product_categories"],
+    ];
+    for (const grp of resetGroups) {
+      await Promise.all(grp.map(async (t) => {
+        const { error } = await db.from(t).delete().not("id", "is", null);
+        if (error) log.push(`del ${t}: ${error.message}`);
+      }));
     }
     await db.from("profiles").delete().not("employee_id", "is", null);
 
@@ -70,10 +83,14 @@ Deno.serve(async (req) => {
     await db.from("financial_years").update({ is_active: true }).eq("id", FY);
     await db.from("company_settings").update({ default_financial_year_id: FY, default_branch_id: BR_DHK }).eq("id", "default");
 
-    const bulk = async (t: string, rows: any[], ch = 500) => {
-      for (let i = 0; i < rows.length; i += ch) {
-        const { error } = await db.from(t).insert(rows.slice(i, i + ch));
-        if (error) throw new Error(`${t}: ${error.message}`);
+    const bulk = async (t: string, rows: any[], ch = 1000) => {
+      const batches: any[][] = [];
+      for (let i = 0; i < rows.length; i += ch) batches.push(rows.slice(i, i + ch));
+      // Run up to 4 chunks in parallel
+      for (let i = 0; i < batches.length; i += 4) {
+        const slice = batches.slice(i, i + 4);
+        const results = await Promise.all(slice.map(b => db.from(t).insert(b)));
+        for (const r of results) if (r.error) throw new Error(`${t}: ${r.error.message}`);
       }
     };
 
@@ -227,9 +244,9 @@ Deno.serve(async (req) => {
         sinv.push({ id:invId, invoice_number:inum, invoice_date:ds, customer_id:cust.id, branch_id:BR_DHK,
           total_amount:total, discount:disc, net_amount:net, status:"approved", created_by:UID });
         for (const r of rows) {
-          sitems.push({ id:U(), sales_invoice_id:invId, product_id:r[0], quantity:r[1], price:r[2], discount:0, total:r[3] });
-          smov.push({ id:U(), product_id:r[0], item_id:r[4], warehouse_id:WH, branch_id:BR_DHK,
-            movement_type:"out", reference_type:"sales_invoice", reference_id:invId, quantity:r[1] });
+          sitems.push({ id:U(), sales_invoice_id:invId, product_id:r[4], quantity:r[1], price:r[2], discount:0, total:r[3] });
+          smov.push({ id:U(), product_id:r[4], item_id:r[4], warehouse_id:WH, branch_id:BR_DHK,
+            movement_type:"sale", reference_type:"sales_invoice", reference_id:invId, quantity:r[1] });
         }
         const cash = R() < 0.4;
         const dr = cash ? A.cash : A.ar;
@@ -254,9 +271,9 @@ Deno.serve(async (req) => {
         pinv.push({ id:pId, purchase_number:pnum, purchase_date:ds, supplier_id:sup.id, branch_id:BR_DHK,
           total_amount:total, payment_method:credit?"credit":"cash", status:"approved", created_by:UID });
         for (const r of rows) {
-          pitems.push({ id:U(), purchase_id:pId, product_id:r[0], quantity:r[1], unit_price:r[2], total:r[3] });
-          smov.push({ id:U(), product_id:r[0], item_id:r[4], warehouse_id:WH, branch_id:BR_DHK,
-            movement_type:"in", reference_type:"purchase", reference_id:pId, quantity:r[1] });
+          pitems.push({ id:U(), purchase_id:pId, product_id:r[4], quantity:r[1], unit_price:r[2], total:r[3] });
+          smov.push({ id:U(), product_id:r[4], item_id:r[4], warehouse_id:WH, branch_id:BR_DHK,
+            movement_type:"purchase", reference_type:"purchase", reference_id:pId, quantity:r[1] });
         }
         const cr = credit ? A.ap : A.cash;
         addV(credit?"journal":"payment", ds, `Purchase ${pnum}`,
@@ -285,7 +302,7 @@ Deno.serve(async (req) => {
         const pid = U(); pmc++;
         pays.push({ id:pid, party_id:s.cid, party_type:"customer", payment_date:ymd(pd),
           amount:amt, payment_method:"cash", reference:`REC-${String(pmc).padStart(5,"0")}`, created_by:UID });
-        allocs.push({ id:U(), payment_id:pid, invoice_type:"sales", invoice_id:s.id, allocated_amount:amt });
+        allocs.push({ id:U(), payment_id:pid, invoice_type:"sales_invoice", invoice_id:s.id, allocated_amount:amt });
         addV("receipt", ymd(pd), "Receipt from customer",
           [[A.cash,amt,0,"Customer payment"],[A.ar,0,amt,"AR settlement"]]);
       }
