@@ -243,27 +243,39 @@ export type Database = {
       }
       bill_of_materials: {
         Row: {
+          bom_number: string | null
           created_at: string
+          current_rate: number | null
           id: string
           name: string
           notes: string | null
+          previous_rate: number | null
           product_id: string
+          uom_id: string | null
           updated_at: string
         }
         Insert: {
+          bom_number?: string | null
           created_at?: string
+          current_rate?: number | null
           id?: string
           name: string
           notes?: string | null
+          previous_rate?: number | null
           product_id: string
+          uom_id?: string | null
           updated_at?: string
         }
         Update: {
+          bom_number?: string | null
           created_at?: string
+          current_rate?: number | null
           id?: string
           name?: string
           notes?: string | null
+          previous_rate?: number | null
           product_id?: string
+          uom_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -272,6 +284,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "item_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_of_materials_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "units"
             referencedColumns: ["id"]
           },
         ]
@@ -348,6 +367,42 @@ export type Database = {
         }
         Relationships: []
       }
+      bom_expenses: {
+        Row: {
+          account_id: string | null
+          bom_id: string
+          id: string
+          rate: number
+        }
+        Insert: {
+          account_id?: string | null
+          bom_id: string
+          id?: string
+          rate?: number
+        }
+        Update: {
+          account_id?: string | null
+          bom_id?: string
+          id?: string
+          rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_expenses_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bom_expenses_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "bill_of_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bom_items: {
         Row: {
           bom_id: string
@@ -355,6 +410,8 @@ export type Database = {
           material_id: string
           quantity: number
           unit: string
+          unit_price: number | null
+          wastage_pct: number | null
         }
         Insert: {
           bom_id: string
@@ -362,6 +419,8 @@ export type Database = {
           material_id: string
           quantity?: number
           unit?: string
+          unit_price?: number | null
+          wastage_pct?: number | null
         }
         Update: {
           bom_id?: string
@@ -369,6 +428,8 @@ export type Database = {
           material_id?: string
           quantity?: number
           unit?: string
+          unit_price?: number | null
+          wastage_pct?: number | null
         }
         Relationships: [
           {
