@@ -7,8 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Search, ClipboardList, Pencil, Trash2, FileText, Printer } from "lucide-react";
+import { Plus, Search, ClipboardList, Pencil, Trash2, FileText, Download } from "lucide-react";
 import { AccountCombobox } from "@/components/accounts/AccountCombobox";
+import { ItemCombobox } from "@/components/inventory/ItemCombobox";
+import { generateBomPdf } from "@/lib/bom-pdf";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 interface ItemRow { id: string; item_name: string; item_code: string; unit_id: string | null; cost_price: number | null; }
 interface UnitRow { id: string; name: string; abbreviation: string | null; }
