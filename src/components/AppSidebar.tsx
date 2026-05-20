@@ -85,6 +85,8 @@ const navGroups: NavGroup[] = [
     children: [
       { to: "/inventory/items", label: "Item Master", icon: Package, permission: "inventory.view" },
       { to: "/inventory/categories", label: "Item Categories", icon: Layers, permission: "inventory.view" },
+      { to: "/inventory/stock-groups", label: "Stock Groups", icon: Layers, permission: "inventory.view" },
+      { to: "/inventory/chart", label: "Chart of Inventory", icon: Layers, permission: "inventory.view" },
       { to: "/inventory/units", label: "Units", icon: CircleDot, permission: "inventory.view" },
       { to: "/inventory/warehouses", label: "Warehouses", icon: Warehouse, permission: "inventory.view" },
       { to: "/inventory", label: "Stock Overview", icon: Warehouse, permission: "inventory.view" },
