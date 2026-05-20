@@ -302,7 +302,7 @@ Deno.serve(async (req) => {
         const pid = U(); pmc++;
         pays.push({ id:pid, party_id:s.cid, party_type:"customer", payment_date:ymd(pd),
           amount:amt, payment_method:"cash", reference:`REC-${String(pmc).padStart(5,"0")}`, created_by:UID });
-        allocs.push({ id:U(), payment_id:pid, invoice_type:"sales", invoice_id:s.id, allocated_amount:amt });
+        allocs.push({ id:U(), payment_id:pid, invoice_type:"sales_invoice", invoice_id:s.id, allocated_amount:amt });
         addV("receipt", ymd(pd), "Receipt from customer",
           [[A.cash,amt,0,"Customer payment"],[A.ar,0,amt,"AR settlement"]]);
       }
