@@ -19,6 +19,11 @@ interface Branch {
   name: string;
 }
 
+interface FinancialYear {
+  start_date: string;
+  end_date: string;
+}
+
 export function useReportData() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -35,12 +40,18 @@ export function useReportData() {
 
   useEffect(() => {
     const init = async () => {
-      const [aRes, bRes] = await Promise.all([
+      const [aRes, bRes, fyRes] = await Promise.all([
         supabase.from("chart_of_accounts").select("*").order("account_code"),
         supabase.from("branches").select("id, name"),
+        supabase.from("financial_years").select("start_date, end_date").eq("is_active", true).maybeSingle(),
       ]);
       setAccounts((aRes.data || []) as Account[]);
       setBranches((bRes.data || []) as Branch[]);
+      const activeYear = fyRes.data as FinancialYear | null;
+      if (activeYear?.start_date && activeYear?.end_date) {
+        setDateFrom(activeYear.start_date);
+        setDateTo(activeYear.end_date);
+      }
     };
     init();
   }, []);
