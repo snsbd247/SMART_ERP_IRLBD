@@ -20,9 +20,10 @@ const ITEM_TYPES = [
   { value: "consumable", label: "Consumable" },
 ];
 
-interface Item { id: string; item_code: string; item_name: string; item_type: string; category_id: string | null; unit_id: string | null; cost_price: number; selling_price: number; min_stock_level: number; status: string; description: string | null; }
+interface Item { id: string; item_code: string; item_name: string; item_type: string; category_id: string | null; unit_id: string | null; stock_group_id: string | null; cost_price: number; selling_price: number; min_stock_level: number; status: string; description: string | null; }
 interface Category { id: string; name: string; }
 interface Unit { id: string; name: string; abbreviation: string; }
+interface StockGroup { id: string; name: string; }
 
 const ItemMasterPage = () => {
   const [items, setItems] = useState<Item[]>([]);
