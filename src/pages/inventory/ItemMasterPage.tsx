@@ -198,6 +198,14 @@ const ItemMasterPage = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2"><Label>Stock Group</Label>
+              <Select value={f.stock_group_id || "__none__"} onValueChange={(v) => upd("stock_group_id", v === "__none__" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Select stock group" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {stockGroups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             <div className="space-y-2"><Label>Status</Label>
               <Select value={f.status} onValueChange={(v) => upd("status", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
