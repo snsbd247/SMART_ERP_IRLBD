@@ -7,8 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Search, ClipboardList, Pencil, Trash2, FileText, Printer } from "lucide-react";
+import { Plus, Search, ClipboardList, Pencil, Trash2, FileText, Download } from "lucide-react";
 import { AccountCombobox } from "@/components/accounts/AccountCombobox";
+import { ItemCombobox } from "@/components/inventory/ItemCombobox";
+import { generateBomPdf } from "@/lib/bom-pdf";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 interface ItemRow { id: string; item_name: string; item_code: string; unit_id: string | null; cost_price: number | null; }
 interface UnitRow { id: string; name: string; abbreviation: string | null; }
@@ -26,6 +29,7 @@ interface BomRow {
 const fmt = (n: number, d = 4) => (Number.isFinite(n) ? n : 0).toFixed(d);
 
 const BOMPage = () => {
+  const { settings } = useCompanySettings();
   const [boms, setBoms] = useState<BomRow[]>([]);
   const [products, setProducts] = useState<ItemRow[]>([]);
   const [materials, setMaterials] = useState<ItemRow[]>([]);
@@ -213,7 +217,49 @@ const BOMPage = () => {
     setPreviewExp(((exRes.data || []) as any[]) as any);
   };
 
-  const handlePrint = () => window.print();
+  const buildPdfData = (bom: BomRow, its: any[], exps: any[]) => ({
+    bom_number: bom.bom_number || "",
+    product_name: bom.product?.item_name || "",
+    uom: bom.uom?.abbreviation || bom.uom?.name || "",
+    previous_rate: Number(bom.previous_rate) || 0,
+    current_rate: Number(bom.current_rate) || 0,
+    notes: bom.notes,
+    company_name: settings?.company_name,
+    items: its.map((i: any) => {
+      const req = Number(i.required_qty ?? i.quantity) || 0;
+      const wp = Number(i.wastage_pct) || 0;
+      const wq = (req * wp) / 100;
+      const aq = req - wq;
+      const up = Number(i.unit_price) || 0;
+      return {
+        code: i.material?.item_code || "—",
+        name: i.material?.item_name || "—",
+        unit: i.unit || "",
+        required_qty: req, wastage_pct: wp, wastage_qty: wq,
+        actual_qty: aq, unit_price: up, total: aq * up,
+      };
+    }),
+    expenses: exps.map((e: any) => ({
+      code: e.account?.account_code || "—",
+      name: e.account?.account_name || "—",
+      rate: Number(e.rate) || 0,
+    })),
+  });
+
+  const handlePdf = async (bom: BomRow, mode: "open" | "save" = "open") => {
+    const [itRes, exRes] = await Promise.all([
+      supabase.from("bom_items").select("*, material:item_master(item_name, item_code)").eq("bom_id", bom.id),
+      (supabase.from as any)("bom_expenses").select("*, account:chart_of_accounts(account_code, account_name)").eq("bom_id", bom.id),
+    ]);
+    const its = ((itRes.data || []) as any[]).map((i) => ({ ...i, required_qty: Number(i.quantity) || 0 }));
+    generateBomPdf(buildPdfData(bom, its, (exRes.data || []) as any[]), mode);
+  };
+
+  const handlePreviewPdf = (mode: "open" | "save" = "open") => {
+    if (!previewBom) return;
+    const its = previewItems.map((i: any) => ({ ...i, material: i.material }));
+    generateBomPdf(buildPdfData(previewBom, its, previewExp as any[]), mode);
+  };
 
   const filtered = boms.filter((b) =>
     b.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -265,7 +311,8 @@ const BOMPage = () => {
                   <TableCell className="text-right">{fmt(Number(bom.previous_rate) || 0, 4)}</TableCell>
                   <TableCell className="text-right">{fmt(Number(bom.current_rate) || 0, 4)}</TableCell>
                   <TableCell className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openPreview(bom)} title="Preview / PDF"><FileText className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => openPreview(bom)} title="Preview"><FileText className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handlePdf(bom, "save")} title="Download PDF"><Download className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(bom)}><Pencil className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(bom.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </TableCell>
@@ -291,16 +338,12 @@ const BOMPage = () => {
 
             <Label className="col-span-2 text-right">Finished Product:</Label>
             <div className="col-span-4">
-              <select
-                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+              <ItemCombobox
+                items={products}
                 value={form.product_id}
-                onChange={(e) => handleProductChange(e.target.value)}
-              >
-                <option value="">-- Select product --</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>{p.item_code} — {p.item_name}</option>
-                ))}
-              </select>
+                onChange={handleProductChange}
+                placeholder="Search by code or name..."
+              />
             </div>
             <div className="col-span-6" />
 
@@ -349,17 +392,16 @@ const BOMPage = () => {
                       return (
                         <tr key={idx} className="border-t">
                           <td className="p-1 font-mono text-[11px]">{mat?.item_code || "—"}</td>
-                          <td className="p-1">
-                            <select
-                              className="w-full h-8 rounded border border-input bg-background px-2 text-xs"
+                          <td className="p-1 min-w-[200px]">
+                            <ItemCombobox
+                              items={materials}
                               value={it.material_id}
-                              onChange={(e) => handleMaterialChange(idx, e.target.value)}
-                            >
-                              <option value="">-- Select --</option>
-                              {materials.map((m) => <option key={m.id} value={m.id}>{m.item_name}</option>)}
-                            </select>
+                              onChange={(v) => handleMaterialChange(idx, v)}
+                              size="sm"
+                              placeholder="Search material..."
+                            />
                           </td>
-                          <td className="p-1">{it.unit || "—"}</td>
+                          <td className="p-1"><Input className="h-8 text-xs w-16" value={it.unit} onChange={(e) => { const n = [...items]; n[idx].unit = e.target.value; setItems(n); }} /></td>
                           <td className="p-1"><Input type="number" step="0.0001" className="h-8 text-right text-xs" value={it.required_qty} onChange={(e) => { const n = [...items]; n[idx].required_qty = Number(e.target.value); setItems(n); }} /></td>
                           <td className="p-1 text-right">{fmt(itemTotal(it), 4)}</td>
                           <td className="p-1"><Input type="number" step="0.01" className="h-8 text-right text-xs" value={it.wastage_pct} onChange={(e) => { const n = [...items]; n[idx].wastage_pct = Number(e.target.value); setItems(n); }} /></td>
@@ -449,7 +491,10 @@ const BOMPage = () => {
           <DialogHeader className="print:hidden">
             <div className="flex items-center justify-between">
               <DialogTitle>BOM Preview</DialogTitle>
-              <Button size="sm" onClick={handlePrint}><Printer className="w-4 h-4 mr-1" />Print / PDF</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => handlePreviewPdf("open")}><FileText className="w-4 h-4 mr-1" />Open PDF</Button>
+                <Button size="sm" onClick={() => handlePreviewPdf("save")}><Download className="w-4 h-4 mr-1" />Download PDF</Button>
+              </div>
             </div>
           </DialogHeader>
           {previewBom && (

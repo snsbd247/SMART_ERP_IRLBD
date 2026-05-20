@@ -597,6 +597,74 @@ export type Database = {
           },
         ]
       }
+      consumption_entries: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          id: string
+          notes: string | null
+          status: string
+          voucher_number: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          voucher_number: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          voucher_number?: string
+          warehouse_id?: string | null
+        }
+        Relationships: []
+      }
+      consumption_items: {
+        Row: {
+          entry_id: string
+          id: string
+          item_id: string
+          quantity: number
+          unit_cost: number
+        }
+        Insert: {
+          entry_id: string
+          id?: string
+          item_id: string
+          quantity?: number
+          unit_cost?: number
+        }
+        Update: {
+          entry_id?: string
+          id?: string
+          item_id?: string
+          quantity?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumption_items_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "consumption_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_participants: {
         Row: {
           conversation_id: string
@@ -1153,6 +1221,51 @@ export type Database = {
         }
         Relationships: []
       }
+      finished_goods_entries: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+          status: string
+          unit_cost: number
+          voucher_number: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity?: number
+          status?: string
+          unit_cost?: number
+          voucher_number: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          status?: string
+          unit_cost?: number
+          voucher_number?: string
+          warehouse_id?: string | null
+        }
+        Relationships: []
+      }
       fund_transactions: {
         Row: {
           created_at: string
@@ -1454,6 +1567,33 @@ export type Database = {
           },
         ]
       }
+      mfg_processes: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
       module_settings: {
         Row: {
           id: string
@@ -1733,6 +1873,77 @@ export type Database = {
             columns: ["voucher_id"]
             isOneToOne: false
             referencedRelation: "acc_vouchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      physical_stock_entries: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          id: string
+          notes: string | null
+          status: string
+          voucher_number: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          voucher_number: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          voucher_number?: string
+          warehouse_id?: string | null
+        }
+        Relationships: []
+      }
+      physical_stock_items: {
+        Row: {
+          counted_qty: number
+          difference: number
+          entry_id: string
+          id: string
+          item_id: string
+          system_qty: number
+        }
+        Insert: {
+          counted_qty?: number
+          difference?: number
+          entry_id: string
+          id?: string
+          item_id: string
+          system_qty?: number
+        }
+        Update: {
+          counted_qty?: number
+          difference?: number
+          entry_id?: string
+          id?: string
+          item_id?: string
+          system_qty?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "physical_stock_items_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "physical_stock_entries"
             referencedColumns: ["id"]
           },
         ]
@@ -2597,6 +2808,107 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_batches: {
+        Row: {
+          batch_no: string
+          created_at: string
+          exp_date: string | null
+          id: string
+          item_id: string
+          mfg_date: string | null
+          notes: string | null
+          quantity: number
+        }
+        Insert: {
+          batch_no: string
+          created_at?: string
+          exp_date?: string | null
+          id?: string
+          item_id: string
+          mfg_date?: string | null
+          notes?: string | null
+          quantity?: number
+        }
+        Update: {
+          batch_no?: string
+          created_at?: string
+          exp_date?: string | null
+          id?: string
+          item_id?: string
+          mfg_date?: string | null
+          notes?: string | null
+          quantity?: number
+        }
+        Relationships: []
+      }
+      stock_damage_entries: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          id: string
+          reason: string | null
+          status: string
+          voucher_number: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          reason?: string | null
+          status?: string
+          voucher_number: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          reason?: string | null
+          status?: string
+          voucher_number?: string
+          warehouse_id?: string | null
+        }
+        Relationships: []
+      }
+      stock_damage_items: {
+        Row: {
+          entry_id: string
+          id: string
+          item_id: string
+          quantity: number
+          unit_cost: number
+        }
+        Insert: {
+          entry_id: string
+          id?: string
+          item_id: string
+          quantity?: number
+          unit_cost?: number
+        }
+        Update: {
+          entry_id?: string
+          id?: string
+          item_id?: string
+          quantity?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_damage_items_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "stock_damage_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_ledger: {
         Row: {
           balance_quantity: number
@@ -2801,6 +3113,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      stock_voucher_types: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          effect: string
+          id: string
+          is_active: boolean
+          name: string
+          prefix: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          effect?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          prefix?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          effect?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          prefix?: string | null
+        }
+        Relationships: []
       }
       suppliers: {
         Row: {
