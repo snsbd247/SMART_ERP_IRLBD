@@ -23,6 +23,16 @@ interface Filters {
   dateTo?: string;
 }
 
+interface VoucherEntryBalanceRow {
+  account_id: string;
+  debit: number | string | null;
+  credit: number | string | null;
+}
+
+type AccountRow = Omit<AccountWithBalance, "total_debit" | "total_credit" | "closing_balance" | "closing_balance_type">;
+
+const PAGE_SIZE = 1000;
+
 export function useAccountBalances(filters: Filters = {}) {
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,22 +48,28 @@ export function useAccountBalances(filters: Filters = {}) {
 
     if (!accs) { setLoading(false); return; }
 
-    // 2. Build voucher entries query with filters
-    let query = supabase
-      .from("voucher_entries")
-      .select("account_id, debit, credit, acc_vouchers!inner(status, voucher_date, branch_id, financial_year_id)")
-      .eq("acc_vouchers.status", "approved");
+    const entries: VoucherEntryBalanceRow[] = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      let query = supabase
+        .from("voucher_entries")
+        .select("account_id, debit, credit, acc_vouchers!inner(status, voucher_date, branch_id, financial_year_id)")
+        .eq("acc_vouchers.status", "approved")
+        .range(from, from + PAGE_SIZE - 1);
 
-    if (filters.branchId) query = query.eq("acc_vouchers.branch_id", filters.branchId);
-    if (filters.financialYearId) query = query.eq("acc_vouchers.financial_year_id", filters.financialYearId);
-    if (filters.dateFrom) query = query.gte("acc_vouchers.voucher_date", filters.dateFrom);
-    if (filters.dateTo) query = query.lte("acc_vouchers.voucher_date", filters.dateTo);
+      if (filters.branchId) query = query.eq("acc_vouchers.branch_id", filters.branchId);
+      if (filters.financialYearId) query = query.eq("acc_vouchers.financial_year_id", filters.financialYearId);
+      if (filters.dateFrom) query = query.gte("acc_vouchers.voucher_date", filters.dateFrom);
+      if (filters.dateTo) query = query.lte("acc_vouchers.voucher_date", filters.dateTo);
 
-    const { data: entries } = await query;
+      const { data, error } = await query;
+      if (error) break;
+      entries.push(...((data || []) as VoucherEntryBalanceRow[]));
+      if (!data || data.length < PAGE_SIZE) break;
+    }
 
     // 3. Aggregate by account
     const balMap = new Map<string, { debit: number; credit: number }>();
-    (entries || []).forEach((e: any) => {
+    entries.forEach((e) => {
       const cur = balMap.get(e.account_id) || { debit: 0, credit: 0 };
       cur.debit += Number(e.debit) || 0;
       cur.credit += Number(e.credit) || 0;
@@ -61,7 +77,7 @@ export function useAccountBalances(filters: Filters = {}) {
     });
 
     // 4. Compute leaf balances
-    const result: AccountWithBalance[] = (accs as any[]).map((a) => {
+    const result: AccountWithBalance[] = (accs as AccountRow[]).map((a) => {
       const txn = balMap.get(a.id) || { debit: 0, credit: 0 };
       const openSigned = a.opening_balance_type === "debit" ? a.opening_balance : -a.opening_balance;
       const closing = openSigned + txn.debit - txn.credit;
