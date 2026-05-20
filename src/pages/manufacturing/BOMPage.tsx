@@ -29,6 +29,7 @@ interface BomRow {
 const fmt = (n: number, d = 4) => (Number.isFinite(n) ? n : 0).toFixed(d);
 
 const BOMPage = () => {
+  const { settings } = useCompanySettings();
   const [boms, setBoms] = useState<BomRow[]>([]);
   const [products, setProducts] = useState<ItemRow[]>([]);
   const [materials, setMaterials] = useState<ItemRow[]>([]);
