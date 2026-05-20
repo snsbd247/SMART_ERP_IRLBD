@@ -1367,6 +1367,7 @@ export type Database = {
           opening_stock: number
           selling_price: number
           status: string
+          stock_group_id: string | null
           unit_id: string | null
           updated_at: string
         }
@@ -1384,6 +1385,7 @@ export type Database = {
           opening_stock?: number
           selling_price?: number
           status?: string
+          stock_group_id?: string | null
           unit_id?: string | null
           updated_at?: string
         }
@@ -1401,6 +1403,7 @@ export type Database = {
           opening_stock?: number
           selling_price?: number
           status?: string
+          stock_group_id?: string | null
           unit_id?: string | null
           updated_at?: string
         }
@@ -1410,6 +1413,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "item_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_master_stock_group_id_fkey"
+            columns: ["stock_group_id"]
+            isOneToOne: false
+            referencedRelation: "stock_groups"
             referencedColumns: ["id"]
           },
           {
@@ -2905,6 +2915,54 @@ export type Database = {
             columns: ["entry_id"]
             isOneToOne: false
             referencedRelation: "stock_damage_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_groups: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          parent_id: string | null
+          primary_group_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          parent_id?: string | null
+          primary_group_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          parent_id?: string | null
+          primary_group_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_groups_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "stock_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_groups_primary_group_id_fkey"
+            columns: ["primary_group_id"]
+            isOneToOne: false
+            referencedRelation: "stock_groups"
             referencedColumns: ["id"]
           },
         ]
