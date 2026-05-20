@@ -34,6 +34,8 @@ import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
 import ItemMasterPage from "./pages/inventory/ItemMasterPage";
+import StockGroupsPage from "./pages/inventory/StockGroupsPage";
+import ChartOfInventoryPage from "./pages/inventory/ChartOfInventoryPage";
 import WarehousesPage from "./pages/inventory/WarehousesPage";
 import StockTransferPage from "./pages/inventory/StockTransferPage";
 import FinancialReports from "./pages/reports/FinancialReports";
