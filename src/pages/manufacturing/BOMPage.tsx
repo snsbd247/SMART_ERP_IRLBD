@@ -217,7 +217,49 @@ const BOMPage = () => {
     setPreviewExp(((exRes.data || []) as any[]) as any);
   };
 
-  const handlePrint = () => window.print();
+  const buildPdfData = (bom: BomRow, its: any[], exps: any[]) => ({
+    bom_number: bom.bom_number || "",
+    product_name: bom.product?.item_name || "",
+    uom: bom.uom?.abbreviation || bom.uom?.name || "",
+    previous_rate: Number(bom.previous_rate) || 0,
+    current_rate: Number(bom.current_rate) || 0,
+    notes: bom.notes,
+    company_name: settings?.company_name,
+    items: its.map((i: any) => {
+      const req = Number(i.required_qty ?? i.quantity) || 0;
+      const wp = Number(i.wastage_pct) || 0;
+      const wq = (req * wp) / 100;
+      const aq = req - wq;
+      const up = Number(i.unit_price) || 0;
+      return {
+        code: i.material?.item_code || "—",
+        name: i.material?.item_name || "—",
+        unit: i.unit || "",
+        required_qty: req, wastage_pct: wp, wastage_qty: wq,
+        actual_qty: aq, unit_price: up, total: aq * up,
+      };
+    }),
+    expenses: exps.map((e: any) => ({
+      code: e.account?.account_code || "—",
+      name: e.account?.account_name || "—",
+      rate: Number(e.rate) || 0,
+    })),
+  });
+
+  const handlePdf = async (bom: BomRow, mode: "open" | "save" = "open") => {
+    const [itRes, exRes] = await Promise.all([
+      supabase.from("bom_items").select("*, material:item_master(item_name, item_code)").eq("bom_id", bom.id),
+      (supabase.from as any)("bom_expenses").select("*, account:chart_of_accounts(account_code, account_name)").eq("bom_id", bom.id),
+    ]);
+    const its = ((itRes.data || []) as any[]).map((i) => ({ ...i, required_qty: Number(i.quantity) || 0 }));
+    generateBomPdf(buildPdfData(bom, its, (exRes.data || []) as any[]), mode);
+  };
+
+  const handlePreviewPdf = (mode: "open" | "save" = "open") => {
+    if (!previewBom) return;
+    const its = previewItems.map((i: any) => ({ ...i, material: i.material }));
+    generateBomPdf(buildPdfData(previewBom, its, previewExp as any[]), mode);
+  };
 
   const filtered = boms.filter((b) =>
     b.name.toLowerCase().includes(search.toLowerCase()) ||
