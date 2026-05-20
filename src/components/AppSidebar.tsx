@@ -179,6 +179,7 @@ const navGroups: NavGroup[] = [
       { to: "/admin/roles", label: "Roles & Permissions", icon: Shield, permission: "roles.view" },
       { to: "/admin/backup", label: "Backup & Restore", icon: Database, permission: "backup.view" },
       { to: "/admin/audit-log", label: "Activity Logs", icon: Activity, permission: "audit_log.view" },
+      { to: "/admin/diagnostics", label: "System Diagnostics", icon: Gauge, permission: "settings.view" },
       { to: "/admin/numbering", label: "Document Numbering", icon: ScrollText, permission: "settings.view" },
       { to: "/admin/shortcuts", label: "Page Shortcuts", icon: Keyboard, permission: "settings.view" },
       { to: "/admin/settings", label: "General Settings", icon: CircleDot, permission: "settings.view" },
