@@ -227,9 +227,9 @@ Deno.serve(async (req) => {
         sinv.push({ id:invId, invoice_number:inum, invoice_date:ds, customer_id:cust.id, branch_id:BR_DHK,
           total_amount:total, discount:disc, net_amount:net, status:"approved", created_by:UID });
         for (const r of rows) {
-          sitems.push({ id:U(), sales_invoice_id:invId, product_id:r[0], quantity:r[1], price:r[2], discount:0, total:r[3] });
-          smov.push({ id:U(), product_id:r[0], item_id:r[4], warehouse_id:WH, branch_id:BR_DHK,
-            movement_type:"out", reference_type:"sales_invoice", reference_id:invId, quantity:r[1] });
+          sitems.push({ id:U(), sales_invoice_id:invId, product_id:r[4], quantity:r[1], price:r[2], discount:0, total:r[3] });
+          smov.push({ id:U(), product_id:r[4], item_id:r[4], warehouse_id:WH, branch_id:BR_DHK,
+            movement_type:"sale", reference_type:"sales_invoice", reference_id:invId, quantity:r[1] });
         }
         const cash = R() < 0.4;
         const dr = cash ? A.cash : A.ar;
