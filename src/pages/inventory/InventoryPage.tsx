@@ -50,20 +50,20 @@ const InventoryPage = () => {
 
   const reports = [
     { label: "Item Master", path: "/inventory/items" },
-    { label: "Slow/Fast Moving", path: "/reports/stock-reports" },
+    { label: "Slow/Fast Moving", path: "/reports/slow-fast-moving" },
     { label: "Stock Summary", path: "/reports/stock-reports" },
-    { label: "Out of Stock", path: "/reports/low-stock" },
+    { label: "Out of Stock", path: "/reports/out-of-stock" },
     { label: "Location Summary", path: "/reports/stock-reports" },
-    { label: "Profitability", path: "/reports/financial" },
+    { label: "Profitability", path: "/reports/profitability" },
     { label: "Voucher Reports", path: "/vouchers" },
-    { label: "Store Ledger", path: "/reports/stock-ledger" },
+    { label: "Store Ledger", path: "/inventory/stock-ledger" },
     { label: "Stock Movement", path: "/reports/stock-ledger" },
     { label: "Cost Estimation", path: "/manufacturing/bom" },
-    { label: "Stock Reorder", path: "/reports/low-stock" },
-    { label: "Batch Report", path: "/inventory/batches" },
+    { label: "Stock Reorder", path: "/reports/stock-reorder" },
+    { label: "Batch Report", path: "/reports/batch-report" },
     { label: "Stock Minimum", path: "/reports/low-stock" },
-    { label: "Stock Transfer Register", path: "/inventory/transfers" },
-    { label: "MIS Report", path: "/reports/financial" },
+    { label: "Stock Transfer Register", path: "/reports/stock-transfer-register" },
+    { label: "MIS Report", path: "/reports/inventory-mis" },
   ];
 
   return (
