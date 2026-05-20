@@ -496,14 +496,11 @@ const AccountingVouchers = () => {
                     {entries.map((entry) => (
                       <TableRow key={entry.id}>
                         <TableCell>
-                          <Select value={entry.account_id} onValueChange={(v) => updateEntry(entry.id, "account_id", v)}>
-                            <SelectTrigger className="h-9"><SelectValue placeholder="Select account" /></SelectTrigger>
-                            <SelectContent>
-                              {accounts.map((a) => (
-                                <SelectItem key={a.id} value={a.id}>{a.account_code} — {a.account_name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <AccountCombobox
+                            accounts={accounts}
+                            value={entry.account_id}
+                            onChange={(v) => updateEntry(entry.id, "account_id", v)}
+                          />
                         </TableCell>
                         <TableCell>
                           <Input type="number" className="h-9 text-right tabular-nums" value={entry.debit || ""}
