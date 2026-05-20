@@ -311,7 +311,8 @@ const BOMPage = () => {
                   <TableCell className="text-right">{fmt(Number(bom.previous_rate) || 0, 4)}</TableCell>
                   <TableCell className="text-right">{fmt(Number(bom.current_rate) || 0, 4)}</TableCell>
                   <TableCell className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openPreview(bom)} title="Preview / PDF"><FileText className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => openPreview(bom)} title="Preview"><FileText className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handlePdf(bom, "save")} title="Download PDF"><Download className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(bom)}><Pencil className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(bom.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                   </TableCell>
