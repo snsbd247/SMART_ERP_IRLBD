@@ -30,6 +30,7 @@ const ItemMasterPage = () => {
   const { fc } = useCurrency();
   const [categories, setCategories] = useState<Category[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [stockGroups, setStockGroups] = useState<StockGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<Item | null>(null);
@@ -39,19 +40,21 @@ const ItemMasterPage = () => {
   const { toast } = useToast();
 
   // Form
-  const [f, setF] = useState({ item_code: "", item_name: "", item_type: "product", category_id: "", unit_id: "", cost_price: "0", selling_price: "0", min_stock_level: "0", status: "active", description: "" });
+  const [f, setF] = useState({ item_code: "", item_name: "", item_type: "product", category_id: "", unit_id: "", stock_group_id: "", cost_price: "0", selling_price: "0", min_stock_level: "0", status: "active", description: "" });
   const upd = (key: string, val: string) => setF((p) => ({ ...p, [key]: val }));
 
   const fetchData = async () => {
     setLoading(true);
-    const [iRes, cRes, uRes] = await Promise.all([
+    const [iRes, cRes, uRes, sgRes] = await Promise.all([
       supabase.from("item_master" as any).select("*").order("item_code"),
       supabase.from("item_categories" as any).select("id, name").eq("is_active", true).order("name"),
       supabase.from("units" as any).select("*").order("name"),
+      (supabase.from as any)("stock_groups").select("id, name").eq("is_active", true).order("name"),
     ]);
     setItems((iRes.data || []) as any);
     setCategories((cRes.data || []) as any);
     setUnits((uRes.data || []) as any);
+    setStockGroups((sgRes.data || []) as any);
     setLoading(false);
   };
 
