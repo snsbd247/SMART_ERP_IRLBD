@@ -83,7 +83,7 @@ const ItemMasterPage = () => {
     try {
       const payload: any = {
         item_code: f.item_code, item_name: f.item_name, item_type: f.item_type,
-        category_id: f.category_id || null, unit_id: f.unit_id || null,
+        category_id: f.category_id || null, unit_id: f.unit_id || null, stock_group_id: f.stock_group_id || null,
         cost_price: parseFloat(f.cost_price) || 0, selling_price: parseFloat(f.selling_price) || 0,
         min_stock_level: parseFloat(f.min_stock_level) || 0, status: f.status,
         description: f.description || null, updated_at: new Date().toISOString(),
