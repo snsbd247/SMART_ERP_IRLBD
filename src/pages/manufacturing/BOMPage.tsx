@@ -295,16 +295,12 @@ const BOMPage = () => {
 
             <Label className="col-span-2 text-right">Finished Product:</Label>
             <div className="col-span-4">
-              <select
-                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+              <ItemCombobox
+                items={products}
                 value={form.product_id}
-                onChange={(e) => handleProductChange(e.target.value)}
-              >
-                <option value="">-- Select product --</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>{p.item_code} — {p.item_name}</option>
-                ))}
-              </select>
+                onChange={handleProductChange}
+                placeholder="Search by code or name..."
+              />
             </div>
             <div className="col-span-6" />
 
