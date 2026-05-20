@@ -509,7 +509,7 @@ const BOMPage = () => {
           <DialogHeader className="print:hidden">
             <div className="flex items-center justify-between">
               <DialogTitle>BOM Preview</DialogTitle>
-              <Button size="sm" onClick={handlePrint}><Printer className="w-4 h-4 mr-1" />Print / PDF</Button>
+              <Button size="sm" onClick={handleDownloadPdf}><Download className="w-4 h-4 mr-1" />Download PDF</Button>
             </div>
           </DialogHeader>
           {previewBom && (
