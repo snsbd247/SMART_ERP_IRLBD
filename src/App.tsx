@@ -49,6 +49,13 @@ import CashBookPage from "./pages/bank/CashBookPage";
 import LowStockPage from "./pages/reports/LowStockPage";
 import StockReportsPage from "./pages/reports/StockReportsPage";
 import StockAdjustmentPage from "./pages/inventory/StockAdjustmentPage";
+import ConsumptionPage from "./pages/inventory/ConsumptionPage";
+import FinishedGoodsPage from "./pages/inventory/FinishedGoodsPage";
+import StockDamagePage from "./pages/inventory/StockDamagePage";
+import PhysicalStockPage from "./pages/inventory/PhysicalStockPage";
+import VoucherTypesPage from "./pages/inventory/VoucherTypesPage";
+import MfgProcessesPage from "./pages/inventory/MfgProcessesPage";
+import BatchEntryPage from "./pages/inventory/BatchEntryPage";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import ShortcutsPage from "./pages/admin/ShortcutsPage";
@@ -174,6 +181,13 @@ const App = () => (
                 <Route path="/inventory/transfers" element={<P perm="inventory.view"><StockTransferPage /></P>} />
                 <Route path="/inventory/adjustments" element={<P perm="inventory.view"><StockAdjustmentPage /></P>} />
                 <Route path="/inventory/stock-ledger" element={<P perm="inventory.view"><StockLedgerPage /></P>} />
+                <Route path="/inventory/consumption" element={<P perm="inventory.view"><ConsumptionPage /></P>} />
+                <Route path="/inventory/finished-goods" element={<P perm="inventory.view"><FinishedGoodsPage /></P>} />
+                <Route path="/inventory/damage" element={<P perm="inventory.view"><StockDamagePage /></P>} />
+                <Route path="/inventory/physical-stock" element={<P perm="inventory.view"><PhysicalStockPage /></P>} />
+                <Route path="/inventory/voucher-types" element={<P perm="inventory.view"><VoucherTypesPage /></P>} />
+                <Route path="/inventory/mfg-processes" element={<P perm="inventory.view"><MfgProcessesPage /></P>} />
+                <Route path="/inventory/batches" element={<P perm="inventory.view"><BatchEntryPage /></P>} />
                 <Route path="/products" element={<P perm="inventory.view"><ItemMasterPage /></P>} />
 
 
