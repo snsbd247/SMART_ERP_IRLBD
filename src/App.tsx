@@ -23,6 +23,7 @@ import AuditLogPage from "./pages/admin/AuditLogPage";
 import BackupPage from "./pages/admin/BackupPage";
 import GeneralSettingsPage from "./pages/admin/GeneralSettingsPage";
 import DocumentNumberingPage from "./pages/admin/DocumentNumberingPage";
+import DiagnosticsPage from "./pages/admin/DiagnosticsPage";
 import ChartOfAccounts from "./pages/accounts/ChartOfAccounts";
 import AccountingVouchers from "./pages/accounts/AccountingVouchers";
 import PurchasesPage from "./pages/purchase/PurchasesPage";
@@ -254,6 +255,7 @@ const App = () => (
                 <Route path="/admin/shortcuts" element={<P perm="settings.view"><ShortcutsPage /></P>} />
                 <Route path="/admin/branding" element={<P perm="settings.view"><BrandingPage /></P>} />
                 <Route path="/admin/sms" element={<P perm="settings.view"><SmsSettingsPage /></P>} />
+                <Route path="/admin/diagnostics" element={<DiagnosticsPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
