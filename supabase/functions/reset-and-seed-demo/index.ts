@@ -60,9 +60,17 @@ Deno.serve(async (req) => {
       "customers","suppliers",
       "item_master","products","item_categories","units","warehouses","product_categories","raw_materials",
       "audit_log","login_logs","backup_history","conversations","conversation_participants","messages","number_sequences"];
-    for (const t of reset) {
-      const { error } = await db.from(t).delete().not("id", "is", null);
-      if (error) log.push(`del ${t}: ${error.message}`);
+    // Delete groups sequentially (to respect FK), but parallelize within group
+    const resetGroups: string[][] = [
+      ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","purchase_items","purchase_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","bom_items","fund_transactions","employee_fund_settings","overtime_records","leave_requests","attendance","employee_documents","employee_bank_info","employee_education","employee_experience","employee_emergency_contacts","salary_structures","face_data","biometric_logs","payroll","party_notes","audit_log","login_logs","backup_history","messages","conversation_participants"],
+      ["acc_vouchers","party_payments","sales_invoices","sales_returns","purchases","purchase_returns","production_entries","bill_of_materials","employees","conversations","number_sequences"],
+      ["customers","suppliers","item_master","products","item_categories","units","warehouses","product_categories","raw_materials"],
+    ];
+    for (const grp of resetGroups) {
+      await Promise.all(grp.map(async (t) => {
+        const { error } = await db.from(t).delete().not("id", "is", null);
+        if (error) log.push(`del ${t}: ${error.message}`);
+      }));
     }
     await db.from("profiles").delete().not("employee_id", "is", null);
 
@@ -70,9 +78,18 @@ Deno.serve(async (req) => {
     await db.from("financial_years").update({ is_active: true }).eq("id", FY);
     await db.from("company_settings").update({ default_financial_year_id: FY, default_branch_id: BR_DHK }).eq("id", "default");
 
-    const bulk = async (t: string, rows: any[], ch = 500) => {
-      for (let i = 0; i < rows.length; i += ch) {
-        const { error } = await db.from(t).insert(rows.slice(i, i + ch));
+    const bulk = async (t: string, rows: any[], ch = 1000) => {
+      const batches: any[][] = [];
+      for (let i = 0; i < rows.length; i += ch) batches.push(rows.slice(i, i + ch));
+      // Run up to 4 chunks in parallel
+      for (let i = 0; i < batches.length; i += 4) {
+        const slice = batches.slice(i, i + 4);
+        const results = await Promise.all(slice.map(b => db.from(t).insert(b)));
+        for (const r of results) if (r.error) throw new Error(`${t}: ${r.error.message}`);
+      }
+    };
+    // dummy line to preserve original line offsets
+    const _noop = async () => {
         if (error) throw new Error(`${t}: ${error.message}`);
       }
     };
