@@ -1,84 +1,62 @@
-# Inventory Module Restructure Plan
+## Plan: System Diagnostics & Fixes
 
-আপনার আপলোড করা ছবি অনুযায়ী Inventory module কে তিনটি সেকশনে সাজাবো: **Master**, **Transactions**, এবং **Reports**। নিচে কোন কোন স্ক্রিন/ফিচার বানাতে হবে এবং কোনগুলো ইতিমধ্যে আছে সেটা ম্যাপ করলাম।
+### 1. New page: `/admin/diagnostics` (System Health)
+A single admin-only page with these cards:
 
-## 1. Module Layout (Inventory Landing Page)
+**A. RLS / Permission Check**
+- Shows current user: id, username, employee_id, super-admin status
+- "Run access test" button — runs a SELECT on each critical table (profiles, acc_vouchers, sales_invoices, employees, audit_log, number_sequences, system_settings, module_settings) and shows ✅/❌ with the exact RLS error if blocked
+- Friendly Bangla/English message when 403 is detected: "এই টেবিলে অ্যাক্সেস নেই — RLS policy চেক করুন"
 
-নতুন একটি `/inventory` ল্যান্ডিং পেইজ — ৩টি কলাম (Master / Transactions / Reports), প্রতিটি বাটনে ক্লিক করলে রিলেটেড পেইজে যাবে। ঠিক আপলোড করা ছবির মতো বেগুনি হেডার সহ।
+**B. Super Admin Validator**
+- Single button: "Validate Super Admin Access"
+- Calls `is_super_admin(auth.uid())` via RPC + reads `user_roles` + counts protected rows; displays result card (green/red)
 
-## 2. Master Section
+**C. Document Numbering Audit**
+- Shows null / duplicate voucher_number counts across acc_vouchers, sales_invoices, purchases, party_payments
+- "Auto-fix" button — assigns missing/duplicate numbers using next_number sequence
+- Re-sync number_sequences.current_number to MAX(serial) found in data
 
-| বাটন | Status | কাজ |
-|---|---|---|
-| Stock Groups | ✅ আছে (ItemCategoriesPage) | লিঙ্ক করব |
-| Stock Categories | ✅ আছে | লিঙ্ক করব |
-| Stock Items | ✅ আছে (ItemMasterPage) | লিঙ্ক করব |
-| Measurement Unit | ✅ আছে (UnitsPage) | লিঙ্ক করব |
-| Voucher Types | 🆕 নতুন | Stock voucher type config |
-| MFG. Process | 🆕 নতুন | Production process master |
-| Batch/Log Entry | 🆕 নতুন | Batch/lot tracking master |
+**D. Vouchers Page Status**
+- Quick count of acc_vouchers visible to current user; if 0 while DB has rows → shows "RLS blocking" with one-click "Re-grant is_super_admin EXECUTE" instruction
 
-## 3. Transactions Section
+**E. Backup Health**
+- Latest backup row (date, size, status)
+- "Run backup now" → invokes `create-backup` edge function
+- "Restore latest" → invokes `restore-backup` (with confirm dialog)
+- Shows backup_settings (auto, retention, last_auto_backup_at)
 
-| বাটন | Status | কাজ |
-|---|---|---|
-| Consumption | 🆕 নতুন | কাঁচামাল consumption entry |
-| Finished Goods | 🆕 নতুন | Production output entry |
-| MFG. Voucher | ✅ আংশিক (ProductionPage) | Refactor + লিঙ্ক |
-| Stock Damage | 🆕 নতুন | Damage/loss entry → stock কমাবে |
-| Physical Stock | 🆕 নতুন | Physical count → adjustment |
-| Stock Transfer | ✅ আছে | লিঙ্ক করব |
+### 2. Global RLS-aware toast
+Add a small helper `handleSupabaseError(error)` in `src/lib/utils.ts` that detects `permission denied`/`42501`/`PGRST301` and shows a friendly toast: "Permission denied — your role may not have access. Visit System Diagnostics."
+Wire it into the existing dashboard + vouchers + general settings + document numbering error handlers (replace bare `toast({ ... description: error.message })`).
 
-## 4. Reports Section
+### 3. Vouchers page auto-load fix
+In `src/pages/accounts/AccountingVouchers.tsx`: when query returns 0 rows AND user is super admin → automatically re-query without the active financial-year filter and surface a banner "Showing all FYs (no active FY filter matched)".
 
-| বাটন | Status |
-|---|---|
-| Item Master | 🆕 |
-| Stock Summary | ✅ (StockReportsPage) |
-| Location Summary | 🆕 |
-| Voucher Reports | 🆕 |
-| Stock Movement | ✅ (StockLedger) |
-| Stock Reorder | ✅ আংশিক (LowStockPage) |
-| Stock Minimum | 🆕 |
-| Slow/Fast Moving | 🆕 |
-| Out of Stock | 🆕 |
-| Profitability | 🆕 |
-| Store Ledger | ✅ (StockLedger) |
-| Cost Estimation | 🆕 (BOM-linked) |
-| Batch Report | 🆕 |
-| Stock Transfer Register | 🆕 |
-| MIS Report | 🆕 |
+### 4. Audit Log enhancements
+`src/pages/admin/AuditLogPage.tsx`:
+- Add filters: date range, user (dropdown of profiles), module/action
+- Add a synthetic source: include rows where `action ILIKE '%denied%' OR '%403%' OR '%rls%'`
+- New "RLS Events" tab filtering audit_log + login_logs failures
 
-## 5. Database Changes
+### 5. Sidebar/Route
+Add `/admin/diagnostics` route + nav link under Administration (super-admin only).
 
-নতুন টেবিল (Supabase migration):
-- `stock_voucher_types` — voucher type config
-- `mfg_processes` — manufacturing process master
-- `stock_batches` — batch/lot tracking (item_id, batch_no, mfg_date, exp_date, qty)
-- `consumption_entries` + items
-- `finished_goods_entries` + items
-- `stock_damage_entries` + items
-- `physical_stock_entries` + items (with system_qty vs counted_qty)
+### Technical notes
+- All data via existing supabase client; no schema changes needed.
+- Auto-fix uses existing `nextNumber()` helper from `src/lib/db-utils.ts`.
+- Backup buttons call existing edge functions `create-backup` / `restore-backup`.
+- No new tables, no migrations.
 
-সব transaction টেবিল `stock_movements` এ entry লিখবে যাতে existing Stock Ledger সব সোর্স থেকে ডাটা পায়।
+### Files to create
+- `src/pages/admin/DiagnosticsPage.tsx`
+- `src/lib/supabase-errors.ts`
 
-## 6. Flow Fix
-
-- প্রতিটি transaction (consumption, finished goods, damage, physical adjustment, transfer) → অটো stock_movements + warehouse_stock আপডেট
-- Number sequencing প্রতিটির জন্য (CONS, FG, DMG, PHY prefix)
-- Status: draft / posted / cancelled, posted হওয়ার পরে stock impact
-- Reports সব transaction source aggregate করে দেখাবে
-
-## 7. Implementation Order
-
-কাজের পরিমাণ অনেক বড়। আমি ৩ ফেইজে ভাগ করব:
-
-**Phase 1 (এই turn):** Landing page + সব existing পেইজ লিঙ্ক + ৪টি critical transaction (Consumption, Finished Goods, Stock Damage, Physical Stock) — DB migration + UI
-
-**Phase 2:** বাকি Master (Voucher Types, MFG Process, Batch Entry)
-
-**Phase 3:** সব নতুন Reports
-
----
-
-**প্রশ্ন:** Phase 1 দিয়ে শুরু করব? নাকি অন্য priority আছে (যেমন আগে Reports, পরে Transactions)?
+### Files to modify
+- `src/App.tsx` (route)
+- `src/components/AppSidebar.tsx` (nav item)
+- `src/pages/accounts/AccountingVouchers.tsx` (fallback query + banner)
+- `src/pages/admin/AuditLogPage.tsx` (filters + RLS tab)
+- `src/pages/admin/DocumentNumberingPage.tsx` (use friendly error helper)
+- `src/pages/admin/GeneralSettingsPage.tsx` (use friendly error helper)
+- `src/pages/Dashboard.tsx` (use friendly error helper)
