@@ -14,12 +14,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountCombobox } from "@/components/accounts/AccountCombobox";
+import { useAccountBalances } from "@/hooks/useAccountBalances";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Check, X, FileText, Trash2, RotateCcw, Pencil, ArrowLeftRight, Lock, Printer, Eye } from "lucide-react";
+import { Plus, Check, X, FileText, Trash2, RotateCcw, Pencil, ArrowLeftRight, Lock, Printer, Eye, PlusCircle } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { PrintLayout } from "@/components/PrintLayout";
 
@@ -33,7 +34,7 @@ const VOUCHER_TYPES = [
 interface Account { id: string; account_name: string; account_code: string; }
 interface Branch { id: string; name: string; }
 interface FinYear { id: string; name: string; }
-interface EntryRow { id: string; account_id: string; debit: number; credit: number; narration: string; }
+interface EntryRow { id: string; account_id: string; dr_cr: "dr" | "cr"; debit: number; credit: number; narration: string; }
 interface Voucher {
   id: string; voucher_number: string; voucher_type: string; voucher_date: string;
   branch_id: string | null; financial_year_id: string | null; description: string | null;
@@ -89,8 +90,8 @@ const AccountingVouchers = () => {
   const [formFinYear, setFormFinYear] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [entries, setEntries] = useState<EntryRow[]>([
-    { id: "1", account_id: "", debit: 0, credit: 0, narration: "" },
-    { id: "2", account_id: "", debit: 0, credit: 0, narration: "" },
+    { id: "1", account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
+    { id: "2", account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
   ]);
 
   // Print state
@@ -119,12 +120,15 @@ const AccountingVouchers = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const { accounts: accountsWithBal } = useAccountBalances();
+  const balanceMap = new Map(accountsWithBal.map((a) => [a.id, { amt: a.closing_balance, type: a.closing_balance_type }]));
+
   const totalDebit = entries.reduce((s, e) => s + (e.debit || 0), 0);
   const totalCredit = entries.reduce((s, e) => s + (e.credit || 0), 0);
   const isBalanced = totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.01;
 
   const addEntry = () => {
-    setEntries((prev) => [...prev, { id: String(Date.now()), account_id: "", debit: 0, credit: 0, narration: "" }]);
+    setEntries((prev) => [...prev, { id: String(Date.now()), account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" }]);
   };
 
   const removeEntry = (id: string) => {
@@ -133,7 +137,15 @@ const AccountingVouchers = () => {
   };
 
   const updateEntry = (id: string, field: keyof EntryRow, value: any) => {
-    setEntries((prev) => prev.map((e) => e.id === id ? { ...e, [field]: value } : e));
+    setEntries((prev) => prev.map((e) => {
+      if (e.id !== id) return e;
+      const next: EntryRow = { ...e, [field]: value };
+      if (field === "dr_cr") {
+        if (value === "dr") next.credit = 0;
+        else next.debit = 0;
+      }
+      return next;
+    }));
   };
 
   const openCreate = () => {
@@ -141,8 +153,8 @@ const AccountingVouchers = () => {
     setFormDate(new Date().toISOString().slice(0, 10));
     setFormBranch(""); setFormFinYear(""); setFormDesc("");
     setEntries([
-      { id: "1", account_id: "", debit: 0, credit: 0, narration: "" },
-      { id: "2", account_id: "", debit: 0, credit: 0, narration: "" },
+      { id: "1", account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
+      { id: "2", account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
     ]);
     setDialogOpen(true);
   };
@@ -163,6 +175,7 @@ const AccountingVouchers = () => {
     setEntries((data || []).map((e: any) => ({
       id: e.id,
       account_id: e.account_id,
+      dr_cr: (Number(e.debit) > 0 ? "dr" : "cr") as "dr" | "cr",
       debit: Number(e.debit),
       credit: Number(e.credit),
       narration: e.narration || "",
@@ -485,60 +498,91 @@ const AccountingVouchers = () => {
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[35%]">Account</TableHead>
-                      <TableHead className="w-[20%] text-right">Debit</TableHead>
-                      <TableHead className="w-[20%] text-right">Credit</TableHead>
-                      <TableHead>Narration</TableHead>
-                      <TableHead className="w-10"></TableHead>
+                    <TableRow className="bg-sky-100/70 dark:bg-sky-950/30">
+                      <TableHead className="w-[110px] text-center font-semibold">Dr./Cr.</TableHead>
+                      <TableHead className="font-semibold">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>Particulars</span>
+                          <button type="button" onClick={addEntry} className="text-primary hover:opacity-80" title="Add entry">
+                            <PlusCircle className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </TableHead>
+                      <TableHead className="w-[18%] text-center font-semibold">Debit</TableHead>
+                      <TableHead className="w-[18%] text-center font-semibold">Credit</TableHead>
+                      <TableHead className="w-[90px] text-center font-semibold">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {entries.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell>
-                          <AccountCombobox
-                            accounts={accounts}
-                            value={entry.account_id}
-                            onChange={(v) => updateEntry(entry.id, "account_id", v)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input type="number" className="h-9 text-right tabular-nums" value={entry.debit || ""}
-                            onChange={(e) => updateEntry(entry.id, "debit", parseFloat(e.target.value) || 0)} />
-                        </TableCell>
-                        <TableCell>
-                          <Input type="number" className="h-9 text-right tabular-nums" value={entry.credit || ""}
-                            onChange={(e) => updateEntry(entry.id, "credit", parseFloat(e.target.value) || 0)} />
-                        </TableCell>
-                        <TableCell>
-                          <Input className="h-9" value={entry.narration}
-                            onChange={(e) => updateEntry(entry.id, "narration", e.target.value)} />
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => removeEntry(entry.id)} disabled={entries.length <= 2}>
-                            <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    <TableRow className="bg-muted/50 font-medium">
-                      <TableCell className="text-right text-sm">Total</TableCell>
+                    {entries.map((entry, idx) => {
+                      const bal = entry.account_id ? balanceMap.get(entry.account_id) : undefined;
+                      const isLast = idx === entries.length - 1;
+                      return (
+                        <TableRow key={entry.id} className="align-top">
+                          <TableCell className="pt-3">
+                            <Select value={entry.dr_cr} onValueChange={(v) => updateEntry(entry.id, "dr_cr", v)}>
+                              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="dr">Dr</SelectItem>
+                                <SelectItem value="cr">Cr</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="pt-3">
+                            <AccountCombobox
+                              accounts={accounts}
+                              value={entry.account_id}
+                              onChange={(v) => updateEntry(entry.id, "account_id", v)}
+                            />
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              Curr Bal : {bal ? `${fc(bal.amt)} ${bal.type === "debit" ? "Dr" : "Cr"}` : ""}
+                            </div>
+                            <Input className="h-8 mt-1 text-xs" placeholder="Narration (optional)" value={entry.narration}
+                              onChange={(e) => updateEntry(entry.id, "narration", e.target.value)} />
+                          </TableCell>
+                          <TableCell className="pt-3">
+                            <Input type="number" className="h-9 text-right tabular-nums"
+                              value={entry.debit || ""} disabled={entry.dr_cr !== "dr"}
+                              onChange={(e) => updateEntry(entry.id, "debit", parseFloat(e.target.value) || 0)} />
+                          </TableCell>
+                          <TableCell className="pt-3">
+                            <Input type="number" className="h-9 text-right tabular-nums"
+                              value={entry.credit || ""} disabled={entry.dr_cr !== "cr"}
+                              onChange={(e) => updateEntry(entry.id, "credit", parseFloat(e.target.value) || 0)} />
+                          </TableCell>
+                          <TableCell className="pt-3">
+                            <div className="flex items-center justify-center gap-1">
+                              {isLast && (
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={addEntry} title="Add row">
+                                  <Plus className="w-4 h-4 text-primary" />
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeEntry(entry.id)} disabled={entries.length <= 2} title="Delete">
+                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    <TableRow className="bg-emerald-100/70 dark:bg-emerald-950/30 font-semibold">
+                      <TableCell />
+                      <TableCell className="text-right">
+                        Total :
+                        {!isBalanced && totalDebit > 0 && (
+                          <span className="ml-3 text-xs text-destructive font-normal">Diff: {Math.abs(totalDebit - totalCredit).toLocaleString()}</span>
+                        )}
+                        {isBalanced && <span className="ml-3 text-xs text-emerald-700 font-normal">✓ Balanced</span>}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">{totalDebit.toLocaleString()}</TableCell>
                       <TableCell className="text-right tabular-nums">{totalCredit.toLocaleString()}</TableCell>
-                      <TableCell>
-                        {!isBalanced && totalDebit > 0 && (
-                          <span className="text-xs text-destructive">Difference: {Math.abs(totalDebit - totalCredit).toLocaleString()}</span>
-                        )}
-                        {isBalanced && <span className="text-xs text-green-600">✓ Balanced</span>}
-                      </TableCell>
                       <TableCell />
                     </TableRow>
                   </TableBody>
                 </Table>
               </CardContent>
             </Card>
-            <Button variant="outline" size="sm" onClick={addEntry}><Plus className="w-4 h-4 mr-1" />Add Entry</Button>
+            
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => { setDialogOpen(false); setEditingVoucher(null); }}>Cancel</Button>
