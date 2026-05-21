@@ -94,6 +94,7 @@ const navGroups: NavGroup[] = [
       { to: "/inventory/adjustments", label: "Stock Adjustment", icon: ClipboardList, permission: "inventory.view" },
       { to: "/inventory/stock-ledger", label: "Stock Ledger", icon: ScrollText, permission: "inventory.view" },
       { to: "/reports/stock-reports", label: "Stock Reports", icon: BarChart3, permission: "inventory.view" },
+      { to: "/reports/stock-by-group", label: "Stock by Group", icon: BarChart3, permission: "inventory.view" },
       { to: "/reports/low-stock", label: "Low Stock Alert", icon: CircleDot, permission: "inventory.view" },
     ],
   },
