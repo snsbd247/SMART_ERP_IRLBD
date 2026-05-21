@@ -131,6 +131,17 @@ const AccountingVouchers = () => {
     setEntries((prev) => [...prev, { id: String(Date.now()), account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" }]);
   };
 
+  const resetNewVoucherEntries = () => {
+    const idBase = Date.now();
+    setEditingVoucher(null);
+    setFormDesc("");
+    setEntries([
+      { id: `${idBase}-1`, account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
+      { id: `${idBase}-2`, account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
+    ]);
+    setDialogOpen(true);
+  };
+
   const removeEntry = (id: string) => {
     if (entries.length <= 2) return;
     setEntries((prev) => prev.filter((e) => e.id !== id));
@@ -264,16 +275,7 @@ const AccountingVouchers = () => {
         toast({ title: "Voucher created successfully" });
       }
       if (resetForNew) {
-        setEditingVoucher(null);
-        setFormDate(new Date().toISOString().slice(0, 10));
-        setFormBranch("");
-        setFormFinYear("");
-        setFormDesc("");
-        setEntries([
-          { id: `${Date.now()}-1`, account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
-          { id: `${Date.now()}-2`, account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
-        ]);
-        setDialogOpen(true);
+        resetNewVoucherEntries();
       } else {
         setDialogOpen(false);
         setEditingVoucher(null);
