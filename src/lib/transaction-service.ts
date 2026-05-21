@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { nextNumber } from "@/lib/db-utils";
 import { validateFinancialYear } from "@/lib/financial-year-utils";
 import { autoPostAccounting, findAccountByName } from "@/lib/accounting-utils";
-import { updateWarehouseStock, createStockMovement } from "@/lib/stock-utils";
+import { updateWarehouseStock, createStockMovement, enrichMovementsWithStockGroup } from "@/lib/stock-utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
