@@ -459,7 +459,7 @@ const AccountingVouchers = () => {
           </TabsContent>
         ))}
       </Tabs>
-      )}
+      ))}
 
       {/* Create/Edit Voucher Page */}
       {dialogOpen && (
