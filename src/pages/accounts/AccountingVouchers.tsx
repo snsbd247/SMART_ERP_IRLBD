@@ -499,11 +499,6 @@ const AccountingVouchers = () => {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Input value={formDesc} onChange={(e) => setFormDesc(e.target.value)} placeholder="Voucher narration" />
-            </div>
-
             {/* Entry Grid */}
             <Card>
               <CardHeader className="py-3 px-4">
@@ -513,7 +508,7 @@ const AccountingVouchers = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-sky-100/70 dark:bg-sky-950/30">
-                      <TableHead className="w-[110px] text-center font-semibold">Dr./Cr.</TableHead>
+                      <TableHead className="w-[100px] text-center font-semibold">Dr./Cr.</TableHead>
                       <TableHead className="font-semibold">
                         <div className="flex items-center justify-center gap-2">
                           <span>Particulars</span>
@@ -522,8 +517,9 @@ const AccountingVouchers = () => {
                           </button>
                         </div>
                       </TableHead>
-                      <TableHead className="w-[18%] text-center font-semibold">Debit</TableHead>
-                      <TableHead className="w-[18%] text-center font-semibold">Credit</TableHead>
+                      <TableHead className="w-[15%] text-center font-semibold">Debit</TableHead>
+                      <TableHead className="w-[15%] text-center font-semibold">Credit</TableHead>
+                      <TableHead className="w-[18%] text-center font-semibold">Narration</TableHead>
                       <TableHead className="w-[90px] text-center font-semibold">Action</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -551,8 +547,6 @@ const AccountingVouchers = () => {
                             <div className="mt-1 text-xs text-muted-foreground">
                               Curr Bal : {bal ? `${fc(bal.amt)} ${bal.type === "debit" ? "Dr" : "Cr"}` : ""}
                             </div>
-                            <Input className="h-8 mt-1 text-xs" placeholder="Narration (optional)" value={entry.narration}
-                              onChange={(e) => updateEntry(entry.id, "narration", e.target.value)} />
                           </TableCell>
                           <TableCell className="pt-3">
                             <Input type="number" className="h-9 text-right tabular-nums"
@@ -563,6 +557,10 @@ const AccountingVouchers = () => {
                             <Input type="number" className="h-9 text-right tabular-nums"
                               value={entry.credit || ""} disabled={entry.dr_cr !== "cr"}
                               onChange={(e) => updateEntry(entry.id, "credit", parseFloat(e.target.value) || 0)} />
+                          </TableCell>
+                          <TableCell className="pt-3">
+                            <Input className="h-9 text-xs" placeholder="Narration (optional)" value={entry.narration}
+                              onChange={(e) => updateEntry(entry.id, "narration", e.target.value)} />
                           </TableCell>
                           <TableCell className="pt-3">
                             <div className="flex items-center justify-center gap-1">
@@ -591,11 +589,18 @@ const AccountingVouchers = () => {
                       <TableCell className="text-right tabular-nums">{totalDebit.toLocaleString()}</TableCell>
                       <TableCell className="text-right tabular-nums">{totalCredit.toLocaleString()}</TableCell>
                       <TableCell />
+                      <TableCell />
                     </TableRow>
                   </TableBody>
                 </Table>
               </CardContent>
             </Card>
+
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input value={formDesc} onChange={(e) => setFormDesc(e.target.value)} placeholder="Voucher narration" />
+            </div>
+            
             
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t mt-4">
