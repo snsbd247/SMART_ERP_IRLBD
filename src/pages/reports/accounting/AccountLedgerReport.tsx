@@ -99,21 +99,25 @@ const AccountLedgerReport = () => {
         <Card><CardContent className="p-0">
           <Table>
             <TableHeader><TableRow>
-              <TableHead>Date</TableHead><TableHead>Voucher #</TableHead><TableHead>Description</TableHead>
+              <TableHead>Date</TableHead><TableHead>Voucher #</TableHead>
+              <TableHead>Particulars (Ledger)</TableHead>
+              <TableHead>Description</TableHead>
               <TableHead className="text-right">Debit</TableHead><TableHead className="text-right">Credit</TableHead>
               <TableHead className="text-right">Balance</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {data.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Select an account and click "Generate"</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Select an account and click "Generate"</TableCell></TableRow>
               ) : data.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell>{e.voucher_date}</TableCell>
                   <TableCell className="font-mono text-xs">{e.voucher_number}</TableCell>
+                  <TableCell className="text-sm">{e.particulars}</TableCell>
                   <TableCell className="text-muted-foreground">{e.description}</TableCell>
                   <TableCell className="text-right tabular-nums">{Number(e.debit) > 0 ? fc(Number(e.debit)) : ""}</TableCell>
                   <TableCell className="text-right tabular-nums">{Number(e.credit) > 0 ? fc(Number(e.credit)) : ""}</TableCell>
                   <TableCell className={`text-right tabular-nums font-medium ${e.running_balance < 0 ? "text-destructive" : ""}`}>
+
                     {fc(Math.abs(e.running_balance))} {e.running_balance >= 0 ? "Dr" : "Cr"}
                   </TableCell>
                 </TableRow>
