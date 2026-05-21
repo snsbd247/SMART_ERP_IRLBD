@@ -582,7 +582,7 @@ const AccountingVouchers = () => {
                 </Table>
               </CardContent>
             </Card>
-            <Button variant="outline" size="sm" onClick={addEntry}><Plus className="w-4 h-4 mr-1" />Add Entry</Button>
+            
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => { setDialogOpen(false); setEditingVoucher(null); }}>Cancel</Button>
