@@ -66,6 +66,7 @@ const AccountLedgerReport = () => {
   const title = selectedAcc ? `${selectedAcc.account_name} Ledger` : "Account Ledger";
   const columns = [
     { key: "voucher_date", label: "Date" }, { key: "voucher_number", label: "Voucher #" },
+    { key: "particulars", label: "Particulars (Ledger)" },
     { key: "description", label: "Description" },
     { key: "debit", label: "Debit", format: "currency" as const }, { key: "credit", label: "Credit", format: "currency" as const },
     { key: "running_balance", label: "Balance", format: "currency" as const },
