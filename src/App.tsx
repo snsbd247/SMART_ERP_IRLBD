@@ -50,6 +50,7 @@ import BankAccountsPage from "./pages/bank/BankAccountsPage";
 import CashBookPage from "./pages/bank/CashBookPage";
 import LowStockPage from "./pages/reports/LowStockPage";
 import StockReportsPage from "./pages/reports/StockReportsPage";
+import StockByGroupPage from "./pages/reports/StockByGroupPage";
 import StockAdjustmentPage from "./pages/inventory/StockAdjustmentPage";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
@@ -242,6 +243,7 @@ const App = () => (
                 <Route path="/reports/expense-analysis" element={<P perm="purchase.view"><ExpenseAnalysisReport /></P>} />
                 <Route path="/reports/stock-ledger" element={<P perm="inventory.view"><StockLedger /></P>} />
                 <Route path="/reports/stock-reports" element={<P perm="inventory.view"><StockReportsPage /></P>} />
+                <Route path="/reports/stock-by-group" element={<P perm="inventory.view"><StockByGroupPage /></P>} />
                 <Route path="/reports/low-stock" element={<P perm="inventory.view"><LowStockPage /></P>} />
                 <Route path="/reports/customer-statement" element={<P perm="sales.view"><CustomerStatementPage /></P>} />
                 <Route path="/reports/sales" element={<P perm="sales.view"><FinancialReports /></P>} />
