@@ -16,7 +16,7 @@ const AccountLedgerReport = () => {
     if (!selectedAccount || selectedAccount === "all") return;
     setLoading(true);
     let query = supabase.from("voucher_entries")
-      .select("*, acc_vouchers!inner(voucher_number, voucher_date, status, description, branch_id)")
+      .select("*, acc_vouchers!inner(id, voucher_number, voucher_date, status, description, branch_id)")
       .eq("account_id", selectedAccount)
       .eq("acc_vouchers.status", "approved")
       .gte("acc_vouchers.voucher_date", dateFrom)
@@ -28,12 +28,32 @@ const AccountLedgerReport = () => {
     const acc = accounts.find((a) => a.id === selectedAccount);
     let runBal = acc ? (acc.opening_balance_type === "debit" ? acc.opening_balance : -acc.opening_balance) : 0;
 
+    // Fetch counter-accounts (other ledger names in the same vouchers)
+    const voucherIds = Array.from(new Set((entries || []).map((e: any) => e.acc_vouchers?.id).filter(Boolean)));
+    const counterMap: Record<string, string[]> = {};
+    if (voucherIds.length > 0) {
+      const { data: allEntries } = await supabase
+        .from("voucher_entries")
+        .select("voucher_id, account_id, chart_of_accounts:account_id(account_name)")
+        .in("voucher_id", voucherIds);
+      (allEntries || []).forEach((r: any) => {
+        if (r.account_id === selectedAccount) return;
+        const name = r.chart_of_accounts?.account_name;
+        if (!name) return;
+        if (!counterMap[r.voucher_id]) counterMap[r.voucher_id] = [];
+        if (!counterMap[r.voucher_id].includes(name)) counterMap[r.voucher_id].push(name);
+      });
+    }
+
     const result = (entries || []).map((e: any) => {
       runBal += Number(e.debit) - Number(e.credit);
+      const vid = e.acc_vouchers?.id;
+      const particulars = vid && counterMap[vid]?.length ? counterMap[vid].join(", ") : "—";
       return {
         ...e,
         voucher_number: e.acc_vouchers?.voucher_number,
         voucher_date: e.acc_vouchers?.voucher_date,
+        particulars,
         description: e.acc_vouchers?.description || e.narration || "—",
         running_balance: runBal,
       };
@@ -46,6 +66,7 @@ const AccountLedgerReport = () => {
   const title = selectedAcc ? `${selectedAcc.account_name} Ledger` : "Account Ledger";
   const columns = [
     { key: "voucher_date", label: "Date" }, { key: "voucher_number", label: "Voucher #" },
+    { key: "particulars", label: "Particulars (Ledger)" },
     { key: "description", label: "Description" },
     { key: "debit", label: "Debit", format: "currency" as const }, { key: "credit", label: "Credit", format: "currency" as const },
     { key: "running_balance", label: "Balance", format: "currency" as const },
@@ -78,21 +99,25 @@ const AccountLedgerReport = () => {
         <Card><CardContent className="p-0">
           <Table>
             <TableHeader><TableRow>
-              <TableHead>Date</TableHead><TableHead>Voucher #</TableHead><TableHead>Description</TableHead>
+              <TableHead>Date</TableHead><TableHead>Voucher #</TableHead>
+              <TableHead>Particulars (Ledger)</TableHead>
+              <TableHead>Description</TableHead>
               <TableHead className="text-right">Debit</TableHead><TableHead className="text-right">Credit</TableHead>
               <TableHead className="text-right">Balance</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {data.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Select an account and click "Generate"</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Select an account and click "Generate"</TableCell></TableRow>
               ) : data.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell>{e.voucher_date}</TableCell>
                   <TableCell className="font-mono text-xs">{e.voucher_number}</TableCell>
+                  <TableCell className="text-sm">{e.particulars}</TableCell>
                   <TableCell className="text-muted-foreground">{e.description}</TableCell>
                   <TableCell className="text-right tabular-nums">{Number(e.debit) > 0 ? fc(Number(e.debit)) : ""}</TableCell>
                   <TableCell className="text-right tabular-nums">{Number(e.credit) > 0 ? fc(Number(e.credit)) : ""}</TableCell>
                   <TableCell className={`text-right tabular-nums font-medium ${e.running_balance < 0 ? "text-destructive" : ""}`}>
+
                     {fc(Math.abs(e.running_balance))} {e.running_balance >= 0 ? "Dr" : "Cr"}
                   </TableCell>
                 </TableRow>
