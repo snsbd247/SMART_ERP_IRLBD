@@ -479,7 +479,8 @@ const AccountingVouchers = () => {
               </CardContent>
             </Card>
           </TabsContent>
-        ))}
+          );
+        })}
       </Tabs>
       ))}
 
