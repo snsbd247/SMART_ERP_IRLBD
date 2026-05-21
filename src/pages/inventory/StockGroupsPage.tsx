@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Layers, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Layers, Search, ChevronRight, ChevronDown, FolderTree, List } from "lucide-react";
 import { toast } from "sonner";
 
 interface StockGroup {
@@ -27,6 +27,9 @@ const StockGroupsPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [edit, setEdit] = useState<StockGroup | null>(null);
   const [saving, setSaving] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "tree">("tree");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpand = (id: string) => setExpanded((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const [f, setF] = useState({ name: "", parent_id: "", primary_group_id: "", is_default: false, is_active: true });
 
@@ -142,11 +145,61 @@ const StockGroupsPage = () => {
 
   const filtered = groups.filter((g) => g.name.toLowerCase().includes(search.toLowerCase()));
 
+  // Build children map for tree view
+  const childrenOf = useMemo(() => {
+    const m = new Map<string | null, StockGroup[]>();
+    groups.forEach((g) => {
+      const k = g.parent_id;
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push(g);
+    });
+    return m;
+  }, [groups]);
+
+  const renderTreeRow = (g: StockGroup, depth: number): React.ReactNode[] => {
+    const kids = childrenOf.get(g.id) || [];
+    const isOpen = expanded.has(g.id);
+    const matchSelf = !search || g.name.toLowerCase().includes(search.toLowerCase());
+    const rows: React.ReactNode[] = [];
+    if (matchSelf || search) {
+      rows.push(
+        <TableRow key={g.id}>
+          <TableCell>
+            <div className="flex items-center" style={{ paddingLeft: depth * 20 }}>
+              {kids.length > 0 ? (
+                <button onClick={() => toggleExpand(g.id)} className="mr-1 text-muted-foreground hover:text-foreground">
+                  {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                </button>
+              ) : <span className="w-5 inline-block" />}
+              <FolderTree className="w-4 h-4 mr-2 text-primary" />
+              <span className="font-medium">{g.name}</span>
+              {kids.length > 0 && <span className="ml-2 text-xs text-muted-foreground">({kids.length})</span>}
+            </div>
+          </TableCell>
+          <TableCell>{g.primary_group_id ? byId.get(g.primary_group_id)?.name || g.name : g.name}</TableCell>
+          <TableCell>{g.is_default ? "Yes" : "—"}</TableCell>
+          <TableCell className="text-right">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(g)}><Pencil className="w-3.5 h-3.5" /></Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(g)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+          </TableCell>
+        </TableRow>
+      );
+    }
+    if (isOpen || search) kids.forEach((k) => rows.push(...renderTreeRow(k, depth + 1)));
+    return rows;
+  };
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2"><Layers className="w-5 h-5 text-primary" /><h1 className="text-xl font-semibold text-foreground">Stock Groups</h1></div>
-        <Button size="sm" onClick={openCreate}><Plus className="w-4 h-4 mr-1" />Add Stock Group</Button>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-md border border-border overflow-hidden">
+            <Button variant={viewMode === "tree" ? "secondary" : "ghost"} size="sm" className="rounded-none h-8" onClick={() => setViewMode("tree")}><FolderTree className="w-4 h-4 mr-1" />Tree</Button>
+            <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="sm" className="rounded-none h-8" onClick={() => setViewMode("list")}><List className="w-4 h-4 mr-1" />List</Button>
+          </div>
+          <Button size="sm" onClick={openCreate}><Plus className="w-4 h-4 mr-1" />Add Stock Group</Button>
+        </div>
       </div>
 
       <div className="relative max-w-sm">
@@ -155,6 +208,25 @@ const StockGroupsPage = () => {
       </div>
 
       <Card><CardContent className="p-0">
+        {viewMode === "tree" ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Group Name</TableHead>
+                <TableHead>Primary</TableHead>
+                <TableHead>Default</TableHead>
+                <TableHead className="w-24 text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
+              ) : (childrenOf.get(null) || []).length === 0 ? (
+                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No stock groups</TableCell></TableRow>
+              ) : (childrenOf.get(null) || []).flatMap((g) => renderTreeRow(g, 0))}
+            </TableBody>
+          </Table>
+        ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -186,6 +258,7 @@ const StockGroupsPage = () => {
             ))}
           </TableBody>
         </Table>
+        )}
       </CardContent></Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
