@@ -461,15 +461,19 @@ const AccountingVouchers = () => {
       </Tabs>
       )}
 
-      {/* Create/Edit Voucher Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditingVoucher(null); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingVoucher ? `Edit ${VOUCHER_TYPES.find((v) => v.id === editingVoucher.voucher_type)?.label || "Voucher"} — ${editingVoucher.voucher_number}` : `New ${VOUCHER_TYPES.find((v) => v.id === activeTab)?.label}`}
-              {editingVoucher?.status === "approved" && isSuperAdmin && <Badge variant="outline" className="ml-2 text-xs">Super Admin Override</Badge>}
-            </DialogTitle>
-          </DialogHeader>
+      {/* Create/Edit Voucher Page */}
+      {dialogOpen && (
+      <Card className="border-primary/20">
+        <CardHeader className="py-3 px-4 border-b flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">
+            {editingVoucher ? `Edit ${VOUCHER_TYPES.find((v) => v.id === editingVoucher.voucher_type)?.label || "Voucher"} — ${editingVoucher.voucher_number}` : `New ${VOUCHER_TYPES.find((v) => v.id === activeTab)?.label}`}
+            {editingVoucher?.status === "approved" && isSuperAdmin && <Badge variant="outline" className="ml-2 text-xs">Super Admin Override</Badge>}
+          </CardTitle>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setDialogOpen(false); setEditingVoucher(null); }}>
+            <X className="w-4 h-4" />
+          </Button>
+        </CardHeader>
+        <CardContent className="p-4">
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
