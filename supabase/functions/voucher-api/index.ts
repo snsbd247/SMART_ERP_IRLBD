@@ -86,6 +86,16 @@ async function nextNumber(admin: any, seqId: string): Promise<string> {
   return `${data.prefix}-${data.year}-${String(newNum).padStart(4, "0")}`;
 }
 
+function voucherSequenceId(voucherType: string): string {
+  const sequenceMap: Record<string, string> = {
+    journal: "journal_voucher",
+    payment: "payment_voucher",
+    receipt: "receipt_voucher",
+    contra: "contra_voucher",
+  };
+  return sequenceMap[voucherType] || voucherType;
+}
+
 // ---------- main handler ----------
 
 Deno.serve(async (req) => {
@@ -167,7 +177,7 @@ Deno.serve(async (req) => {
           return err("At least 2 entries required");
         }
 
-        const voucherNumber = await nextNumber(admin, voucher_type);
+        const voucherNumber = await nextNumber(admin, voucherSequenceId(voucher_type));
 
         const { data: vData, error: vErr } = await admin
           .from("acc_vouchers")
@@ -444,7 +454,7 @@ Deno.serve(async (req) => {
           .order("sort_order");
 
         // Create reversal voucher with swapped debit/credit
-        const reversalNumber = await nextNumber(admin, v.voucher_type);
+        const reversalNumber = await nextNumber(admin, voucherSequenceId(v.voucher_type));
         const { data: revVoucher, error: revErr } = await admin
           .from("acc_vouchers")
           .insert({
