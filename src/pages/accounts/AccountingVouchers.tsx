@@ -266,11 +266,14 @@ const AccountingVouchers = () => {
       if (resetForNew) {
         setEditingVoucher(null);
         setFormDate(new Date().toISOString().slice(0, 10));
+        setFormBranch("");
+        setFormFinYear("");
         setFormDesc("");
         setEntries([
-          { id: "1", account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
-          { id: "2", account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
+          { id: `${Date.now()}-1`, account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
+          { id: `${Date.now()}-2`, account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
         ]);
+        setDialogOpen(true);
       } else {
         setDialogOpen(false);
         setEditingVoucher(null);
