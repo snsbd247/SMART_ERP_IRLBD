@@ -116,6 +116,7 @@ const AccountingVouchers = () => {
       supabase.from("financial_years").select("id, name"),
     ]);
     const vList = (vRes.data || []) as Voucher[];
+    console.log("[voucher-api] list response", { count: vList.length, withLedgerAccounts: vList.filter(v => Array.isArray(v.ledger_accounts) && v.ledger_accounts.length > 0).length, sample: vList[0]?.ledger_accounts });
     setVouchers(vList);
     setAccounts((aRes.data || []) as Account[]);
     setBranches((bRes.data || []) as Branch[]);
