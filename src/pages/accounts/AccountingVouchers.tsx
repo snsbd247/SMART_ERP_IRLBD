@@ -367,7 +367,7 @@ const AccountingVouchers = () => {
         )}
       </div>
 
-      {allowedTypes.length === 0 ? (
+      {!dialogOpen && (allowedTypes.length === 0 ? (
         <div className="text-center text-muted-foreground py-12">You do not have permission to view any voucher types.</div>
       ) : (
       <Tabs value={activeTab} onValueChange={setActiveTab}>
