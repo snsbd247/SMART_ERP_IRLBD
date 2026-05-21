@@ -200,7 +200,7 @@ const StockGroupsPage = () => {
                 <SelectTrigger><SelectValue placeholder="None (root)" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">None (root)</SelectItem>
-                  {groups.filter((g) => g.id !== edit?.id).map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                  {groups.filter((g) => g.id !== edit?.id && !descendantIds.has(g.id)).map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
