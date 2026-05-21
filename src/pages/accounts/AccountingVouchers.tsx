@@ -120,6 +120,9 @@ const AccountingVouchers = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const { accounts: accountsWithBal } = useAccountBalances();
+  const balanceMap = new Map(accountsWithBal.map((a) => [a.id, { amt: a.closing_balance, type: a.closing_balance_type }]));
+
   const totalDebit = entries.reduce((s, e) => s + (e.debit || 0), 0);
   const totalCredit = entries.reduce((s, e) => s + (e.credit || 0), 0);
   const isBalanced = totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.01;
