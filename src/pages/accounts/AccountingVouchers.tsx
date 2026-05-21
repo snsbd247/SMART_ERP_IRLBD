@@ -598,7 +598,7 @@ const AccountingVouchers = () => {
             </Card>
             
           </div>
-          <DialogFooter className="gap-2">
+          <div className="flex justify-end gap-2 pt-4 border-t mt-4">
             <Button variant="outline" onClick={() => { setDialogOpen(false); setEditingVoucher(null); }}>Cancel</Button>
             {editingVoucher?.status === "approved" ? (
               <Button onClick={() => handleSave(false)} disabled={saving || !isBalanced}>Save Changes</Button>
@@ -606,11 +606,13 @@ const AccountingVouchers = () => {
               <>
                 <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving || !isBalanced}>Save as Draft</Button>
                 <Button onClick={() => handleSave(true)} disabled={saving || !isBalanced}>Submit for Approval</Button>
+                <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleSave(true, true)} disabled={saving || !isBalanced}>Submit &amp; New</Button>
               </>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </CardContent>
+      </Card>
+      )}
 
       {/* Super Admin Confirmation Dialog */}
       <AlertDialog open={!!superAdminAction} onOpenChange={() => setSuperAdminAction(null)}>
