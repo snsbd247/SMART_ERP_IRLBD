@@ -3051,6 +3051,7 @@ export type Database = {
           quantity: number
           reference_id: string | null
           reference_type: string | null
+          stock_group_id: string | null
           warehouse_id: string | null
         }
         Insert: {
@@ -3063,6 +3064,7 @@ export type Database = {
           quantity: number
           reference_id?: string | null
           reference_type?: string | null
+          stock_group_id?: string | null
           warehouse_id?: string | null
         }
         Update: {
@@ -3075,6 +3077,7 @@ export type Database = {
           quantity?: number
           reference_id?: string | null
           reference_type?: string | null
+          stock_group_id?: string | null
           warehouse_id?: string | null
         }
         Relationships: [
@@ -3097,6 +3100,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "item_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_stock_group_id_fkey"
+            columns: ["stock_group_id"]
+            isOneToOne: false
+            referencedRelation: "stock_groups"
             referencedColumns: ["id"]
           },
           {
