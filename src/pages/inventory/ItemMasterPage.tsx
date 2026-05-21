@@ -8,8 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Package, Search } from "lucide-react";
+import { Plus, Pencil, Package, Search, Layers } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
 const ITEM_TYPES = [
@@ -38,6 +39,10 @@ const ItemMasterPage = () => {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("__all__");
   const [filterGroup, setFilterGroup] = useState("__all__");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkGroupId, setBulkGroupId] = useState<string>("__none__");
+  const [bulkSaving, setBulkSaving] = useState(false);
   const { toast } = useToast();
 
   // Form
@@ -125,6 +130,36 @@ const ItemMasterPage = () => {
     return "default";
   };
 
+  const allFilteredIds = filtered.map((i) => i.id);
+  const allSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.has(id));
+  const toggleAll = () => {
+    setSelectedIds((p) => {
+      const n = new Set(p);
+      if (allSelected) allFilteredIds.forEach((id) => n.delete(id));
+      else allFilteredIds.forEach((id) => n.add(id));
+      return n;
+    });
+  };
+  const toggleOne = (id: string) => setSelectedIds((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const handleBulkAssign = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkSaving(true);
+    try {
+      const newGroup = bulkGroupId === "__none__" ? null : bulkGroupId;
+      const { error } = await supabase.from("item_master" as any)
+        .update({ stock_group_id: newGroup, updated_at: new Date().toISOString() } as any)
+        .in("id", Array.from(selectedIds));
+      if (error) throw error;
+      toast({ title: `Updated ${selectedIds.size} item(s)` });
+      setBulkOpen(false);
+      setSelectedIds(new Set());
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally { setBulkSaving(false); }
+  };
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -152,21 +187,28 @@ const ItemMasterPage = () => {
             {stockGroups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
           </SelectContent>
         </Select>
+        {selectedIds.size > 0 && (
+          <Button size="sm" variant="secondary" onClick={() => { setBulkGroupId("__none__"); setBulkOpen(true); }}>
+            <Layers className="w-4 h-4 mr-1" />Assign Stock Group ({selectedIds.size})
+          </Button>
+        )}
       </div>
 
       <Card><CardContent className="p-0">
         <Table>
           <TableHeader><TableRow>
+            <TableHead className="w-10"><Checkbox checked={allSelected} onCheckedChange={toggleAll} /></TableHead>
             <TableHead>Code</TableHead><TableHead>Name</TableHead><TableHead>Type</TableHead>
             <TableHead>Category</TableHead><TableHead>Stock Group</TableHead><TableHead>Unit</TableHead>
             <TableHead className="text-right">Cost</TableHead><TableHead className="text-right">Selling</TableHead>
             <TableHead>Status</TableHead><TableHead className="w-16">Edit</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {loading ? <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
-            : filtered.length === 0 ? <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">No items found</TableCell></TableRow>
+            {loading ? <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
+            : filtered.length === 0 ? <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground">No items found</TableCell></TableRow>
             : filtered.map((i) => (
-              <TableRow key={i.id}>
+              <TableRow key={i.id} className={selectedIds.has(i.id) ? "bg-muted/40" : ""}>
+                <TableCell><Checkbox checked={selectedIds.has(i.id)} onCheckedChange={() => toggleOne(i.id)} /></TableCell>
                 <TableCell className="font-mono text-xs">{i.item_code}</TableCell>
                 <TableCell className="font-medium">{i.item_name}</TableCell>
                 <TableCell><Badge variant={typeColor(i.item_type)} className="text-xs">{typeLabel(i.item_type)}</Badge></TableCell>
@@ -182,6 +224,28 @@ const ItemMasterPage = () => {
           </TableBody>
         </Table>
       </CardContent></Card>
+
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Assign Stock Group</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Assign a stock group to <strong>{selectedIds.size}</strong> selected item(s).</p>
+            <div className="space-y-1"><Label>Stock Group</Label>
+              <Select value={bulkGroupId} onValueChange={setBulkGroupId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Unassigned (clear)</SelectItem>
+                  {stockGroups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)}>Cancel</Button>
+            <Button onClick={handleBulkAssign} disabled={bulkSaving}>{bulkSaving ? "Saving..." : "Assign"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl">
