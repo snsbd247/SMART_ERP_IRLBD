@@ -123,14 +123,15 @@ const AccountingVouchers = () => {
     // Fetch entry accounts for all listed vouchers
     const ids = vList.map((v) => v.id);
     if (ids.length > 0) {
+      const accNameMap = new Map(((aRes.data || []) as Account[]).map((a) => [a.id, a.account_name]));
       const { data: entryRows } = await supabase
         .from("voucher_entries")
-        .select("voucher_id, sort_order, chart_of_accounts:account_id(account_name)")
+        .select("voucher_id, account_id, sort_order")
         .in("voucher_id", ids)
         .order("sort_order");
       const map: Record<string, string[]> = {};
       (entryRows || []).forEach((r: any) => {
-        const name = r.chart_of_accounts?.account_name;
+        const name = accNameMap.get(r.account_id);
         if (!name) return;
         if (!map[r.voucher_id]) map[r.voucher_id] = [];
         if (!map[r.voucher_id].includes(name)) map[r.voucher_id].push(name);
