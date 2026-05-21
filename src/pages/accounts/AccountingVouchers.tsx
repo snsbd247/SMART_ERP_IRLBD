@@ -104,6 +104,8 @@ const AccountingVouchers = () => {
   const [actionVoucher, setActionVoucher] = useState<Voucher | null>(null);
   const [actionReason, setActionReason] = useState("");
 
+  const [voucherAccountsMap, setVoucherAccountsMap] = useState<Record<string, string[]>>({});
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     const [vRes, aRes, bRes, fRes] = await Promise.all([
@@ -112,10 +114,31 @@ const AccountingVouchers = () => {
       supabase.from("branches").select("id, name"),
       supabase.from("financial_years").select("id, name"),
     ]);
-    setVouchers((vRes.data || []) as Voucher[]);
+    const vList = (vRes.data || []) as Voucher[];
+    setVouchers(vList);
     setAccounts((aRes.data || []) as Account[]);
     setBranches((bRes.data || []) as Branch[]);
     setFinYears((fRes.data || []) as FinYear[]);
+
+    // Fetch entry accounts for all listed vouchers
+    const ids = vList.map((v) => v.id);
+    if (ids.length > 0) {
+      const { data: entryRows } = await supabase
+        .from("voucher_entries")
+        .select("voucher_id, sort_order, chart_of_accounts:account_id(account_name)")
+        .in("voucher_id", ids)
+        .order("sort_order");
+      const map: Record<string, string[]> = {};
+      (entryRows || []).forEach((r: any) => {
+        const name = r.chart_of_accounts?.account_name;
+        if (!name) return;
+        if (!map[r.voucher_id]) map[r.voucher_id] = [];
+        if (!map[r.voucher_id].includes(name)) map[r.voucher_id].push(name);
+      });
+      setVoucherAccountsMap(map);
+    } else {
+      setVoucherAccountsMap({});
+    }
     setLoading(false);
   }, [activeTab]);
 
@@ -387,7 +410,7 @@ const AccountingVouchers = () => {
           const q = searchQuery.trim().toLowerCase();
           const filteredVouchers = q
             ? vouchers.filter((v) =>
-                [v.voucher_number, v.voucher_date, v.description || "", v.status, String(v.total_amount)]
+                [v.voucher_number, v.voucher_date, v.description || "", v.status, String(v.total_amount), (voucherAccountsMap[v.id] || []).join(" ")]
                   .some((f) => f.toLowerCase().includes(q))
               )
             : vouchers;
@@ -408,6 +431,7 @@ const AccountingVouchers = () => {
                     <TableRow>
                       <TableHead>Voucher #</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Ledger / Accounts</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead>Status</TableHead>
@@ -416,13 +440,14 @@ const AccountingVouchers = () => {
                   </TableHeader>
                   <TableBody>
                     {loading ? (
-                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
                     ) : filteredVouchers.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{q ? "No vouchers match your search" : "No vouchers yet"}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">{q ? "No vouchers match your search" : "No vouchers yet"}</TableCell></TableRow>
                     ) : filteredVouchers.map((v) => (
                       <TableRow key={v.id}>
                         <TableCell className="font-geist-mono text-xs font-medium">{v.voucher_number}</TableCell>
                         <TableCell className="text-sm">{v.voucher_date}</TableCell>
+                        <TableCell className="text-sm">{(voucherAccountsMap[v.id] || []).join(", ") || "—"}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{v.description || "—"}</TableCell>
                         <TableCell className="text-right tabular-nums font-medium">{fc(v.total_amount)}</TableCell>
                         <TableCell>
