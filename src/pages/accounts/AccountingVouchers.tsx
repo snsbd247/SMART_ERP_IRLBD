@@ -383,8 +383,24 @@ const AccountingVouchers = () => {
           ))}
         </TabsList>
 
-        {VOUCHER_TYPES.map((vt) => (
+        {VOUCHER_TYPES.map((vt) => {
+          const q = searchQuery.trim().toLowerCase();
+          const filteredVouchers = q
+            ? vouchers.filter((v) =>
+                [v.voucher_number, v.voucher_date, v.description || "", v.status, String(v.total_amount)]
+                  .some((f) => f.toLowerCase().includes(q))
+              )
+            : vouchers;
+          return (
           <TabsContent key={vt.id} value={vt.id}>
+            <div className="mb-3">
+              <Input
+                placeholder="Search by voucher #, date, description, status, or amount..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="max-w-sm h-9"
+              />
+            </div>
             <Card>
               <CardContent className="p-0">
                 <Table>
@@ -401,9 +417,9 @@ const AccountingVouchers = () => {
                   <TableBody>
                     {loading ? (
                       <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
-                    ) : vouchers.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No vouchers yet</TableCell></TableRow>
-                    ) : vouchers.map((v) => (
+                    ) : filteredVouchers.length === 0 ? (
+                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{q ? "No vouchers match your search" : "No vouchers yet"}</TableCell></TableRow>
+                    ) : filteredVouchers.map((v) => (
                       <TableRow key={v.id}>
                         <TableCell className="font-geist-mono text-xs font-medium">{v.voucher_number}</TableCell>
                         <TableCell className="text-sm">{v.voucher_date}</TableCell>
