@@ -263,8 +263,18 @@ const AccountingVouchers = () => {
         });
         toast({ title: "Voucher created successfully" });
       }
-      setDialogOpen(false);
-      setEditingVoucher(null);
+      if (resetForNew) {
+        setEditingVoucher(null);
+        setFormDate(new Date().toISOString().slice(0, 10));
+        setFormDesc("");
+        setEntries([
+          { id: "1", account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
+          { id: "2", account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
+        ]);
+      } else {
+        setDialogOpen(false);
+        setEditingVoucher(null);
+      }
       fetchData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
