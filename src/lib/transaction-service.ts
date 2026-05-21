@@ -119,7 +119,7 @@ export async function recordBulkStockMovements(
   branchId: string | null,
   quantityMultiplier: number = 1
 ): Promise<void> {
-  const movements = items.map((i) => ({
+  const baseMovements = items.map((i) => ({
     product_id: i.product_id,
     branch_id: branchId,
     movement_type: movementType,
@@ -127,6 +127,7 @@ export async function recordBulkStockMovements(
     reference_id: referenceId,
     quantity: i.quantity * quantityMultiplier,
   }));
+  const movements = await enrichMovementsWithStockGroup(baseMovements);
   const { error } = await supabase.from("stock_movements").insert(movements);
   if (error) throw new Error("Failed to create stock movements: " + error.message);
 }
@@ -403,7 +404,7 @@ export async function createProductionEntry(
   }
 
   // Stock movements: decrease raw materials, increase finished product
-  const movements = [
+  const baseMovements = [
     ...materials.map((m) => ({
       product_id: m.material_id,
       branch_id: ctx.branchId,
@@ -421,6 +422,7 @@ export async function createProductionEntry(
       quantity,
     },
   ];
+  const movements = await enrichMovementsWithStockGroup(baseMovements);
   const { error: mvErr } = await supabase.from("stock_movements").insert(movements);
   if (mvErr) console.warn("Stock movement insert failed:", mvErr);
 
