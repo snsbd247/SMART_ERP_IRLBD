@@ -19,8 +19,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, ClipboardCheck } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
-interface Product { id: string; product_name: string; product_code: string; cost_price: number; }
+interface Product { id: string; product_name: string; product_code: string; cost_price: number; stock_group_id: string | null; }
 interface WH { id: string; warehouse_name: string; warehouse_code: string; }
+interface StockGroup { id: string; name: string; }
 interface Adjustment {
   id: string; adjustment_number: string; adjustment_date: string; adjustment_type: string;
   product_id: string; quantity: number; unit_cost: number; total_value: number;
@@ -44,6 +45,7 @@ const StockAdjustmentPage = () => {
   const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<WH[]>([]);
+  const [stockGroups, setStockGroups] = useState<StockGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -52,6 +54,7 @@ const StockAdjustmentPage = () => {
   const [formType, setFormType] = useState("increase");
   const [formProduct, setFormProduct] = useState("");
   const [formWarehouse, setFormWarehouse] = useState("");
+  const [formStockGroup, setFormStockGroup] = useState("__all__");
   const [formQty, setFormQty] = useState("");
   const [formCost, setFormCost] = useState("");
   const [formReason, setFormReason] = useState("");
@@ -59,14 +62,16 @@ const StockAdjustmentPage = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    const [aRes, pRes, wRes] = await Promise.all([
+    const [aRes, pRes, wRes, sgRes] = await Promise.all([
       supabase.from("stock_adjustments" as any).select("*").order("created_at", { ascending: false }).limit(200),
-      supabase.from("item_master").select("id, item_name, item_code, cost_price").eq("status", "active"),
+      supabase.from("item_master").select("id, item_name, item_code, cost_price, stock_group_id").eq("status", "active"),
       supabase.from("warehouses" as any).select("id, warehouse_name, warehouse_code").eq("status", "active"),
+      (supabase.from as any)("stock_groups").select("id, name").eq("is_active", true).order("name"),
     ]);
-    const prods = (pRes.data || []).map((i: any) => ({ id: i.id, product_name: i.item_name, product_code: i.item_code, cost_price: i.cost_price })) as Product[];
+    const prods = (pRes.data || []).map((i: any) => ({ id: i.id, product_name: i.item_name, product_code: i.item_code, cost_price: i.cost_price, stock_group_id: i.stock_group_id })) as Product[];
     setProducts(prods);
     setWarehouses((wRes.data || []) as any);
+    setStockGroups((sgRes.data || []) as any);
     setAdjustments((aRes.data || []).map((a: any) => ({
       ...a,
       product_name: prods.find((p) => p.id === a.product_id)?.product_name,
@@ -167,7 +172,7 @@ const StockAdjustmentPage = () => {
 
   const openDialog = () => {
     setFormDate(new Date().toISOString().slice(0, 10));
-    setFormType("increase"); setFormProduct(""); setFormWarehouse("");
+    setFormType("increase"); setFormProduct(""); setFormWarehouse(""); setFormStockGroup("__all__");
     setFormQty(""); setFormCost(""); setFormReason(""); setFormNotes("");
     setDialogOpen(true);
   };
@@ -235,6 +240,16 @@ const StockAdjustmentPage = () => {
                 </Select>
               </div>
             </div>
+            <div className="space-y-2"><Label>Stock Group</Label>
+              <Select value={formStockGroup} onValueChange={(v) => { setFormStockGroup(v); setFormProduct(""); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Stock Groups</SelectItem>
+                  <SelectItem value="__unassigned__">Unassigned</SelectItem>
+                  {stockGroups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2"><Label>Product *</Label>
               <Select value={formProduct} onValueChange={(v) => {
                 setFormProduct(v);
@@ -242,7 +257,7 @@ const StockAdjustmentPage = () => {
                 if (prod) setFormCost(String(prod.cost_price));
               }}>
                 <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
-                <SelectContent>{products.map((p) => <SelectItem key={p.id} value={p.id}>{p.product_code} — {p.product_name}</SelectItem>)}</SelectContent>
+                <SelectContent>{products.filter((p) => formStockGroup === "__all__" || (formStockGroup === "__unassigned__" ? !p.stock_group_id : p.stock_group_id === formStockGroup)).map((p) => <SelectItem key={p.id} value={p.id}>{p.product_code} — {p.product_name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2"><Label>Warehouse (optional)</Label>

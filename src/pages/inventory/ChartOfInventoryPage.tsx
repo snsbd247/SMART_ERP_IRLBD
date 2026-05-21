@@ -53,6 +53,20 @@ const ChartOfInventoryPage = () => {
     return m;
   }, [items]);
 
+  // Compute total opening stock per group including nested children
+  const groupTotals = useMemo(() => {
+    const totals = new Map<string, number>();
+    const computeFor = (groupId: string): number => {
+      if (totals.has(groupId)) return totals.get(groupId)!;
+      let sum = (itemsByGroup.get(groupId) || []).reduce((s, it) => s + (Number(it.opening_stock) || 0), 0);
+      (childGroups.get(groupId) || []).forEach((c) => { sum += computeFor(c.id); });
+      totals.set(groupId, sum);
+      return sum;
+    };
+    groups.forEach((g) => computeFor(g.id));
+    return totals;
+  }, [groups, childGroups, itemsByGroup]);
+
   const matches = (name: string) => !search || name.toLowerCase().includes(search.toLowerCase());
 
   const toggle = (id: string) => {
@@ -80,7 +94,8 @@ const ChartOfInventoryPage = () => {
             <span className="ml-2 text-xs text-muted-foreground">({groupItems.length} items)</span>
           </div>
         </TableCell>
-        <TableCell colSpan={4}></TableCell>
+        <TableCell colSpan={3}></TableCell>
+        <TableCell className="text-right tabular-nums font-semibold">{groupTotals.get(group.id) || 0}</TableCell>
       </TableRow>
     );
 
@@ -139,7 +154,7 @@ const ChartOfInventoryPage = () => {
                 {unassigned.length > 0 && (
                   <>
                     <TableRow className="bg-muted/30">
-                      <TableCell colSpan={5}>
+                      <TableCell colSpan={4}>
                         <div className="flex items-center">
                           <button onClick={() => toggle("__unassigned__")} className="mr-1 text-muted-foreground hover:text-foreground">
                             {expanded.has("__unassigned__") ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -148,6 +163,9 @@ const ChartOfInventoryPage = () => {
                           <span className="font-semibold text-muted-foreground">Unassigned</span>
                           <span className="ml-2 text-xs text-muted-foreground">({unassigned.length} items)</span>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold">
+                        {unassigned.reduce((s, it) => s + (Number(it.opening_stock) || 0), 0)}
                       </TableCell>
                     </TableRow>
                     {expanded.has("__unassigned__") && unassigned.filter((i) => matches(i.item_name) || matches(i.item_code)).map((it) => (

@@ -37,6 +37,7 @@ const ItemMasterPage = () => {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("__all__");
+  const [filterGroup, setFilterGroup] = useState("__all__");
   const { toast } = useToast();
 
   // Form
@@ -104,9 +105,14 @@ const ItemMasterPage = () => {
 
   const catMap = new Map(categories.map((c) => [c.id, c.name]));
   const unitMap = new Map(units.map((u) => [u.id, u.abbreviation]));
+  const groupMap = new Map(stockGroups.map((g) => [g.id, g.name]));
 
   const filtered = items.filter((i) => {
     if (filterType !== "__all__" && i.item_type !== filterType) return false;
+    if (filterGroup !== "__all__") {
+      if (filterGroup === "__unassigned__") { if (i.stock_group_id) return false; }
+      else if (i.stock_group_id !== filterGroup) return false;
+    }
     if (search && !i.item_name.toLowerCase().includes(search.toLowerCase()) && !i.item_code.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -138,25 +144,34 @@ const ItemMasterPage = () => {
             {ITEM_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={filterGroup} onValueChange={setFilterGroup}>
+          <SelectTrigger className="w-56"><SelectValue placeholder="Stock group" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All Stock Groups</SelectItem>
+            <SelectItem value="__unassigned__">Unassigned</SelectItem>
+            {stockGroups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       <Card><CardContent className="p-0">
         <Table>
           <TableHeader><TableRow>
             <TableHead>Code</TableHead><TableHead>Name</TableHead><TableHead>Type</TableHead>
-            <TableHead>Category</TableHead><TableHead>Unit</TableHead>
+            <TableHead>Category</TableHead><TableHead>Stock Group</TableHead><TableHead>Unit</TableHead>
             <TableHead className="text-right">Cost</TableHead><TableHead className="text-right">Selling</TableHead>
             <TableHead>Status</TableHead><TableHead className="w-16">Edit</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {loading ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
-            : filtered.length === 0 ? <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No items found</TableCell></TableRow>
+            {loading ? <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
+            : filtered.length === 0 ? <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">No items found</TableCell></TableRow>
             : filtered.map((i) => (
               <TableRow key={i.id}>
                 <TableCell className="font-mono text-xs">{i.item_code}</TableCell>
                 <TableCell className="font-medium">{i.item_name}</TableCell>
                 <TableCell><Badge variant={typeColor(i.item_type)} className="text-xs">{typeLabel(i.item_type)}</Badge></TableCell>
                 <TableCell className="text-muted-foreground text-sm">{catMap.get(i.category_id || "") || "—"}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{groupMap.get(i.stock_group_id || "") || "—"}</TableCell>
                 <TableCell className="text-sm">{unitMap.get(i.unit_id || "") || "—"}</TableCell>
                 <TableCell className="text-right tabular-nums">{fc(i.cost_price)}</TableCell>
                 <TableCell className="text-right tabular-nums">{fc(i.selling_price)}</TableCell>

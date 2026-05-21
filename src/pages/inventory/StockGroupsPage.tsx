@@ -42,6 +42,24 @@ const StockGroupsPage = () => {
   // Primary groups = root groups (no parent)
   const primaryGroups = useMemo(() => groups.filter((g) => !g.parent_id), [groups]);
 
+  // Compute descendant set for the edited group (to prevent circular hierarchy)
+  const descendantIds = useMemo(() => {
+    if (!edit) return new Set<string>();
+    const childrenOf = new Map<string, string[]>();
+    groups.forEach((g) => {
+      if (g.parent_id) {
+        if (!childrenOf.has(g.parent_id)) childrenOf.set(g.parent_id, []);
+        childrenOf.get(g.parent_id)!.push(g.id);
+      }
+    });
+    const out = new Set<string>();
+    const walk = (id: string) => {
+      (childrenOf.get(id) || []).forEach((c) => { if (!out.has(c)) { out.add(c); walk(c); } });
+    };
+    walk(edit.id);
+    return out;
+  }, [edit, groups]);
+
   const openCreate = () => {
     setEdit(null);
     setF({ name: "", parent_id: "", primary_group_id: "", is_default: false, is_active: true });
@@ -61,12 +79,26 @@ const StockGroupsPage = () => {
 
   const handleSave = async () => {
     if (!f.name.trim()) { toast.error("Name required"); return; }
-    setSaving(true);
     const parent_id = f.parent_id || null;
-    // If no parent, this group is itself a primary. Else default primary_group_id to parent's primary (or parent)
+
+    // Validation: prevent self-parent
+    if (edit && parent_id === edit.id) { toast.error("A group cannot be its own parent"); return; }
+    // Validation: prevent circular hierarchy — parent cannot be a descendant of the edited group
+    if (edit && parent_id && descendantIds.has(parent_id)) {
+      toast.error("Cannot select a descendant as parent (circular hierarchy)"); return;
+    }
+    // Validation: primary group must be a root group (no parent) and not the group itself
     let primary_group_id: string | null = f.primary_group_id || null;
+    if (primary_group_id) {
+      if (edit && primary_group_id === edit.id) { toast.error("A group cannot be its own primary"); return; }
+      const pg = byId.get(primary_group_id);
+      if (!pg) { toast.error("Selected primary group not found"); return; }
+      if (pg.parent_id) { toast.error("Primary group must be a root (top-level) group"); return; }
+    }
+    setSaving(true);
+    // If no explicit primary chosen, derive: root => null (self after insert); else inherit from parent
     if (!primary_group_id) {
-      if (!parent_id) primary_group_id = null; // will set to self after insert
+      if (!parent_id) primary_group_id = null;
       else {
         const p = byId.get(parent_id);
         primary_group_id = p?.primary_group_id || p?.id || null;
@@ -168,7 +200,7 @@ const StockGroupsPage = () => {
                 <SelectTrigger><SelectValue placeholder="None (root)" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">None (root)</SelectItem>
-                  {groups.filter((g) => g.id !== edit?.id).map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                  {groups.filter((g) => g.id !== edit?.id && !descendantIds.has(g.id)).map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
