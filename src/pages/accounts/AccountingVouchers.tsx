@@ -164,6 +164,7 @@ const AccountingVouchers = () => {
     setEntries((data || []).map((e: any) => ({
       id: e.id,
       account_id: e.account_id,
+      dr_cr: (Number(e.debit) > 0 ? "dr" : "cr") as "dr" | "cr",
       debit: Number(e.debit),
       credit: Number(e.credit),
       narration: e.narration || "",
