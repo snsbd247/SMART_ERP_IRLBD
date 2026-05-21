@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface WH { id: string; warehouse_code: string; warehouse_name: string; branch_id: string | null; }
-interface Item { id: string; item_code: string; item_name: string; }
+interface Item { id: string; item_code: string; item_name: string; stock_group_id: string | null; }
+interface StockGroup { id: string; name: string; }
 interface Transfer { id: string; transfer_number: string; transfer_date: string; from_warehouse_id: string; to_warehouse_id: string; item_id: string; quantity: number; notes: string | null; status: string; created_at: string; }
 
 const StockTransferPage = () => {
@@ -32,6 +33,7 @@ const StockTransferPage = () => {
   const { userBranchId } = useBranch();
   const [warehouses, setWarehouses] = useState<WH[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  const [stockGroups, setStockGroups] = useState<StockGroup[]>([]);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -40,6 +42,7 @@ const StockTransferPage = () => {
 
   const [fromWH, setFromWH] = useState("");
   const [toWH, setToWH] = useState("");
+  const [stockGroupId, setStockGroupId] = useState("__all__");
   const [itemId, setItemId] = useState("");
   const [qty, setQty] = useState("1");
   const [notes, setNotes] = useState("");
@@ -73,14 +76,16 @@ const StockTransferPage = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    const [wRes, iRes, tRes] = await Promise.all([
+    const [wRes, iRes, tRes, sgRes] = await Promise.all([
       supabase.from("warehouses" as any).select("id, warehouse_code, warehouse_name, branch_id").eq("status", "active").order("warehouse_name"),
-      supabase.from("item_master" as any).select("id, item_code, item_name").eq("status", "active").order("item_name"),
+      supabase.from("item_master" as any).select("id, item_code, item_name, stock_group_id").eq("status", "active").order("item_name"),
       supabase.from("stock_transfers" as any).select("*").order("created_at", { ascending: false }).limit(100),
+      (supabase.from as any)("stock_groups").select("id, name").eq("is_active", true).order("name"),
     ]);
     setWarehouses((wRes.data || []) as any);
     setItems((iRes.data || []) as any);
     setTransfers((tRes.data || []) as any);
+    setStockGroups((sgRes.data || []) as any);
     setLoading(false);
   };
 
@@ -104,7 +109,7 @@ const StockTransferPage = () => {
       const result = await createStockTransfer(ctx, fromWH, toWH, itemId, quantity, notes);
       toast({ title: `Transfer ${result.transferNumber} completed` });
       setDialogOpen(false);
-      setFromWH(""); setToWH(""); setItemId(""); setQty("1"); setNotes("");
+      setFromWH(""); setToWH(""); setItemId(""); setQty("1"); setNotes(""); setStockGroupId("__all__");
       fetchData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -173,10 +178,20 @@ const StockTransferPage = () => {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>New Stock Transfer</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2"><Label>Stock Group</Label>
+              <Select value={stockGroupId} onValueChange={(v) => { setStockGroupId(v); setItemId(""); }}>
+                <SelectTrigger><SelectValue placeholder="All groups" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Stock Groups</SelectItem>
+                  <SelectItem value="__unassigned__">Unassigned</SelectItem>
+                  {stockGroups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2"><Label>Item *</Label>
               <Select value={itemId} onValueChange={setItemId}>
                 <SelectTrigger><SelectValue placeholder="Select item" /></SelectTrigger>
-                <SelectContent>{items.map((i) => <SelectItem key={i.id} value={i.id}>{i.item_code} — {i.item_name}</SelectItem>)}</SelectContent>
+                <SelectContent>{items.filter((i) => stockGroupId === "__all__" || (stockGroupId === "__unassigned__" ? !i.stock_group_id : i.stock_group_id === stockGroupId)).map((i) => <SelectItem key={i.id} value={i.id}>{i.item_code} — {i.item_name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
