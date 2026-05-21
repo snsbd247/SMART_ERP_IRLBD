@@ -34,11 +34,12 @@ const AccountLedgerReport = () => {
     if (voucherIds.length > 0) {
       const { data: allEntries } = await supabase
         .from("voucher_entries")
-        .select("voucher_id, account_id, chart_of_accounts:account_id(account_name)")
+        .select("voucher_id, account_id")
         .in("voucher_id", voucherIds);
+      const accNameMap = new Map(accounts.map((a: any) => [a.id, a.account_name]));
       (allEntries || []).forEach((r: any) => {
         if (r.account_id === selectedAccount) return;
-        const name = r.chart_of_accounts?.account_name;
+        const name = accNameMap.get(r.account_id);
         if (!name) return;
         if (!counterMap[r.voucher_id]) counterMap[r.voucher_id] = [];
         if (!counterMap[r.voucher_id].includes(name)) counterMap[r.voucher_id].push(name);
