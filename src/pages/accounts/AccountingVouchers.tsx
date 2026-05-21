@@ -34,7 +34,7 @@ const VOUCHER_TYPES = [
 interface Account { id: string; account_name: string; account_code: string; }
 interface Branch { id: string; name: string; }
 interface FinYear { id: string; name: string; }
-interface EntryRow { id: string; account_id: string; debit: number; credit: number; narration: string; }
+interface EntryRow { id: string; account_id: string; dr_cr: "dr" | "cr"; debit: number; credit: number; narration: string; }
 interface Voucher {
   id: string; voucher_number: string; voucher_type: string; voucher_date: string;
   branch_id: string | null; financial_year_id: string | null; description: string | null;
