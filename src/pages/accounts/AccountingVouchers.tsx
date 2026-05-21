@@ -498,53 +498,84 @@ const AccountingVouchers = () => {
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[35%]">Account</TableHead>
-                      <TableHead className="w-[20%] text-right">Debit</TableHead>
-                      <TableHead className="w-[20%] text-right">Credit</TableHead>
-                      <TableHead>Narration</TableHead>
-                      <TableHead className="w-10"></TableHead>
+                    <TableRow className="bg-sky-100/70 dark:bg-sky-950/30">
+                      <TableHead className="w-[110px] text-center font-semibold">Dr./Cr.</TableHead>
+                      <TableHead className="font-semibold">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>Particulars</span>
+                          <button type="button" onClick={addEntry} className="text-primary hover:opacity-80" title="Add entry">
+                            <PlusCircle className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </TableHead>
+                      <TableHead className="w-[18%] text-center font-semibold">Debit</TableHead>
+                      <TableHead className="w-[18%] text-center font-semibold">Credit</TableHead>
+                      <TableHead className="w-[90px] text-center font-semibold">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {entries.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell>
-                          <AccountCombobox
-                            accounts={accounts}
-                            value={entry.account_id}
-                            onChange={(v) => updateEntry(entry.id, "account_id", v)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input type="number" className="h-9 text-right tabular-nums" value={entry.debit || ""}
-                            onChange={(e) => updateEntry(entry.id, "debit", parseFloat(e.target.value) || 0)} />
-                        </TableCell>
-                        <TableCell>
-                          <Input type="number" className="h-9 text-right tabular-nums" value={entry.credit || ""}
-                            onChange={(e) => updateEntry(entry.id, "credit", parseFloat(e.target.value) || 0)} />
-                        </TableCell>
-                        <TableCell>
-                          <Input className="h-9" value={entry.narration}
-                            onChange={(e) => updateEntry(entry.id, "narration", e.target.value)} />
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => removeEntry(entry.id)} disabled={entries.length <= 2}>
-                            <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    <TableRow className="bg-muted/50 font-medium">
-                      <TableCell className="text-right text-sm">Total</TableCell>
+                    {entries.map((entry, idx) => {
+                      const bal = entry.account_id ? balanceMap.get(entry.account_id) : undefined;
+                      const isLast = idx === entries.length - 1;
+                      return (
+                        <TableRow key={entry.id} className="align-top">
+                          <TableCell className="pt-3">
+                            <Select value={entry.dr_cr} onValueChange={(v) => updateEntry(entry.id, "dr_cr", v)}>
+                              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="dr">Dr</SelectItem>
+                                <SelectItem value="cr">Cr</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="pt-3">
+                            <AccountCombobox
+                              accounts={accounts}
+                              value={entry.account_id}
+                              onChange={(v) => updateEntry(entry.id, "account_id", v)}
+                            />
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              Curr Bal : {bal ? `${fc(bal.amt)} ${bal.type === "debit" ? "Dr" : "Cr"}` : ""}
+                            </div>
+                            <Input className="h-8 mt-1 text-xs" placeholder="Narration (optional)" value={entry.narration}
+                              onChange={(e) => updateEntry(entry.id, "narration", e.target.value)} />
+                          </TableCell>
+                          <TableCell className="pt-3">
+                            <Input type="number" className="h-9 text-right tabular-nums"
+                              value={entry.debit || ""} disabled={entry.dr_cr !== "dr"}
+                              onChange={(e) => updateEntry(entry.id, "debit", parseFloat(e.target.value) || 0)} />
+                          </TableCell>
+                          <TableCell className="pt-3">
+                            <Input type="number" className="h-9 text-right tabular-nums"
+                              value={entry.credit || ""} disabled={entry.dr_cr !== "cr"}
+                              onChange={(e) => updateEntry(entry.id, "credit", parseFloat(e.target.value) || 0)} />
+                          </TableCell>
+                          <TableCell className="pt-3">
+                            <div className="flex items-center justify-center gap-1">
+                              {isLast && (
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={addEntry} title="Add row">
+                                  <Plus className="w-4 h-4 text-primary" />
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeEntry(entry.id)} disabled={entries.length <= 2} title="Delete">
+                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    <TableRow className="bg-emerald-100/70 dark:bg-emerald-950/30 font-semibold">
+                      <TableCell />
+                      <TableCell className="text-right">
+                        Total :
+                        {!isBalanced && totalDebit > 0 && (
+                          <span className="ml-3 text-xs text-destructive font-normal">Diff: {Math.abs(totalDebit - totalCredit).toLocaleString()}</span>
+                        )}
+                        {isBalanced && <span className="ml-3 text-xs text-emerald-700 font-normal">✓ Balanced</span>}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">{totalDebit.toLocaleString()}</TableCell>
                       <TableCell className="text-right tabular-nums">{totalCredit.toLocaleString()}</TableCell>
-                      <TableCell>
-                        {!isBalanced && totalDebit > 0 && (
-                          <span className="text-xs text-destructive">Difference: {Math.abs(totalDebit - totalCredit).toLocaleString()}</span>
-                        )}
-                        {isBalanced && <span className="text-xs text-green-600">✓ Balanced</span>}
-                      </TableCell>
                       <TableCell />
                     </TableRow>
                   </TableBody>
