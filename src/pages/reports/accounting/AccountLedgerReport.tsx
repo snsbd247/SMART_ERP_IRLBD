@@ -16,7 +16,7 @@ const AccountLedgerReport = () => {
     if (!selectedAccount || selectedAccount === "all") return;
     setLoading(true);
     let query = supabase.from("voucher_entries")
-      .select("*, acc_vouchers!inner(voucher_number, voucher_date, status, description, branch_id)")
+      .select("*, acc_vouchers!inner(id, voucher_number, voucher_date, status, description, branch_id)")
       .eq("account_id", selectedAccount)
       .eq("acc_vouchers.status", "approved")
       .gte("acc_vouchers.voucher_date", dateFrom)
@@ -28,12 +28,32 @@ const AccountLedgerReport = () => {
     const acc = accounts.find((a) => a.id === selectedAccount);
     let runBal = acc ? (acc.opening_balance_type === "debit" ? acc.opening_balance : -acc.opening_balance) : 0;
 
+    // Fetch counter-accounts (other ledger names in the same vouchers)
+    const voucherIds = Array.from(new Set((entries || []).map((e: any) => e.acc_vouchers?.id).filter(Boolean)));
+    const counterMap: Record<string, string[]> = {};
+    if (voucherIds.length > 0) {
+      const { data: allEntries } = await supabase
+        .from("voucher_entries")
+        .select("voucher_id, account_id, chart_of_accounts:account_id(account_name)")
+        .in("voucher_id", voucherIds);
+      (allEntries || []).forEach((r: any) => {
+        if (r.account_id === selectedAccount) return;
+        const name = r.chart_of_accounts?.account_name;
+        if (!name) return;
+        if (!counterMap[r.voucher_id]) counterMap[r.voucher_id] = [];
+        if (!counterMap[r.voucher_id].includes(name)) counterMap[r.voucher_id].push(name);
+      });
+    }
+
     const result = (entries || []).map((e: any) => {
       runBal += Number(e.debit) - Number(e.credit);
+      const vid = e.acc_vouchers?.id;
+      const particulars = vid && counterMap[vid]?.length ? counterMap[vid].join(", ") : "—";
       return {
         ...e,
         voucher_number: e.acc_vouchers?.voucher_number,
         voucher_date: e.acc_vouchers?.voucher_date,
+        particulars,
         description: e.acc_vouchers?.description || e.narration || "—",
         running_balance: runBal,
       };
