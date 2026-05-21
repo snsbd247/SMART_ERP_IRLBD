@@ -90,8 +90,8 @@ const AccountingVouchers = () => {
   const [formFinYear, setFormFinYear] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [entries, setEntries] = useState<EntryRow[]>([
-    { id: "1", account_id: "", debit: 0, credit: 0, narration: "" },
-    { id: "2", account_id: "", debit: 0, credit: 0, narration: "" },
+    { id: "1", account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
+    { id: "2", account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
   ]);
 
   // Print state
