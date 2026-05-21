@@ -72,6 +72,7 @@ const AccountingVouchers = () => {
   const defaultTab = allowedTypes.length > 0 ? allowedTypes[0].id : "journal";
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [finYears, setFinYears] = useState<FinYear[]>([]);
