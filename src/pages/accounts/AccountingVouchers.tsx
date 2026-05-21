@@ -195,7 +195,7 @@ const AccountingVouchers = () => {
     return false;
   };
 
-  const handleSave = async (submitForApproval: boolean) => {
+  const handleSave = async (submitForApproval: boolean, resetForNew: boolean = false) => {
     if (!isBalanced) {
       toast({ title: "Debit and Credit must be equal", variant: "destructive" });
       return;
@@ -263,8 +263,18 @@ const AccountingVouchers = () => {
         });
         toast({ title: "Voucher created successfully" });
       }
-      setDialogOpen(false);
-      setEditingVoucher(null);
+      if (resetForNew) {
+        setEditingVoucher(null);
+        setFormDate(new Date().toISOString().slice(0, 10));
+        setFormDesc("");
+        setEntries([
+          { id: "1", account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
+          { id: "2", account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
+        ]);
+      } else {
+        setDialogOpen(false);
+        setEditingVoucher(null);
+      }
       fetchData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -357,7 +367,7 @@ const AccountingVouchers = () => {
         )}
       </div>
 
-      {allowedTypes.length === 0 ? (
+      {!dialogOpen && (allowedTypes.length === 0 ? (
         <div className="text-center text-muted-foreground py-12">You do not have permission to view any voucher types.</div>
       ) : (
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -449,17 +459,21 @@ const AccountingVouchers = () => {
           </TabsContent>
         ))}
       </Tabs>
-      )}
+      ))}
 
-      {/* Create/Edit Voucher Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditingVoucher(null); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingVoucher ? `Edit ${VOUCHER_TYPES.find((v) => v.id === editingVoucher.voucher_type)?.label || "Voucher"} — ${editingVoucher.voucher_number}` : `New ${VOUCHER_TYPES.find((v) => v.id === activeTab)?.label}`}
-              {editingVoucher?.status === "approved" && isSuperAdmin && <Badge variant="outline" className="ml-2 text-xs">Super Admin Override</Badge>}
-            </DialogTitle>
-          </DialogHeader>
+      {/* Create/Edit Voucher Page */}
+      {dialogOpen && (
+      <Card className="border-primary/20">
+        <CardHeader className="py-3 px-4 border-b flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">
+            {editingVoucher ? `Edit ${VOUCHER_TYPES.find((v) => v.id === editingVoucher.voucher_type)?.label || "Voucher"} — ${editingVoucher.voucher_number}` : `New ${VOUCHER_TYPES.find((v) => v.id === activeTab)?.label}`}
+            {editingVoucher?.status === "approved" && isSuperAdmin && <Badge variant="outline" className="ml-2 text-xs">Super Admin Override</Badge>}
+          </CardTitle>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setDialogOpen(false); setEditingVoucher(null); }}>
+            <X className="w-4 h-4" />
+          </Button>
+        </CardHeader>
+        <CardContent className="p-4">
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
@@ -584,7 +598,7 @@ const AccountingVouchers = () => {
             </Card>
             
           </div>
-          <DialogFooter className="gap-2">
+          <div className="flex justify-end gap-2 pt-4 border-t mt-4">
             <Button variant="outline" onClick={() => { setDialogOpen(false); setEditingVoucher(null); }}>Cancel</Button>
             {editingVoucher?.status === "approved" ? (
               <Button onClick={() => handleSave(false)} disabled={saving || !isBalanced}>Save Changes</Button>
@@ -592,11 +606,13 @@ const AccountingVouchers = () => {
               <>
                 <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving || !isBalanced}>Save as Draft</Button>
                 <Button onClick={() => handleSave(true)} disabled={saving || !isBalanced}>Submit for Approval</Button>
+                <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleSave(true, true)} disabled={saving || !isBalanced}>Submit &amp; New</Button>
               </>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </CardContent>
+      </Card>
+      )}
 
       {/* Super Admin Confirmation Dialog */}
       <AlertDialog open={!!superAdminAction} onOpenChange={() => setSuperAdminAction(null)}>
