@@ -195,7 +195,7 @@ const AccountingVouchers = () => {
     return false;
   };
 
-  const handleSave = async (submitForApproval: boolean) => {
+  const handleSave = async (submitForApproval: boolean, resetForNew: boolean = false) => {
     if (!isBalanced) {
       toast({ title: "Debit and Credit must be equal", variant: "destructive" });
       return;
