@@ -98,28 +98,6 @@ const ChartOfInventoryPage = () => {
         <TableCell className="text-right tabular-nums font-semibold">{groupTotals.get(group.id) || 0}</TableCell>
       </TableRow>
     );
-    const groupItems = itemsByGroup.get(group.id) || [];
-    const hasChildren = kids.length > 0 || groupItems.length > 0;
-    const isOpen = expanded.has(group.id);
-    const rows: React.ReactNode[] = [];
-
-    rows.push(
-      <TableRow key={`g-${group.id}`} className="bg-muted/30">
-        <TableCell>
-          <div className="flex items-center" style={{ paddingLeft: depth * 20 }}>
-            {hasChildren ? (
-              <button onClick={() => toggle(group.id)} className="mr-1 text-muted-foreground hover:text-foreground">
-                {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-              </button>
-            ) : <span className="w-5" />}
-            <FolderTree className="w-4 h-4 mr-2 text-primary" />
-            <span className="font-semibold">{group.name}</span>
-            <span className="ml-2 text-xs text-muted-foreground">({groupItems.length} items)</span>
-          </div>
-        </TableCell>
-        <TableCell colSpan={4}></TableCell>
-      </TableRow>
-    );
 
     if (isOpen) {
       kids.forEach((k) => rows.push(...renderGroup(k, depth + 1)));
