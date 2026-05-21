@@ -150,22 +150,38 @@ Deno.serve(async (req) => {
         const voucherIds = (data || []).map((v: any) => v.id);
         if (voucherIds.length === 0) return json({ data: data || [] });
 
-        const { data: entries, error: entryError } = await admin
-          .from("voucher_entries")
-          .select("voucher_id, account_id, sort_order")
-          .in("voucher_id", voucherIds)
-          .order("sort_order", { ascending: true });
-        if (entryError) return err(entryError.message, 500);
+        // Chunk .in() calls to avoid PostgREST "Bad Request" from URL-too-long
+        const chunk = <T,>(arr: T[], size: number): T[][] => {
+          const out: T[][] = [];
+          for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+          return out;
+        };
 
-        const accountIds = Array.from(new Set((entries || []).map((e: any) => e.account_id).filter(Boolean)));
-        const { data: accountRows, error: accountError } = accountIds.length > 0
-          ? await admin.from("chart_of_accounts").select("id, account_name").in("id", accountIds)
-          : { data: [], error: null };
-        if (accountError) return err(accountError.message, 500);
+        const entries: any[] = [];
+        for (const ids of chunk(voucherIds, 100)) {
+          const { data: chunkEntries, error: entryError } = await admin
+            .from("voucher_entries")
+            .select("voucher_id, account_id, sort_order")
+            .in("voucher_id", ids)
+            .order("sort_order", { ascending: true });
+          if (entryError) return err(entryError.message, 500);
+          if (chunkEntries) entries.push(...chunkEntries);
+        }
 
-        const accountNameMap = new Map((accountRows || []).map((a: any) => [a.id, a.account_name]));
+        const accountIds = Array.from(new Set(entries.map((e: any) => e.account_id).filter(Boolean)));
+        const accountRows: any[] = [];
+        for (const ids of chunk(accountIds, 100)) {
+          const { data: rows, error: accountError } = await admin
+            .from("chart_of_accounts")
+            .select("id, account_name")
+            .in("id", ids);
+          if (accountError) return err(accountError.message, 500);
+          if (rows) accountRows.push(...rows);
+        }
+
+        const accountNameMap = new Map(accountRows.map((a: any) => [a.id, a.account_name]));
         const ledgerMap: Record<string, string[]> = {};
-        (entries || []).forEach((entry: any) => {
+        entries.forEach((entry: any) => {
           const name = accountNameMap.get(entry.account_id);
           if (!name) return;
           if (!ledgerMap[entry.voucher_id]) ledgerMap[entry.voucher_id] = [];
