@@ -116,6 +116,7 @@ const AccountingVouchers = () => {
       supabase.from("financial_years").select("id, name"),
     ]);
     const vList = (vRes.data || []) as Voucher[];
+    console.log("[voucher-api] list response", { count: vList.length, withLedgerAccounts: vList.filter(v => Array.isArray(v.ledger_accounts) && v.ledger_accounts.length > 0).length, sample: vList[0]?.ledger_accounts });
     setVouchers(vList);
     setAccounts((aRes.data || []) as Account[]);
     setBranches((bRes.data || []) as Branch[]);
@@ -453,7 +454,7 @@ const AccountingVouchers = () => {
                       <TableRow key={v.id}>
                         <TableCell className="font-geist-mono text-xs font-medium">{v.voucher_number}</TableCell>
                         <TableCell className="text-sm">{v.voucher_date}</TableCell>
-                        <TableCell className="text-sm">{(voucherAccountsMap[v.id] || []).join(", ") || "—"}</TableCell>
+                        <TableCell className="text-sm">{(voucherAccountsMap[v.id] || []).length > 0 ? (voucherAccountsMap[v.id] || []).join(", ") : <span className="text-muted-foreground italic">No ledger entries</span>}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{v.description || "—"}</TableCell>
                         <TableCell className="text-right tabular-nums font-medium">{fc(v.total_amount)}</TableCell>
                         <TableCell>
