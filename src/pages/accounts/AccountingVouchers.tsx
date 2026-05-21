@@ -39,6 +39,7 @@ interface Voucher {
   id: string; voucher_number: string; voucher_type: string; voucher_date: string;
   branch_id: string | null; financial_year_id: string | null; description: string | null;
   total_amount: number; status: string; created_at: string;
+  ledger_accounts?: string[];
 }
 
 type SuperAdminAction = "delete" | "reopen" | "reverse" | null;
@@ -120,8 +121,12 @@ const AccountingVouchers = () => {
     setBranches((bRes.data || []) as Branch[]);
     setFinYears((fRes.data || []) as FinYear[]);
 
-    // Fetch entry accounts for all listed vouchers
+    // Prefer ledger names returned by the secured voucher API; fall back to a direct read when available.
     const ids = vList.map((v) => v.id);
+    const apiLedgerMap = vList.reduce<Record<string, string[]>>((map, voucher) => {
+      map[voucher.id] = Array.isArray(voucher.ledger_accounts) ? voucher.ledger_accounts : [];
+      return map;
+    }, {});
     if (ids.length > 0) {
       const accNameMap = new Map(((aRes.data || []) as Account[]).map((a) => [a.id, a.account_name]));
       const { data: entryRows } = await supabase
@@ -129,7 +134,7 @@ const AccountingVouchers = () => {
         .select("voucher_id, account_id, sort_order")
         .in("voucher_id", ids)
         .order("sort_order");
-      const map: Record<string, string[]> = {};
+      const map: Record<string, string[]> = { ...apiLedgerMap };
       (entryRows || []).forEach((r: any) => {
         const name = accNameMap.get(r.account_id);
         if (!name) return;

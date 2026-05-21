@@ -146,7 +146,38 @@ Deno.serve(async (req) => {
           .eq("voucher_type", voucher_type || "journal")
           .order("created_at", { ascending: false });
         if (error) return err(error.message, 500);
-        return json({ data });
+
+        const voucherIds = (data || []).map((v: any) => v.id);
+        if (voucherIds.length === 0) return json({ data: data || [] });
+
+        const { data: entries, error: entryError } = await admin
+          .from("voucher_entries")
+          .select("voucher_id, account_id, sort_order")
+          .in("voucher_id", voucherIds)
+          .order("sort_order", { ascending: true });
+        if (entryError) return err(entryError.message, 500);
+
+        const accountIds = Array.from(new Set((entries || []).map((e: any) => e.account_id).filter(Boolean)));
+        const { data: accountRows, error: accountError } = accountIds.length > 0
+          ? await admin.from("chart_of_accounts").select("id, account_name").in("id", accountIds)
+          : { data: [], error: null };
+        if (accountError) return err(accountError.message, 500);
+
+        const accountNameMap = new Map((accountRows || []).map((a: any) => [a.id, a.account_name]));
+        const ledgerMap: Record<string, string[]> = {};
+        (entries || []).forEach((entry: any) => {
+          const name = accountNameMap.get(entry.account_id);
+          if (!name) return;
+          if (!ledgerMap[entry.voucher_id]) ledgerMap[entry.voucher_id] = [];
+          if (!ledgerMap[entry.voucher_id].includes(name)) ledgerMap[entry.voucher_id].push(name);
+        });
+
+        return json({
+          data: (data || []).map((voucher: any) => ({
+            ...voucher,
+            ledger_accounts: ledgerMap[voucher.id] || [],
+          })),
+        });
       }
 
       // ============ GET VOUCHER WITH ENTRIES ============
