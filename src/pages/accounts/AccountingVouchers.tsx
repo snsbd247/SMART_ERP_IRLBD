@@ -104,6 +104,8 @@ const AccountingVouchers = () => {
   const [actionVoucher, setActionVoucher] = useState<Voucher | null>(null);
   const [actionReason, setActionReason] = useState("");
 
+  const [voucherAccountsMap, setVoucherAccountsMap] = useState<Record<string, string[]>>({});
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     const [vRes, aRes, bRes, fRes] = await Promise.all([
@@ -112,10 +114,31 @@ const AccountingVouchers = () => {
       supabase.from("branches").select("id, name"),
       supabase.from("financial_years").select("id, name"),
     ]);
-    setVouchers((vRes.data || []) as Voucher[]);
+    const vList = (vRes.data || []) as Voucher[];
+    setVouchers(vList);
     setAccounts((aRes.data || []) as Account[]);
     setBranches((bRes.data || []) as Branch[]);
     setFinYears((fRes.data || []) as FinYear[]);
+
+    // Fetch entry accounts for all listed vouchers
+    const ids = vList.map((v) => v.id);
+    if (ids.length > 0) {
+      const { data: entryRows } = await supabase
+        .from("voucher_entries")
+        .select("voucher_id, sort_order, chart_of_accounts:account_id(account_name)")
+        .in("voucher_id", ids)
+        .order("sort_order");
+      const map: Record<string, string[]> = {};
+      (entryRows || []).forEach((r: any) => {
+        const name = r.chart_of_accounts?.account_name;
+        if (!name) return;
+        if (!map[r.voucher_id]) map[r.voucher_id] = [];
+        if (!map[r.voucher_id].includes(name)) map[r.voucher_id].push(name);
+      });
+      setVoucherAccountsMap(map);
+    } else {
+      setVoucherAccountsMap({});
+    }
     setLoading(false);
   }, [activeTab]);
 
