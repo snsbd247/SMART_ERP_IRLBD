@@ -125,7 +125,7 @@ const AccountingVouchers = () => {
   const isBalanced = totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.01;
 
   const addEntry = () => {
-    setEntries((prev) => [...prev, { id: String(Date.now()), account_id: "", debit: 0, credit: 0, narration: "" }]);
+    setEntries((prev) => [...prev, { id: String(Date.now()), account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" }]);
   };
 
   const removeEntry = (id: string) => {
