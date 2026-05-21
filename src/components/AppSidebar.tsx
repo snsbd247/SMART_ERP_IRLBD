@@ -215,6 +215,7 @@ const routeModuleMap: Record<string, ModuleKey[]> = {
   "/reports/bank-book": ["bank"],
   "/reports/bank-reconciliation": ["bank"],
   "/reports/stock-reports": ["inventory"],
+  "/reports/stock-by-group": ["inventory"],
   "/reports/low-stock": ["inventory"],
 };
 
