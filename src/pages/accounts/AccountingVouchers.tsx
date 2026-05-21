@@ -431,6 +431,7 @@ const AccountingVouchers = () => {
                     <TableRow>
                       <TableHead>Voucher #</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Ledger / Accounts</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead>Status</TableHead>
@@ -439,13 +440,14 @@ const AccountingVouchers = () => {
                   </TableHeader>
                   <TableBody>
                     {loading ? (
-                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
                     ) : filteredVouchers.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">{q ? "No vouchers match your search" : "No vouchers yet"}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">{q ? "No vouchers match your search" : "No vouchers yet"}</TableCell></TableRow>
                     ) : filteredVouchers.map((v) => (
                       <TableRow key={v.id}>
                         <TableCell className="font-geist-mono text-xs font-medium">{v.voucher_number}</TableCell>
                         <TableCell className="text-sm">{v.voucher_date}</TableCell>
+                        <TableCell className="text-sm">{(voucherAccountsMap[v.id] || []).join(", ") || "—"}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{v.description || "—"}</TableCell>
                         <TableCell className="text-right tabular-nums font-medium">{fc(v.total_amount)}</TableCell>
                         <TableCell>
