@@ -614,7 +614,7 @@ const AccountingVouchers = () => {
               <Button onClick={() => handleSave(false)} disabled={saving || !isBalanced}>Save Changes</Button>
             ) : (
               <>
-                <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving || !isBalanced}>Save as Draft</Button>
+                <Button variant="outline" className="border-amber-500 bg-amber-100 text-amber-900 hover:bg-amber-200 hover:text-amber-900 dark:bg-amber-500/20 dark:text-amber-100 dark:border-amber-400/60 dark:hover:bg-amber-500/30" onClick={() => handleSave(false)} disabled={saving || !isBalanced}>Save as Draft</Button>
                 <Button onClick={() => handleSave(true)} disabled={saving || !isBalanced}>Submit for Approval</Button>
                 <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleSave(true, true)} disabled={saving || !isBalanced}>Submit &amp; New</Button>
               </>
