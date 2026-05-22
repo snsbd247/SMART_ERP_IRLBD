@@ -12,8 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { DollarSign, Play, CheckCircle, FileText, Printer } from "lucide-react";
+import { DollarSign, Play, CheckCircle, FileText, Printer, FileSpreadsheet } from "lucide-react";
 import { voucherApi } from "@/lib/voucher-api";
+import * as XLSX from "xlsx";
 
 interface Employee {
   id: string; employee_code: string; first_name: string; last_name: string;
