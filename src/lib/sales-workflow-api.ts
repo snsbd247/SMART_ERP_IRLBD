@@ -153,8 +153,8 @@ export const swApi = {
         customer_id: payload.customer_id, status: "issued", branch_id: payload.branch_id,
       });
     }
+    await audit("vat_challan", "create", v, `Mushak 6.3 ${v.challan_number}`);
     return { data: v, error: null };
-  },
 
   // -------- Delivery Challans --------
   async listDeliveryChallans(filters: any = {}) {
