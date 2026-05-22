@@ -37,7 +37,7 @@ export default function InvoiceDetailPage() {
       <div className="flex justify-between">
         <div><h1 className="text-2xl font-bold">{inv.invoice_number}</h1>
           <p className="text-muted-foreground">{inv.customer?.name} • {inv.invoice_date} • Mode: {inv.mode}</p></div>
-        <Badge>{inv.status}</Badge>
+        <div className="flex items-center gap-2"><PrintTaxInvoice inv={inv} /><Badge>{inv.status}</Badge></div>
       </div>
       <Card className="p-4">
         <h3 className="font-semibold mb-2">Line Items</h3>
