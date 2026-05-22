@@ -111,7 +111,7 @@ class PayrollService
 
         // Post accounting entry
         $emp = $payroll->employee;
-        $this->accountingService->autoPost('Salary Expense', 'Cash', $payroll->net_salary,
+        $this->accountingService->autoPost('Salary Expense', 'Cash in Hand', $payroll->net_salary,
             "Salary {$emp->first_name} {$emp->last_name} - {$payroll->month}/{$payroll->year}", 'payment', [
                 'date' => now()->toDateString(),
                 'branch_id' => $emp->branch_id,
