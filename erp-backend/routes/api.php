@@ -357,5 +357,48 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::post('messages/{id}/read', [\App\Http\Controllers\Messaging\MessageController::class, 'markRead']);
             Route::get('unread-count', [\App\Http\Controllers\Messaging\MessageController::class, 'unreadCount']);
         });
+
+        // ─── Bangladesh VAT Sales Workflow ──────────────────────
+        // Purchase Orders
+        Route::middleware('permission:purchase_orders.view')->group(function () {
+            Route::get('purchase-orders', [\App\Http\Controllers\SalesWorkflow\PurchaseOrderController::class, 'index']);
+            Route::get('purchase-orders/{id}', [\App\Http\Controllers\SalesWorkflow\PurchaseOrderController::class, 'show']);
+        });
+        Route::middleware('permission:purchase_orders.create')->post('purchase-orders', [\App\Http\Controllers\SalesWorkflow\PurchaseOrderController::class, 'store']);
+        Route::middleware('permission:purchase_orders.edit')->put('purchase-orders/{id}', [\App\Http\Controllers\SalesWorkflow\PurchaseOrderController::class, 'update']);
+
+        // Dispatch
+        Route::middleware('permission:dispatch.view')->group(function () {
+            Route::get('dispatches', [\App\Http\Controllers\SalesWorkflow\DispatchController::class, 'index']);
+            Route::get('dispatches/{id}', [\App\Http\Controllers\SalesWorkflow\DispatchController::class, 'show']);
+        });
+        Route::middleware('permission:dispatch.create')->post('dispatches', [\App\Http\Controllers\SalesWorkflow\DispatchController::class, 'store']);
+        Route::middleware('permission:dispatch.edit')->post('dispatches/{id}/transition', [\App\Http\Controllers\SalesWorkflow\DispatchController::class, 'transition']);
+
+        // VAT Challan
+        Route::middleware('permission:vat_challans.view')->group(function () {
+            Route::get('vat-challans', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'index']);
+            Route::get('vat-challans/{id}', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'show']);
+        });
+        Route::middleware('permission:vat_challans.create')->post('vat-challans', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'store']);
+
+        // Delivery Challan + receive workflow
+        Route::middleware('permission:delivery_challans.view')->group(function () {
+            Route::get('delivery-challans', [\App\Http\Controllers\SalesWorkflow\DeliveryChallanController::class, 'index']);
+            Route::get('delivery-challans/{id}', [\App\Http\Controllers\SalesWorkflow\DeliveryChallanController::class, 'show']);
+        });
+        Route::middleware('permission:customer_receive.create')->post('delivery-challans/{id}/customer-receive', [\App\Http\Controllers\SalesWorkflow\DeliveryChallanController::class, 'customerReceive']);
+        Route::middleware('permission:ho_receive.create')->post('delivery-challans/{id}/ho-receive', [\App\Http\Controllers\SalesWorkflow\DeliveryChallanController::class, 'hoReceive']);
+        Route::middleware('permission:delivery_challans.edit')->post('delivery-challans/{id}/status', [\App\Http\Controllers\SalesWorkflow\DeliveryChallanController::class, 'setStatus']);
+
+        // Invoice Processing + Payment + TDS
+        Route::middleware('permission:invoice_processing.view')->group(function () {
+            Route::get('invoices-v2', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'index']);
+            Route::get('invoices-v2/eligible', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'eligible']);
+            Route::get('invoices-v2/{id}', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'show']);
+        });
+        Route::middleware('permission:invoice_processing.create')->post('invoices-v2', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'store']);
+        Route::middleware('permission:invoice_payment.create')->post('invoices-v2/{id}/payments', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'payment']);
     });
 });
+
