@@ -48,6 +48,8 @@ const IFRSFinancialStatements = () => {
   const [curTo, setCurTo] = useState(defaultEnd);
   const [prvFrom, setPrvFrom] = useState(prevStart);
   const [prvTo, setPrvTo] = useState(prevEnd);
+  const [preset, setPreset] = useState<string>("custom");
+  const [financialYears, setFinancialYears] = useState<{ id: string; name: string; start_date: string; end_date: string }[]>([]);
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [overrides, setOverrides] = useState<Map<string, IFRSLine>>(new Map());
