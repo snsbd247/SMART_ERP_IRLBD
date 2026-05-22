@@ -4,16 +4,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { ReportHeader } from "@/components/ReportHeader";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { supabase } from "@/integrations/supabase/client";
-import { printReport, exportToExcel } from "@/lib/report-utils";
+import { printReport } from "@/lib/report-utils";
 import {
   IFRSLine, IFRS_LINE_LABEL, defaultMapping,
   PL_SECTIONS, BS_SECTIONS,
 } from "@/lib/ifrs-mapping";
 import { FileText, Printer, FileSpreadsheet, Loader2 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 type Account = {
   id: string; account_name: string; account_code: string;
