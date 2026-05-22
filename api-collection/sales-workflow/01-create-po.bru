@@ -1,0 +1,41 @@
+meta {
+  name: 1. Create Purchase Order
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/purchase-orders
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "po_date": "{{$isoTimestamp | date 'YYYY-MM-DD'}}",
+    "customer_id": "{{customer_id}}",
+    "delivery_date": "{{$isoTimestamp | date 'YYYY-MM-DD'}}",
+    "notes": "Created via Bruno smoke run",
+    "items": [
+      { "product_id": "{{product_id_1}}", "qty_ordered": 100, "rate": 520, "vat_pct": 15 },
+      { "product_id": "{{product_id_2}}", "qty_ordered": 50,  "rate": 95,  "vat_pct": 15 }
+    ]
+  }
+}
+
+script:post-response {
+  bru.setEnvVar("po_id", res.body.data.id);
+  bru.setEnvVar("po_item_1_id", res.body.data.items[0].id);
+  bru.setEnvVar("po_item_2_id", res.body.data.items[1].id);
+}
+
+tests {
+  test("creates PO with grand_total 65262.50", () => {
+    expect(res.status).toBe(201);
+    expect(Number(res.body.data.grand_total)).toBeCloseTo(65262.5, 2);
+  });
+}

@@ -1,0 +1,40 @@
+meta {
+  name: 3. Issue VAT Challan from Dispatch
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/vat-challans
+  body: json
+  auth: bearer
+}
+
+auth:bearer { token: {{token}} }
+
+body:json {
+  {
+    "challan_date": "{{$isoTimestamp | date 'YYYY-MM-DD'}}",
+    "customer_id": "{{customer_id}}",
+    "dispatch_id": "{{dispatch_id}}",
+    "source": "dispatch",
+    "items": [
+      { "product_id": "{{product_id_1}}", "qty": 100, "rate": 520, "vat_pct": 15 },
+      { "product_id": "{{product_id_2}}", "qty": 50,  "rate": 95,  "vat_pct": 15 }
+    ]
+  }
+}
+
+script:post-response {
+  bru.setEnvVar("vat_challan_id", res.body.data.id);
+  if (res.body.data.delivery_challans && res.body.data.delivery_challans.length) {
+    bru.setEnvVar("dc_ids", res.body.data.delivery_challans.map(d => d.id).join(","));
+  }
+}
+
+tests {
+  test("VAT challan issued (15% on 56750 = 8512.50)", () => {
+    expect(res.status).toBe(201);
+    expect(Number(res.body.data.vat_amount)).toBeCloseTo(8512.5, 2);
+  });
+}

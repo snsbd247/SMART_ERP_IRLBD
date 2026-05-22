@@ -1,0 +1,36 @@
+meta {
+  name: 5. Record Payment with 5% TDS
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/api/invoices-v2/{{invoice_id}}/payments
+  body: json
+  auth: bearer
+}
+
+auth:bearer { token: {{token}} }
+
+vars:pre-request {
+  tds: {{ Math.round(Number(bru.getEnvVar("invoice_grand_total")) * 5) / 100 }}
+  cash: {{ Number(bru.getEnvVar("invoice_grand_total")) - Math.round(Number(bru.getEnvVar("invoice_grand_total")) * 5) / 100 }}
+}
+
+body:json {
+  {
+    "payment_date": "{{$isoTimestamp | date 'YYYY-MM-DD'}}",
+    "mode": "bank",
+    "reference": "BRUNO-TXN-001",
+    "amount_received": {{cash}},
+    "tds_amount": {{tds}}
+  }
+}
+
+tests {
+  test("payment posted; invoice fully settled", () => {
+    expect(res.status).toBe(201);
+    expect(Number(res.body.data.invoice.due_amount)).toBeCloseTo(0, 2);
+    expect(["paid", "partial"]).toContain(res.body.data.invoice.status);
+  });
+}

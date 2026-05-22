@@ -1,0 +1,23 @@
+meta {
+  name: 6. Mushak 9.1 Monthly Return Export
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/sales-workflow/reports/mushak-9-1?month={{$isoTimestamp | date 'YYYY-MM'}}
+  auth: bearer
+}
+
+auth:bearer { token: {{token}} }
+
+tests {
+  test("return totals add up", () => {
+    expect(res.status).toBe(200);
+    const r = res.body.data;
+    expect(Number(r.net_vat_payable)).toBeCloseTo(
+      Number(r.output_vat_total) - Number(r.tds_credit),
+      2,
+    );
+  });
+}
