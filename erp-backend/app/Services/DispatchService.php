@@ -14,6 +14,7 @@ class DispatchService
     public function __construct(
         private NumberSequenceService $seq,
         private PurchaseOrderService $poService,
+        private FinancialPeriodGuard $period,
     ) {}
 
     /**
@@ -22,6 +23,7 @@ class DispatchService
      */
     public function create(array $data, array $items): Dispatch
     {
+        $this->period->assertOpen($data['dispatch_date'] ?? null, 'Dispatch');
         return DB::transaction(function () use ($data, $items) {
             $totalQty = collect($items)->sum('qty');
             $dispatch = Dispatch::create(array_merge($data, [

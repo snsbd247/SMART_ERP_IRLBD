@@ -3,6 +3,7 @@ namespace App\Http\Controllers\SalesWorkflow;
 
 use App\Http\Controllers\BaseController;
 use App\Models\PurchaseOrder;
+use App\Services\DocumentDeleteGuard;
 use App\Services\PurchaseOrderService;
 use Illuminate\Http\Request;
 
@@ -48,5 +49,12 @@ class PurchaseOrderController extends BaseController
         $r->validate(['items' => 'required|array|min:1']);
         $data = $r->only('po_date','customer_id','delivery_date','notes','attachment_url');
         return $this->success($this->service->amend($id, $data, $r->items, $r->user()?->id, $r->input('reason', '')));
+    }
+
+    public function destroy(Request $r, string $id)
+    {
+        DocumentDeleteGuard::forUser($r->user())->purchaseOrder($id);
+        PurchaseOrder::findOrFail($id)->delete();
+        return $this->success(['deleted' => true]);
     }
 }
