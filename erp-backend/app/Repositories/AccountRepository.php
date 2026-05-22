@@ -28,9 +28,26 @@ class AccountRepository extends BaseRepository
 
     public function findByName(string $name): ?ChartOfAccount
     {
-        return ChartOfAccount::where('account_name', 'like', "%{$name}%")
-            ->where('is_active', 1)->first();
+        // Prefer exact (case-insensitive) match to avoid mapping the wrong ledger
+        // (e.g. "Bank" matching "Bank Loan" / "Bank Charge").
+        $exact = ChartOfAccount::whereRaw('LOWER(account_name) = ?', [strtolower($name)])
+            ->where('is_active', 1)->get();
+        if ($exact->count() === 1) return $exact->first();
+        if ($exact->count() > 1) {
+            \Log::warning("AccountRepository::findByName ambiguous exact match for '{$name}' — refusing to guess.");
+            return null;
+        }
+
+        // Fallback partial — only if uniquely resolved.
+        $partial = ChartOfAccount::where('account_name', 'like', "%{$name}%")
+            ->where('is_active', 1)->get();
+        if ($partial->count() === 1) return $partial->first();
+        if ($partial->count() > 1) {
+            \Log::warning("AccountRepository::findByName partial '{$name}' is ambiguous (".$partial->pluck('account_name')->implode(', ').") — refusing to guess.");
+        }
+        return null;
     }
+
 
     public function findByCode(string $code): ?ChartOfAccount
     {
