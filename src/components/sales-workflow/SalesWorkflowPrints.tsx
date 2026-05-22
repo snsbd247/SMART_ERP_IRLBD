@@ -7,11 +7,20 @@ const num = (n: any) => Number(n || 0).toFixed(2);
 const th: any = { background: "#f0f0f0", fontWeight: 600, textAlign: "left", padding: "8px 10px", border: "1px solid #ddd", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.3px" };
 const td: any = { padding: "6px 10px", border: "1px solid #ddd", fontSize: 12 };
 const tdr: any = { ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" };
-const totalsBlock = (rows: [string, any][]) => (
-  <div style={{ marginTop: 12, marginLeft: "auto", width: 280 }}>
-    {rows.map(([k, v]) => (
-      <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px dashed #ddd", fontSize: 12 }}>
-        <span>{k}</span><span style={{ fontVariantNumeric: "tabular-nums" }}>{v}</span>
+
+/** Bilingual cell: English on top, Bangla underneath. Used for Mushak-compliant prints. */
+const bi = (en: string, bn: string, align: "left" | "right" = "left") => (
+  <div style={{ display: "flex", flexDirection: "column", alignItems: align === "right" ? "flex-end" : "flex-start", lineHeight: 1.15 }}>
+    <span>{en}</span>
+    <span style={{ fontSize: 10, fontWeight: 400, color: "#555", textTransform: "none" }}>{bn}</span>
+  </div>
+);
+
+const totalsBlock = (rows: [React.ReactNode, any][]) => (
+  <div style={{ marginTop: 12, marginLeft: "auto", width: 320 }}>
+    {rows.map((row, i) => (
+      <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px dashed #ddd", fontSize: 12 }}>
+        <span>{row[0]}</span><span style={{ fontVariantNumeric: "tabular-nums" }}>{row[1]}</span>
       </div>
     ))}
   </div>
@@ -34,17 +43,18 @@ export function PrintButton({ render, label = "Print" }: { render: (close: () =>
 export function PrintPO({ po }: { po: any }) {
   return (
     <PrintButton render={(close, open) => (
-      <PrintLayout open={open} onClose={close} title="Purchase Order"
+      <PrintLayout open={open} onClose={close} title="Purchase Order / ক্রয়াদেশ"
         docNumber={po.po_number} docDate={po.po_date}
-        partyLabel="Customer" partyName={po.customer?.name} partyEmail={po.customer?.email}
+        partyLabel="Customer / ক্রেতা" partyName={po.customer?.name} partyEmail={po.customer?.email}
         notes={po.notes}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr>
-            <th style={th}>#</th><th style={th}>Product</th>
-            <th style={{ ...th, textAlign: "right" }}>Qty</th>
-            <th style={{ ...th, textAlign: "right" }}>Rate</th>
-            <th style={{ ...th, textAlign: "right" }}>VAT %</th>
-            <th style={{ ...th, textAlign: "right" }}>Line Total</th>
+            <th style={th}>#</th>
+            <th style={th}>{bi("Product", "পণ্যের বিবরণ")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("Qty", "পরিমাণ", "right")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("Rate", "মূল্য", "right")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("VAT %", "মূসক %", "right")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("Line Total", "মোট", "right")}</th>
           </tr></thead>
           <tbody>
             {po.items?.map((it: any, i: number) => (
@@ -59,7 +69,11 @@ export function PrintPO({ po }: { po: any }) {
             ))}
           </tbody>
         </table>
-        {totalsBlock([["Subtotal", num(po.subtotal)], ["VAT", num(po.vat_amount)], ["Grand Total", num(po.grand_total)]])}
+        {totalsBlock([
+          [bi("Subtotal", "উপ-মোট"), num(po.subtotal)],
+          [bi("VAT", "মূসক"), num(po.vat_amount)],
+          [bi("Grand Total (BDT)", "সর্বমোট (টাকা)"), num(po.grand_total)],
+        ])}
       </PrintLayout>
     )} />
   );
@@ -71,20 +85,22 @@ export function PrintVatChallan({ v }: { v: any }) {
     <PrintButton render={(close, open) => (
       <PrintLayout open={open} onClose={close} title="VAT Challan — মূসক ৬.৩ (Mushak 6.3)"
         docNumber={v.challan_number} docDate={v.challan_date}
-        partyLabel="Buyer" partyName={v.customer?.name} partyEmail={v.customer?.email}
+        partyLabel="Buyer / ক্রেতা" partyName={v.customer?.name} partyEmail={v.customer?.email}
         notes={v.notes}>
         <div style={{ fontSize: 11, marginBottom: 8, color: "#555" }}>
-          Issued under VAT and Supplementary Duty Act, 2012 — Rule 40(1)(b)
+          Issued under VAT and Supplementary Duty Act, 2012 — Rule 40(1)(b) /
+          মূল্য সংযোজন কর ও সম্পূরক শুল্ক আইন, ২০১২ — বিধি ৪০(১)(খ)
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr>
-            <th style={th}>#</th><th style={th}>Description of Goods</th>
-            <th style={{ ...th, textAlign: "right" }}>Qty</th>
-            <th style={{ ...th, textAlign: "right" }}>Rate</th>
-            <th style={{ ...th, textAlign: "right" }}>Value</th>
-            <th style={{ ...th, textAlign: "right" }}>VAT %</th>
-            <th style={{ ...th, textAlign: "right" }}>VAT Amt</th>
-            <th style={{ ...th, textAlign: "right" }}>Total</th>
+            <th style={th}>#</th>
+            <th style={th}>{bi("Description of Goods", "পণ্যের বিবরণ")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("Qty", "পরিমাণ", "right")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("Rate", "একক মূল্য", "right")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("Value", "মূল্য", "right")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("VAT %", "মূসক হার", "right")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("VAT Amt", "মূসকের পরিমাণ", "right")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("Total", "মোট", "right")}</th>
           </tr></thead>
           <tbody>
             {v.items?.map((it: any, i: number) => (
@@ -101,7 +117,23 @@ export function PrintVatChallan({ v }: { v: any }) {
             ))}
           </tbody>
         </table>
-        {totalsBlock([["Taxable Value", num(v.subtotal)], ["VAT Payable", num(v.vat_amount)], ["Grand Total (BDT)", num(v.grand_total)]])}
+        {totalsBlock([
+          [bi("Taxable Value", "করযোগ্য মূল্য"), num(v.subtotal)],
+          [bi("VAT Payable", "প্রদেয় মূসক"), num(v.vat_amount)],
+          [bi("Grand Total (BDT)", "সর্বমোট (টাকা)"), num(v.grand_total)],
+        ])}
+        <div style={{ marginTop: 40, display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+          <div style={{ textAlign: "center", minWidth: 200 }}>
+            <div style={{ borderTop: "1px solid #666", paddingTop: 4 }}>
+              Authorised Signature<br /><span style={{ fontSize: 10, color: "#666" }}>অনুমোদিত স্বাক্ষর</span>
+            </div>
+          </div>
+          <div style={{ textAlign: "center", minWidth: 200 }}>
+            <div style={{ borderTop: "1px solid #666", paddingTop: 4 }}>
+              Buyer Signature & Seal<br /><span style={{ fontSize: 10, color: "#666" }}>ক্রেতার স্বাক্ষর ও সিল</span>
+            </div>
+          </div>
+        </div>
       </PrintLayout>
     )} label="Print Mushak 6.3" />
   );
@@ -111,16 +143,17 @@ export function PrintVatChallan({ v }: { v: any }) {
 export function PrintDeliveryChallan({ dc }: { dc: any }) {
   return (
     <PrintButton render={(close, open) => (
-      <PrintLayout open={open} onClose={close} title="Delivery Challan"
+      <PrintLayout open={open} onClose={close} title="Delivery Challan / ডেলিভারি চালান"
         docNumber={dc.dc_number} docDate={dc.dc_date}
-        partyLabel="Customer" partyName={dc.customer?.name}>
+        partyLabel="Customer / ক্রেতা" partyName={dc.customer?.name}>
         <div style={{ fontSize: 11, marginBottom: 8, color: "#555" }}>
-          Reference VAT Challan: <b>{dc.vat_challan?.challan_number}</b> &nbsp;|&nbsp; Status: <b>{dc.status}</b>
+          Reference VAT Challan / মূসক চালান নং: <b>{dc.vat_challan?.challan_number}</b>
+          &nbsp;|&nbsp; Status / অবস্থা: <b>{dc.status}</b>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr>
-            <th style={th}>Product</th>
-            <th style={{ ...th, textAlign: "right" }}>Quantity</th>
+            <th style={th}>{bi("Product", "পণ্যের বিবরণ")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("Quantity", "পরিমাণ", "right")}</th>
           </tr></thead>
           <tbody>
             <tr>
@@ -131,10 +164,14 @@ export function PrintDeliveryChallan({ dc }: { dc: any }) {
         </table>
         <div style={{ marginTop: 60, display: "flex", justifyContent: "space-between", fontSize: 11 }}>
           <div style={{ textAlign: "center", minWidth: 180 }}>
-            <div style={{ borderTop: "1px solid #666", paddingTop: 4 }}>Driver / Carrier</div>
+            <div style={{ borderTop: "1px solid #666", paddingTop: 4 }}>
+              Driver / Carrier<br /><span style={{ fontSize: 10, color: "#666" }}>চালক / পরিবহনকারী</span>
+            </div>
           </div>
           <div style={{ textAlign: "center", minWidth: 180 }}>
-            <div style={{ borderTop: "1px solid #666", paddingTop: 4 }}>Received By (Customer)</div>
+            <div style={{ borderTop: "1px solid #666", paddingTop: 4 }}>
+              Received By (Customer)<br /><span style={{ fontSize: 10, color: "#666" }}>প্রাপক (ক্রেতা)</span>
+            </div>
           </div>
         </div>
       </PrintLayout>
@@ -146,17 +183,18 @@ export function PrintDeliveryChallan({ dc }: { dc: any }) {
 export function PrintTaxInvoice({ inv }: { inv: any }) {
   return (
     <PrintButton render={(close, open) => (
-      <PrintLayout open={open} onClose={close} title="Tax Invoice"
+      <PrintLayout open={open} onClose={close} title="Tax Invoice / কর চালান"
         docNumber={inv.invoice_number} docDate={inv.invoice_date}
-        partyLabel="Bill To" partyName={inv.customer?.name} partyEmail={inv.customer?.email}>
+        partyLabel="Bill To / প্রাপক" partyName={inv.customer?.name} partyEmail={inv.customer?.email}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr>
-            <th style={th}>#</th><th style={th}>Description</th>
-            <th style={{ ...th, textAlign: "right" }}>Qty</th>
-            <th style={{ ...th, textAlign: "right" }}>Rate</th>
-            <th style={{ ...th, textAlign: "right" }}>VAT %</th>
-            <th style={{ ...th, textAlign: "right" }}>VAT Amt</th>
-            <th style={{ ...th, textAlign: "right" }}>Line Total</th>
+            <th style={th}>#</th>
+            <th style={th}>{bi("Description", "বিবরণ")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("Qty", "পরিমাণ", "right")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("Rate", "মূল্য", "right")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("VAT %", "মূসক %", "right")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("VAT Amt", "মূসক", "right")}</th>
+            <th style={{ ...th, textAlign: "right" }}>{bi("Line Total", "মোট", "right")}</th>
           </tr></thead>
           <tbody>
             {inv.items?.map((it: any, i: number) => (
@@ -173,44 +211,55 @@ export function PrintTaxInvoice({ inv }: { inv: any }) {
           </tbody>
         </table>
         {totalsBlock([
-          ["Subtotal", num(inv.subtotal)],
-          ["VAT Total", num(inv.vat_total)],
-          ["Grand Total", num(inv.grand_total)],
-          ["Paid", num(inv.paid_amount)],
-          ["TDS Withheld", num(inv.tds_amount)],
-          ["Balance Due", num(inv.due_amount)],
+          [bi("Subtotal", "উপ-মোট"), num(inv.subtotal)],
+          [bi("VAT Total", "মোট মূসক"), num(inv.vat_total)],
+          [bi("Grand Total", "সর্বমোট"), num(inv.grand_total)],
+          [bi("Paid", "পরিশোধিত"), num(inv.paid_amount)],
+          [bi("TDS Withheld", "উৎসে কর কর্তন"), num(inv.tds_amount)],
+          [bi("Balance Due", "বকেয়া"), num(inv.due_amount)],
         ])}
       </PrintLayout>
     )} label="Print Invoice" />
   );
 }
 
-/* ---------------- Money Receipt (with TDS) ---------------- */
+/* ---------------- Money Receipt (with TDS) — Mushak 6.6 reference ---------------- */
 export function PrintMoneyReceipt({ payment, invoice }: { payment: any; invoice: any }) {
   return (
     <PrintButton render={(close, open) => (
-      <PrintLayout open={open} onClose={close} title="Money Receipt"
+      <PrintLayout open={open} onClose={close} title="Money Receipt / অর্থ প্রাপ্তির রসিদ"
         docNumber={payment.payment_number} docDate={payment.payment_date}
-        partyLabel="Received From" partyName={invoice.customer?.name}>
+        partyLabel="Received From / প্রাপ্তির উৎস" partyName={invoice.customer?.name}>
         <div style={{ fontSize: 12, marginBottom: 12 }}>
           Received with thanks from <b>{invoice.customer?.name}</b> the sum of
           <b style={{ marginLeft: 6 }}>BDT {num(payment.total_settled)}</b>
           &nbsp;against Invoice <b>{invoice.invoice_number}</b> dated {invoice.invoice_date}.
+          <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
+            <b>{invoice.customer?.name}</b>-এর নিকট থেকে চালান নং <b>{invoice.invoice_number}</b>-এর
+            বিপরীতে <b>টাকা {num(payment.total_settled)}</b> ধন্যবাদসহকারে গ্রহণ করা হলো।
+          </div>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <tbody>
-            <tr><td style={td}><b>Mode</b></td><td style={td}>{payment.mode}</td>
-                <td style={td}><b>Reference</b></td><td style={td}>{payment.reference || "—"}</td></tr>
-            <tr><td style={td}><b>Amount Received</b></td><td style={tdr}>{num(payment.amount_received)}</td>
-                <td style={td}><b>TDS Withheld</b></td><td style={tdr}>{num(payment.tds_amount)}</td></tr>
-            <tr><td style={td} colSpan={3}><b>Total Settled Against Invoice</b></td>
-                <td style={tdr}><b>{num(payment.total_settled)}</b></td></tr>
+            <tr>
+              <td style={td}><b>{bi("Mode", "পদ্ধতি")}</b></td><td style={td}>{payment.mode}</td>
+              <td style={td}><b>{bi("Reference", "রেফারেন্স")}</b></td><td style={td}>{payment.reference || "—"}</td>
+            </tr>
+            <tr>
+              <td style={td}><b>{bi("Amount Received", "প্রাপ্ত অর্থ")}</b></td><td style={tdr}>{num(payment.amount_received)}</td>
+              <td style={td}><b>{bi("TDS Withheld", "উৎসে কর কর্তন")}</b></td><td style={tdr}>{num(payment.tds_amount)}</td>
+            </tr>
+            <tr>
+              <td style={td} colSpan={3}><b>{bi("Total Settled Against Invoice", "চালানের বিপরীতে মোট সমন্বয়")}</b></td>
+              <td style={tdr}><b>{num(payment.total_settled)}</b></td>
+            </tr>
           </tbody>
         </table>
         {Number(payment.tds_amount) > 0 && (
           <div style={{ marginTop: 16, fontSize: 11, padding: 8, background: "#fffbe6", border: "1px solid #f0d97a" }}>
-            <b>TDS Note:</b> A separate TDS certificate (Form Mushak 6.6 / Tax Deducted at Source)
-            must be issued by the deductor for BDT {num(payment.tds_amount)}.
+            <b>TDS Note / উৎসে কর নোট:</b> A separate TDS certificate (Form Mushak 6.6 / উৎসে কর কর্তনের প্রত্যয়নপত্র — ফরম মূসক ৬.৬)
+            must be issued by the deductor for BDT {num(payment.tds_amount)} /
+            কর্তনকারীকে অবশ্যই টাকা {num(payment.tds_amount)}-এর জন্য পৃথক প্রত্যয়নপত্র ইস্যু করতে হবে।
           </div>
         )}
       </PrintLayout>
