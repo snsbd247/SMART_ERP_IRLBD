@@ -318,6 +318,7 @@ const App = () => (
                 <Route path="/sales-workflow/reports/invoice-pending" element={<P perm="reports.view"><InvoicePendingReport /></P>} />
                 <Route path="/sales-workflow/reports/collection" element={<P perm="reports.view"><CollectionReport /></P>} />
                 <Route path="/sales-workflow/reports/aging" element={<P perm="reports.view"><ArAgingReport /></P>} />
+                <Route path="/sales-workflow/reports/mushak-9-1" element={<P perm="reports.view"><Mushak91Page /></P>} />
 
               </Route>
               <Route path="*" element={<NotFound />} />
