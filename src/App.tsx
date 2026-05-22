@@ -308,6 +308,16 @@ const App = () => (
                 <Route path="/sales-workflow/invoices" element={<P perm="sales.view"><InvoicesPage /></P>} />
                 <Route path="/sales-workflow/invoice/:id" element={<P perm="sales.view"><InvoiceDetailPage /></P>} />
                 <Route path="/sales-workflow/tds" element={<P perm="sales.view"><TdsRegisterPage /></P>} />
+                <Route path="/sales-workflow/reports" element={<P perm="reports.view"><SalesWorkflowReportsIndex /></P>} />
+                <Route path="/sales-workflow/reports/po-vs-dispatch" element={<P perm="reports.view"><PoVsDispatchReport /></P>} />
+                <Route path="/sales-workflow/reports/pending-po" element={<P perm="reports.view"><PendingPoReport /></P>} />
+                <Route path="/sales-workflow/reports/challan-status" element={<P perm="reports.view"><ChallanStatusReport /></P>} />
+                <Route path="/sales-workflow/reports/vat-register" element={<P perm="reports.view"><VatRegisterReport /></P>} />
+                <Route path="/sales-workflow/reports/invoice-register" element={<P perm="reports.view"><InvoiceRegisterReport /></P>} />
+                <Route path="/sales-workflow/reports/invoice-pending" element={<P perm="reports.view"><InvoicePendingReport /></P>} />
+                <Route path="/sales-workflow/reports/collection" element={<P perm="reports.view"><CollectionReport /></P>} />
+                <Route path="/sales-workflow/reports/aging" element={<P perm="reports.view"><ArAgingReport /></P>} />
+
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
