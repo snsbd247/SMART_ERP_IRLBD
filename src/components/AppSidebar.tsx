@@ -218,6 +218,7 @@ const routeModuleMap: Record<string, ModuleKey[]> = {
   "/reports/stock-ledger": ["inventory"],
   "/inventory/warehouses": ["multi_warehouse"],
   "/reports/trial-balance": ["accounts"],
+  "/reports/chart-of-accounts-vertical": ["accounts"],
   "/reports/profit-loss": ["accounts"],
   "/reports/balance-sheet": ["accounts"],
   "/reports/general-ledger": ["accounts"],
