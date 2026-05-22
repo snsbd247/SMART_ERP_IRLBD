@@ -288,9 +288,49 @@ const GeneralSettingsPage = () => {
                 <CardDescription>Enable or disable ERP modules. Disabling a module hides its menus and features but preserves all existing data.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Sales Mode — mutually exclusive */}
+                <div className="p-4 rounded-lg border border-border bg-muted/30 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Sales Mode</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                      Choose ONE sales system. Switching hides the other system's menu but preserves its data.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {[
+                      { key: "sales_basic" as ModuleKey, name: "Basic Sales", desc: "Direct flow: Invoice → Payment. Best for counter sales, simple B2C." },
+                      { key: "sales_vat" as ModuleKey, name: "Bangladesh VAT Sales Workflow", desc: "Full flow: PO → Dispatch → VAT Challan (Mushak 6.3) → Delivery → Invoice → Payment + TDS → Mushak 9.1. Required for NBR-compliant B2B sales." },
+                    ].map((mod) => {
+                      const active = isModuleEnabled(mod.key);
+                      return (
+                        <button
+                          key={mod.key}
+                          type="button"
+                          onClick={async () => {
+                            if (active) return;
+                            const other = mod.key === "sales_basic" ? "sales_vat" : "sales_basic";
+                            await toggleModule(mod.key, true);
+                            await toggleModule(other as ModuleKey, false);
+                          }}
+                          className={`text-left p-3 rounded-md border transition-colors ${
+                            active ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:bg-accent/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${active ? "border-primary" : "border-muted-foreground"}`}>
+                              {active && <div className="w-2 h-2 rounded-full bg-primary" />}
+                            </div>
+                            <p className="text-sm font-medium text-foreground">{mod.name}</p>
+                          </div>
+                          <p className="text-xs text-muted-foreground leading-relaxed mt-1 ml-6">{mod.desc}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {([
                   { key: "accounts" as ModuleKey, name: "Accounting Module", desc: "Chart of Accounts, Journal/Payment/Receipt/Contra Vouchers. Core double-entry accounting system." },
-                  { key: "sales" as ModuleKey, name: "Sales Module", desc: "Sales Invoices, Sales Returns, Customer management, and Sales Reports." },
                   { key: "purchase" as ModuleKey, name: "Purchase Module", desc: "Purchase Entry, Purchase Returns, Supplier management, and Purchase Reports." },
                   { key: "inventory" as ModuleKey, name: "Inventory Module", desc: "Items, Categories, Units, Warehouses, Stock Ledger, Stock Transfer, Stock Reports. When OFF, Sales and Purchases work without stock tracking." },
                   { key: "manufacturing" as ModuleKey, name: "Manufacturing Module", desc: "Bill of Materials, Production Entries, Raw Materials tracking, and Manufacturing Reports." },

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
-export type ModuleKey = "inventory" | "multi_warehouse" | "multi_branch" | "hrm" | "accounts" | "bank" | "purchase" | "sales" | "reports" | "manufacturing";
+export type ModuleKey = "inventory" | "multi_warehouse" | "multi_branch" | "hrm" | "accounts" | "bank" | "purchase" | "sales" | "sales_basic" | "sales_vat" | "reports" | "manufacturing";
 
 interface ModuleSetting {
   id: string;
