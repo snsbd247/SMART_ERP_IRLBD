@@ -1,5 +1,5 @@
-// Reset all transactional+master data and seed a year of demo data (FY Jul 2024-Jun 2025).
-// Super-admin only.
+// Reset all transactional+master data and seed a FULL YEAR of operational demo data
+// covering every module and every key ledger. Super-admin only.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -7,22 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const BR_DHK = "b0000000-0000-0000-0000-000000000001";
-const BR_CTG = "b0000000-0000-0000-0000-000000000002";
-const FY = "f1000000-0000-0000-0000-000000000002";
-const DEPT = "40b7a375-7827-4752-b2ab-15991a13c430";
-const DESIG = "90d518b7-b03e-4c07-88db-421ab6db7bca";
-const UID = "7c0c8dfb-c23d-4fd9-9d67-d8322bd0eedb";
-const A = {
-  cash:"5fcabca6-ad7d-436f-991d-3ea57d09198e", bank:"82823396-f97f-4295-9f0a-c9418458fc4b",
-  ar:"ed725e57-7f0f-441f-b981-03d57443a363", inv:"c552c2d5-9daa-4b56-8a00-50db1e15bcaf",
-  ap:"9a16b74b-573d-47ea-b8d3-3bfe78424bc1", sales:"8f7b0829-080c-4bb4-be75-b271e9b950a1",
-  pur:"7160faf2-a471-4c96-b3f3-be9bc75b37ea", sal:"a5fb9d18-6892-4bc6-a948-fe5a4b499664",
-  rent:"2aa4bf3f-2450-4e9a-af2d-9df7b4708ef2", util:"d896464c-2148-4a64-a4aa-aa3e90af5e2e",
-  off:"893dedd4-c0aa-4083-bbbd-bfdf12b823c8", tr:"3fda3441-27d5-4acd-8175-e2b7e66f361e",
-  cap:"bf57cf5e-8032-4bc0-954d-60120b027993",
-};
-
+// Deterministic RNG so re-runs are reproducible.
 let _s = 42;
 const R = () => { _s|=0; _s=(_s+0x6D2B79F5)|0; let t=Math.imul(_s^(_s>>>15),1|_s); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; };
 const RI = (a:number,b:number) => Math.floor(R()*(b-a+1))+a;
@@ -30,11 +15,14 @@ const pick = <T,>(a:T[]):T => a[Math.floor(R()*a.length)];
 const pickN = <T,>(a:T[], n:number):T[] => { const c=[...a],o:T[]=[]; for(let i=0;i<n&&c.length;i++) o.push(c.splice(Math.floor(R()*c.length),1)[0]); return o; };
 const U = () => crypto.randomUUID();
 const ymd = (d:Date) => d.toISOString().slice(0,10);
+const round2 = (n:number) => Math.round(n*100)/100;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const log: string[] = [];
+  const t0 = Date.now();
   try {
+    _s = 42; // reset RNG
     const url = Deno.env.get("SUPABASE_URL")!;
     const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -46,29 +34,13 @@ Deno.serve(async (req) => {
     const db = createClient(url, svc);
     const { data: prof } = await db.from("profiles").select("employee_id").eq("id", user.id).single();
     if (prof?.employee_id) throw new Error("Super Admin only");
+    const UID = user.id;
 
     // ===== RESET =====
-    const reset = ["voucher_entries","acc_vouchers","payment_allocations","party_payments","party_notes",
-      "sales_invoice_items","sales_invoices","sales_return_items","sales_returns",
-      "purchase_items","purchases","purchase_return_items","purchase_returns",
-      "stock_movements","stock_ledger","stock_transfers",
-      "production_materials","production_entries","bom_items","bill_of_materials",
-      "fund_transactions","employee_fund_settings","payroll","overtime_records",
-      "leave_requests","attendance",
-      "employee_documents","employee_bank_info","employee_education","employee_experience",
-      "employee_emergency_contacts","salary_structures","face_data","biometric_logs","employees",
-      "customers","suppliers",
-      "item_master","products","item_categories","units","warehouses","product_categories","raw_materials",
-      "audit_log","login_logs","backup_history","conversations","conversation_participants","messages","number_sequences"];
-    // Delete groups sequentially (to respect FK), but parallelize within group
     const resetGroups: string[][] = [
-      // Group 1: leaf tables (children of everything)
       ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","purchase_items","purchase_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","bom_items","fund_transactions","employee_fund_settings","overtime_records","leave_requests","attendance","employee_documents","employee_bank_info","employee_education","employee_experience","employee_emergency_contacts","salary_structures","face_data","biometric_logs","payroll","party_notes","audit_log","login_logs","backup_history","messages","conversation_participants"],
-      // Group 2: parent docs
       ["acc_vouchers","party_payments","sales_invoices","sales_returns","purchases","purchase_returns","production_entries","bill_of_materials","employees","conversations","number_sequences"],
-      // Group 3: masters that ref base
       ["customers","suppliers","item_master","products","raw_materials"],
-      // Group 4: base masters
       ["item_categories","units","warehouses","product_categories"],
     ];
     for (const grp of resetGroups) {
@@ -79,26 +51,89 @@ Deno.serve(async (req) => {
     }
     await db.from("profiles").delete().not("employee_id", "is", null);
 
-    await db.from("financial_years").update({ is_active: false }).neq("id", FY);
-    await db.from("financial_years").update({ is_active: true }).eq("id", FY);
+    // ===== RESOLVE / ENSURE MASTER REFS =====
+    // Branches
+    const { data: brData } = await db.from("branches").select("id,code,name").order("created_at");
+    let branches = brData || [];
+    if (branches.length === 0) {
+      const ins = [
+        { id: U(), code: "HQ", name: "Head Office", phone: "+8801700000000", address: "Dhaka", status: "active" },
+        { id: U(), code: "CTG", name: "Chittagong Branch", phone: "+8801800000000", address: "Chittagong", status: "active" },
+      ];
+      await db.from("branches").insert(ins);
+      branches = ins.map(b => ({ id:b.id, code:b.code, name:b.name }));
+    } else if (branches.length === 1) {
+      const id = U();
+      await db.from("branches").insert([{ id, code: "CTG", name: "Chittagong Branch", phone: "+8801800000000", address: "Chittagong", status: "active" }]);
+      branches.push({ id, code: "CTG", name: "Chittagong Branch" });
+    }
+    const BR_DHK = branches[0].id, BR_CTG = branches[1].id;
+
+    // Financial Year — match calendar year that covers most recent 1y window
+    const today = new Date();
+    const fyStart = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+    const fyEnd = new Date(today.getFullYear(), today.getMonth(), 0); // last day of prev month
+    const fyName = `Demo FY ${fyStart.getFullYear()}-${fyEnd.getFullYear()}`;
+    await db.from("financial_years").update({ is_active: false }).neq("id", "00000000-0000-0000-0000-000000000000");
+    let { data: fyExist } = await db.from("financial_years").select("id").eq("name", fyName).maybeSingle();
+    let FY: string;
+    if (fyExist) {
+      FY = fyExist.id;
+      await db.from("financial_years").update({ start_date: ymd(fyStart), end_date: ymd(fyEnd), is_active: true }).eq("id", FY);
+    } else {
+      FY = U();
+      await db.from("financial_years").insert([{ id: FY, name: fyName, start_date: ymd(fyStart), end_date: ymd(fyEnd), is_active: true }]);
+    }
     await db.from("company_settings").update({ default_financial_year_id: FY, default_branch_id: BR_DHK }).eq("id", "default");
 
-    const bulk = async (t: string, rows: any[], ch = 1000) => {
-      const batches: any[][] = [];
-      for (let i = 0; i < rows.length; i += ch) batches.push(rows.slice(i, i + ch));
-      // Run up to 4 chunks in parallel
-      for (let i = 0; i < batches.length; i += 4) {
-        const slice = batches.slice(i, i + 4);
-        const results = await Promise.all(slice.map(b => db.from(t).insert(b)));
-        for (const r of results) if (r.error) throw new Error(`${t}: ${r.error.message}`);
+    // Departments & Designations
+    let { data: depts } = await db.from("departments").select("id,name");
+    if (!depts || depts.length === 0) {
+      const ins = ["Administration","Production","Sales","Finance"].map(n => ({ id: U(), name: n }));
+      await db.from("departments").insert(ins); depts = ins;
+    }
+    let { data: desigs } = await db.from("designations").select("id,name");
+    if (!desigs || desigs.length === 0) {
+      const ins = ["Manager","Officer","Worker","Executive"].map(n => ({ id: U(), name: n }));
+      await db.from("designations").insert(ins); desigs = ins;
+    }
+    const DEPT = depts![0].id, DESIG = desigs![0].id;
+
+    // Leave types
+    let { data: lts } = await db.from("leave_types").select("id,name");
+    if (!lts || lts.length === 0) {
+      const ins = [["Annual",14],["Sick",10],["Casual",7]].map(([n,d]) => ({ id: U(), name: n as string, days_per_year: d as number }));
+      await db.from("leave_types").insert(ins); lts = ins;
+    }
+
+    // Chart of accounts — resolve by code (NOT name)
+    const { data: coa } = await db.from("chart_of_accounts").select("id,account_code").eq("is_active", true);
+    const A: Record<string,string> = {};
+    for (const a of (coa || [])) A[a.account_code] = a.id;
+    const need = ["1101","1102","1103","1105","1107","2101","2104","2106","3101","4101","4105","5101","5103","5201","5202","5203","5204","5205","5209","6101","6102"];
+    for (const c of need) if (!A[c]) throw new Error(`Missing CoA code ${c}. Re-run Chart of Accounts seed first.`);
+    // Friendly aliases
+    const Ac = {
+      cash:A["1101"], bank:A["1102"], ar:A["1103"], inv:A["1105"], tdsr:A["1107"],
+      ap:A["2101"], vatPay:A["2104"], pfLiab:A["2106"],
+      cap:A["3101"], sales:A["4101"], salesRet:A["4105"],
+      pur:A["5101"], purRet:A["5103"], sal:A["5201"], rent:A["5202"], util:A["5203"], off:A["5204"], tr:A["5205"], pfExp:A["5209"],
+      vatIn:A["6101"], vatOut:A["6102"],
+    };
+
+    const bulk = async (t: string, rows: any[], ch = 800) => {
+      if (rows.length === 0) return;
+      for (let i = 0; i < rows.length; i += ch) {
+        const { error } = await db.from(t).insert(rows.slice(i, i + ch));
+        if (error) throw new Error(`${t}: ${error.message}`);
       }
     };
 
     // Warehouses
-    const WH = U(), WHC = U();
+    const WH_DHK = U(), WH_CTG = U();
     await bulk("warehouses", [
-      { id: WH, warehouse_code: "WH-DHK", warehouse_name: "Dhaka Main Warehouse", branch_id: BR_DHK, status: "active" },
-      { id: WHC, warehouse_code: "WH-CTG", warehouse_name: "Chittagong Warehouse", branch_id: BR_CTG, status: "active" },
+      { id: WH_DHK, warehouse_code: "WH-DHK", warehouse_name: "Dhaka Main Warehouse", branch_id: BR_DHK, status: "active" },
+      { id: WH_CTG, warehouse_code: "WH-CTG", warehouse_name: "Chittagong Warehouse", branch_id: BR_CTG, status: "active" },
     ]);
 
     // Units
@@ -106,7 +141,7 @@ Deno.serve(async (req) => {
     const uIds: Record<string,string> = {};
     await bulk("units", ud.map(([a,n]) => { const id=U(); uIds[a]=id; return {id,name:n,abbreviation:a}; }));
 
-    // Categories (seed both product_categories for products FK and item_categories for item_master)
+    // Categories
     const cd = ["Electronics","Office Supplies","Furniture","Stationery","Hardware"];
     const cIds: Record<string,string> = {};
     const catRows = cd.map(n => { const id=U(); cIds[n]=id; return {id,name:n}; });
@@ -123,23 +158,14 @@ Deno.serve(async (req) => {
       ["A4 Paper Ream","Stationery","BOX",420,600],["Ballpoint Pen Box","Stationery","BOX",180,300],
       ["Stapler Heavy Duty","Office Supplies","PCS",650,950],["File Folder","Stationery","PCS",45,80],
       ["Notebook A5","Stationery","PCS",95,160],["Marker Set","Stationery","BOX",220,350],
-      ["Sticky Notes","Stationery","PCS",60,110],["Calculator","Office Supplies","PCS",850,1300],
       ["Office Chair","Furniture","PCS",8500,13500],["Executive Desk","Furniture","PCS",18500,26000],
       ["Filing Cabinet","Furniture","PCS",9500,14000],["Bookshelf","Furniture","PCS",7800,11500],
-      ["Conference Table","Furniture","PCS",32000,45000],["Reception Sofa","Furniture","PCS",24000,35000],
-      ["Whiteboard 4x6","Office Supplies","PCS",2200,3500],["Projector","Electronics","PCS",38000,52000],
-      ["Screen Tripod","Office Supplies","PCS",4500,6800],["UPS 1200VA","Electronics","PCS",5500,7800],
-      ["Router WiFi 6","Electronics","PCS",4200,6200],["Network Switch 8port","Electronics","PCS",2800,4100],
+      ["UPS 1200VA","Electronics","PCS",5500,7800],["Router WiFi 6","Electronics","PCS",4200,6200],
       ["CAT6 Cable 305m","Hardware","BOX",6500,9200],["RJ45 Connector Pack","Hardware","BOX",350,550],
-      ["Toner Cartridge","Office Supplies","PCS",3800,5500],["Document Scanner","Electronics","PCS",12500,17500],
-      ["Shredder","Office Supplies","PCS",6800,9500],["Tea Bag Box","Office Supplies","BOX",280,420],
-      ["Coffee Pack 1kg","Office Supplies","KG",850,1250],["Water Bottle 20L","Office Supplies","PCS",180,280],
-      ["Hand Sanitizer 5L","Office Supplies","LTR",650,950],["Tissue Box","Office Supplies","BOX",75,130],
-      ["Light Bulb LED","Hardware","PCS",180,280],["Extension Cord 10m","Hardware","MTR",420,650],
+      ["Toner Cartridge","Office Supplies","PCS",3800,5500],["Light Bulb LED","Hardware","PCS",180,280],
       ["Drill Machine","Hardware","PCS",3800,5500],["Screwdriver Set","Hardware","BOX",850,1300],
-      ["Measuring Tape","Hardware","PCS",180,280],["Safety Helmet","Hardware","PCS",450,720],
-      ["First Aid Kit","Office Supplies","PCS",850,1280],["CCTV Camera","Electronics","PCS",4500,6500],
-      ["DVR 8 Channel","Electronics","PCS",9800,14000],["Hard Disk 4TB","Electronics","PCS",8500,11800]];
+      ["CCTV Camera","Electronics","PCS",4500,6500],["Hard Disk 4TB","Electronics","PCS",8500,11800],
+    ];
     type P = { id:string; iid:string; code:string; name:string; cat:string; unit:string; cp:number; sp:number; op:number };
     const products: P[] = PD.map((p,i) => ({
       id: U(), iid: U(), code: `PRD-${String(i+1).padStart(4,"0")}`,
@@ -158,207 +184,325 @@ Deno.serve(async (req) => {
     // Customers / Suppliers
     const cn = ["Alpha Trading","Beta Enterprises","Gamma Corp","Delta Industries","Epsilon Ltd",
       "Zeta Solutions","Eta Holdings","Theta Group","Iota Tech","Kappa Foods",
-      "Lambda Pharma","Mu Textiles","Nu Logistics","Xi Construction","Omicron Retail",
-      "Pi Services","Rho Distributors","Sigma Wholesale","Tau Imports","Upsilon Exports"];
+      "Lambda Pharma","Mu Textiles","Nu Logistics","Xi Construction","Omicron Retail"];
     const customers = cn.map((n,i) => ({ id:U(), name:n, phone:`+8801${700000000+i*1111}`, email:n.toLowerCase().replace(/ /g,"")+"@example.com", address:"Dhaka, Bangladesh", status:"active" }));
     await bulk("customers", customers);
     const sn = ["ABC Suppliers","XYZ Wholesale","PQR Distributors","LMN Trading","EFG Imports",
       "HIJ Mfg","RST Enterprises","UVW Industries","BDS Tech","GreenLine Foods",
-      "Metro Hardware","Capital Stationers","National Electronics","Prime Furniture","Smart IT Hub"];
+      "Metro Hardware","Capital Stationers"];
     const suppliers = sn.map((n,i) => ({ id:U(), name:n, phone:`+8801${800000000+i*2222}`, email:n.toLowerCase().replace(/ /g,"")+"@vendor.com", address:"Dhaka, Bangladesh", status:"active" }));
     await bulk("suppliers", suppliers);
 
     // Employees + salary structures
-    const fns = ["Rahim","Karim","Salam","Hasan","Nasir","Jamil","Tarek","Imran","Farhad","Mizan","Fatema","Nasrin","Sumi","Ayesha","Rabeya","Shahnaz","Mim","Tania","Lima","Sabina"];
-    const lns = ["Ahmed","Khan","Hossain","Islam","Rahman","Chowdhury","Akter","Begum","Sultana","Hoque","Ahmed","Khan","Hossain","Islam","Rahman","Chowdhury","Akter","Begum","Sultana","Hoque"];
+    const fns = ["Rahim","Karim","Salam","Hasan","Nasir","Jamil","Tarek","Imran","Farhad","Mizan","Fatema","Nasrin","Sumi","Ayesha","Rabeya"];
+    const lns = ["Ahmed","Khan","Hossain","Islam","Rahman","Chowdhury","Akter","Begum","Sultana","Hoque","Ahmed","Khan","Hossain","Islam","Rahman"];
     const basicChoices = [18000,22000,28000,35000,45000,55000];
     type E = { id:string; code:string; basic:number; join:string; name:string };
+    const fyStartIso = ymd(fyStart);
     const employees: E[] = fns.map((fn,i) => {
       const basic = pick(basicChoices);
-      const join = i < 10 ? "2024-01-01" : `2024-0${RI(2,6)}-01`;
+      // First 10 joined before FY, rest joined within first 3 months
+      const join = i < 10 ? fyStartIso : ymd(new Date(fyStart.getFullYear(), fyStart.getMonth() + RI(1,3), 1));
       return { id: U(), code: `EMP-${1000+i+1}`, basic, join, name: `${fn} ${lns[i]}` };
     });
     await bulk("employees", employees.map((e,i) => ({
       id:e.id, employee_code:e.code, first_name:fns[i], last_name:lns[i],
-      mobile:`+8801${900000000+i*333}`, email:fns[i].toLowerCase()+"@erp.com",
-      department_id:DEPT, designation_id:DESIG, branch_id: i<14?BR_DHK:BR_CTG,
+      mobile:`+8801${900000000+i*333}`, email:fns[i].toLowerCase()+i+"@erp.com",
+      department_id:DEPT, designation_id:DESIG, branch_id: i<10?BR_DHK:BR_CTG,
       joining_date:e.join, salary:e.basic, employment_type:"permanent", status:"active",
+      employee_category:"staff",
     })));
     await bulk("salary_structures", employees.map(e => {
       const hr = Math.floor(e.basic*0.4), med = Math.floor(e.basic*0.1), oth = Math.floor(e.basic*0.05);
       return { id:U(), employee_id:e.id, basic_salary:e.basic, house_rent:hr, medical_allowance:med, other_allowance:oth, total_salary:e.basic+hr+med+oth, effective_from:e.join };
     }));
+    // Provident fund settings for permanent staff
+    await bulk("employee_fund_settings", employees.map(e => ({
+      id:U(), employee_id:e.id, fund_type:"provident_fund",
+      calculation_type:"percentage", employee_rate:10, employer_rate:10,
+      effective_from:e.join, is_active:true,
+    })));
 
     // ===== Voucher generator =====
     const vc = { JV:0, PV:0, RV:0, CV:0 } as Record<string,number>;
     const vouchers: any[] = [];
     const ventries: any[] = [];
+    const fyTag = `${String(fyStart.getFullYear()).slice(2)}${String(fyEnd.getFullYear()).slice(2)}`;
     const addV = (vtype: string, vdate: string, desc: string, entries: [string,number,number,string][]) => {
       const vid = U();
       const total = entries.reduce((s,e) => s+e[1], 0);
       const pmap: Record<string,string> = { journal:"JV", payment:"PV", receipt:"RV", contra:"CV" };
       const pfx = pmap[vtype]; vc[pfx]++;
-      const vn = `${pfx}-2425-${String(vc[pfx]).padStart(5,"0")}`;
+      const vn = `${pfx}-${fyTag}-${String(vc[pfx]).padStart(5,"0")}`;
       vouchers.push({ id:vid, voucher_number:vn, voucher_type:vtype, voucher_date:vdate, description:desc,
-        total_amount:total, status:"approved", branch_id:BR_DHK, financial_year_id:FY,
+        total_amount:round2(total), status:"approved", branch_id:BR_DHK, financial_year_id:FY,
         created_by:UID, approved_by:UID, approved_at:vdate });
-      entries.forEach((e,idx) => ventries.push({ id:U(), voucher_id:vid, account_id:e[0], debit:e[1], credit:e[2], narration:e[3], sort_order:idx }));
+      entries.forEach((e,idx) => ventries.push({ id:U(), voucher_id:vid, account_id:e[0], debit:round2(e[1]), credit:round2(e[2]), narration:e[3], sort_order:idx }));
+      return vid;
     };
 
     // Opening
     const invOpen = products.reduce((s,p) => s+p.cp*p.op, 0);
     const cashOp = 200000, bankOp = 800000, apOp = 150000;
     const capital = cashOp+bankOp+invOpen-apOp;
-    addV("journal","2024-07-01","Opening Balance Entry",[
-      [A.cash,cashOp,0,"Opening cash"],[A.bank,bankOp,0,"Opening bank"],
-      [A.inv,invOpen,0,"Opening inventory"],[A.ap,0,apOp,"Opening payables"],
-      [A.cap,0,capital,"Owner capital"],
+    addV("journal", fyStartIso, "Opening Balance Entry", [
+      [Ac.cash,cashOp,0,"Opening cash"], [Ac.bank,bankOp,0,"Opening bank"],
+      [Ac.inv,invOpen,0,"Opening inventory"], [Ac.ap,0,apOp,"Opening payables"],
+      [Ac.cap,0,capital,"Owner capital"],
     ]);
 
-    // Generate daily transactions
-    const start = new Date("2024-07-01"), end = new Date("2025-06-30");
+    // ===== Daily Sales + Purchases (with VAT) =====
+    const VAT_RATE = 0.15;
+    const start = new Date(fyStart), end = new Date(fyEnd);
     const sinv: any[] = [], sitems: any[] = [], pinv: any[] = [], pitems: any[] = [], smov: any[] = [];
-    type SI = { id:string; cid:string; date:string; net:number; cash:boolean };
-    type PI = { id:string; sid:string; date:string; total:number; credit:boolean };
+    type SI = { id:string; cid:string; date:string; net:number; vat:number; gross:number; cash:boolean; num:string };
+    type PI = { id:string; sid:string; date:string; subtotal:number; vat:number; gross:number; credit:boolean; num:string };
     const sList: SI[] = [], pList: PI[] = [];
     let sc=0, pc=0;
     for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
-      if (d.getDay() === 5) continue; // Friday off
+      if (d.getDay() === 5) continue;
       const ds = ymd(d);
-      const dayCount = RI(2,5);
+      const dayCount = RI(2,4);
       for (let j = 0; j < dayCount; j++) {
         const cust = pick(customers);
         const items = pickN(products, RI(1,4));
         const invId = U();
-        let total = 0;
+        let subtotal = 0;
         const rows: [string,number,number,number,string][] = [];
         for (const p of items) {
           const qty = RI(1,8), price = p.sp, tot = qty*price;
-          total += tot;
+          subtotal += tot;
           rows.push([p.id,qty,price,tot,p.iid]);
         }
-        const disc = Math.round(total * pick([0,0,0.02,0.05]) * 100)/100;
-        const net = total - disc;
+        const disc = round2(subtotal * pick([0,0,0,0.02,0.05]));
+        const net = round2(subtotal - disc);
+        const vat = round2(net * VAT_RATE);
+        const gross = round2(net + vat);
         sc++;
-        const inum = `INV-2425-${String(sc).padStart(5,"0")}`;
-        sinv.push({ id:invId, invoice_number:inum, invoice_date:ds, customer_id:cust.id, branch_id:BR_DHK,
-          total_amount:total, discount:disc, net_amount:net, status:"approved", created_by:UID });
+        const inum = `INV-${fyTag}-${String(sc).padStart(5,"0")}`;
+        sinv.push({ id:invId, invoice_number:inum, invoice_date:ds, customer_id:cust.id, branch_id: R()<0.85?BR_DHK:BR_CTG,
+          total_amount:subtotal, discount:disc, net_amount:gross, status:"approved", created_by:UID });
         for (const r of rows) {
           sitems.push({ id:U(), sales_invoice_id:invId, product_id:r[4], quantity:r[1], price:r[2], discount:0, total:r[3] });
-          smov.push({ id:U(), product_id:r[4], item_id:r[4], warehouse_id:WH, branch_id:BR_DHK,
+          smov.push({ id:U(), product_id:r[4], item_id:r[4], warehouse_id:WH_DHK, branch_id:BR_DHK,
             movement_type:"sale", reference_type:"sales_invoice", reference_id:invId, quantity:r[1] });
         }
-        const cash = R() < 0.4;
-        const dr = cash ? A.cash : A.ar;
-        addV(cash ? "receipt" : "journal", ds, `Sales Invoice ${inum}`,
-          [[dr,net,0,`Sale to ${cust.name}`],[A.sales,0,net,`Revenue ${inum}`]]);
-        sList.push({ id:invId, cid:cust.id, date:ds, net, cash });
+        const cash = R() < 0.35;
+        const dr = cash ? Ac.cash : Ac.ar;
+        addV(cash ? "receipt" : "journal", ds, `Sales Invoice ${inum}`, [
+          [dr, gross, 0, `Sale to ${cust.name}`],
+          [Ac.sales, 0, net, `Revenue ${inum}`],
+          [Ac.vatOut, 0, vat, `Output VAT ${inum}`],
+        ]);
+        sList.push({ id:invId, cid:cust.id, date:ds, net, vat, gross, cash, num: inum });
       }
-      if (R() < 0.85) {
+      if (R() < 0.7) {
         const sup = pick(suppliers);
         const items = pickN(products, RI(1,3));
         const pId = U();
-        let total = 0;
+        let subtotal = 0;
         const rows: [string,number,number,number,string][] = [];
         for (const p of items) {
-          const qty = RI(10,50), price = p.cp, tot = qty*price;
-          total += tot;
+          const qty = RI(10,40), price = p.cp, tot = qty*price;
+          subtotal += tot;
           rows.push([p.id,qty,price,tot,p.iid]);
         }
+        const vat = round2(subtotal * VAT_RATE);
+        const gross = round2(subtotal + vat);
         pc++;
-        const pnum = `PO-2425-${String(pc).padStart(5,"0")}`;
+        const pnum = `PO-${fyTag}-${String(pc).padStart(5,"0")}`;
         const credit = R() < 0.6;
         pinv.push({ id:pId, purchase_number:pnum, purchase_date:ds, supplier_id:sup.id, branch_id:BR_DHK,
-          total_amount:total, payment_method:credit?"credit":"cash", status:"approved", created_by:UID });
+          total_amount:gross, payment_method:credit?"credit":"cash", status:"approved", created_by:UID });
         for (const r of rows) {
           pitems.push({ id:U(), purchase_id:pId, product_id:r[4], quantity:r[1], unit_price:r[2], total:r[3] });
-          smov.push({ id:U(), product_id:r[4], item_id:r[4], warehouse_id:WH, branch_id:BR_DHK,
+          smov.push({ id:U(), product_id:r[4], item_id:r[4], warehouse_id:WH_DHK, branch_id:BR_DHK,
             movement_type:"purchase", reference_type:"purchase", reference_id:pId, quantity:r[1] });
         }
-        const cr = credit ? A.ap : A.cash;
-        addV(credit?"journal":"payment", ds, `Purchase ${pnum}`,
-          [[A.pur,total,0,`Purchase from ${sup.name}`],[cr,0,total,`Purchase ${pnum}`]]);
-        pList.push({ id:pId, sid:sup.id, date:ds, total, credit });
+        const cr = credit ? Ac.ap : Ac.cash;
+        addV(credit?"journal":"payment", ds, `Purchase ${pnum}`, [
+          [Ac.pur, subtotal, 0, `Purchase from ${sup.name}`],
+          [Ac.vatIn, vat, 0, `Input VAT ${pnum}`],
+          [cr, 0, gross, `Purchase ${pnum}`],
+        ]);
+        pList.push({ id:pId, sid:sup.id, date:ds, subtotal, vat, gross, credit, num: pnum });
       }
     }
 
-    // Insert sales/purchases/movements
     await bulk("sales_invoices", sinv);
     await bulk("sales_invoice_items", sitems);
     await bulk("purchases", pinv);
     await bulk("purchase_items", pitems);
     await bulk("stock_movements", smov);
 
-    // Payments (customer)
+    // ===== Sales Returns (random 3% of invoices) =====
+    const sret: any[] = [], sretItems: any[] = [];
+    let src = 0;
+    for (const s of sList) {
+      if (R() > 0.03) continue;
+      const items = sitems.filter(x => x.sales_invoice_id === s.id);
+      if (!items.length) continue;
+      const rid = U(); src++;
+      const rnum = `SRN-${fyTag}-${String(src).padStart(5,"0")}`;
+      const retDate = ymd(new Date(new Date(s.date).getTime() + RI(3,15)*86400000));
+      if (new Date(retDate) > end) continue;
+      let retTotal = 0;
+      for (const it of items) {
+        const rqty = Math.max(1, Math.floor(it.quantity * 0.3));
+        const tot = round2(rqty * it.price);
+        retTotal += tot;
+        sretItems.push({ id:U(), sales_return_id:rid, product_id:it.product_id, quantity:rqty, price:it.price, total:tot });
+      }
+      sret.push({ id:rid, return_number:rnum, return_date:retDate, sales_invoice_id:s.id, customer_id:s.cid, branch_id:BR_DHK, total_amount:retTotal, reason:"Customer return", status:"approved", created_by:UID });
+      addV("journal", retDate, `Sales Return ${rnum}`, [
+        [Ac.salesRet, retTotal, 0, "Sales return"],
+        [Ac.ar, 0, retTotal, "AR reduction"],
+      ]);
+    }
+    await bulk("sales_returns", sret);
+    await bulk("sales_return_items", sretItems);
+
+    // ===== Purchase Returns (random 4% of purchases) =====
+    const pret: any[] = [], pretItems: any[] = [];
+    let prc = 0;
+    for (const p of pList) {
+      if (R() > 0.04) continue;
+      const items = pitems.filter(x => x.purchase_id === p.id);
+      if (!items.length) continue;
+      const rid = U(); prc++;
+      const rnum = `PRN-${fyTag}-${String(prc).padStart(5,"0")}`;
+      const retDate = ymd(new Date(new Date(p.date).getTime() + RI(3,12)*86400000));
+      if (new Date(retDate) > end) continue;
+      let retTotal = 0;
+      for (const it of items) {
+        const rqty = Math.max(1, Math.floor(it.quantity * 0.2));
+        const tot = round2(rqty * it.unit_price);
+        retTotal += tot;
+        pretItems.push({ id:U(), purchase_return_id:rid, product_id:it.product_id, quantity:rqty, unit_price:it.unit_price, total:tot });
+      }
+      pret.push({ id:rid, return_number:rnum, return_date:retDate, purchase_id:p.id, supplier_id:p.sid, branch_id:BR_DHK, total_amount:retTotal, reason:"Damaged", status:"approved", created_by:UID });
+      addV("journal", retDate, `Purchase Return ${rnum}`, [
+        [Ac.ap, retTotal, 0, "AP reduction"],
+        [Ac.purRet, 0, retTotal, "Purchase return"],
+      ]);
+    }
+    await bulk("purchase_returns", pret);
+    await bulk("purchase_return_items", pretItems);
+
+    // ===== Customer Payments (with optional TDS 5%) =====
     const pays: any[] = [], allocs: any[] = [];
     let pmc = 0;
     for (const s of sList) {
       if (s.cash) continue;
-      if (R() < 0.75) {
-        const inv = new Date(s.date);
-        const pd = new Date(inv.getTime() + RI(7,45)*86400000);
+      if (R() < 0.78) {
+        const pd = new Date(new Date(s.date).getTime() + RI(7,45)*86400000);
         if (pd > end) continue;
-        const amt = Math.round(s.net * pick([0.5,1.0,1.0,1.0]) * 100)/100;
+        const fullPay = R() < 0.85;
+        const settled = fullPay ? s.gross : round2(s.gross * 0.5);
+        const tds = fullPay && R() < 0.4 ? round2(s.net * 0.05) : 0;
+        const amt = round2(settled - tds);
         const pid = U(); pmc++;
+        const ref = `RCP-${fyTag}-${String(pmc).padStart(5,"0")}`;
+        const method = pick(["cash","bank","mobile_banking"]);
         pays.push({ id:pid, party_id:s.cid, party_type:"customer", payment_date:ymd(pd),
-          amount:amt, payment_method:"cash", reference:`REC-${String(pmc).padStart(5,"0")}`, created_by:UID });
-        allocs.push({ id:U(), payment_id:pid, invoice_type:"sales_invoice", invoice_id:s.id, allocated_amount:amt });
-        addV("receipt", ymd(pd), "Receipt from customer",
-          [[A.cash,amt,0,"Customer payment"],[A.ar,0,amt,"AR settlement"]]);
+          amount:settled, payment_method:method, reference:ref, created_by:UID });
+        allocs.push({ id:U(), payment_id:pid, invoice_type:"sales_invoice", invoice_id:s.id, allocated_amount:settled });
+        const cashDr = method === "cash" ? Ac.cash : Ac.bank;
+        const entries: [string,number,number,string][] = [[cashDr, amt, 0, "Customer payment"]];
+        if (tds > 0) entries.push([Ac.tdsr, tds, 0, "TDS deducted by customer"]);
+        entries.push([Ac.ar, 0, settled, `AR settle ${s.num}`]);
+        addV("receipt", ymd(pd), `Receipt ${ref}`, entries);
       }
     }
+    // Supplier payments
     for (const p of pList) {
       if (!p.credit) continue;
-      if (R() < 0.7) {
+      if (R() < 0.72) {
         const pd = new Date(new Date(p.date).getTime() + RI(10,50)*86400000);
         if (pd > end) continue;
-        const amt = Math.round(p.total * pick([0.5,1.0,1.0]) * 100)/100;
+        const fullPay = R() < 0.8;
+        const settled = fullPay ? p.gross : round2(p.gross * 0.5);
         const pid = U(); pmc++;
+        const ref = `PAY-${fyTag}-${String(pmc).padStart(5,"0")}`;
+        const method = pick(["cash","bank"]);
         pays.push({ id:pid, party_id:p.sid, party_type:"supplier", payment_date:ymd(pd),
-          amount:amt, payment_method:"cash", reference:`PAY-${String(pmc).padStart(5,"0")}`, created_by:UID });
-        allocs.push({ id:U(), payment_id:pid, invoice_type:"purchase", invoice_id:p.id, allocated_amount:amt });
-        addV("payment", ymd(pd), "Payment to supplier",
-          [[A.ap,amt,0,"AP settlement"],[A.cash,0,amt,"Supplier payment"]]);
+          amount:settled, payment_method:method, reference:ref, created_by:UID });
+        allocs.push({ id:U(), payment_id:pid, invoice_type:"purchase", invoice_id:p.id, allocated_amount:settled });
+        const cashCr = method === "cash" ? Ac.cash : Ac.bank;
+        addV("payment", ymd(pd), `Payment ${ref}`, [
+          [Ac.ap, settled, 0, `AP settle ${p.num}`],
+          [cashCr, 0, settled, "Supplier payment"],
+        ]);
       }
     }
     await bulk("party_payments", pays);
     await bulk("payment_allocations", allocs);
 
-    // Monthly expenses + payroll
+    // ===== Monthly: Expenses, Contra (Cash↔Bank), Payroll, Fund Transactions =====
     const months: Date[] = [];
-    for (let m = new Date(2024,6,1); m <= end; m = new Date(m.getFullYear(), m.getMonth()+1, 1)) months.push(m);
+    for (let m = new Date(fyStart); m <= end; m = new Date(m.getFullYear(), m.getMonth()+1, 1)) months.push(m);
+
     for (const m of months) {
       const ed = ymd(new Date(m.getFullYear(), m.getMonth(), RI(3,7)));
       const rent=45000, util=RI(8000,15000), off=RI(5000,12000), tr=RI(4000,10000);
-      addV("payment", ed, "Monthly Rent", [[A.rent,rent,0,"Office rent"],[A.cash,0,rent,"Rent paid"]]);
-      addV("payment", ed, "Utility Bills", [[A.util,util,0,"Electricity/Internet"],[A.cash,0,util,"Utility paid"]]);
-      addV("payment", ed, "Office Expenses", [[A.off,off,0,"Office supplies"],[A.cash,0,off,"Office paid"]]);
-      addV("payment", ed, "Transportation", [[A.tr,tr,0,"Transport"],[A.cash,0,tr,"Transport paid"]]);
+      addV("payment", ed, "Monthly Rent", [[Ac.rent,rent,0,"Office rent"],[Ac.cash,0,rent,"Rent paid"]]);
+      addV("payment", ed, "Utility Bills", [[Ac.util,util,0,"Electricity/Internet"],[Ac.cash,0,util,"Utility paid"]]);
+      addV("payment", ed, "Office Expenses", [[Ac.off,off,0,"Office supplies"],[Ac.cash,0,off,"Office paid"]]);
+      addV("payment", ed, "Transportation", [[Ac.tr,tr,0,"Transport"],[Ac.cash,0,tr,"Transport paid"]]);
+      // Contra: cash deposit to bank
+      const dep = RI(50000, 150000);
+      addV("contra", ed, "Cash Deposit to Bank", [[Ac.bank,dep,0,"Bank deposit"],[Ac.cash,0,dep,"Cash withdraw"]]);
     }
+
+    // Payroll + Fund Transactions
     const payroll: any[] = [];
+    const fundTx: any[] = [];
     for (const m of months) {
       const eom = new Date(m.getFullYear(), m.getMonth()+1, 0);
       const pd = ymd(eom);
-      let tot = 0;
+      let netTot = 0, pfEmployerTot = 0, pfEmployeeTot = 0;
+      const monthPayroll: { eid: string; basic: number; pfEmp: number }[] = [];
       for (const e of employees) {
         if (new Date(e.join) > m) continue;
         const hr=Math.floor(e.basic*0.4), med=Math.floor(e.basic*0.1), oth=Math.floor(e.basic*0.05);
-        const ded = pick([0,0,500,1000]);
-        const net = e.basic+hr+med+oth-ded;
-        tot += net;
-        payroll.push({ id:U(), employee_id:e.id, month:m.getMonth()+1, year:m.getFullYear(),
+        const pfEmployee = Math.floor(e.basic * 0.1);
+        const pfEmployer = Math.floor(e.basic * 0.1);
+        const ded = pfEmployee + pick([0,0,500]);
+        const gross = e.basic + hr + med + oth;
+        const net = gross - ded;
+        netTot += net; pfEmployeeTot += pfEmployee; pfEmployerTot += pfEmployer;
+        const pid = U();
+        payroll.push({ id:pid, employee_id:e.id, month:m.getMonth()+1, year:m.getFullYear(),
           basic_salary:e.basic, allowances:hr+med+oth, deductions:ded, net_salary:net, status:"paid" });
+        monthPayroll.push({ eid: e.id, basic: e.basic, pfEmp: pfEmployee });
       }
-      addV("payment", pd, `Payroll ${m.toLocaleString("en",{month:"short",year:"numeric"})}`,
-        [[A.sal,tot,0,`Salary for ${m.toLocaleString("en",{month:"long",year:"numeric"})}`],[A.bank,0,tot,"Salary disbursed"]]);
+      const grossPayroll = netTot + pfEmployeeTot;
+      // Voucher: Dr Salary Expense (gross) + PF Expense (employer)
+      //          Cr PF Liability (employee+employer), Cr Bank (net)
+      const vid = addV("payment", pd, `Payroll ${m.toLocaleString("en",{month:"short",year:"numeric"})}`, [
+        [Ac.sal, grossPayroll, 0, `Gross salary ${m.toLocaleString("en",{month:"long",year:"numeric"})}`],
+        [Ac.pfExp, pfEmployerTot, 0, "PF employer contribution"],
+        [Ac.pfLiab, 0, pfEmployeeTot + pfEmployerTot, "PF liability"],
+        [Ac.bank, 0, netTot, "Salary disbursed via bank"],
+      ]);
+      // fund_transactions per employee
+      for (const r of monthPayroll) {
+        fundTx.push({
+          id:U(), employee_id:r.eid, fund_type:"provident_fund", transaction_type:"contribution",
+          employee_amount:r.pfEmp, employer_amount:r.pfEmp, total_amount:r.pfEmp*2,
+          month: m.getMonth()+1, year: m.getFullYear(), voucher_id: vid, created_by:UID,
+          notes: "Monthly PF contribution",
+        });
+      }
     }
     await bulk("payroll", payroll);
+    await bulk("fund_transactions", fundTx);
 
-    // Vouchers & entries (insert at end)
+    // ===== Vouchers & entries =====
     await bulk("acc_vouchers", vouchers, 400);
     await bulk("voucher_entries", ventries, 600);
 
-    // Attendance
+    // ===== Attendance =====
     const att: any[] = [];
     for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
       if (d.getDay() === 5) continue;
@@ -375,21 +519,124 @@ Deno.serve(async (req) => {
     }
     await bulk("attendance", att, 800);
 
-    // Number sequences
+    // ===== Leave Requests =====
+    const leaves: any[] = [];
+    for (const e of employees) {
+      const n = RI(1,3);
+      for (let i = 0; i < n; i++) {
+        const offsetDays = RI(15, 330);
+        const s = new Date(fyStart.getTime() + offsetDays * 86400000);
+        if (s > end) continue;
+        const dur = RI(1, 3);
+        const en = new Date(s.getTime() + (dur-1)*86400000);
+        leaves.push({
+          id:U(), employee_id:e.id, leave_type_id: pick(lts!).id,
+          start_date: ymd(s), end_date: ymd(en > end ? end : en),
+          reason: pick(["Personal","Family event","Medical","Travel"]),
+          status: pick(["approved","approved","approved","pending"]),
+          approved_by: UID,
+        });
+      }
+    }
+    await bulk("leave_requests", leaves);
+
+    // ===== Stock Transfers (monthly between warehouses) =====
+    const transfers: any[] = [];
+    let tc = 0;
+    for (const m of months) {
+      const cnt = RI(1,3);
+      for (let i = 0; i < cnt; i++) {
+        const td = ymd(new Date(m.getFullYear(), m.getMonth(), RI(8,25)));
+        const p = pick(products);
+        tc++;
+        transfers.push({
+          id:U(), transfer_number: `STR-${fyTag}-${String(tc).padStart(5,"0")}`,
+          transfer_date: td, from_warehouse_id: WH_DHK, to_warehouse_id: WH_CTG,
+          item_id: p.iid, quantity: RI(5,30), status: "completed",
+          notes: "Branch replenishment", created_by: UID,
+        });
+      }
+    }
+    await bulk("stock_transfers", transfers);
+
+    // ===== Bill of Materials + Production =====
+    const finished = products.slice(0, 4); // First 4 products as finished goods
+    const rawPool = products.slice(10);
+    const boms: any[] = [], bomItemsRows: any[] = [];
+    for (let i = 0; i < finished.length; i++) {
+      const fp = finished[i];
+      const bid = U();
+      const rms = pickN(rawPool, 3);
+      const bomCost = rms.reduce((s,r) => s + r.cp * 2, 0);
+      boms.push({
+        id:bid, bom_number: `BOM-${String(i+1).padStart(4,"0")}`,
+        name: `${fp.name} BOM`, product_id: fp.id,
+        current_rate: bomCost, previous_rate: 0,
+      });
+      for (const r of rms) {
+        bomItemsRows.push({
+          id:U(), bom_id:bid, material_id:r.id, quantity:2, unit:"PCS",
+          wastage_pct:5, unit_price:r.cp,
+        });
+      }
+    }
+    await bulk("bill_of_materials", boms);
+    await bulk("bom_items", bomItemsRows);
+
+    // Monthly production entries
+    const prodEntries: any[] = [], prodMats: any[] = [];
+    let prdc = 0;
+    for (const m of months) {
+      for (const b of boms) {
+        if (R() > 0.6) continue;
+        const pd = ymd(new Date(m.getFullYear(), m.getMonth(), RI(10,20)));
+        const qty = RI(5,20);
+        const rmCost = round2(b.current_rate * qty);
+        const labor = round2(qty * 200);
+        const elec = round2(qty * 50);
+        const total = round2(rmCost + labor + elec);
+        const pid = U(); prdc++;
+        prodEntries.push({
+          id:pid, production_number: `PRD-${fyTag}-${String(prdc).padStart(5,"0")}`,
+          production_date: pd, product_id: b.product_id, bom_id: b.id, quantity: qty,
+          branch_id: BR_DHK, raw_material_cost: rmCost, labor_cost: labor, electricity_cost: elec,
+          total_cost: total, status: "completed", created_by: UID,
+        });
+        const bMats = bomItemsRows.filter(x => x.bom_id === b.id);
+        for (const bm of bMats) {
+          prodMats.push({ id:U(), production_id:pid, material_id:bm.material_id, quantity: bm.quantity * qty, cost: bm.unit_price * bm.quantity * qty });
+        }
+      }
+    }
+    await bulk("production_entries", prodEntries);
+    await bulk("production_materials", prodMats);
+
+    // ===== Number sequences =====
     await bulk("number_sequences", [
-      { id:"sales_invoice", prefix:"INV", current_number:sc, year:2425, description:"Sales Invoice" },
-      { id:"purchase", prefix:"PO", current_number:pc, year:2425, description:"Purchase" },
-      { id:"journal_voucher", prefix:"JV", current_number:vc.JV, year:2425, description:"JV" },
-      { id:"payment_voucher", prefix:"PV", current_number:vc.PV, year:2425, description:"PV" },
-      { id:"receipt_voucher", prefix:"RV", current_number:vc.RV, year:2425, description:"RV" },
-      { id:"contra_voucher", prefix:"CV", current_number:vc.CV, year:2425, description:"CV" },
+      { id:"sales_invoice", prefix:"INV", current_number:sc, year: Number(fyTag), description:"Sales Invoice" },
+      { id:"purchase", prefix:"PO", current_number:pc, year: Number(fyTag), description:"Purchase" },
+      { id:"sales_return", prefix:"SRN", current_number:src, year: Number(fyTag), description:"Sales Return" },
+      { id:"purchase_return", prefix:"PRN", current_number:prc, year: Number(fyTag), description:"Purchase Return" },
+      { id:"production", prefix:"PRD", current_number:prdc, year: Number(fyTag), description:"Production" },
+      { id:"stock_transfer", prefix:"STR", current_number:tc, year: Number(fyTag), description:"Stock Transfer" },
+      { id:"journal_voucher", prefix:"JV", current_number:vc.JV, year: Number(fyTag), description:"Journal Voucher" },
+      { id:"payment_voucher", prefix:"PV", current_number:vc.PV, year: Number(fyTag), description:"Payment Voucher" },
+      { id:"receipt_voucher", prefix:"RV", current_number:vc.RV, year: Number(fyTag), description:"Receipt Voucher" },
+      { id:"contra_voucher", prefix:"CV", current_number:vc.CV, year: Number(fyTag), description:"Contra Voucher" },
     ]);
 
     return new Response(JSON.stringify({
       success: true,
-      stats: { sales:sc, purchases:pc, payments:pays.length, vouchers:vouchers.length,
-        payroll:payroll.length, attendance:att.length, products:products.length,
-        customers:customers.length, suppliers:suppliers.length, employees:employees.length },
+      duration_ms: Date.now() - t0,
+      stats: {
+        financial_year: fyName,
+        sales: sc, purchases: pc, sales_returns: src, purchase_returns: prc,
+        payments: pays.length, vouchers: vouchers.length, voucher_entries: ventries.length,
+        payroll: payroll.length, fund_transactions: fundTx.length,
+        attendance: att.length, leave_requests: leaves.length,
+        stock_transfers: tc, boms: boms.length, production: prdc,
+        products: products.length, customers: customers.length, suppliers: suppliers.length, employees: employees.length,
+      },
       log,
     }), { headers: { ...corsHeaders, "Content-Type":"application/json" } });
   } catch (err) {
