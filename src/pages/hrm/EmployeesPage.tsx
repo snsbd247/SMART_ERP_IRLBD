@@ -27,6 +27,8 @@ interface Employee {
   department_id: string | null;
   designation_id: string | null;
   branch_id: string | null;
+  section_id: string | null;
+  employee_category: string;
   user_id: string | null;
   joining_date: string;
   salary: number;
@@ -38,15 +40,18 @@ interface Employee {
 interface Department { id: string; name: string; }
 interface Designation { id: string; name: string; }
 interface Branch { id: string; name: string; }
+interface Section { id: string; name: string; branch_id: string | null; }
 
 const defaultForm = {
   employee_code: "", first_name: "", last_name: "", mobile: "", email: "",
   address: "", national_id: "", department_id: "", designation_id: "",
-  branch_id: "", joining_date: new Date().toISOString().split("T")[0],
+  branch_id: "", section_id: "", employee_category: "staff",
+  joining_date: new Date().toISOString().split("T")[0],
   salary: 0, employment_type: "permanent", status: "active",
   // Login fields
   create_login: false, username: "", password: "",
 };
+
 
 export default function EmployeesPage() {
   const { hasPermission } = useAuth();
