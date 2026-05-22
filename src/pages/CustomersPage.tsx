@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Pencil, Check, X, Lock, ShieldAlert, Eye } from "lucide-react";
+import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
 
 interface Customer {
   id: string;
