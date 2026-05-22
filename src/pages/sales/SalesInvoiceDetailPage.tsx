@@ -481,6 +481,113 @@ const SalesInvoiceDetailPage = () => {
         </Card>
       </div>
 
+      {/* Payments History */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2"><Receipt className="w-4 h-4 text-primary" />Payments Received</h3>
+            {dueAmount > 0 && (
+              <Button size="sm" variant="outline" onClick={() => setPayOpen(true)}>
+                <Wallet className="w-3.5 h-3.5 mr-1.5" />Receive Payment
+              </Button>
+            )}
+          </div>
+          {payments.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No payments recorded yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Receipt #</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Method</TableHead>
+                  <TableHead>Reference</TableHead>
+                  <TableHead className="text-right">Allocated</TableHead>
+                  <TableHead className="w-10" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payments.map((p: any) => (
+                  <TableRow key={p.allocation_id}>
+                    <TableCell className="font-mono text-xs">{p.payment_number || p.id.slice(0, 8)}</TableCell>
+                    <TableCell>{p.payment_date}</TableCell>
+                    <TableCell className="capitalize">{p.payment_method}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{p.reference || "—"}</TableCell>
+                    <TableCell className="text-right tabular-nums font-medium">{fc(p.allocated_amount)}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletePayment(p.id)}>
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Receive Payment Dialog */}
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Receive Payment — {invoice.invoice_number}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Outstanding Due</span>
+              <span className="font-bold text-destructive tabular-nums">{fc(dueAmount)}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Payment Date</Label>
+                <Input type="date" value={pay.payment_date} onChange={(e) => setPay({ ...pay, payment_date: e.target.value })} />
+              </div>
+              <div>
+                <Label>Method</Label>
+                <Select value={pay.payment_method} onValueChange={(v) => setPay({ ...pay, payment_method: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="bank">Bank Transfer</SelectItem>
+                    <SelectItem value="cheque">Cheque</SelectItem>
+                    <SelectItem value="online">Online</SelectItem>
+                    <SelectItem value="mobile_banking">Mobile Banking</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2">
+                <Label>Amount</Label>
+                <Input type="number" step="0.01" min="0" max={dueAmount} value={pay.amount}
+                  onChange={(e) => setPay({ ...pay, amount: e.target.value })}
+                  placeholder={`Up to ${dueAmount.toFixed(2)}`} />
+                <div className="flex justify-end mt-1">
+                  <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs"
+                    onClick={() => setPay({ ...pay, amount: String(dueAmount) })}>
+                    Pay full due ({fc(dueAmount)})
+                  </Button>
+                </div>
+              </div>
+              <div className="col-span-2">
+                <Label>Reference (cheque no / txn id)</Label>
+                <Input value={pay.reference} onChange={(e) => setPay({ ...pay, reference: e.target.value })} />
+              </div>
+              <div className="col-span-2">
+                <Label>Notes</Label>
+                <Textarea rows={2} value={pay.notes} onChange={(e) => setPay({ ...pay, notes: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayOpen(false)} disabled={submitting}>Cancel</Button>
+            <Button onClick={submitPayment} disabled={submitting}>
+              {submitting ? "Recording…" : "Record Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       {/* Notes & Terms */}
       {invoice.notes && (
         <Card className="border-0 shadow-sm">
