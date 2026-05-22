@@ -83,9 +83,9 @@ export default function InvoiceDetailPage() {
           <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">TDS</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
           <TableBody>
             {inv.payments?.map((p: any) => (
-              <TableRow key={p.id}><TableCell>{p.payment_number}</TableCell><TableCell>{p.payment_date}</TableCell><TableCell>{p.mode}</TableCell><TableCell className="text-right">{Number(p.amount_received).toFixed(2)}</TableCell><TableCell className="text-right">{Number(p.tds_amount).toFixed(2)}</TableCell><TableCell className="text-right">{Number(p.total_settled).toFixed(2)}</TableCell></TableRow>
+              <TableRow key={p.id}><TableCell>{p.payment_number}</TableCell><TableCell>{p.payment_date}</TableCell><TableCell>{p.mode}</TableCell><TableCell className="text-right">{Number(p.amount_received).toFixed(2)}</TableCell><TableCell className="text-right">{Number(p.tds_amount).toFixed(2)}</TableCell><TableCell className="text-right">{Number(p.total_settled).toFixed(2)}</TableCell><TableCell className="text-right"><PrintMoneyReceipt payment={p} invoice={inv} /></TableCell></TableRow>
             ))}
-            {!inv.payments?.length && <TableRow><TableCell colSpan={6} className="text-center py-4 text-muted-foreground">No payments yet</TableCell></TableRow>}
+            {!inv.payments?.length && <TableRow><TableCell colSpan={7} className="text-center py-4 text-muted-foreground">No payments yet</TableCell></TableRow>}
           </TableBody>
         </Table>
       </Card>
