@@ -6,6 +6,7 @@ use App\Models\SalesInvoiceV2;
 use App\Models\VatChallan;
 use App\Services\InvoiceProcessingService;
 use App\Services\InvoicePaymentService;
+use App\Services\DocumentDeleteGuard;
 use Illuminate\Http\Request;
 
 class InvoiceV2Controller extends BaseController
