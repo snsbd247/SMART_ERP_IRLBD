@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
 import { ReportHeader } from "@/components/ReportHeader";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,10 +46,14 @@ const BankReconciliationReport = () => {
       <div className="flex flex-wrap gap-4 items-end">
         <div className="space-y-1.5">
           <Label className="text-xs">Bank Account</Label>
-          <Select value={selectedBank} onValueChange={setSelectedBank}>
-            <SelectTrigger className="w-56 h-9 text-sm"><SelectValue placeholder="Select bank" /></SelectTrigger>
-            <SelectContent>{bankAccounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.account_name}</SelectItem>)}</SelectContent>
-          </Select>
+          <div className="w-64">
+            <SearchableAccountSelect
+              accounts={bankAccounts}
+              value={selectedBank}
+              onChange={setSelectedBank}
+              placeholder="Select bank"
+            />
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Bank Statement Balance</Label>
