@@ -70,4 +70,11 @@ class InvoiceV2Controller extends BaseController
         ));
         return $this->created($payment);
     }
+
+    public function destroy(Request $r, string $id)
+    {
+        DocumentDeleteGuard::forUser($r->user())->invoice($id);
+        SalesInvoiceV2::findOrFail($id)->delete();
+        return $this->success(['deleted' => true]);
+    }
 }
