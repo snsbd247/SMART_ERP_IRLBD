@@ -6,6 +6,7 @@ use App\Models\SalesInvoiceV2;
 use App\Models\VatChallan;
 use App\Services\InvoiceProcessingService;
 use App\Services\InvoicePaymentService;
+use App\Services\DocumentDeleteGuard;
 use Illuminate\Http\Request;
 
 class InvoiceV2Controller extends BaseController
@@ -68,5 +69,12 @@ class InvoiceV2Controller extends BaseController
             ['invoice_id' => $id, 'user_id' => $r->user()?->id]
         ));
         return $this->created($payment);
+    }
+
+    public function destroy(Request $r, string $id)
+    {
+        DocumentDeleteGuard::forUser($r->user())->invoice($id);
+        SalesInvoiceV2::findOrFail($id)->delete();
+        return $this->success(['deleted' => true]);
     }
 }

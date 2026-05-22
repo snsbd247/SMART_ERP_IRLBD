@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SalesWorkflow;
 use App\Http\Controllers\BaseController;
 use App\Models\VatChallan;
 use App\Services\VatChallanService;
+use App\Services\DocumentDeleteGuard;
 use Illuminate\Http\Request;
 
 class VatChallanController extends BaseController
@@ -40,5 +41,12 @@ class VatChallanController extends BaseController
     public function show(string $id)
     {
         return $this->success(VatChallan::with('items.product','customer','deliveryChallans','dispatch')->findOrFail($id));
+    }
+
+    public function destroy(Request $r, string $id)
+    {
+        DocumentDeleteGuard::forUser($r->user())->vatChallan($id);
+        VatChallan::findOrFail($id)->delete();
+        return $this->success(['deleted' => true]);
     }
 }
