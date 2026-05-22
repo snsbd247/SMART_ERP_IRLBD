@@ -171,10 +171,11 @@ Deno.serve(async (req) => {
       ["CCTV Camera","Electronics","PCS",4500,6500],["Hard Disk 4TB","Electronics","PCS",8500,11800],
     ];
     type P = { id:string; iid:string; code:string; name:string; cat:string; unit:string; cp:number; sp:number; op:number };
-    const products: P[] = PD.map((p,i) => ({
-      id: U(), iid: U(), code: `PRD-${String(i+1).padStart(4,"0")}`,
-      name: p[0], cat: p[1], unit: p[2], cp: p[3], sp: p[4], op: RI(50,300),
-    }));
+    const products: P[] = PD.map((p,i) => {
+      const uid = U();
+      return { id: uid, iid: uid, code: `PRD-${String(i+1).padStart(4,"0")}`,
+        name: p[0], cat: p[1], unit: p[2], cp: p[3], sp: p[4], op: RI(50,300) };
+    });
     await bulk("products", products.map(p => ({
       id:p.id, product_code:p.code, product_name:p.name, category_id:cIds[p.cat],
       unit:p.unit, cost_price:p.cp, selling_price:p.sp, low_stock_threshold:10, status:"active",
