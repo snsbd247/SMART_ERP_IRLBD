@@ -407,9 +407,15 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
 
         // ─── Deploy Sync (Super Admin only — guarded inside controller) ──
         Route::prefix('deploy-sync')->group(function () {
+            Route::get('config', [\App\Http\Controllers\Admin\DeploySyncController::class, 'getConfig']);
+            Route::put('config', [\App\Http\Controllers\Admin\DeploySyncController::class, 'updateConfig']);
+            Route::delete('config/token', [\App\Http\Controllers\Admin\DeploySyncController::class, 'clearToken']);
             Route::get('status', [\App\Http\Controllers\Admin\DeploySyncController::class, 'status']);
+            Route::get('diff', [\App\Http\Controllers\Admin\DeploySyncController::class, 'diff']);
             Route::post('pull', [\App\Http\Controllers\Admin\DeploySyncController::class, 'pull']);
             Route::post('rollback', [\App\Http\Controllers\Admin\DeploySyncController::class, 'rollback']);
+            Route::post('migrate', [\App\Http\Controllers\Admin\DeploySyncController::class, 'migrate']);
+            Route::get('jobs/{id}', [\App\Http\Controllers\Admin\DeploySyncController::class, 'jobStatus']);
         });
     });
 });
