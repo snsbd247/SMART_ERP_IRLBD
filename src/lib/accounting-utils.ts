@@ -93,19 +93,40 @@ export async function autoPostAccounting(params: AutoPostParams) {
 }
 
 /**
- * Find an account by partial name match (case-insensitive).
- * Useful for finding system accounts like "Sales Revenue", "Cash", etc.
+ * Find a Chart-of-Accounts row by name.
+ * Resolution order (to avoid wrong-ledger mapping bugs):
+ *   1. Exact (case-insensitive) name match on an active account.
+ *   2. Fallback: partial ILIKE — but ONLY if it returns exactly one row;
+ *      otherwise we refuse to guess and return null with a console warning.
  */
-export async function findAccountByName(namePart: string): Promise<string | null> {
-  const { data } = await supabase
+export async function findAccountByName(name: string): Promise<string | null> {
+  // 1. Exact match
+  const { data: exact } = await supabase
     .from("chart_of_accounts")
     .select("id")
-    .ilike("account_name", `%${namePart}%`)
+    .ilike("account_name", name)
     .eq("is_active", true)
-    .limit(1)
-    .single();
-  return data?.id || null;
+    .limit(2);
+  if (exact && exact.length === 1) return (exact[0] as any).id;
+  if (exact && exact.length > 1) {
+    console.warn(`findAccountByName: multiple active accounts named "${name}" — refusing to guess.`);
+    return null;
+  }
+
+  // 2. Partial fallback (unique only)
+  const { data: partial } = await supabase
+    .from("chart_of_accounts")
+    .select("id, account_name")
+    .ilike("account_name", `%${name}%`)
+    .eq("is_active", true)
+    .limit(2);
+  if (partial && partial.length === 1) return (partial[0] as any).id;
+  if (partial && partial.length > 1) {
+    console.warn(`findAccountByName: "${name}" is ambiguous (matches: ${partial.map((p: any) => p.account_name).join(", ")}). Use the exact CoA name.`);
+  }
+  return null;
 }
+
 
 /**
  * Find an account by account code.

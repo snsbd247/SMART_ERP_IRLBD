@@ -290,7 +290,8 @@ export async function createSalesInvoice(
   // Accounting: Debit Accounts Receivable, Credit Sales
   await postAccounting({
     debitAccountName: "Accounts Receivable",
-    creditAccountName: "Sales",
+    creditAccountName: "Sales Revenue",
+
     amount: netAmount,
     description: `Sales Invoice ${invoiceNumber}`,
     voucherType: "journal",
