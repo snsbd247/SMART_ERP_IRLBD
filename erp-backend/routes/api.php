@@ -375,6 +375,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         });
         Route::middleware('permission:dispatch.create')->post('dispatches', [\App\Http\Controllers\SalesWorkflow\DispatchController::class, 'store']);
         Route::middleware('permission:dispatch.edit')->post('dispatches/{id}/transition', [\App\Http\Controllers\SalesWorkflow\DispatchController::class, 'transition']);
+        Route::middleware('permission:dispatch.delete')->delete('dispatches/{id}', [\App\Http\Controllers\SalesWorkflow\DispatchController::class, 'destroy']);
 
         // VAT Challan
         Route::middleware('permission:vat_challans.view')->group(function () {
@@ -382,6 +383,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::get('vat-challans/{id}', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'show']);
         });
         Route::middleware('permission:vat_challans.create')->post('vat-challans', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'store']);
+        Route::middleware('permission:vat_challans.delete')->delete('vat-challans/{id}', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'destroy']);
 
         // Delivery Challan + receive workflow
         Route::middleware('permission:delivery_challans.view')->group(function () {
@@ -391,6 +393,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:customer_receive.create')->post('delivery-challans/{id}/customer-receive', [\App\Http\Controllers\SalesWorkflow\DeliveryChallanController::class, 'customerReceive']);
         Route::middleware('permission:ho_receive.create')->post('delivery-challans/{id}/ho-receive', [\App\Http\Controllers\SalesWorkflow\DeliveryChallanController::class, 'hoReceive']);
         Route::middleware('permission:delivery_challans.edit')->post('delivery-challans/{id}/status', [\App\Http\Controllers\SalesWorkflow\DeliveryChallanController::class, 'setStatus']);
+        Route::middleware('permission:delivery_challans.delete')->delete('delivery-challans/{id}', [\App\Http\Controllers\SalesWorkflow\DeliveryChallanController::class, 'destroy']);
 
         // Invoice Processing + Payment + TDS
         Route::middleware('permission:invoice_processing.view')->group(function () {
@@ -400,6 +403,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         });
         Route::middleware('permission:invoice_processing.create')->post('invoices-v2', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'store']);
         Route::middleware('permission:invoice_payment.create')->post('invoices-v2/{id}/payments', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'payment']);
+        Route::middleware('permission:invoice_processing.delete')->delete('invoices-v2/{id}', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'destroy']);
     });
 });
 
