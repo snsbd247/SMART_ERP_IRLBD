@@ -155,6 +155,8 @@ export const swApi = {
     }
     await audit("vat_challan", "create", v, `Mushak 6.3 ${v.challan_number}`);
     return { data: v, error: null };
+  },
+
 
   // -------- Delivery Challans --------
   async listDeliveryChallans(filters: any = {}) {
