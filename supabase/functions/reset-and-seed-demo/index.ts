@@ -500,9 +500,14 @@ Deno.serve(async (req) => {
     await bulk("payroll", payroll);
     await bulk("fund_transactions", fundTx);
 
-    // ===== Vouchers & entries =====
-    await bulk("acc_vouchers", vouchers, 400);
-    await bulk("voucher_entries", ventries, 600);
+    // ===== Vouchers & entries (initial flush; sales-workflow adds more below and flushes again) =====
+    const vouchersFlushedTo = vouchers.length;
+    const ventriesFlushedTo = ventries.length;
+    await bulk("acc_vouchers", vouchers.slice(0, vouchersFlushedTo), 400);
+    await bulk("voucher_entries", ventries.slice(0, ventriesFlushedTo), 600);
+    // Mark these as already-inserted by tagging the arrays' offsets via closure vars
+    (globalThis as any).__vFlushed = vouchersFlushedTo;
+    (globalThis as any).__veFlushed = ventriesFlushedTo;
 
     // ===== Attendance =====
     const att: any[] = [];
