@@ -97,7 +97,8 @@ const CustomersPage = () => {
       } else {
         const { error } = await supabase.from("customers").insert({ ...form, status: "active" });
         if (error) throw error;
-        toast({ title: "Customer added" });
+        await createCustomerLedger(form.name.trim());
+        toast({ title: "Customer added", description: "Ledger created under Accounts Receivable" });
       }
       setOpen(false);
       load();
