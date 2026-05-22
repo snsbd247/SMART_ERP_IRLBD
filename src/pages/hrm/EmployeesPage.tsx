@@ -378,11 +378,35 @@ export default function EmployeesPage() {
             </div>
             <div>
               <Label>Branch</Label>
-              <Select value={form.branch_id} onValueChange={v => setForm({...form, branch_id: v})}>
+              <Select value={form.branch_id} onValueChange={v => setForm({...form, branch_id: v, section_id: ""})}>
                 <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>{branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Section</Label>
+              <Select value={form.section_id} onValueChange={v => setForm({...form, section_id: v})}>
+                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectContent>
+                  {sections.filter(s => !form.branch_id || s.branch_id === form.branch_id).map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Category</Label>
+              <Select value={form.employee_category} onValueChange={v => setForm({...form, employee_category: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="worker">Worker</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="officer">Officer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div><Label>Joining Date</Label><Input type="date" value={form.joining_date} onChange={e => setForm({...form, joining_date: e.target.value})} /></div>
             <div><Label>Salary</Label><Input type="number" value={form.salary} onChange={e => setForm({...form, salary: Number(e.target.value)})} /></div>
             <div>
