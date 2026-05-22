@@ -80,7 +80,7 @@ export default function InvoiceDetailPage() {
       <Card className="p-4">
         <h3 className="font-semibold mb-2">Payments History</h3>
         <Table>
-          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">TDS</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">TDS</TableHead><TableHead className="text-right">Total</TableHead><TableHead className="text-right">Receipt</TableHead></TableRow></TableHeader>
           <TableBody>
             {inv.payments?.map((p: any) => (
               <TableRow key={p.id}><TableCell>{p.payment_number}</TableCell><TableCell>{p.payment_date}</TableCell><TableCell>{p.mode}</TableCell><TableCell className="text-right">{Number(p.amount_received).toFixed(2)}</TableCell><TableCell className="text-right">{Number(p.tds_amount).toFixed(2)}</TableCell><TableCell className="text-right">{Number(p.total_settled).toFixed(2)}</TableCell><TableCell className="text-right"><PrintMoneyReceipt payment={p} invoice={inv} /></TableCell></TableRow>
