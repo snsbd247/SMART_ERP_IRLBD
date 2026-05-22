@@ -139,31 +139,50 @@ export function AccountTreeTable({ accounts, onEdit, onDrillDown }: Props) {
     return rows;
   };
 
+  const parentIds = useMemo(
+    () => accounts.filter((a) => childMap.has(a.id)).map((a) => a.id),
+    [accounts, childMap],
+  );
+  const allExpanded = parentIds.length > 0 && parentIds.every((id) => expanded.has(id));
+
+  const expandAll = () => setExpanded(new Set(parentIds));
+  const collapseAll = () => setExpanded(new Set());
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Account Name</TableHead>
-          <TableHead>Code</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead className="text-right">Opening Balance</TableHead>
-          <TableHead className="text-right">Total Debit</TableHead>
-          <TableHead className="text-right">Total Credit</TableHead>
-          <TableHead className="text-right">Closing Balance</TableHead>
-          <TableHead className="w-12"></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {accounts.length === 0 ? (
+    <div>
+      <div className="flex justify-end gap-2 px-3 py-2 border-b">
+        <Button variant="outline" size="sm" onClick={expandAll} disabled={allExpanded || parentIds.length === 0}>
+          <ChevronsUpDown className="w-4 h-4 mr-1" /> Expand All
+        </Button>
+        <Button variant="outline" size="sm" onClick={collapseAll} disabled={expanded.size === 0}>
+          <ChevronsDownUp className="w-4 h-4 mr-1" /> Collapse All
+        </Button>
+      </div>
+      <Table>
+        <TableHeader>
           <TableRow>
-            <TableCell colSpan={8} className="text-center text-muted-foreground">
-              No accounts yet. Create your first account.
-            </TableCell>
+            <TableHead>Account Name</TableHead>
+            <TableHead>Code</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead className="text-right">Opening Balance</TableHead>
+            <TableHead className="text-right">Total Debit</TableHead>
+            <TableHead className="text-right">Total Credit</TableHead>
+            <TableHead className="text-right">Closing Balance</TableHead>
+            <TableHead className="w-12"></TableHead>
           </TableRow>
-        ) : (
-          renderRows(null, 0)
-        )}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {accounts.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={8} className="text-center text-muted-foreground">
+                No accounts yet. Create your first account.
+              </TableCell>
+            </TableRow>
+          ) : (
+            renderRows(null, 0)
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
