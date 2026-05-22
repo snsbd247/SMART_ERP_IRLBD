@@ -1647,6 +1647,33 @@ export type Database = {
           },
         ]
       }
+      ifrs_account_mapping: {
+        Row: {
+          account_id: string
+          created_at: string
+          id: string
+          ifrs_line: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          id?: string
+          ifrs_line: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          id?: string
+          ifrs_line?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invoice_challans: {
         Row: {
           created_at: string
