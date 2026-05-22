@@ -52,8 +52,6 @@ const SalesInvoiceDetailPage = () => {
     reference: "",
     notes: "",
   });
-  const [loading, setLoading] = useState(true);
-  const [printOpen, setPrintOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
