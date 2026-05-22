@@ -446,57 +446,120 @@ export default function PayrollPage() {
               <p className="text-xs text-muted-foreground mb-3 p-2 bg-muted/50 rounded">
                 Net = (Basic + Allowances + OT×1.5) − (Absent Days × Daily Rate) − (Late × ৳{LATE_PENALTY})
               </p>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Employee</TableHead>
-                      <TableHead className="text-right">Basic</TableHead>
-                      <TableHead className="text-right">Allowances</TableHead>
-                      <TableHead className="text-right">Deductions</TableHead>
-                      <TableHead className="text-right">Net Salary</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {payroll.map(p => (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium">{getEmpName(p.employee_id)}</TableCell>
-                        <TableCell className="text-right">{formatAmount(p.basic_salary)}</TableCell>
-                        <TableCell className="text-right">{formatAmount(p.allowances)}</TableCell>
-                        <TableCell className="text-right text-destructive">{formatAmount(p.deductions)}</TableCell>
-                        <TableCell className="text-right font-bold">{formatAmount(p.net_salary)}</TableCell>
-                        <TableCell>
-                          <Badge variant={p.status === "approved" ? "default" : "secondary"} className="capitalize">{p.status}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => showPayslip(p)}>
-                              <FileText className="w-4 h-4" />
-                            </Button>
-                            {isAdmin && p.status === "draft" && (
-                              <Button variant="ghost" size="sm" onClick={() => approvePayroll(p.id)}>
-                                <CheckCircle className="w-4 h-4" />
-                              </Button>
-                            )}
+              {payroll.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">No payroll generated for this period</div>
+              ) : (
+                <div ref={sheetRef} className="space-y-6">
+                  {(() => {
+                    // Group: branch -> section -> records
+                    const branchMap = new Map<string, { branchName: string; sections: Map<string, { secName: string; records: PayrollRecord[] }> }>();
+                    payroll.forEach(p => {
+                      const emp = employees.find(e => e.id === p.employee_id);
+                      const brId = emp?.branch_id || "unassigned";
+                      const brName = branches.find(b => b.id === brId)?.name || "Unassigned Branch";
+                      const secId = emp?.section_id || "no-section";
+                      const secName = sections.find(s => s.id === secId)?.name || "General (No Section)";
+                      if (!branchMap.has(brId)) branchMap.set(brId, { branchName: brName, sections: new Map() });
+                      const bGroup = branchMap.get(brId)!;
+                      if (!bGroup.sections.has(secId)) bGroup.sections.set(secId, { secName, records: [] });
+                      bGroup.sections.get(secId)!.records.push(p);
+                    });
+
+                    return Array.from(branchMap.entries()).map(([brId, brGroup]) => {
+                      const brTotal = Array.from(brGroup.sections.values())
+                        .flatMap(s => s.records).reduce((sum, r) => sum + r.net_salary, 0);
+                      return (
+                        <div key={brId} className="border rounded-lg overflow-hidden">
+                          <div className="bg-primary/10 px-4 py-2 flex items-center justify-between print:bg-gray-200">
+                            <h3 className="font-bold text-foreground">📋 {brGroup.branchName} — Salary Sheet</h3>
+                            <span className="text-sm font-semibold">Branch Total: {formatAmount(brTotal)}</span>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {payroll.length === 0 && (
-                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                        No payroll generated for this period
-                      </TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                          {Array.from(brGroup.sections.entries()).map(([secId, secGroup]) => {
+                            const secTotal = secGroup.records.reduce((s, r) => s + r.net_salary, 0);
+                            return (
+                              <div key={secId} className="border-t print:break-inside-avoid">
+                                <div className="bg-muted/50 px-4 py-1.5 flex items-center justify-between">
+                                  <h4 className="font-semibold text-sm">{secGroup.secName}</h4>
+                                  <span className="text-xs text-muted-foreground">{secGroup.records.length} employees · {formatAmount(secTotal)}</span>
+                                </div>
+                                <div className="overflow-x-auto">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead>Employee</TableHead>
+                                        <TableHead className="text-right">Basic</TableHead>
+                                        <TableHead className="text-right">Allowances</TableHead>
+                                        <TableHead className="text-right">Deductions</TableHead>
+                                        <TableHead className="text-right">Net Salary</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right print:hidden">Actions</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {secGroup.records.map(p => (
+                                        <TableRow key={p.id}>
+                                          <TableCell className="font-medium">{getEmpName(p.employee_id)}</TableCell>
+                                          <TableCell className="text-right">{formatAmount(p.basic_salary)}</TableCell>
+                                          <TableCell className="text-right">{formatAmount(p.allowances)}</TableCell>
+                                          <TableCell className="text-right text-destructive">{formatAmount(p.deductions)}</TableCell>
+                                          <TableCell className="text-right font-bold">{formatAmount(p.net_salary)}</TableCell>
+                                          <TableCell>
+                                            <Badge variant={p.status === "approved" ? "default" : "secondary"} className="capitalize">{p.status}</Badge>
+                                          </TableCell>
+                                          <TableCell className="text-right print:hidden">
+                                            <div className="flex items-center justify-end gap-1">
+                                              <Button variant="ghost" size="sm" onClick={() => showPayslip(p)}>
+                                                <FileText className="w-4 h-4" />
+                                              </Button>
+                                              {isAdmin && p.status === "draft" && (
+                                                <Button variant="ghost" size="sm" onClick={() => approvePayroll(p.id)}>
+                                                  <CheckCircle className="w-4 h-4" />
+                                                </Button>
+                                              )}
+                                            </div>
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
               {payroll.length > 0 && (
-                <div className="flex justify-end mt-3 pt-3 border-t">
+                <div className="flex justify-between items-center mt-3 pt-3 border-t">
+                  <Button variant="outline" size="sm" onClick={() => {
+                    if (!sheetRef.current) return;
+                    const w = window.open("", "_blank");
+                    if (!w) return;
+                    w.document.write(`<html><head><title>Salary Sheet - ${months[selMonth - 1]} ${selYear}</title>
+                      <style>body{font-family:Arial,sans-serif;padding:20px;color:#000;font-size:12px}
+                      table{width:100%;border-collapse:collapse;margin-bottom:12px}
+                      td,th{padding:6px 8px;border:1px solid #999;text-align:left}
+                      .text-right{text-align:right}
+                      h3{background:#e5e7eb;padding:8px;margin:16px 0 4px;border:1px solid #999}
+                      h4{background:#f3f4f6;padding:4px 8px;margin:8px 0 0;border:1px solid #ccc;font-size:13px}
+                      .print\\:hidden{display:none}
+                      @media print{h3,h4{break-inside:avoid}}
+                      </style></head><body>
+                      <h2 style="text-align:center">Salary Sheet — ${months[selMonth - 1]} ${selYear}</h2>
+                      ${sheetRef.current.innerHTML}
+                      <script>window.print();window.close();</script></body></html>`);
+                    w.document.close();
+                  }}>
+                    <Printer className="w-4 h-4 mr-1" />Print Sheet
+                  </Button>
                   <span className="text-sm font-bold text-foreground">Total Net: {formatAmount(totalNet)}</span>
                 </div>
               )}
+            </CardContent>
+
             </CardContent>
           </Card>
         </TabsContent>
