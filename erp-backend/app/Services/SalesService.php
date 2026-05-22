@@ -53,8 +53,9 @@ class SalesService
             $stockItems = array_map(fn ($i) => ['product_id' => $i['product_id'], 'quantity' => $i['quantity']], $items);
             $this->stockService->createBulkMovements($stockItems, 'sale', 'sales_invoice', $invoice->id, $data['branch_id'] ?? null, -1);
 
-            // Accounting: DR Accounts Receivable, CR Sales
-            $this->accountingService->autoPost('Accounts Receivable', 'Sales', $netAmount, "Sales Invoice {$invoiceNumber}", 'journal', [
+            // Accounting: DR Accounts Receivable, CR Sales Revenue
+            $this->accountingService->autoPost('Accounts Receivable', 'Sales Revenue', $netAmount, "Sales Invoice {$invoiceNumber}", 'journal', [
+
                 'date' => $data['invoice_date'],
                 'branch_id' => $data['branch_id'] ?? null,
                 'user_id' => $data['user_id'] ?? null,
