@@ -615,27 +615,32 @@ export default function PayrollPage() {
               )}
               {payroll.length > 0 && (
                 <div className="flex justify-between items-center mt-3 pt-3 border-t">
-                  <Button variant="outline" size="sm" onClick={() => {
-                    if (!sheetRef.current) return;
-                    const w = window.open("", "_blank");
-                    if (!w) return;
-                    w.document.write(`<html><head><title>Salary Sheet - ${months[selMonth - 1]} ${selYear}</title>
-                      <style>body{font-family:Arial,sans-serif;padding:20px;color:#000;font-size:12px}
-                      table{width:100%;border-collapse:collapse;margin-bottom:12px}
-                      td,th{padding:6px 8px;border:1px solid #999;text-align:left}
-                      .text-right{text-align:right}
-                      h3{background:#e5e7eb;padding:8px;margin:16px 0 4px;border:1px solid #999}
-                      h4{background:#f3f4f6;padding:4px 8px;margin:8px 0 0;border:1px solid #ccc;font-size:13px}
-                      .print\\:hidden{display:none}
-                      @media print{h3,h4{break-inside:avoid}}
-                      </style></head><body>
-                      <h2 style="text-align:center">Salary Sheet — ${months[selMonth - 1]} ${selYear}</h2>
-                      ${sheetRef.current.innerHTML}
-                      <script>window.print();window.close();</script></body></html>`);
-                    w.document.close();
-                  }}>
-                    <Printer className="w-4 h-4 mr-1" />Print Sheet
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={downloadExcel}>
+                      <FileSpreadsheet className="w-4 h-4 mr-1" />Download Excel
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => {
+                      if (!sheetRef.current) return;
+                      const w = window.open("", "_blank");
+                      if (!w) return;
+                      w.document.write(`<html><head><title>Salary Sheet - ${months[selMonth - 1]} ${selYear}</title>
+                        <style>body{font-family:Arial,sans-serif;padding:20px;color:#000;font-size:12px}
+                        table{width:100%;border-collapse:collapse;margin-bottom:12px}
+                        td,th{padding:6px 8px;border:1px solid #999;text-align:left}
+                        .text-right{text-align:right}
+                        h3{background:#e5e7eb;padding:8px;margin:16px 0 4px;border:1px solid #999}
+                        h4{background:#f3f4f6;padding:4px 8px;margin:8px 0 0;border:1px solid #ccc;font-size:13px}
+                        .print\\:hidden{display:none}
+                        @media print{h3,h4{break-inside:avoid}}
+                        </style></head><body>
+                        <h2 style="text-align:center">Salary Sheet — ${months[selMonth - 1]} ${selYear}</h2>
+                        ${sheetRef.current.innerHTML}
+                        <script>window.print();window.close();</script></body></html>`);
+                      w.document.close();
+                    }}>
+                      <Printer className="w-4 h-4 mr-1" />Print Sheet
+                    </Button>
+                  </div>
                   <span className="text-sm font-bold text-foreground">Total Net: {formatAmount(totalNet)}</span>
                 </div>
               )}
