@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Pencil, Check, X, ShieldAlert, Eye } from "lucide-react";
+import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
 
 const SuppliersPage = () => {
   const navigate = useNavigate();
