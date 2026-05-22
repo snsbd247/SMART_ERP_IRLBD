@@ -1,0 +1,45 @@
+meta {
+  name: 4. Generate Invoice from Delivery Challans
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/api/invoices-v2
+  body: json
+  auth: bearer
+}
+
+auth:bearer { token: {{token}} }
+
+docs {
+  Pre-req: every DC linked to {{vat_challan_id}} must be marked
+  `customer_received` then `ho_received` via:
+
+    POST /api/delivery-challans/{id}/customer-receive
+    POST /api/delivery-challans/{id}/ho-receive
+
+  Run those calls in Postman/Bruno per DC, or use the smoke artisan command:
+
+    php artisan sales-workflow:smoke
+}
+
+body:json {
+  {
+    "invoice_date": "{{$isoTimestamp | date 'YYYY-MM-DD'}}",
+    "mode": "same_day",
+    "vat_challan_ids": ["{{vat_challan_id}}"]
+  }
+}
+
+script:post-response {
+  bru.setEnvVar("invoice_id", res.body.data.id);
+  bru.setEnvVar("invoice_grand_total", res.body.data.grand_total);
+}
+
+tests {
+  test("invoice created with positive grand total", () => {
+    expect(res.status).toBe(201);
+    expect(Number(res.body.data.grand_total)).toBeGreaterThan(0);
+  });
+}

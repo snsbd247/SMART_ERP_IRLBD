@@ -1,0 +1,40 @@
+meta {
+  name: 2. Create Dispatch
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/dispatches
+  body: json
+  auth: bearer
+}
+
+auth:bearer { token: {{token}} }
+
+body:json {
+  {
+    "dispatch_date": "{{$isoTimestamp | date 'YYYY-MM-DD'}}",
+    "customer_id": "{{customer_id}}",
+    "vehicle_no": "DHK-METRO-0001",
+    "driver_name": "Bruno Driver",
+    "items": [
+      {
+        "product_id": "{{product_id_1}}", "qty": 100,
+        "allocations": [{ "po_id": "{{po_id}}", "po_item_id": "{{po_item_1_id}}", "allocated_qty": 100 }]
+      },
+      {
+        "product_id": "{{product_id_2}}", "qty": 50,
+        "allocations": [{ "po_id": "{{po_id}}", "po_item_id": "{{po_item_2_id}}", "allocated_qty": 50 }]
+      }
+    ]
+  }
+}
+
+script:post-response {
+  bru.setEnvVar("dispatch_id", res.body.data.id);
+}
+
+tests {
+  test("dispatch created", () => { expect(res.status).toBe(201); });
+}
