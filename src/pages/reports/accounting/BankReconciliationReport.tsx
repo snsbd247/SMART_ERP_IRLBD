@@ -46,10 +46,14 @@ const BankReconciliationReport = () => {
       <div className="flex flex-wrap gap-4 items-end">
         <div className="space-y-1.5">
           <Label className="text-xs">Bank Account</Label>
-          <Select value={selectedBank} onValueChange={setSelectedBank}>
-            <SelectTrigger className="w-56 h-9 text-sm"><SelectValue placeholder="Select bank" /></SelectTrigger>
-            <SelectContent>{bankAccounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.account_name}</SelectItem>)}</SelectContent>
-          </Select>
+          <div className="w-64">
+            <SearchableAccountSelect
+              accounts={bankAccounts}
+              value={selectedBank}
+              onChange={setSelectedBank}
+              placeholder="Select bank"
+            />
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Bank Statement Balance</Label>
