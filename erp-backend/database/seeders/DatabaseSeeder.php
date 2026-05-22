@@ -105,6 +105,7 @@ class DatabaseSeeder extends Seeder
             ['1104', 'Advance to Supplier', 'asset', '1100'],
             ['1105', 'Inventory', 'asset', '1100'],
             ['1106', 'Prepaid Expenses', 'asset', '1100'],
+            ['1107', 'TDS Receivable', 'asset', '1100'],
             ['1200', 'Fixed Assets', 'asset', '1000'],
             ['1201', 'Furniture & Fixtures', 'asset', '1200'],
             ['1202', 'Office Equipment', 'asset', '1200'],
@@ -118,6 +119,8 @@ class DatabaseSeeder extends Seeder
             ['2103', 'Accrued Expenses', 'liability', '2100'],
             ['2104', 'VAT Payable', 'liability', '2100'],
             ['2105', 'Loan Payable (Short Term)', 'liability', '2100'],
+            ['2106', 'Provident Fund Liability', 'liability', '2100'],
+            ['2107', 'Savings Fund Liability', 'liability', '2100'],
             ['2200', 'Long-Term Liabilities', 'liability', '2000'],
             ['2201', 'Bank Loan', 'liability', '2200'],
             ['2202', 'Directors Loan', 'liability', '2200'],
@@ -130,10 +133,12 @@ class DatabaseSeeder extends Seeder
             ['4102', 'Service Income', 'income', '4000'],
             ['4103', 'Other Income', 'income', '4000'],
             ['4104', 'Discount Received', 'income', '4000'],
+            ['4105', 'Sales Return', 'income', '4000'],
             ['5000', 'Expenses', 'expense', null],
             ['5100', 'Direct Expenses', 'expense', '5000'],
             ['5101', 'Purchase', 'expense', '5100'],
             ['5102', 'Cost of Goods Sold', 'expense', '5100'],
+            ['5103', 'Purchase Return', 'expense', '5100'],
             ['5200', 'Operating Expenses', 'expense', '5000'],
             ['5201', 'Salary Expense', 'expense', '5200'],
             ['5202', 'Rent Expense', 'expense', '5200'],
@@ -143,14 +148,16 @@ class DatabaseSeeder extends Seeder
             ['5206', 'Marketing Expense', 'expense', '5200'],
             ['5207', 'Internet Bill', 'expense', '5200'],
             ['5208', 'Maintenance Expense', 'expense', '5200'],
+            ['5209', 'Provident Fund Expense', 'expense', '5200'],
+            ['5210', 'Savings Fund Expense', 'expense', '5200'],
             ['5300', 'Financial Expenses', 'expense', '5000'],
             ['5301', 'Bank Charge', 'expense', '5300'],
             ['5302', 'Interest Expense', 'expense', '5300'],
             ['6000', 'VAT & TAX', 'liability', null],
             ['6101', 'Input VAT', 'asset', '6000'],
             ['6102', 'Output VAT', 'liability', '6000'],
-            ['6103', 'VAT Payable', 'liability', '6000'],
         ];
+
         $parentMap = [];
         foreach ($accounts as [$code, $name, $type, $parentCode]) {
             $acct = ChartOfAccount::create([
