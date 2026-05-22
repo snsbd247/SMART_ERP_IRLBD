@@ -24,6 +24,7 @@ import BackupPage from "./pages/admin/BackupPage";
 import GeneralSettingsPage from "./pages/admin/GeneralSettingsPage";
 import DocumentNumberingPage from "./pages/admin/DocumentNumberingPage";
 import DiagnosticsPage from "./pages/admin/DiagnosticsPage";
+import DeploySyncPage from "./pages/admin/DeploySyncPage";
 import ChartOfAccounts from "./pages/accounts/ChartOfAccounts";
 import AccountingVouchers from "./pages/accounts/AccountingVouchers";
 import PurchasesPage from "./pages/purchase/PurchasesPage";
