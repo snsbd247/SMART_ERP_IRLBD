@@ -12,6 +12,7 @@ import { Plus, BookOpen, Filter } from "lucide-react";
 import { useAccountBalances, AccountWithBalance } from "@/hooks/useAccountBalances";
 import { AccountTreeTable } from "@/components/accounts/AccountTreeTable";
 import { AccountLedgerDialog } from "@/components/accounts/AccountLedgerDialog";
+import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
 
 const ACCOUNT_TYPES = ["asset", "liability", "income", "expense", "equity"] as const;
 
@@ -198,15 +199,15 @@ const ChartOfAccounts = () => {
               </div>
               <div className="space-y-2">
                 <Label>Parent Account</Label>
-                <Select value={formParent || "__none__"} onValueChange={(v) => setFormParent(v === "__none__" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="None (root level)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None (root level)</SelectItem>
-                    {accounts.filter((a) => a.id !== editAcc?.id).map((a) => (
-                      <SelectItem key={a.id} value={a.id}>{a.account_code} — {a.account_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableAccountSelect
+                  accounts={accounts.filter((a) => a.id !== editAcc?.id)}
+                  value={formParent || "__none__"}
+                  onChange={(v) => setFormParent(v === "__none__" ? "" : v)}
+                  allowAll
+                  allLabel="None (root level)"
+                  allValue="__none__"
+                  placeholder="None (root level)"
+                />
               </div>
             </div>
             {/* Opening Balance - Super Admin Only */}

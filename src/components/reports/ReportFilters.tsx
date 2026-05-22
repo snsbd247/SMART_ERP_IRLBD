@@ -2,6 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
 import { Search, Printer, Download, FileSpreadsheet } from "lucide-react";
 
 interface Branch {
@@ -86,13 +87,16 @@ export const ReportFilters = ({
         {accounts && onAccountChange && (
           <div className="space-y-1.5">
             <Label className="text-xs">Account</Label>
-            <Select value={selectedAccount || "all"} onValueChange={onAccountChange}>
-              <SelectTrigger className="w-56 h-9 text-sm"><SelectValue placeholder="All Accounts" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Accounts</SelectItem>
-                {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.account_code} — {a.account_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="w-64">
+              <SearchableAccountSelect
+                accounts={accounts}
+                value={selectedAccount || "all"}
+                onChange={onAccountChange}
+                allowAll
+                allLabel="All Accounts"
+                placeholder="All Accounts"
+              />
+            </div>
           </div>
         )}
         {children}
