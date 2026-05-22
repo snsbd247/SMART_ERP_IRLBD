@@ -114,6 +114,7 @@ import { ARAgingReport, APAgingReport } from "./pages/reports/accounting/AgingRe
 import { ExpenseAnalysisReport, IncomeAnalysisReport } from "./pages/reports/accounting/AnalysisReports";
 import FinancialSummaryDashboard from "./pages/reports/accounting/FinancialSummaryDashboard";
 import ChartOfAccountsVertical from "./pages/reports/accounting/ChartOfAccountsVertical";
+import IFRSFinancialStatements from "./pages/reports/accounting/IFRSFinancialStatements";
 import CustomerStatementPage from "./pages/reports/CustomerStatementPage";
 
 // Sales Workflow (BD VAT)
@@ -258,6 +259,7 @@ const App = () => (
                 <Route path="/reports/financial-summary" element={<P perm="reports.view"><FinancialSummaryDashboard /></P>} />
                 <Route path="/reports/trial-balance" element={<P perm="accounts.view"><TrialBalanceReport /></P>} />
                 <Route path="/reports/chart-of-accounts-vertical" element={<P perm="accounts.view"><ChartOfAccountsVertical /></P>} />
+                <Route path="/reports/ifrs-financial-statements" element={<P perm="accounts.view"><IFRSFinancialStatements /></P>} />
                 <Route path="/reports/profit-loss" element={<P perm="accounts.view"><ProfitLossReport /></P>} />
                 <Route path="/reports/balance-sheet" element={<P perm="accounts.view"><BalanceSheetReport /></P>} />
                 <Route path="/reports/general-ledger" element={<P perm="accounts.view"><GeneralLedgerReport /></P>} />
