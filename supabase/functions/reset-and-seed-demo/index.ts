@@ -40,16 +40,18 @@ Deno.serve(async (req) => {
     const resetGroups: string[][] = [
       ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","purchase_items","purchase_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","bom_items","fund_transactions","employee_fund_settings","overtime_records","leave_requests","attendance","employee_documents","employee_bank_info","employee_education","employee_experience","employee_emergency_contacts","salary_structures","face_data","biometric_logs","payroll","party_notes","audit_log","login_logs","backup_history","messages","conversation_participants",
         "tds_entries","invoice_payments","invoice_challans","sales_invoice_items_v2","customer_receives","ho_receives","dispatch_po_allocations","vat_challan_items","dispatch_items","purchase_order_items"],
-      ["acc_vouchers","party_payments","sales_invoices","sales_returns","purchases","purchase_returns","production_entries","bill_of_materials","employees","conversations","number_sequences",
-        "sales_invoices_v2","delivery_challans","vat_challans","dispatches","purchase_orders"],
+      // Returns must be deleted BEFORE their parent invoices/purchases
+      ["sales_returns","purchase_returns"],
+      ["sales_invoices_v2","delivery_challans","vat_challans","dispatches","purchase_orders"],
+      ["acc_vouchers","party_payments","sales_invoices","purchases","production_entries","bill_of_materials","employees","conversations","number_sequences"],
       ["customers","suppliers","item_master","products","raw_materials"],
       ["item_categories","units","warehouses","product_categories"],
     ];
     for (const grp of resetGroups) {
-      await Promise.all(grp.map(async (t) => {
+      for (const t of grp) {
         const { error } = await db.from(t).delete().not("id", "is", null);
         if (error) log.push(`del ${t}: ${error.message}`);
-      }));
+      }
     }
     await db.from("profiles").delete().not("employee_id", "is", null);
 
