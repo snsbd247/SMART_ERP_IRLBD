@@ -12,8 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { DollarSign, Play, CheckCircle, FileText, Printer } from "lucide-react";
+import { DollarSign, Play, CheckCircle, FileText, Printer, FileSpreadsheet } from "lucide-react";
 import { voucherApi } from "@/lib/voucher-api";
+import * as XLSX from "xlsx";
 
 interface Employee {
   id: string; employee_code: string; first_name: string; last_name: string;
@@ -352,6 +353,86 @@ export default function PayrollPage() {
     printWindow.document.close();
   };
 
+  const downloadExcel = () => {
+    if (payroll.length === 0) { toast.error("No payroll data to export"); return; }
+    const wb = XLSX.utils.book_new();
+
+    // Group by branch -> section
+    const branchMap = new Map<string, { branchName: string; sections: Map<string, { secName: string; records: PayrollRecord[] }> }>();
+    payroll.forEach(p => {
+      const emp = employees.find(e => e.id === p.employee_id);
+      const brId = emp?.branch_id || "unassigned";
+      const brName = branches.find(b => b.id === brId)?.name || "Unassigned Branch";
+      const secId = emp?.section_id || "no-section";
+      const secName = sections.find(s => s.id === secId)?.name || "General";
+      if (!branchMap.has(brId)) branchMap.set(brId, { branchName: brName, sections: new Map() });
+      const bg = branchMap.get(brId)!;
+      if (!bg.sections.has(secId)) bg.sections.set(secId, { secName, records: [] });
+      bg.sections.get(secId)!.records.push(p);
+    });
+
+    // Summary sheet (all records flat)
+    const summary: any[][] = [
+      [`Salary Sheet — ${months[selMonth - 1]} ${selYear}`],
+      [],
+      ["Branch", "Section", "Code", "Employee", "Basic", "Allowances", "Deductions", "Net Salary", "Status"],
+    ];
+    let grandTotal = 0;
+    branchMap.forEach(bg => {
+      bg.sections.forEach(sg => {
+        sg.records.forEach(p => {
+          const emp = employees.find(e => e.id === p.employee_id);
+          summary.push([
+            bg.branchName, sg.secName, emp?.employee_code || "",
+            getEmpName(p.employee_id),
+            Number(p.basic_salary), Number(p.allowances),
+            Number(p.deductions), Number(p.net_salary), p.status,
+          ]);
+          grandTotal += Number(p.net_salary);
+        });
+      });
+    });
+    summary.push([], ["", "", "", "", "", "", "GRAND TOTAL", grandTotal, ""]);
+    const ws = XLSX.utils.aoa_to_sheet(summary);
+    ws["!cols"] = [{ wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 25 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, ws, "Summary");
+
+    // Per-branch sheet
+    branchMap.forEach((bg, brId) => {
+      const rows: any[][] = [
+        [`${bg.branchName} — Salary Sheet`, `${months[selMonth - 1]} ${selYear}`],
+        [],
+      ];
+      let brTotal = 0;
+      bg.sections.forEach(sg => {
+        rows.push([`Section: ${sg.secName}`]);
+        rows.push(["Code", "Employee", "Basic", "Allowances", "Deductions", "Net Salary", "Status"]);
+        let secTotal = 0;
+        sg.records.forEach(p => {
+          const emp = employees.find(e => e.id === p.employee_id);
+          rows.push([
+            emp?.employee_code || "", getEmpName(p.employee_id),
+            Number(p.basic_salary), Number(p.allowances),
+            Number(p.deductions), Number(p.net_salary), p.status,
+          ]);
+          secTotal += Number(p.net_salary);
+        });
+        rows.push(["", "Section Total", "", "", "", secTotal, ""]);
+        rows.push([]);
+        brTotal += secTotal;
+      });
+      rows.push(["", "BRANCH TOTAL", "", "", "", brTotal, ""]);
+      const bws = XLSX.utils.aoa_to_sheet(rows);
+      bws["!cols"] = [{ wch: 12 }, { wch: 25 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 10 }];
+      // Sheet name max 31 chars, no special chars
+      const safeName = bg.branchName.replace(/[\\/?*[\]:]/g, "").slice(0, 28) || `Branch_${brId.slice(0, 4)}`;
+      XLSX.utils.book_append_sheet(wb, bws, safeName);
+    });
+
+    XLSX.writeFile(wb, `Salary-Sheet_${months[selMonth - 1]}_${selYear}.xlsx`);
+    toast.success("Salary sheet downloaded");
+  };
+
   const saveStructure = async () => {
     if (!structForm.employee_id) { toast.error("Select employee"); return; }
     const total = structForm.basic_salary + structForm.house_rent + structForm.medical_allowance + structForm.other_allowance;
@@ -534,27 +615,32 @@ export default function PayrollPage() {
               )}
               {payroll.length > 0 && (
                 <div className="flex justify-between items-center mt-3 pt-3 border-t">
-                  <Button variant="outline" size="sm" onClick={() => {
-                    if (!sheetRef.current) return;
-                    const w = window.open("", "_blank");
-                    if (!w) return;
-                    w.document.write(`<html><head><title>Salary Sheet - ${months[selMonth - 1]} ${selYear}</title>
-                      <style>body{font-family:Arial,sans-serif;padding:20px;color:#000;font-size:12px}
-                      table{width:100%;border-collapse:collapse;margin-bottom:12px}
-                      td,th{padding:6px 8px;border:1px solid #999;text-align:left}
-                      .text-right{text-align:right}
-                      h3{background:#e5e7eb;padding:8px;margin:16px 0 4px;border:1px solid #999}
-                      h4{background:#f3f4f6;padding:4px 8px;margin:8px 0 0;border:1px solid #ccc;font-size:13px}
-                      .print\\:hidden{display:none}
-                      @media print{h3,h4{break-inside:avoid}}
-                      </style></head><body>
-                      <h2 style="text-align:center">Salary Sheet — ${months[selMonth - 1]} ${selYear}</h2>
-                      ${sheetRef.current.innerHTML}
-                      <script>window.print();window.close();</script></body></html>`);
-                    w.document.close();
-                  }}>
-                    <Printer className="w-4 h-4 mr-1" />Print Sheet
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={downloadExcel}>
+                      <FileSpreadsheet className="w-4 h-4 mr-1" />Download Excel
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => {
+                      if (!sheetRef.current) return;
+                      const w = window.open("", "_blank");
+                      if (!w) return;
+                      w.document.write(`<html><head><title>Salary Sheet - ${months[selMonth - 1]} ${selYear}</title>
+                        <style>body{font-family:Arial,sans-serif;padding:20px;color:#000;font-size:12px}
+                        table{width:100%;border-collapse:collapse;margin-bottom:12px}
+                        td,th{padding:6px 8px;border:1px solid #999;text-align:left}
+                        .text-right{text-align:right}
+                        h3{background:#e5e7eb;padding:8px;margin:16px 0 4px;border:1px solid #999}
+                        h4{background:#f3f4f6;padding:4px 8px;margin:8px 0 0;border:1px solid #ccc;font-size:13px}
+                        .print\\:hidden{display:none}
+                        @media print{h3,h4{break-inside:avoid}}
+                        </style></head><body>
+                        <h2 style="text-align:center">Salary Sheet — ${months[selMonth - 1]} ${selYear}</h2>
+                        ${sheetRef.current.innerHTML}
+                        <script>window.print();window.close();</script></body></html>`);
+                      w.document.close();
+                    }}>
+                      <Printer className="w-4 h-4 mr-1" />Print Sheet
+                    </Button>
+                  </div>
                   <span className="text-sm font-bold text-foreground">Total Net: {formatAmount(totalNet)}</span>
                 </div>
               )}
