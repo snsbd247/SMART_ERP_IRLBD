@@ -71,7 +71,7 @@ const navGroups: NavGroup[] = [
     children: [
       { to: "/purchase", label: "Purchase Entry", icon: ShoppingCart, permission: "purchase.view" },
       { to: "/purchase/returns", label: "Purchase Return", icon: ArrowLeftRight, permission: "purchase.view" },
-      { to: "/suppliers", label: "Suppliers", icon: Truck, permission: "purchase.view" },
+      { to: "/suppliers", label: "Suppliers", icon: Truck, permission: "suppliers.view,purchase.view" },
       { to: "/reports/accounts-payable", label: "Accounts Payable", icon: Truck, permission: "purchase.view" },
       { to: "/reports/ap-aging", label: "AP Aging", icon: Clock, permission: "purchase.view" },
       { to: "/reports/expense-analysis", label: "Expense Analysis", icon: FileText, permission: "purchase.view" },
