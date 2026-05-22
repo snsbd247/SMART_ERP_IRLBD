@@ -63,16 +63,48 @@ const IFRSFinancialStatements = () => {
 
   useEffect(() => {
     (async () => {
-      const [a, m] = await Promise.all([
+      const [a, m, fy] = await Promise.all([
         supabase.from("chart_of_accounts").select("id, account_name, account_code, account_type, opening_balance, opening_balance_type"),
         supabase.from("ifrs_account_mapping").select("account_id, ifrs_line"),
+        supabase.from("financial_years").select("id, name, start_date, end_date").order("start_date", { ascending: false }),
       ]);
       setAccounts((a.data || []) as Account[]);
       const om = new Map<string, IFRSLine>();
       (m.data || []).forEach((r: any) => om.set(r.account_id, r.ifrs_line));
       setOverrides(om);
+      const fys = (fy.data || []) as any[];
+      setFinancialYears(fys);
+      // Auto-select active FY vs previous if available
+      if (fys.length >= 2) {
+        setCurFrom(fys[0].start_date); setCurTo(fys[0].end_date);
+        setPrvFrom(fys[1].start_date); setPrvTo(fys[1].end_date);
+        setPreset("fy_compare");
+      } else if (fys.length === 1) {
+        setCurFrom(fys[0].start_date); setCurTo(fys[0].end_date);
+      }
     })();
   }, []);
+
+  const applyPreset = (val: string) => {
+    setPreset(val);
+    const t = new Date();
+    if (val === "fy_compare" && financialYears.length >= 2) {
+      setCurFrom(financialYears[0].start_date); setCurTo(financialYears[0].end_date);
+      setPrvFrom(financialYears[1].start_date); setPrvTo(financialYears[1].end_date);
+    } else if (val === "last_12m") {
+      const end = new Date(t); const start = new Date(t); start.setFullYear(start.getFullYear() - 1);
+      const pEnd = new Date(start); pEnd.setDate(pEnd.getDate() - 1);
+      const pStart = new Date(pEnd); pStart.setFullYear(pStart.getFullYear() - 1); pStart.setDate(pStart.getDate() + 1);
+      setCurFrom(start.toISOString().slice(0, 10)); setCurTo(end.toISOString().slice(0, 10));
+      setPrvFrom(pStart.toISOString().slice(0, 10)); setPrvTo(pEnd.toISOString().slice(0, 10));
+    } else if (val === "ytd") {
+      const start = new Date(t.getFullYear(), 0, 1);
+      const pStart = new Date(t.getFullYear() - 1, 0, 1);
+      const pEnd = new Date(t.getFullYear() - 1, t.getMonth(), t.getDate());
+      setCurFrom(start.toISOString().slice(0, 10)); setCurTo(t.toISOString().slice(0, 10));
+      setPrvFrom(pStart.toISOString().slice(0, 10)); setPrvTo(pEnd.toISOString().slice(0, 10));
+    }
+  };
 
   const getLine = (acc: Account): IFRSLine =>
     overrides.get(acc.id) || defaultMapping(acc.account_name, acc.account_type, acc.account_code);
