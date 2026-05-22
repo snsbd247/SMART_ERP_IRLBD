@@ -349,7 +349,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         });
 
         // ─── Internal Messaging ─────────────────────────────────
-        Route::prefix('messaging')->group(function () {
+        Route::middleware('permission:messaging.view')->prefix('messaging')->group(function () {
             Route::get('conversations', [\App\Http\Controllers\Messaging\MessageController::class, 'conversations']);
             Route::post('conversations', [\App\Http\Controllers\Messaging\MessageController::class, 'createConversation']);
             Route::get('conversations/{id}/messages', [\App\Http\Controllers\Messaging\MessageController::class, 'messages']);
