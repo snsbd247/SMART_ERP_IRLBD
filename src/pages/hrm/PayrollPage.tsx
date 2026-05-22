@@ -559,9 +559,8 @@ export default function PayrollPage() {
                 </div>
               )}
             </CardContent>
-
-            </CardContent>
           </Card>
+
         </TabsContent>
 
         <TabsContent value="structures">
