@@ -42,8 +42,12 @@ export const ProtectedRoute = ({
 
   if (!user) return <Navigate to="/login" replace />;
 
-  if (requiredPermission && !hasPermission(requiredPermission)) {
-    return <AccessState title="Access Denied" message="You don't have permission to access this page." />;
+  if (requiredPermission) {
+    const perms = requiredPermission.split(",").map((p) => p.trim()).filter(Boolean);
+    const allowed = perms.some((p) => hasPermission(p));
+    if (!allowed) {
+      return <AccessState title="Access Denied" message="You don't have permission to access this page." />;
+    }
   }
 
   if ((requireSuperAdmin || requireAdmin) && !isSuperAdmin) {
