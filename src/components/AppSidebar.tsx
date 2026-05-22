@@ -57,7 +57,7 @@ const navGroups: NavGroup[] = [
     children: [
       { to: "/sales", label: "Sales Invoice", icon: Receipt, permission: "sales.view" },
       { to: "/sales/returns", label: "Sales Return", icon: ArrowLeftRight, permission: "sales.view" },
-      { to: "/customers", label: "Customers", icon: UserCheck, permission: "sales.view" },
+      { to: "/customers", label: "Customers", icon: UserCheck, permission: "customers.view,sales.view" },
       { to: "/reports/accounts-receivable", label: "Accounts Receivable", icon: UserCheck, permission: "sales.view" },
       { to: "/reports/ar-aging", label: "AR Aging", icon: Clock, permission: "sales.view" },
       { to: "/reports/income-analysis", label: "Income Analysis", icon: TrendingUp, permission: "sales.view" },
@@ -71,7 +71,7 @@ const navGroups: NavGroup[] = [
     children: [
       { to: "/purchase", label: "Purchase Entry", icon: ShoppingCart, permission: "purchase.view" },
       { to: "/purchase/returns", label: "Purchase Return", icon: ArrowLeftRight, permission: "purchase.view" },
-      { to: "/suppliers", label: "Suppliers", icon: Truck, permission: "purchase.view" },
+      { to: "/suppliers", label: "Suppliers", icon: Truck, permission: "suppliers.view,purchase.view" },
       { to: "/reports/accounts-payable", label: "Accounts Payable", icon: Truck, permission: "purchase.view" },
       { to: "/reports/ap-aging", label: "AP Aging", icon: Clock, permission: "purchase.view" },
       { to: "/reports/expense-analysis", label: "Expense Analysis", icon: FileText, permission: "purchase.view" },
@@ -183,11 +183,11 @@ const navGroups: NavGroup[] = [
       { to: "/admin/backup", label: "Backup & Restore", icon: Database, permission: "backup.view" },
       { to: "/admin/audit-log", label: "Activity Logs", icon: Activity, permission: "audit_log.view" },
       { to: "/admin/diagnostics", label: "System Diagnostics", icon: Gauge, permission: "settings.view" },
-      { to: "/admin/numbering", label: "Document Numbering", icon: ScrollText, permission: "settings.view" },
-      { to: "/admin/shortcuts", label: "Page Shortcuts", icon: Keyboard, permission: "settings.view" },
+      { to: "/admin/numbering", label: "Document Numbering", icon: ScrollText, permission: "document_numbering.view,settings.view" },
+      { to: "/admin/shortcuts", label: "Page Shortcuts", icon: Keyboard, permission: "shortcuts.view,settings.view" },
       { to: "/admin/settings", label: "General Settings", icon: CircleDot, permission: "settings.view" },
-      { to: "/admin/sms", label: "SMS Integration", icon: MessageSquare, permission: "settings.view" },
-      { to: "/admin/branding", label: "Branding", icon: Palette, permission: "settings.view" },
+      { to: "/admin/sms", label: "SMS Integration", icon: MessageSquare, permission: "sms.view,settings.view" },
+      { to: "/admin/branding", label: "Branding", icon: Palette, permission: "branding.view,settings.view" },
     ],
   },
 ];

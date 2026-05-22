@@ -11,10 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Shield } from "lucide-react";
 
-/** All permission modules — must match backend seeder & route middleware */
+/** Canonical permission modules — must match backend seeder & route middleware */
 const MODULES: { key: string; label: string; group: string }[] = [
   // Core
   { key: "dashboard", label: "Dashboard", group: "Core" },
+  { key: "messaging", label: "Messaging", group: "Core" },
   // Accounting
   { key: "accounts", label: "Chart of Accounts", group: "Accounting" },
   { key: "journal", label: "Journal Voucher", group: "Accounting" },
@@ -24,11 +25,18 @@ const MODULES: { key: string; label: string; group: string }[] = [
   // Business
   { key: "sales", label: "Sales", group: "Business" },
   { key: "purchase", label: "Purchase", group: "Business" },
+  { key: "customers", label: "Customers", group: "Business" },
+  { key: "suppliers", label: "Suppliers", group: "Business" },
   { key: "inventory", label: "Inventory", group: "Business" },
   { key: "manufacturing", label: "Manufacturing", group: "Business" },
   { key: "bank", label: "Bank & Cash", group: "Business" },
   // HRM
   { key: "hrm", label: "HRM & Payroll", group: "HRM" },
+  { key: "employees", label: "Employees", group: "HRM" },
+  { key: "attendance", label: "Attendance", group: "HRM" },
+  { key: "leave", label: "Leave", group: "HRM" },
+  { key: "payroll", label: "Payroll", group: "HRM" },
+  { key: "portal", label: "Employee Portal", group: "HRM" },
   // Reports
   { key: "reports", label: "Reports", group: "Reports" },
   // Administration
@@ -39,6 +47,11 @@ const MODULES: { key: string; label: string; group: string }[] = [
   { key: "settings", label: "Settings", group: "Administration" },
   { key: "audit_log", label: "Audit Log", group: "Administration" },
   { key: "backup", label: "Backup", group: "Administration" },
+  { key: "sms", label: "SMS Settings", group: "Administration" },
+  { key: "branding", label: "Branding", group: "Administration" },
+  { key: "shortcuts", label: "Page Shortcuts", group: "Administration" },
+  { key: "document_numbering", label: "Document Numbering", group: "Administration" },
+  { key: "modules", label: "Module Settings", group: "Administration" },
 ];
 
 const PERMISSION_KEYS = ["can_view", "can_add", "can_edit", "can_delete"] as const;
