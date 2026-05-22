@@ -12,6 +12,7 @@ import { Plus, BookOpen, Filter } from "lucide-react";
 import { useAccountBalances, AccountWithBalance } from "@/hooks/useAccountBalances";
 import { AccountTreeTable } from "@/components/accounts/AccountTreeTable";
 import { AccountLedgerDialog } from "@/components/accounts/AccountLedgerDialog";
+import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
 
 const ACCOUNT_TYPES = ["asset", "liability", "income", "expense", "equity"] as const;
 
