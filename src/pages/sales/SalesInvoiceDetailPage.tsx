@@ -94,6 +94,73 @@ const SalesInvoiceDetailPage = () => {
 
   useEffect(() => { load(); }, [id]);
 
+  const submitPayment = async () => {
+    if (!id || !invoice?.customer_id) return;
+    const amt = Number(pay.amount);
+    if (!amt || amt <= 0) {
+      toast({ title: "Enter amount", variant: "destructive" });
+      return;
+    }
+    if (amt > dueAmount + 0.01) {
+      toast({ title: "Exceeds due", description: `Due is ${dueAmount.toFixed(2)}`, variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      // 1) Generate payment_number
+      const year = new Date().getFullYear();
+      const { data: seq } = await supabase.from("number_sequences").select("*").eq("prefix", "RCP").eq("year", year).maybeSingle();
+      let serial = 1;
+      if (seq) {
+        serial = (Number((seq as any).current_number) || 0) + 1;
+        await supabase.from("number_sequences").update({ current_number: serial } as any).eq("id", (seq as any).id);
+      } else {
+        await supabase.from("number_sequences").insert([{ prefix: "RCP", year, current_number: 1, description: "Receipt" } as any]);
+      }
+      const payment_number = `RCP-${year}-${String(serial).padStart(5, "0")}`;
+
+      // 2) Insert party_payment
+      const { data: payData, error: payErr } = await supabase.from("party_payments" as any).insert({
+        party_type: "customer",
+        party_id: invoice.customer_id,
+        payment_number,
+        payment_date: pay.payment_date,
+        amount: amt,
+        payment_method: pay.payment_method,
+        reference: pay.reference || null,
+        notes: pay.notes || null,
+        created_by: user?.id || null,
+      } as any).select().single();
+      if (payErr) throw payErr;
+
+      // 3) Insert allocation to this invoice
+      const { error: aErr } = await supabase.from("payment_allocations" as any).insert({
+        payment_id: (payData as any).id,
+        invoice_type: "sales_invoice",
+        invoice_id: id,
+        allocated_amount: amt,
+      } as any);
+      if (aErr) throw aErr;
+
+      toast({ title: "Payment recorded", description: `${payment_number} • ${amt.toFixed(2)}` });
+      setPayOpen(false);
+      setPay({ payment_date: new Date().toISOString().split("T")[0], amount: "", payment_method: "cash", reference: "", notes: "" });
+      load();
+    } catch (e: any) {
+      toast({ title: "Failed", description: e?.message || "Could not record payment", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const deletePayment = async (paymentId: string) => {
+    if (!confirm("Delete this payment? Allocation will be removed.")) return;
+    const { error } = await supabase.from("party_payments" as any).delete().eq("id", paymentId);
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    toast({ title: "Payment deleted" });
+    load();
+  };
+
   if (loading) return (
     <div className="p-6 space-y-4 max-w-5xl mx-auto">
       <Skeleton className="h-10 w-72" />
