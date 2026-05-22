@@ -176,8 +176,9 @@ class PaymentAllocationService
         $isCustomer = $payment->party_type === 'customer';
         $method = strtolower($payment->payment_method);
 
-        $creditAccount = $isCustomer ? 'Accounts Receivable' : 'Cash';
-        $debitAccount = $isCustomer ? ($method === 'bank' ? 'Bank' : 'Cash') : 'Accounts Payable';
+        $creditAccount = $isCustomer ? 'Accounts Receivable' : ($method === 'bank' ? 'Bank Account' : 'Cash in Hand');
+        $debitAccount  = $isCustomer ? ($method === 'bank' ? 'Bank Account' : 'Cash in Hand') : 'Accounts Payable';
+
 
         $description = ($isCustomer ? 'Customer' : 'Supplier') . " Payment - {$payment->reference}";
 
