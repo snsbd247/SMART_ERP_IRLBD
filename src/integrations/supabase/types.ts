@@ -742,6 +742,50 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_receives: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          delivery_challan_id: string
+          id: string
+          notes: string | null
+          receive_date: string
+          received_by_name: string | null
+          scan_url: string | null
+          transport_info: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          delivery_challan_id: string
+          id?: string
+          notes?: string | null
+          receive_date?: string
+          received_by_name?: string | null
+          scan_url?: string | null
+          transport_info?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          delivery_challan_id?: string
+          id?: string
+          notes?: string | null
+          receive_date?: string
+          received_by_name?: string | null
+          scan_url?: string | null
+          transport_info?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_receives_delivery_challan_id_fkey"
+            columns: ["delivery_challan_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_challans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -771,6 +815,72 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      delivery_challans: {
+        Row: {
+          attachment_url: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          dc_date: string
+          dc_number: string
+          id: string
+          product_id: string
+          qty: number
+          status: string
+          updated_at: string
+          vat_challan_id: string
+          vat_challan_item_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          dc_date?: string
+          dc_number: string
+          id?: string
+          product_id: string
+          qty?: number
+          status?: string
+          updated_at?: string
+          vat_challan_id: string
+          vat_challan_item_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          dc_date?: string
+          dc_number?: string
+          id?: string
+          product_id?: string
+          qty?: number
+          status?: string
+          updated_at?: string
+          vat_challan_id?: string
+          vat_challan_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_challans_vat_challan_id_fkey"
+            columns: ["vat_challan_id"]
+            isOneToOne: false
+            referencedRelation: "vat_challans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_challans_vat_challan_item_id_fkey"
+            columns: ["vat_challan_item_id"]
+            isOneToOne: false
+            referencedRelation: "vat_challan_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       departments: {
         Row: {
@@ -823,6 +933,175 @@ export type Database = {
           name?: string
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      dispatch_items: {
+        Row: {
+          dispatch_id: string
+          id: string
+          product_id: string
+          qty: number
+          sort_order: number
+        }
+        Insert: {
+          dispatch_id: string
+          id?: string
+          product_id: string
+          qty?: number
+          sort_order?: number
+        }
+        Update: {
+          dispatch_id?: string
+          id?: string
+          product_id?: string
+          qty?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_items_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "dispatches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatch_po_allocations: {
+        Row: {
+          allocated_qty: number
+          created_at: string
+          dispatch_item_id: string
+          id: string
+          po_id: string
+          po_item_id: string
+        }
+        Insert: {
+          allocated_qty?: number
+          created_at?: string
+          dispatch_item_id: string
+          id?: string
+          po_id: string
+          po_item_id: string
+        }
+        Update: {
+          allocated_qty?: number
+          created_at?: string
+          dispatch_item_id?: string
+          id?: string
+          po_id?: string
+          po_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_po_allocations_dispatch_item_id_fkey"
+            columns: ["dispatch_item_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_po_allocations_po_item_id_fkey"
+            columns: ["po_item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_order_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatch_status_logs: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          dispatch_id: string
+          id: string
+          new_status: string
+          notes: string | null
+          old_status: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          dispatch_id: string
+          id?: string
+          new_status: string
+          notes?: string | null
+          old_status?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          dispatch_id?: string
+          id?: string
+          new_status?: string
+          notes?: string | null
+          old_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_status_logs_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "dispatches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatches: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          deleted_at: string | null
+          dispatch_date: string
+          dispatch_number: string
+          driver_name: string | null
+          driver_phone: string | null
+          financial_year_id: string | null
+          id: string
+          notes: string | null
+          status: string
+          total_qty: number
+          updated_at: string
+          vehicle_no: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          deleted_at?: string | null
+          dispatch_date?: string
+          dispatch_number: string
+          driver_name?: string | null
+          driver_phone?: string | null
+          financial_year_id?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          total_qty?: number
+          updated_at?: string
+          vehicle_no?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          deleted_at?: string | null
+          dispatch_date?: string
+          dispatch_number?: string
+          driver_name?: string | null
+          driver_phone?: string | null
+          financial_year_id?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          total_qty?: number
+          updated_at?: string
+          vehicle_no?: string | null
         }
         Relationships: []
       }
@@ -1316,6 +1595,190 @@ export type Database = {
           year?: number | null
         }
         Relationships: []
+      }
+      ho_receives: {
+        Row: {
+          created_at: string
+          delivery_challan_id: string
+          ho_receive_date: string
+          id: string
+          missing_flag: boolean
+          notes: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          delivery_challan_id: string
+          ho_receive_date?: string
+          id?: string
+          missing_flag?: boolean
+          notes?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          delivery_challan_id?: string
+          ho_receive_date?: string
+          id?: string
+          missing_flag?: boolean
+          notes?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ho_receives_delivery_challan_id_fkey"
+            columns: ["delivery_challan_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_challans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_challans: {
+        Row: {
+          created_at: string
+          id: string
+          invoice_id: string
+          vat_challan_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invoice_id: string
+          vat_challan_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          vat_challan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_challans_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "sales_invoices_v2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_challans_vat_challan_id_fkey"
+            columns: ["vat_challan_id"]
+            isOneToOne: false
+            referencedRelation: "vat_challans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_payments: {
+        Row: {
+          amount_received: number
+          bank_account_id: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          financial_year_id: string | null
+          id: string
+          invoice_id: string
+          mode: string
+          notes: string | null
+          payment_date: string
+          payment_number: string
+          reference: string | null
+          tds_amount: number
+          total_settled: number
+          voucher_id: string | null
+        }
+        Insert: {
+          amount_received?: number
+          bank_account_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          financial_year_id?: string | null
+          id?: string
+          invoice_id: string
+          mode?: string
+          notes?: string | null
+          payment_date?: string
+          payment_number: string
+          reference?: string | null
+          tds_amount?: number
+          total_settled?: number
+          voucher_id?: string | null
+        }
+        Update: {
+          amount_received?: number
+          bank_account_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          financial_year_id?: string | null
+          id?: string
+          invoice_id?: string
+          mode?: string
+          notes?: string | null
+          payment_date?: string
+          payment_number?: string
+          reference?: string | null
+          tds_amount?: number
+          total_settled?: number
+          voucher_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "sales_invoices_v2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_payments_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "acc_vouchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_status_logs: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          id: string
+          invoice_id: string
+          new_status: string
+          notes: string | null
+          old_status: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          invoice_id: string
+          new_status: string
+          notes?: string | null
+          old_status?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          new_status?: string
+          notes?: string | null
+          old_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_status_logs_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "sales_invoices_v2"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       item_categories: {
         Row: {
@@ -1958,6 +2421,44 @@ export type Database = {
           },
         ]
       }
+      po_amendments: {
+        Row: {
+          amended_by: string | null
+          created_at: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          po_id: string
+          reason: string | null
+        }
+        Insert: {
+          amended_by?: string | null
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          po_id: string
+          reason?: string | null
+        }
+        Update: {
+          amended_by?: string | null
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          po_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_amendments_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_categories: {
         Row: {
           created_at: string
@@ -2248,6 +2749,119 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      purchase_order_items: {
+        Row: {
+          id: string
+          line_subtotal: number
+          line_total: number
+          line_vat: number
+          po_id: string
+          product_id: string
+          qty_delivered: number
+          qty_ordered: number
+          qty_remaining: number
+          rate: number
+          sort_order: number
+          vat_pct: number
+        }
+        Insert: {
+          id?: string
+          line_subtotal?: number
+          line_total?: number
+          line_vat?: number
+          po_id: string
+          product_id: string
+          qty_delivered?: number
+          qty_ordered?: number
+          qty_remaining?: number
+          rate?: number
+          sort_order?: number
+          vat_pct?: number
+        }
+        Update: {
+          id?: string
+          line_subtotal?: number
+          line_total?: number
+          line_vat?: number
+          po_id?: string
+          product_id?: string
+          qty_delivered?: number
+          qty_ordered?: number
+          qty_remaining?: number
+          rate?: number
+          sort_order?: number
+          vat_pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          attachment_url: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          deleted_at: string | null
+          delivery_date: string | null
+          financial_year_id: string | null
+          grand_total: number
+          id: string
+          notes: string | null
+          po_date: string
+          po_number: string
+          status: string
+          subtotal: number
+          updated_at: string
+          vat_amount: number
+        }
+        Insert: {
+          attachment_url?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          deleted_at?: string | null
+          delivery_date?: string | null
+          financial_year_id?: string | null
+          grand_total?: number
+          id?: string
+          notes?: string | null
+          po_date?: string
+          po_number: string
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          vat_amount?: number
+        }
+        Update: {
+          attachment_url?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          deleted_at?: string | null
+          delivery_date?: string | null
+          financial_year_id?: string | null
+          grand_total?: number
+          id?: string
+          notes?: string | null
+          po_date?: string
+          po_number?: string
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          vat_amount?: number
+        }
+        Relationships: []
       }
       purchase_return_items: {
         Row: {
@@ -2586,6 +3200,63 @@ export type Database = {
           },
         ]
       }
+      sales_invoice_items_v2: {
+        Row: {
+          id: string
+          invoice_id: string
+          line_subtotal: number
+          line_total: number
+          product_id: string
+          qty: number
+          rate: number
+          sort_order: number
+          source_vat_challan_item_id: string | null
+          vat_amount: number
+          vat_pct: number
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          line_subtotal?: number
+          line_total?: number
+          product_id: string
+          qty?: number
+          rate?: number
+          sort_order?: number
+          source_vat_challan_item_id?: string | null
+          vat_amount?: number
+          vat_pct?: number
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          line_subtotal?: number
+          line_total?: number
+          product_id?: string
+          qty?: number
+          rate?: number
+          sort_order?: number
+          source_vat_challan_item_id?: string | null
+          vat_amount?: number
+          vat_pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_invoice_items_v2_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "sales_invoices_v2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_invoice_items_v2_source_vat_challan_item_id_fkey"
+            columns: ["source_vat_challan_item_id"]
+            isOneToOne: false
+            referencedRelation: "vat_challan_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_invoices: {
         Row: {
           branch_id: string | null
@@ -2642,6 +3313,83 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_invoices_v2: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          deleted_at: string | null
+          due_amount: number
+          financial_year_id: string | null
+          grand_total: number
+          id: string
+          invoice_date: string
+          invoice_number: string
+          mode: string
+          notes: string | null
+          paid_amount: number
+          status: string
+          subtotal: number
+          tds_amount: number
+          updated_at: string
+          vat_total: number
+          voucher_id: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          deleted_at?: string | null
+          due_amount?: number
+          financial_year_id?: string | null
+          grand_total?: number
+          id?: string
+          invoice_date?: string
+          invoice_number: string
+          mode?: string
+          notes?: string | null
+          paid_amount?: number
+          status?: string
+          subtotal?: number
+          tds_amount?: number
+          updated_at?: string
+          vat_total?: number
+          voucher_id?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          deleted_at?: string | null
+          due_amount?: number
+          financial_year_id?: string | null
+          grand_total?: number
+          id?: string
+          invoice_date?: string
+          invoice_number?: string
+          mode?: string
+          notes?: string | null
+          paid_amount?: number
+          status?: string
+          subtotal?: number
+          tds_amount?: number
+          updated_at?: string
+          vat_total?: number
+          voucher_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_invoices_v2_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "acc_vouchers"
             referencedColumns: ["id"]
           },
         ]
@@ -3272,6 +4020,70 @@ export type Database = {
         }
         Relationships: []
       }
+      tds_entries: {
+        Row: {
+          certificate_date: string | null
+          certificate_no: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          notes: string | null
+          payment_id: string | null
+          tds_amount: number
+          tds_pct: number
+          voucher_id: string | null
+        }
+        Insert: {
+          certificate_date?: string | null
+          certificate_no?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          notes?: string | null
+          payment_id?: string | null
+          tds_amount?: number
+          tds_pct?: number
+          voucher_id?: string | null
+        }
+        Update: {
+          certificate_date?: string | null
+          certificate_no?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          notes?: string | null
+          payment_id?: string | null
+          tds_amount?: number
+          tds_pct?: number
+          voucher_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tds_entries_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "sales_invoices_v2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tds_entries_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tds_entries_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "acc_vouchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       units: {
         Row: {
           abbreviation: string
@@ -3390,6 +4202,130 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vat_challan_items: {
+        Row: {
+          id: string
+          line_subtotal: number
+          line_total: number
+          product_id: string
+          qty: number
+          rate: number
+          sort_order: number
+          vat_amount: number
+          vat_challan_id: string
+          vat_pct: number
+        }
+        Insert: {
+          id?: string
+          line_subtotal?: number
+          line_total?: number
+          product_id: string
+          qty?: number
+          rate?: number
+          sort_order?: number
+          vat_amount?: number
+          vat_challan_id: string
+          vat_pct?: number
+        }
+        Update: {
+          id?: string
+          line_subtotal?: number
+          line_total?: number
+          product_id?: string
+          qty?: number
+          rate?: number
+          sort_order?: number
+          vat_amount?: number
+          vat_challan_id?: string
+          vat_pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vat_challan_items_vat_challan_id_fkey"
+            columns: ["vat_challan_id"]
+            isOneToOne: false
+            referencedRelation: "vat_challans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vat_challans: {
+        Row: {
+          attachment_url: string | null
+          branch_id: string | null
+          challan_date: string
+          challan_number: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          deleted_at: string | null
+          dispatch_id: string | null
+          driver_name: string | null
+          financial_year_id: string | null
+          grand_total: number
+          id: string
+          notes: string | null
+          source: string
+          status: string
+          subtotal: number
+          updated_at: string
+          vat_amount: number
+          vehicle_no: string | null
+        }
+        Insert: {
+          attachment_url?: string | null
+          branch_id?: string | null
+          challan_date?: string
+          challan_number: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          deleted_at?: string | null
+          dispatch_id?: string | null
+          driver_name?: string | null
+          financial_year_id?: string | null
+          grand_total?: number
+          id?: string
+          notes?: string | null
+          source?: string
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          vat_amount?: number
+          vehicle_no?: string | null
+        }
+        Update: {
+          attachment_url?: string | null
+          branch_id?: string | null
+          challan_date?: string
+          challan_number?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          deleted_at?: string | null
+          dispatch_id?: string | null
+          driver_name?: string | null
+          financial_year_id?: string | null
+          grand_total?: number
+          id?: string
+          notes?: string | null
+          source?: string
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          vat_amount?: number
+          vehicle_no?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vat_challans_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "dispatches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       voucher_entries: {
         Row: {
