@@ -106,12 +106,14 @@ export const swApi = {
         }
       }
     }
+    await audit("dispatch", "create", d, `Dispatch ${d.dispatch_number}`);
     return { data: d, error: null };
   },
   async setDispatchStatus(id: string, status: string, userId?: string) {
     const { data: cur } = await supabase.from("dispatches").select("status").eq("id", id).maybeSingle();
     await supabase.from("dispatches").update({ status }).eq("id", id);
     await supabase.from("dispatch_status_logs").insert({ dispatch_id: id, old_status: cur?.status, new_status: status, changed_by: userId });
+    await audit("dispatch", "update", { id, status }, `${cur?.status} → ${status}`);
     return { data: { id, status }, error: null };
   },
 
