@@ -39,6 +39,8 @@ const CustomersPage = () => {
   const [open, setOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
+  const [parentAccountId, setParentAccountId] = useState<string>("");
+  const [assetAccounts, setAssetAccounts] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
