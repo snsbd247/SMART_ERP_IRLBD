@@ -171,12 +171,15 @@ export default function EmployeesPage() {
       department_id: form.department_id || null,
       designation_id: form.designation_id || null,
       branch_id: form.branch_id || null,
+      section_id: form.section_id || null,
+      employee_category: form.employee_category || "staff",
       joining_date: form.joining_date,
       salary: form.salary,
       employment_type: form.employment_type,
       status: form.status,
       updated_at: new Date().toISOString(),
     };
+
 
     try {
       if (editId) {
