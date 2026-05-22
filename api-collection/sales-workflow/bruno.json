@@ -1,0 +1,24 @@
+meta {
+  name: Sales Workflow
+  type: collection
+  version: 1
+}
+
+# Bangladesh VAT Sales Workflow — Bruno collection
+
+Walks every endpoint of the workflow in order. Configure environment vars below,
+then run requests top-to-bottom. Each request stores the new resource id into
+the env for the next step.
+
+## Environment variables (per env)
+
+| Key             | Example                                |
+| --------------- | -------------------------------------- |
+| `base_url`      | `https://accounting.syncsolutionbd.com` |
+| `token`         | Sanctum bearer token                   |
+| `customer_id`   | UUID of a customer                     |
+| `product_id_1`  | UUID of a product                      |
+| `product_id_2`  | UUID of a second product               |
+
+After running the seeded `SalesWorkflowDemoSeeder` you can copy the demo IDs
+from the database (`acme_traders` customer, two `DEMO-*` products) into the env.
