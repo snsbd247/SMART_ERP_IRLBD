@@ -130,6 +130,15 @@ import InvoiceQueuePage from "./pages/sales-workflow/InvoiceQueuePage";
 import InvoicesPage from "./pages/sales-workflow/InvoicesPage";
 import InvoiceDetailPage from "./pages/sales-workflow/InvoiceDetailPage";
 import TdsRegisterPage from "./pages/sales-workflow/TdsRegisterPage";
+import SalesWorkflowReportsIndex from "./pages/sales-workflow/reports/SalesWorkflowReportsIndex";
+import PoVsDispatchReport from "./pages/sales-workflow/reports/PoVsDispatchReport";
+import PendingPoReport from "./pages/sales-workflow/reports/PendingPoReport";
+import ChallanStatusReport from "./pages/sales-workflow/reports/ChallanStatusReport";
+import VatRegisterReport from "./pages/sales-workflow/reports/VatRegisterReport";
+import InvoiceRegisterReport from "./pages/sales-workflow/reports/InvoiceRegisterReport";
+import InvoicePendingReport from "./pages/sales-workflow/reports/InvoicePendingReport";
+import CollectionReport from "./pages/sales-workflow/reports/CollectionReport";
+import ArAgingReport from "./pages/sales-workflow/reports/ArAgingReport";
 
 
 const queryClient = new QueryClient();
