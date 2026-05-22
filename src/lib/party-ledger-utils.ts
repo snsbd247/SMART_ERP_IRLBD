@@ -1,0 +1,100 @@
+import { supabase } from "@/integrations/supabase/client";
+
+const SUPPLIER_PARENT_NAMES = ["Supplier Payable", "Accounts Payable", "Sundry Creditors"];
+const CUSTOMER_PARENT_NAMES = ["Accounts Receivable", "Customer Receivable", "Sundry Debtors"];
+
+async function findOrCreateParent(
+  candidateNames: string[],
+  accountType: "asset" | "liability",
+  fallbackCode: string,
+): Promise<{ id: string; account_code: string } | null> {
+  // Try each candidate name (case-insensitive)
+  for (const n of candidateNames) {
+    const { data } = await supabase
+      .from("chart_of_accounts")
+      .select("id, account_code")
+      .ilike("account_name", n)
+      .eq("account_type", accountType)
+      .limit(1);
+    if (data && data.length > 0) return data[0] as any;
+  }
+
+  // Not found — create the first candidate as parent
+  const { data: created, error } = await supabase
+    .from("chart_of_accounts")
+    .insert({
+      account_code: fallbackCode,
+      account_name: candidateNames[0],
+      account_type: accountType,
+      opening_balance: 0,
+      opening_balance_type: accountType === "asset" ? "debit" : "credit",
+      is_active: true,
+    })
+    .select("id, account_code")
+    .single();
+  if (error) {
+    console.error("[party-ledger] failed to create parent", error);
+    return null;
+  }
+  return created as any;
+}
+
+async function nextChildCode(parentCode: string): Promise<string> {
+  const { data } = await supabase
+    .from("chart_of_accounts")
+    .select("account_code")
+    .ilike("account_code", `${parentCode}%`)
+    .order("account_code", { ascending: false })
+    .limit(50);
+
+  let max = 0;
+  (data || []).forEach((r: any) => {
+    const tail = String(r.account_code).slice(parentCode.length);
+    const n = parseInt(tail, 10);
+    if (!isNaN(n) && n > max) max = n;
+  });
+  const next = String(max + 1).padStart(3, "0");
+  return `${parentCode}${next}`;
+}
+
+async function createPartyLedger(
+  partyName: string,
+  candidateNames: string[],
+  accountType: "asset" | "liability",
+  fallbackParentCode: string,
+): Promise<void> {
+  try {
+    // Avoid duplicates by exact name
+    const { data: existing } = await supabase
+      .from("chart_of_accounts")
+      .select("id")
+      .eq("account_name", partyName)
+      .eq("account_type", accountType)
+      .limit(1);
+    if (existing && existing.length > 0) return;
+
+    const parent = await findOrCreateParent(candidateNames, accountType, fallbackParentCode);
+    if (!parent) return;
+
+    const code = await nextChildCode(parent.account_code);
+
+    const { error } = await supabase.from("chart_of_accounts").insert({
+      account_code: code,
+      account_name: partyName,
+      account_type: accountType,
+      parent_id: parent.id,
+      opening_balance: 0,
+      opening_balance_type: accountType === "asset" ? "debit" : "credit",
+      is_active: true,
+    });
+    if (error) console.error("[party-ledger] failed to create ledger", error);
+  } catch (e) {
+    console.error("[party-ledger] unexpected error", e);
+  }
+}
+
+export const createSupplierLedger = (name: string) =>
+  createPartyLedger(name, SUPPLIER_PARENT_NAMES, "liability", "2100");
+
+export const createCustomerLedger = (name: string) =>
+  createPartyLedger(name, CUSTOMER_PARENT_NAMES, "asset", "1200");
