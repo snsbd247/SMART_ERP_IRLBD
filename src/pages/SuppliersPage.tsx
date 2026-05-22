@@ -213,6 +213,21 @@ const SuppliersPage = () => {
             <div><Label>Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
             <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+            {!editingSupplier && (
+              <div>
+                <Label>Parent Ledger (Chart of Accounts)</Label>
+                <SearchableAccountSelect
+                  accounts={liabAccounts}
+                  value={parentAccountId || "__auto__"}
+                  onChange={(v) => setParentAccountId(v === "__auto__" ? "" : v)}
+                  allowAll
+                  allLabel="Auto (Supplier Payable)"
+                  allValue="__auto__"
+                  placeholder="Auto (Supplier Payable)"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Leave as Auto to place under Supplier Payable.</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
