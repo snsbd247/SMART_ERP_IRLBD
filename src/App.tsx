@@ -148,7 +148,7 @@ const App = () => (
                 <Route path="/vouchers" element={<VouchersPage />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/change-password" element={<ChangePasswordPage />} />
-                <Route path="/messaging" element={<MessagingPage />} />
+                <Route path="/messaging" element={<P perm="messaging.view"><MessagingPage /></P>} />
 
                 {/* ─── Accounts ─────────────────────────────────── */}
                 <Route path="/accounts/chart" element={<P perm="accounts.view"><ChartOfAccounts /></P>} />
@@ -158,15 +158,15 @@ const App = () => (
                 <Route path="/sales" element={<P perm="sales.view"><SalesPage /></P>} />
                 <Route path="/sales/invoices/:id" element={<P perm="sales.view"><SalesInvoiceDetailPage /></P>} />
                 <Route path="/sales/returns" element={<P perm="sales.view"><SalesPage /></P>} />
-                <Route path="/customers" element={<P perm="sales.view"><CustomersPage /></P>} />
-                <Route path="/customers/:id" element={<P perm="sales.view"><CustomerProfilePage /></P>} />
+                <Route path="/customers" element={<P perm="customers.view,sales.view"><CustomersPage /></P>} />
+                <Route path="/customers/:id" element={<P perm="customers.view,sales.view"><CustomerProfilePage /></P>} />
 
                 {/* ─── Purchase ─────────────────────────────────── */}
                 <Route path="/purchase" element={<P perm="purchase.view"><PurchasesPage /></P>} />
                 <Route path="/purchase/invoices/:id" element={<P perm="purchase.view"><PurchaseDetailPage /></P>} />
                 <Route path="/purchase/returns" element={<P perm="purchase.view"><PurchasesPage /></P>} />
-                <Route path="/suppliers" element={<P perm="purchase.view"><SuppliersPage /></P>} />
-                <Route path="/suppliers/:id" element={<P perm="purchase.view"><SupplierProfilePage /></P>} />
+                <Route path="/suppliers" element={<P perm="suppliers.view,purchase.view"><SuppliersPage /></P>} />
+                <Route path="/suppliers/:id" element={<P perm="suppliers.view,purchase.view"><SupplierProfilePage /></P>} />
 
                 {/* ─── Inventory ────────────────────────────────── */}
                 <Route path="/inventory" element={<P perm="inventory.view"><InventoryPage /></P>} />
