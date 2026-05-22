@@ -33,12 +33,25 @@ const SalesInvoiceDetailPage = () => {
   const navigate = useNavigate();
   const { fc } = useCurrency();
   const { settings } = useCompanySettings();
+  const { user } = useAuth();
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [items, setItems] = useState<any[]>([]);
   const [customerName, setCustomerName] = useState("");
   const [customerInfo, setCustomerInfo] = useState<any>(null);
   const [branchName, setBranchName] = useState("");
   const [paidAmount, setPaidAmount] = useState(0);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [printOpen, setPrintOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [pay, setPay] = useState({
+    payment_date: new Date().toISOString().split("T")[0],
+    amount: "",
+    payment_method: "cash",
+    reference: "",
+    notes: "",
+  });
   const [loading, setLoading] = useState(true);
   const [printOpen, setPrintOpen] = useState(false);
 
