@@ -4,16 +4,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { ReportHeader } from "@/components/ReportHeader";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { supabase } from "@/integrations/supabase/client";
-import { printReport, exportToExcel } from "@/lib/report-utils";
+import { printReport } from "@/lib/report-utils";
 import {
   IFRSLine, IFRS_LINE_LABEL, defaultMapping,
   PL_SECTIONS, BS_SECTIONS,
 } from "@/lib/ifrs-mapping";
 import { FileText, Printer, FileSpreadsheet, Loader2 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 type Account = {
   id: string; account_name: string; account_code: string;
@@ -44,6 +48,8 @@ const IFRSFinancialStatements = () => {
   const [curTo, setCurTo] = useState(defaultEnd);
   const [prvFrom, setPrvFrom] = useState(prevStart);
   const [prvTo, setPrvTo] = useState(prevEnd);
+  const [preset, setPreset] = useState<string>("custom");
+  const [financialYears, setFinancialYears] = useState<{ id: string; name: string; start_date: string; end_date: string }[]>([]);
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [overrides, setOverrides] = useState<Map<string, IFRSLine>>(new Map());
@@ -57,16 +63,48 @@ const IFRSFinancialStatements = () => {
 
   useEffect(() => {
     (async () => {
-      const [a, m] = await Promise.all([
+      const [a, m, fy] = await Promise.all([
         supabase.from("chart_of_accounts").select("id, account_name, account_code, account_type, opening_balance, opening_balance_type"),
         supabase.from("ifrs_account_mapping").select("account_id, ifrs_line"),
+        supabase.from("financial_years").select("id, name, start_date, end_date").order("start_date", { ascending: false }),
       ]);
       setAccounts((a.data || []) as Account[]);
       const om = new Map<string, IFRSLine>();
       (m.data || []).forEach((r: any) => om.set(r.account_id, r.ifrs_line));
       setOverrides(om);
+      const fys = (fy.data || []) as any[];
+      setFinancialYears(fys);
+      // Auto-select active FY vs previous if available
+      if (fys.length >= 2) {
+        setCurFrom(fys[0].start_date); setCurTo(fys[0].end_date);
+        setPrvFrom(fys[1].start_date); setPrvTo(fys[1].end_date);
+        setPreset("fy_compare");
+      } else if (fys.length === 1) {
+        setCurFrom(fys[0].start_date); setCurTo(fys[0].end_date);
+      }
     })();
   }, []);
+
+  const applyPreset = (val: string) => {
+    setPreset(val);
+    const t = new Date();
+    if (val === "fy_compare" && financialYears.length >= 2) {
+      setCurFrom(financialYears[0].start_date); setCurTo(financialYears[0].end_date);
+      setPrvFrom(financialYears[1].start_date); setPrvTo(financialYears[1].end_date);
+    } else if (val === "last_12m") {
+      const end = new Date(t); const start = new Date(t); start.setFullYear(start.getFullYear() - 1);
+      const pEnd = new Date(start); pEnd.setDate(pEnd.getDate() - 1);
+      const pStart = new Date(pEnd); pStart.setFullYear(pStart.getFullYear() - 1); pStart.setDate(pStart.getDate() + 1);
+      setCurFrom(start.toISOString().slice(0, 10)); setCurTo(end.toISOString().slice(0, 10));
+      setPrvFrom(pStart.toISOString().slice(0, 10)); setPrvTo(pEnd.toISOString().slice(0, 10));
+    } else if (val === "ytd") {
+      const start = new Date(t.getFullYear(), 0, 1);
+      const pStart = new Date(t.getFullYear() - 1, 0, 1);
+      const pEnd = new Date(t.getFullYear() - 1, t.getMonth(), t.getDate());
+      setCurFrom(start.toISOString().slice(0, 10)); setCurTo(t.toISOString().slice(0, 10));
+      setPrvFrom(pStart.toISOString().slice(0, 10)); setPrvTo(pEnd.toISOString().slice(0, 10));
+    }
+  };
 
   const getLine = (acc: Account): IFRSLine =>
     overrides.get(acc.id) || defaultMapping(acc.account_name, acc.account_type, acc.account_code);
@@ -216,6 +254,135 @@ const IFRSFinancialStatements = () => {
     printReport({ current: printRef.current } as any, title, settings?.company_name, {
       address: settings?.address || undefined, phone: settings?.phone || undefined, email: settings?.email || undefined,
     });
+  };
+
+  // ─── Excel Export (all 5 statements as separate sheets) ──────
+  const exportExcel = () => {
+    if (!data) return;
+    const { pl, bs } = data;
+    const wb = XLSX.utils.book_new();
+    const round = (n: number) => Math.round(n);
+
+    // P&L Sheet
+    const plRows: any[][] = [
+      ["Particulars", `Current (${curFrom} to ${curTo})`, `Previous (${prvFrom} to ${prvTo})`],
+      ["Revenue", round(pl.cur.revenue), round(pl.prv.revenue)],
+      ["Less: Cost of Goods Sold", round(pl.cur.cogs), round(pl.prv.cogs)],
+      ["Gross Profit", round(pl.cur.grossProfit), round(pl.prv.grossProfit)],
+      [],
+      ["Less: Administrative Expenses", round(pl.cur.admin), round(pl.prv.admin)],
+      ["Less: Selling & Distribution Expenses", round(pl.cur.selling), round(pl.prv.selling)],
+      ["Less: Financial Expenses", round(pl.cur.finance), round(pl.prv.finance)],
+      ["Total Operating Expenses", round(pl.cur.opExpense), round(pl.prv.opExpense)],
+      ["Operating Profit", round(pl.cur.opProfit), round(pl.prv.opProfit)],
+      [],
+      ["Add: Other Income", round(pl.cur.otherInc), round(pl.prv.otherInc)],
+      ["Profit/(Loss) before Tax", round(pl.cur.pbt), round(pl.prv.pbt)],
+      ["Less: Provision for Income Tax", round(pl.cur.tax), round(pl.prv.tax)],
+      ["Deferred Tax (Expense)/Income", round(pl.cur.defTax), round(pl.prv.defTax)],
+      ["Net Profit/(Loss) after Tax", round(pl.cur.netProfit), round(pl.prv.netProfit)],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(plRows), "P&L");
+
+    // Balance Sheet
+    const bsRows: any[][] = [["Particulars", `As at ${curTo}`, `As at ${prvTo}`], ["NON-CURRENT ASSETS"]];
+    BS_SECTIONS.non_current_assets.forEach(l => {
+      if (bs.curMap[l] || bs.prvMap[l]) bsRows.push([IFRS_LINE_LABEL[l], round(bs.curMap[l]?.total || 0), round(bs.prvMap[l]?.total || 0)]);
+    });
+    bsRows.push(["Total Non-Current Assets", round(bs.cur.ncAssets), round(bs.prv.ncAssets)], ["CURRENT ASSETS"]);
+    BS_SECTIONS.current_assets.forEach(l => {
+      if (bs.curMap[l] || bs.prvMap[l]) bsRows.push([IFRS_LINE_LABEL[l], round(bs.curMap[l]?.total || 0), round(bs.prvMap[l]?.total || 0)]);
+    });
+    bsRows.push(
+      ["Total Current Assets", round(bs.cur.cAssets), round(bs.prv.cAssets)],
+      ["TOTAL ASSETS", round(bs.cur.ncAssets + bs.cur.cAssets), round(bs.prv.ncAssets + bs.prv.cAssets)],
+      [], ["EQUITY"]
+    );
+    BS_SECTIONS.equity.forEach(l => {
+      if (bs.curMap[l] || bs.prvMap[l]) bsRows.push([IFRS_LINE_LABEL[l], round(bs.curMap[l]?.total || 0), round(bs.prvMap[l]?.total || 0)]);
+    });
+    bsRows.push(["Total Equity", round(bs.cur.equity), round(bs.prv.equity)], ["NON-CURRENT LIABILITIES"]);
+    BS_SECTIONS.non_current_liabilities.forEach(l => {
+      if (bs.curMap[l] || bs.prvMap[l]) bsRows.push([IFRS_LINE_LABEL[l], round(bs.curMap[l]?.total || 0), round(bs.prvMap[l]?.total || 0)]);
+    });
+    bsRows.push(["Total Non-Current Liabilities", round(bs.cur.ncLiab), round(bs.prv.ncLiab)], ["CURRENT LIABILITIES"]);
+    BS_SECTIONS.current_liabilities.forEach(l => {
+      if (bs.curMap[l] || bs.prvMap[l]) bsRows.push([IFRS_LINE_LABEL[l], round(bs.curMap[l]?.total || 0), round(bs.prvMap[l]?.total || 0)]);
+    });
+    bsRows.push(
+      ["Total Current Liabilities", round(bs.cur.cLiab), round(bs.prv.cLiab)],
+      ["TOTAL EQUITY & LIABILITIES", round(bs.cur.equity + bs.cur.ncLiab + bs.cur.cLiab), round(bs.prv.equity + bs.prv.ncLiab + bs.prv.cLiab)]
+    );
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bsRows), "Balance Sheet");
+
+    // Equity
+    const openShare = bs.prvMap["share_capital"]?.total || 0;
+    const openRE = (bs.prvMap["retained_earnings"]?.total || 0) - pl.prv.netProfit;
+    const openRev = bs.prvMap["revaluation_reserve"]?.total || 0;
+    const closeShare = bs.curMap["share_capital"]?.total || 0;
+    const closeRE = bs.curMap["retained_earnings"]?.total || 0;
+    const closeRev = bs.curMap["revaluation_reserve"]?.total || 0;
+    const eqRows = [
+      ["Particulars", "Share Capital", "Retained Earnings", "Revaluation Reserve", "Total"],
+      [`Opening Balance as on ${curFrom}`, round(openShare), round(openRE), round(openRev), round(openShare + openRE + openRev)],
+      ["Net Profit/(Loss) for the year", 0, round(pl.cur.netProfit), 0, round(pl.cur.netProfit)],
+      [`Closing Balance as on ${curTo}`, round(closeShare), round(closeRE), round(closeRev), round(closeShare + closeRE + closeRev)],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(eqRows), "Equity Changes");
+
+    // Cash Flow
+    const chg = (l: IFRSLine) => (bs.curMap[l]?.total || 0) - (bs.prvMap[l]?.total || 0);
+    const cfRows: any[][] = [
+      ["Particulars", `${curFrom} to ${curTo}`],
+      ["A. Cash Flow from Operating Activities"],
+      ["Profit/(Loss) after tax", round(pl.cur.netProfit)],
+      ["(Increase)/Decrease in Inventories", round(-chg("inventory"))],
+      ["(Increase)/Decrease in Accounts Receivable", round(-chg("accounts_receivable"))],
+      ["(Increase)/Decrease in Advance Income Tax", round(-chg("advance_income_tax"))],
+      ["(Increase)/Decrease in Advance, Deposit & Prepayments", round(-chg("advance_deposit"))],
+      ["Increase/(Decrease) in Accounts Payable", round(chg("accounts_payable"))],
+      ["Increase/(Decrease) in Other Liabilities", round(chg("other_liability"))],
+      ["Increase/(Decrease) in Provision for Income Tax", round(chg("provision_income_tax"))],
+      ["Increase/(Decrease) in VAT Current Account", round(chg("vat_payable"))],
+      ["B. Cash Flow from Investing Activities"],
+      ["Acquisition of PPE", round(-chg("ppe"))],
+      ["Acquisition of Intangible Assets", round(-chg("intangible_asset"))],
+      ["C. Cash Flow from Financing Activities"],
+      ["Long Term Loan movement", round(chg("long_term_loan"))],
+      ["Short Term Loan movement", round(chg("short_term_loan"))],
+      ["Share Capital Issue", round(chg("share_capital"))],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cfRows), "Cash Flow");
+
+    // Notes
+    const noteRows: any[][] = [["Note", "IFRS Line Item / Account", "Current", "Previous"]];
+    const allLines: IFRSLine[] = [
+      ...BS_SECTIONS.non_current_assets, ...BS_SECTIONS.current_assets,
+      ...BS_SECTIONS.equity, ...BS_SECTIONS.non_current_liabilities, ...BS_SECTIONS.current_liabilities,
+      "revenue", "cogs", "admin_expense", "selling_expense", "financial_expense", "other_income", "tax_provision", "deferred_tax",
+    ];
+    let n = 4;
+    allLines.forEach(l => {
+      const cur = bs.curMap[l] || pl.curMap[l];
+      const prv = bs.prvMap[l] || pl.prvMap[l];
+      if (!cur && !prv) return;
+      noteRows.push([`${n}.00`, IFRS_LINE_LABEL[l], "", ""]);
+      const names = new Set<string>();
+      (cur?.accounts || []).forEach(a => names.add(a.name));
+      (prv?.accounts || []).forEach(a => names.add(a.name));
+      names.forEach(name => {
+        noteRows.push([
+          "", name,
+          round(cur?.accounts.find(a => a.name === name)?.amount || 0),
+          round(prv?.accounts.find(a => a.name === name)?.amount || 0),
+        ]);
+      });
+      noteRows.push(["", "Total", round(cur?.total || 0), round(prv?.total || 0)]);
+      n++;
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(noteRows), "Notes");
+
+    XLSX.writeFile(wb, `IFRS-Financial-Statements_${curFrom}_to_${curTo}.xlsx`);
   };
 
   // ─── Render helpers ────────────────────────────────────────
@@ -499,13 +666,30 @@ const IFRSFinancialStatements = () => {
         <h1 className="text-xl font-semibold text-foreground">IFRS Financial Statements</h1>
       </div>
 
-      <Card><CardContent className="p-4 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-        <div><Label className="text-xs">Current From</Label><Input type="date" value={curFrom} onChange={e => setCurFrom(e.target.value)} /></div>
-        <div><Label className="text-xs">Current To</Label><Input type="date" value={curTo} onChange={e => setCurTo(e.target.value)} /></div>
-        <div><Label className="text-xs">Previous From</Label><Input type="date" value={prvFrom} onChange={e => setPrvFrom(e.target.value)} /></div>
-        <div><Label className="text-xs">Previous To</Label><Input type="date" value={prvTo} onChange={e => setPrvTo(e.target.value)} /></div>
-        <Button onClick={generate} disabled={loading}>
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Generate"}
+      <Card><CardContent className="p-4 grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+        <div className="md:col-span-2">
+          <Label className="text-xs">Period Preset</Label>
+          <Select value={preset} onValueChange={applyPreset}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="custom">Custom Range</SelectItem>
+              {financialYears.length >= 2 && (
+                <SelectItem value="fy_compare">
+                  {financialYears[0].name} vs {financialYears[1].name}
+                </SelectItem>
+              )}
+              <SelectItem value="last_12m">Last 12 Months vs Prior 12 Months</SelectItem>
+              <SelectItem value="ytd">YTD vs Same Period Last Year</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div><Label className="text-xs">Current From</Label><Input type="date" value={curFrom} onChange={e => { setCurFrom(e.target.value); setPreset("custom"); }} /></div>
+        <div><Label className="text-xs">Current To</Label><Input type="date" value={curTo} onChange={e => { setCurTo(e.target.value); setPreset("custom"); }} /></div>
+        <div><Label className="text-xs">Previous From</Label><Input type="date" value={prvFrom} onChange={e => { setPrvFrom(e.target.value); setPreset("custom"); }} /></div>
+        <div><Label className="text-xs">Previous To</Label><Input type="date" value={prvTo} onChange={e => { setPrvTo(e.target.value); setPreset("custom"); }} /></div>
+        <Button onClick={generate} disabled={loading} className="md:col-span-6 md:w-auto md:justify-self-end">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+          Generate Report
         </Button>
       </CardContent></Card>
 
@@ -524,8 +708,11 @@ const IFRSFinancialStatements = () => {
               <TabsTrigger value="notes">Notes</TabsTrigger>
             </TabsList>
             <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={exportExcel}>
+                <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel
+              </Button>
               <Button variant="outline" size="sm" onClick={() => handlePrint(`IFRS — ${activeTab.toUpperCase()}`)}>
-                <Printer className="w-4 h-4 mr-1" /> Print
+                <Printer className="w-4 h-4 mr-1" /> Print / PDF
               </Button>
             </div>
           </div>

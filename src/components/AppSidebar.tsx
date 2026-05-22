@@ -12,7 +12,7 @@ import {
   ArrowLeftRight, Calendar, Activity, Menu, X, CircleDot, Truck, UserCheck,
   Briefcase, Clock, CalendarDays, DollarSign, FileCheck, BadgeCheck, User,
   Fingerprint, ScanFace, Timer, Gauge, Keyboard, Palette, MessageSquare,
-  Mail, Factory,
+  Mail, Factory, Settings2,
 } from "lucide-react";
 import { useBranding } from "@/contexts/BrandingContext";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ const navGroups: NavGroup[] = [
       { to: "/accounts/chart", label: "Chart of Accounts", icon: BookOpen, permission: "accounts.view" },
       { to: "/reports/chart-of-accounts-vertical", label: "CoA — Vertical Report", icon: BookOpen, permission: "accounts.view" },
       { to: "/reports/ifrs-financial-statements", label: "IFRS Financial Statements", icon: FileText, permission: "accounts.view" },
+      { to: "/admin/ifrs-mapping", label: "IFRS Account Mapping", icon: Settings2, permission: "accounts.view" },
       { to: "/accounts/vouchers", label: "Accounting Vouchers", icon: FileText, permission: "journal.view,payment.view,receipt.view,contra.view" },
       { to: "/reports/trial-balance", label: "Trial Balance", icon: FileText, permission: "accounts.view" },
       { to: "/reports/profit-loss", label: "Profit & Loss", icon: TrendingUp, permission: "accounts.view" },
