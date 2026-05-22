@@ -13,6 +13,7 @@ class InvoicePaymentService
     public function __construct(
         private NumberSequenceService $seq,
         private AccountingService $accountingService,
+        private FinancialPeriodGuard $period,
     ) {}
 
     /**
@@ -22,6 +23,7 @@ class InvoicePaymentService
      */
     public function recordPayment(array $data): InvoicePayment
     {
+        $this->period->assertOpen($data['payment_date'] ?? null, 'Payment');
         return DB::transaction(function () use ($data) {
             $invoice = SalesInvoiceV2::lockForUpdate()->findOrFail($data['invoice_id']);
             $received = (float) $data['amount_received'];
