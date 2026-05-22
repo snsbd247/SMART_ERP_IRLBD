@@ -613,6 +613,146 @@ Deno.serve(async (req) => {
     await bulk("production_entries", prodEntries);
     await bulk("production_materials", prodMats);
 
+    // ===== Sales Workflow (BD VAT): PO → Dispatch → VAT Challan → DC → Receive → Invoice v2 → Payment + TDS =====
+    const POs: any[] = [], POitems: any[] = [];
+    const DSPs: any[] = [], DSPitems: any[] = [], DSPallocs: any[] = [];
+    const VCHs: any[] = [], VCHitems: any[] = [];
+    const DCs: any[] = [], CRs: any[] = [], HRs: any[] = [];
+    const INV2: any[] = [], INV2items: any[] = [], INVCHs: any[] = [];
+    const IPAYs: any[] = [], TDSs: any[] = [];
+    let poc=0, dspc=0, vchc=0, dcc=0, inv2c=0, ipayc=0, tdsc=0;
+
+    const vehicles = ["DHK-METRO-1234","DHK-METRO-5678","CTG-METRO-9012","DHK-METRO-3456","CTG-METRO-7890"];
+    const drivers  = ["Karim Mia","Rahim Uddin","Salam Hossain","Jamal Khan","Nasir Ahmed"];
+
+    for (let d = new Date(fyStart); d <= end; d.setDate(d.getDate()+7)) {
+      const cust = pick(customers);
+      const its  = pickN(products, RI(2,4));
+      const poDate = ymd(d);
+      const delDate = ymd(new Date(d.getTime() + RI(2,7)*86400000));
+      const poId = U(); poc++;
+      const poNum = `PO-${fyTag}-${String(poc).padStart(5,"0")}`;
+      let poSub = 0, poVat = 0;
+      const poiData: any[] = [];
+      its.forEach((p,idx) => {
+        const qty = RI(20,80), rate = p.sp, sub = qty*rate, vat = round2(sub*VAT_RATE);
+        poSub += sub; poVat += vat;
+        poiData.push({ id:U(), po_id:poId, product_id:p.id, qty_ordered:qty, qty_delivered:qty, qty_remaining:0,
+          rate, vat_pct:15, line_subtotal:sub, line_vat:vat, line_total:sub+vat, sort_order:idx });
+      });
+      const poGrand = round2(poSub + poVat);
+      POs.push({ id:poId, po_number:poNum, po_date:poDate, customer_id:cust.id, delivery_date:delDate,
+        status:"closed", subtotal:round2(poSub), vat_amount:round2(poVat), grand_total:poGrand,
+        notes:"Demo PO", branch_id:BR_DHK, financial_year_id:FY, created_by:UID });
+      POitems.push(...poiData);
+
+      // Dispatch
+      const dspId = U(); dspc++;
+      const dspNum = `DSP-${fyTag}-${String(dspc).padStart(5,"0")}`;
+      const dspDate = ymd(new Date(new Date(poDate).getTime() + RI(1,3)*86400000));
+      const totalQty = poiData.reduce((s,r)=>s+r.qty_ordered,0);
+      DSPs.push({ id:dspId, dispatch_number:dspNum, dispatch_date:dspDate, customer_id:cust.id,
+        vehicle_no:pick(vehicles), driver_name:pick(drivers), status:"delivered", total_qty:totalQty,
+        branch_id:BR_DHK, financial_year_id:FY, created_by:UID });
+      poiData.forEach((r,idx) => {
+        const diId = U();
+        DSPitems.push({ id:diId, dispatch_id:dspId, product_id:r.product_id, qty:r.qty_ordered, sort_order:idx });
+        DSPallocs.push({ id:U(), dispatch_item_id:diId, po_item_id:r.id, po_id:poId, allocated_qty:r.qty_ordered });
+      });
+
+      // VAT Challan
+      const vchId = U(); vchc++;
+      const vchNum = `VCH-${fyTag}-${String(vchc).padStart(5,"0")}`;
+      const vchDate = dspDate;
+      VCHs.push({ id:vchId, challan_number:vchNum, challan_date:vchDate, customer_id:cust.id, dispatch_id:dspId,
+        vehicle_no:pick(vehicles), driver_name:pick(drivers), subtotal:round2(poSub), vat_amount:round2(poVat),
+        grand_total:poGrand, source:"dispatch", status:"issued",
+        branch_id:BR_DHK, financial_year_id:FY, created_by:UID });
+      const vciByProduct: Record<string,string> = {};
+      poiData.forEach((r,idx) => {
+        const vciId = U();
+        vciByProduct[r.product_id] = vciId;
+        VCHitems.push({ id:vciId, vat_challan_id:vchId, product_id:r.product_id, qty:r.qty_ordered,
+          rate:r.rate, vat_pct:15, line_subtotal:r.line_subtotal, vat_amount:r.line_vat,
+          line_total:r.line_total, sort_order:idx });
+        // Delivery Challan (one per product)
+        dcc++;
+        const dcId = U();
+        DCs.push({ id:dcId, dc_number:`DC-${fyTag}-${String(dcc).padStart(5,"0")}`, dc_date:vchDate,
+          vat_challan_id:vchId, vat_challan_item_id:vciId, product_id:r.product_id, qty:r.qty_ordered,
+          customer_id:cust.id, status:"invoiced", branch_id:BR_DHK, created_by:UID });
+        CRs.push({ id:U(), delivery_challan_id:dcId,
+          receive_date:ymd(new Date(new Date(vchDate).getTime() + RI(1,2)*86400000)),
+          received_by_name:cust.name, transport_info:"Truck", created_by:UID });
+        HRs.push({ id:U(), delivery_challan_id:dcId,
+          ho_receive_date:ymd(new Date(new Date(vchDate).getTime() + RI(3,5)*86400000)),
+          verified_by:UID, missing_flag:false });
+      });
+
+      // Invoice v2
+      inv2c++;
+      const invId = U();
+      const invNum = `INV2-${fyTag}-${String(inv2c).padStart(5,"0")}`;
+      const invDate = ymd(new Date(new Date(vchDate).getTime() + RI(5,10)*86400000));
+      const tdsAmt = R() < 0.5 ? round2(poSub * 0.05) : 0;
+      const paidAmt = R() < 0.7 ? round2(poGrand - tdsAmt) : 0;
+      const dueAmt = round2(poGrand - paidAmt - tdsAmt);
+      const invStatus = dueAmt <= 0.01 ? "paid" : (paidAmt > 0 ? "partial" : "issued");
+      const invVid = addV("journal", invDate, `Tax Invoice ${invNum}`, [
+        [Ac.ar, poGrand, 0, `AR ${invNum}`],
+        [Ac.sales, 0, round2(poSub), `Sales ${invNum}`],
+        [Ac.vatOut, 0, round2(poVat), `Output VAT ${invNum}`],
+      ]);
+      INV2.push({ id:invId, invoice_number:invNum, invoice_date:invDate, customer_id:cust.id, mode:"single",
+        subtotal:round2(poSub), vat_total:round2(poVat), grand_total:poGrand,
+        paid_amount:paidAmt, tds_amount:tdsAmt, due_amount:dueAmt, status:invStatus, voucher_id:invVid,
+        branch_id:BR_DHK, financial_year_id:FY, created_by:UID });
+      poiData.forEach((r,idx) => {
+        INV2items.push({ id:U(), invoice_id:invId, product_id:r.product_id, qty:r.qty_ordered, rate:r.rate,
+          vat_pct:15, line_subtotal:r.line_subtotal, vat_amount:r.line_vat, line_total:r.line_total,
+          source_vat_challan_item_id: vciByProduct[r.product_id], sort_order:idx });
+      });
+      INVCHs.push({ id:U(), invoice_id:invId, vat_challan_id:vchId });
+
+      // Invoice Payment
+      if (paidAmt > 0) {
+        ipayc++;
+        const ipId = U();
+        const ipNum = `RCP-${fyTag}-${String(ipayc).padStart(5,"0")}`;
+        const ipDate = ymd(new Date(new Date(invDate).getTime() + RI(7,30)*86400000));
+        const mode = pick(["bank","cash","cheque","online"]);
+        const cashDr = mode === "cash" ? Ac.cash : Ac.bank;
+        const entries: [string,number,number,string][] = [[cashDr, paidAmt, 0, `Receipt ${ipNum}`]];
+        if (tdsAmt > 0) entries.push([Ac.tdsr, tdsAmt, 0, "TDS deducted"]);
+        entries.push([Ac.ar, 0, round2(paidAmt + tdsAmt), `AR settle ${invNum}`]);
+        const ipVid = addV("receipt", ipDate, `Invoice Payment ${ipNum}`, entries);
+        IPAYs.push({ id:ipId, payment_number:ipNum, invoice_id:invId, payment_date:ipDate, mode,
+          amount_received:paidAmt, tds_amount:tdsAmt, total_settled:round2(paidAmt+tdsAmt),
+          reference:`TXN-${ipayc}`, voucher_id:ipVid, branch_id:BR_DHK, financial_year_id:FY, created_by:UID });
+        if (tdsAmt > 0) {
+          tdsc++;
+          TDSs.push({ id:U(), invoice_id:invId, payment_id:ipId, tds_pct:5, tds_amount:tdsAmt,
+            certificate_no:`TDS-${fyTag}-${String(tdsc).padStart(5,"0")}`, certificate_date:ipDate,
+            voucher_id:ipVid, created_by:UID });
+        }
+      }
+    }
+    await bulk("purchase_orders", POs);
+    await bulk("purchase_order_items", POitems);
+    await bulk("dispatches", DSPs);
+    await bulk("dispatch_items", DSPitems);
+    await bulk("dispatch_po_allocations", DSPallocs);
+    await bulk("vat_challans", VCHs);
+    await bulk("vat_challan_items", VCHitems);
+    await bulk("delivery_challans", DCs);
+    await bulk("customer_receives", CRs);
+    await bulk("ho_receives", HRs);
+    await bulk("sales_invoices_v2", INV2);
+    await bulk("sales_invoice_items_v2", INV2items);
+    await bulk("invoice_challans", INVCHs);
+    await bulk("invoice_payments", IPAYs);
+    await bulk("tds_entries", TDSs);
+
     // ===== Number sequences =====
     await bulk("number_sequences", [
       { id:"sales_invoice", prefix:"INV", current_number:sc, year: Number(fyTag), description:"Sales Invoice" },
@@ -625,6 +765,13 @@ Deno.serve(async (req) => {
       { id:"payment_voucher", prefix:"PV", current_number:vc.PV, year: Number(fyTag), description:"Payment Voucher" },
       { id:"receipt_voucher", prefix:"RV", current_number:vc.RV, year: Number(fyTag), description:"Receipt Voucher" },
       { id:"contra_voucher", prefix:"CV", current_number:vc.CV, year: Number(fyTag), description:"Contra Voucher" },
+      { id:"purchase_order", prefix:"PO", current_number:poc, year: Number(fyTag), description:"Purchase Order (BD VAT)" },
+      { id:"dispatch", prefix:"DSP", current_number:dspc, year: Number(fyTag), description:"Dispatch" },
+      { id:"vat_challan", prefix:"VCH", current_number:vchc, year: Number(fyTag), description:"VAT Challan" },
+      { id:"delivery_challan", prefix:"DC", current_number:dcc, year: Number(fyTag), description:"Delivery Challan" },
+      { id:"invoice_v2", prefix:"INV2", current_number:inv2c, year: Number(fyTag), description:"Tax Invoice v2" },
+      { id:"invoice_payment", prefix:"RCP", current_number:ipayc, year: Number(fyTag), description:"Invoice Payment" },
+      { id:"tds", prefix:"TDS", current_number:tdsc, year: Number(fyTag), description:"TDS Entry" },
     ]);
 
     return new Response(JSON.stringify({
