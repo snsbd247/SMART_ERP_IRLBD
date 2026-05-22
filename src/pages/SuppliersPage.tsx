@@ -86,7 +86,8 @@ const SuppliersPage = () => {
       } else {
         const { error } = await supabase.from("suppliers").insert({ ...form, status: "active" });
         if (error) throw error;
-        toast({ title: "Supplier added" });
+        await createSupplierLedger(form.name.trim());
+        toast({ title: "Supplier added", description: "Ledger created under Supplier Payable" });
       }
       setOpen(false);
       load();
