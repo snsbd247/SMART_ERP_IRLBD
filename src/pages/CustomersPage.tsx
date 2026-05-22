@@ -111,8 +111,9 @@ const CustomersPage = () => {
       } else {
         const { error } = await supabase.from("customers").insert({ ...form, status: "active" });
         if (error) throw error;
-        await createCustomerLedger(form.name.trim());
-        toast({ title: "Customer added", description: "Ledger created under Accounts Receivable" });
+        await createCustomerLedger(form.name.trim(), parentAccountId || undefined);
+        const parentName = parentAccountId ? assetAccounts.find((a) => a.id === parentAccountId)?.account_name : "Accounts Receivable";
+        toast({ title: "Customer added", description: `Ledger created under ${parentName}` });
       }
       setOpen(false);
       load();
