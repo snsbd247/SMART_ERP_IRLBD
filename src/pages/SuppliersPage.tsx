@@ -41,16 +41,27 @@ const SuppliersPage = () => {
   const [actionType, setActionType] = useState<"approve" | "cancel" | null>(null);
   const [actionTarget, setActionTarget] = useState<any | null>(null);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadAccounts(); }, []);
 
   const load = async () => {
     const { data } = await supabase.from("suppliers").select("*").order("name");
     setSuppliers(data || []);
   };
 
+  const loadAccounts = async () => {
+    const { data } = await supabase
+      .from("chart_of_accounts")
+      .select("id, account_code, account_name")
+      .eq("account_type", "liability")
+      .eq("is_active", true)
+      .order("account_code");
+    setLiabAccounts(data || []);
+  };
+
   const openCreate = () => {
     setEditingSupplier(null);
     setForm({ name: "", email: "", phone: "", address: "" });
+    setParentAccountId("");
     setOpen(true);
   };
 
