@@ -1,4 +1,17 @@
 import { supabase } from "@/integrations/supabase/client";
+import { logCreate, logUpdate } from "@/lib/audit-utils";
+
+async function audit(module: string, action: "create" | "update", record: any, details?: string) {
+  try {
+    const { data: u } = await supabase.auth.getUser();
+    const uid = u?.user?.id;
+    if (action === "create") {
+      await logCreate({ userId: uid, module, recordId: record?.id, newData: record, details });
+    } else {
+      await logUpdate({ userId: uid, module, recordId: record?.id, oldData: {}, newData: record, details: details || "status change" });
+    }
+  } catch { /* non-blocking */ }
+}
 
 // Helper to fetch the next document number from the number_sequences table.
 async function nextNumber(prefix: string) {
