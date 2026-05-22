@@ -162,6 +162,23 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
+    label: "Sales Workflow (BD VAT)",
+    icon: FileText,
+    permission: "sales.view",
+    requiredModules: ["sales"],
+    children: [
+      { to: "/sales-workflow/po", label: "Purchase Orders", icon: ClipboardList, permission: "sales.view" },
+      { to: "/sales-workflow/dispatch", label: "Dispatch", icon: Truck, permission: "sales.view" },
+      { to: "/sales-workflow/vat-challan", label: "VAT Challans", icon: Receipt, permission: "sales.view" },
+      { to: "/sales-workflow/delivery-challan", label: "Delivery Challans", icon: FileText, permission: "sales.view" },
+      { to: "/sales-workflow/customer-receive", label: "Customer Receive", icon: UserCheck, permission: "sales.edit" },
+      { to: "/sales-workflow/ho-receive", label: "HO Receive", icon: Building2, permission: "sales.edit" },
+      { to: "/sales-workflow/invoice-queue", label: "Invoice Queue", icon: FileCheck, permission: "sales.add" },
+      { to: "/sales-workflow/invoices", label: "Invoices (V2)", icon: Receipt, permission: "sales.view" },
+      { to: "/sales-workflow/tds", label: "TDS Register", icon: DollarSign, permission: "sales.view" },
+    ],
+  },
+  {
     label: "Reports",
     icon: BarChart3,
     permission: "reports.view",
