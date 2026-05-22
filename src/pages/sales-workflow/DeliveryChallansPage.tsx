@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
+import { PrintDeliveryChallan } from "@/components/sales-workflow/SalesWorkflowPrints";
 
 const STATUS_COLORS: Record<string, string> = {
   issued: "secondary", delivered: "outline", customer_received: "default",
@@ -49,6 +50,7 @@ export default function DeliveryChallansPage() {
                 <TableCell>{r.qty}</TableCell>
                 <TableCell><Badge variant={(STATUS_COLORS[r.status] as any) || "secondary"}>{r.status}</Badge></TableCell>
                 <TableCell className="space-x-1">
+                  <PrintDeliveryChallan dc={r} />
                   {r.status === "issued" && <Button size="sm" variant="outline" onClick={() => advance(r, "delivered")}>Deliver</Button>}
                   {r.status === "delivered" && <Button size="sm" variant="outline" onClick={() => advance(r, "customer_received")}>Cust. Receive</Button>}
                   {r.status === "customer_received" && <Button size="sm" variant="outline" onClick={() => advance(r, "sent_to_ho")}>Send to HO</Button>}

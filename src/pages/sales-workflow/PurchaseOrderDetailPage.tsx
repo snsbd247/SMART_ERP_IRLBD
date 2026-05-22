@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PrintPO } from "@/components/sales-workflow/SalesWorkflowPrints";
 
 export default function PurchaseOrderDetailPage() {
   const { id } = useParams();
@@ -20,7 +21,10 @@ export default function PurchaseOrderDetailPage() {
           <h1 className="text-2xl font-bold">{po.po_number}</h1>
           <p className="text-muted-foreground">{po.customer?.name} • {po.po_date}</p>
         </div>
-        <Badge>{po.status}</Badge>
+        <div className="flex items-center gap-2">
+          <PrintPO po={po} />
+          <Badge>{po.status}</Badge>
+        </div>
       </div>
       <Card className="p-4">
         <Table>

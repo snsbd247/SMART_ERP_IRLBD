@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
+import { PrintTaxInvoice, PrintMoneyReceipt } from "@/components/sales-workflow/SalesWorkflowPrints";
 
 export default function InvoiceDetailPage() {
   const { id } = useParams();
@@ -36,7 +37,7 @@ export default function InvoiceDetailPage() {
       <div className="flex justify-between">
         <div><h1 className="text-2xl font-bold">{inv.invoice_number}</h1>
           <p className="text-muted-foreground">{inv.customer?.name} • {inv.invoice_date} • Mode: {inv.mode}</p></div>
-        <Badge>{inv.status}</Badge>
+        <div className="flex items-center gap-2"><PrintTaxInvoice inv={inv} /><Badge>{inv.status}</Badge></div>
       </div>
       <Card className="p-4">
         <h3 className="font-semibold mb-2">Line Items</h3>
@@ -79,12 +80,12 @@ export default function InvoiceDetailPage() {
       <Card className="p-4">
         <h3 className="font-semibold mb-2">Payments History</h3>
         <Table>
-          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">TDS</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">TDS</TableHead><TableHead className="text-right">Total</TableHead><TableHead className="text-right">Receipt</TableHead></TableRow></TableHeader>
           <TableBody>
             {inv.payments?.map((p: any) => (
-              <TableRow key={p.id}><TableCell>{p.payment_number}</TableCell><TableCell>{p.payment_date}</TableCell><TableCell>{p.mode}</TableCell><TableCell className="text-right">{Number(p.amount_received).toFixed(2)}</TableCell><TableCell className="text-right">{Number(p.tds_amount).toFixed(2)}</TableCell><TableCell className="text-right">{Number(p.total_settled).toFixed(2)}</TableCell></TableRow>
+              <TableRow key={p.id}><TableCell>{p.payment_number}</TableCell><TableCell>{p.payment_date}</TableCell><TableCell>{p.mode}</TableCell><TableCell className="text-right">{Number(p.amount_received).toFixed(2)}</TableCell><TableCell className="text-right">{Number(p.tds_amount).toFixed(2)}</TableCell><TableCell className="text-right">{Number(p.total_settled).toFixed(2)}</TableCell><TableCell className="text-right"><PrintMoneyReceipt payment={p} invoice={inv} /></TableCell></TableRow>
             ))}
-            {!inv.payments?.length && <TableRow><TableCell colSpan={6} className="text-center py-4 text-muted-foreground">No payments yet</TableCell></TableRow>}
+            {!inv.payments?.length && <TableRow><TableCell colSpan={7} className="text-center py-4 text-muted-foreground">No payments yet</TableCell></TableRow>}
           </TableBody>
         </Table>
       </Card>
