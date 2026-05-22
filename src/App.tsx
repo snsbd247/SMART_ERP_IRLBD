@@ -228,6 +228,8 @@ const App = () => (
                 <Route path="/hrm/employees" element={<P perm="hrm.view"><EmployeesPage /></P>} />
                 <Route path="/hrm/employees/:id" element={<P perm="hrm.view"><EmployeeProfilePage /></P>} />
                 <Route path="/hrm/departments" element={<P perm="hrm.view"><DepartmentsPage /></P>} />
+                <Route path="/hrm/sections" element={<P perm="hrm.view"><SectionsPage /></P>} />
+
                 <Route path="/hrm/designations" element={<P perm="hrm.view"><DesignationsPage /></P>} />
                 <Route path="/hrm/shifts" element={<P perm="hrm.view"><ShiftsPage /></P>} />
                 <Route path="/hrm/attendance" element={<P perm="hrm.view"><AttendancePage /></P>} />
