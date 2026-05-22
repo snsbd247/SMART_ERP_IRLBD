@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logEditAudit } from "@/lib/audit-utils";
 import { documentApi } from "@/lib/document-api";
+import { createCustomerLedger } from "@/lib/party-ledger-utils";
 import { getDocumentStatusConfig } from "@/hooks/useDocumentRules";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,7 +97,8 @@ const CustomersPage = () => {
       } else {
         const { error } = await supabase.from("customers").insert({ ...form, status: "active" });
         if (error) throw error;
-        toast({ title: "Customer added" });
+        await createCustomerLedger(form.name.trim());
+        toast({ title: "Customer added", description: "Ledger created under Accounts Receivable" });
       }
       setOpen(false);
       load();
