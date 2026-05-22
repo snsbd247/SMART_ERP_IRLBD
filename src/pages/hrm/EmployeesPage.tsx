@@ -27,6 +27,8 @@ interface Employee {
   department_id: string | null;
   designation_id: string | null;
   branch_id: string | null;
+  section_id: string | null;
+  employee_category: string;
   user_id: string | null;
   joining_date: string;
   salary: number;
@@ -38,15 +40,18 @@ interface Employee {
 interface Department { id: string; name: string; }
 interface Designation { id: string; name: string; }
 interface Branch { id: string; name: string; }
+interface Section { id: string; name: string; branch_id: string | null; }
 
 const defaultForm = {
   employee_code: "", first_name: "", last_name: "", mobile: "", email: "",
   address: "", national_id: "", department_id: "", designation_id: "",
-  branch_id: "", joining_date: new Date().toISOString().split("T")[0],
+  branch_id: "", section_id: "", employee_category: "staff",
+  joining_date: new Date().toISOString().split("T")[0],
   salary: 0, employment_type: "permanent", status: "active",
   // Login fields
   create_login: false, username: "", password: "",
 };
+
 
 export default function EmployeesPage() {
   const { hasPermission } = useAuth();
@@ -57,6 +62,7 @@ export default function EmployeesPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -66,16 +72,18 @@ export default function EmployeesPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   const fetchAll = useCallback(async () => {
-    const [empRes, deptRes, desigRes, branchRes] = await Promise.all([
+    const [empRes, deptRes, desigRes, branchRes, secRes] = await Promise.all([
       supabase.from("employees" as any).select("*").order("employee_code"),
       supabase.from("departments" as any).select("id, name").eq("status", "active"),
       supabase.from("designations" as any).select("id, name").eq("status", "active"),
       supabase.from("branches").select("id, name").eq("status", "active"),
+      supabase.from("sections" as any).select("id, name, branch_id").eq("status", "active"),
     ]);
     if (empRes.data) setEmployees(empRes.data as any);
     if (deptRes.data) setDepartments(deptRes.data as any);
     if (desigRes.data) setDesignations(desigRes.data as any);
     if (branchRes.data) setBranches(branchRes.data as any);
+    if (secRes.data) setSections(secRes.data as any);
 
     // Fetch which employees have linked user accounts
     const { data: profiles } = await supabase.from("profiles").select("id, employee_id, username").not("employee_id", "is", null);
@@ -87,6 +95,7 @@ export default function EmployeesPage() {
       setLinkedUsers(map);
     }
   }, []);
+
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -104,10 +113,12 @@ export default function EmployeesPage() {
       mobile: emp.mobile || "", email: emp.email || "", address: emp.address || "",
       national_id: emp.national_id || "", department_id: emp.department_id || "",
       designation_id: emp.designation_id || "", branch_id: emp.branch_id || "",
+      section_id: emp.section_id || "", employee_category: emp.employee_category || "staff",
       joining_date: emp.joining_date, salary: emp.salary,
       employment_type: emp.employment_type, status: emp.status,
       create_login: hasLogin, username: hasLogin ? linkedUsers[emp.id] : "", password: "",
     });
+
     setShowPassword(false);
     setDialogOpen(true);
   };
@@ -160,12 +171,15 @@ export default function EmployeesPage() {
       department_id: form.department_id || null,
       designation_id: form.designation_id || null,
       branch_id: form.branch_id || null,
+      section_id: form.section_id || null,
+      employee_category: form.employee_category || "staff",
       joining_date: form.joining_date,
       salary: form.salary,
       employment_type: form.employment_type,
       status: form.status,
       updated_at: new Date().toISOString(),
     };
+
 
     try {
       if (editId) {
@@ -364,11 +378,35 @@ export default function EmployeesPage() {
             </div>
             <div>
               <Label>Branch</Label>
-              <Select value={form.branch_id} onValueChange={v => setForm({...form, branch_id: v})}>
+              <Select value={form.branch_id} onValueChange={v => setForm({...form, branch_id: v, section_id: ""})}>
                 <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>{branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Section</Label>
+              <Select value={form.section_id} onValueChange={v => setForm({...form, section_id: v})}>
+                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectContent>
+                  {sections.filter(s => !form.branch_id || s.branch_id === form.branch_id).map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Category</Label>
+              <Select value={form.employee_category} onValueChange={v => setForm({...form, employee_category: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="worker">Worker</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="officer">Officer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div><Label>Joining Date</Label><Input type="date" value={form.joining_date} onChange={e => setForm({...form, joining_date: e.target.value})} /></div>
             <div><Label>Salary</Label><Input type="number" value={form.salary} onChange={e => setForm({...form, salary: Number(e.target.value)})} /></div>
             <div>
