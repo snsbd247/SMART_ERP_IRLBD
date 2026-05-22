@@ -53,7 +53,7 @@ const navGroups: NavGroup[] = [
     label: "Sales",
     icon: TrendingUp,
     permission: "sales.view",
-    requiredModules: ["sales"],
+    requiredModules: ["sales_basic"],
     children: [
       { to: "/sales", label: "Sales Invoice", icon: Receipt, permission: "sales.view" },
       { to: "/sales/returns", label: "Sales Return", icon: ArrowLeftRight, permission: "sales.view" },
