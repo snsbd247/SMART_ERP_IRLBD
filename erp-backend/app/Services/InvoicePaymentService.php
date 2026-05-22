@@ -81,10 +81,11 @@ class InvoicePaymentService
 
     private function postPaymentVoucher(InvoicePayment $payment, SalesInvoiceV2 $invoice)
     {
-        $bankAccountName = $payment->mode === 'cash' ? 'Cash' : 'Bank';
+        $bankAccountName = $payment->mode === 'cash' ? 'Cash in Hand' : 'Bank Account';
         $bank = $this->resolve($bankAccountName);
         $ar = $this->resolve('Accounts Receivable');
         $tds = $this->resolve('TDS Receivable');
+
         if (!$bank || !$ar) return null;
 
         $entries = [];
