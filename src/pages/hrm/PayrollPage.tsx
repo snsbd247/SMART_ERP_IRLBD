@@ -57,6 +57,7 @@ export default function PayrollPage() {
   const [selYear, setSelYear] = useState(new Date().getFullYear());
   const [selBranch, setSelBranch] = useState<string>("all");
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [generating, setGenerating] = useState(false);
   const [structDialog, setStructDialog] = useState(false);
   const [structForm, setStructForm] = useState({
@@ -68,23 +69,27 @@ export default function PayrollPage() {
   const [payslipDialog, setPayslipDialog] = useState(false);
   const [payslipData, setPayslipData] = useState<PayrollDetail | null>(null);
   const payslipRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
 
   // Review before generate
   const [reviewDialog, setReviewDialog] = useState(false);
   const [reviewData, setReviewData] = useState<PayrollDetail[]>([]);
 
   const fetchData = useCallback(async () => {
-    const [empRes, strRes, payRes, brRes] = await Promise.all([
-      supabase.from("employees" as any).select("id, employee_code, first_name, last_name, salary, branch_id, department_id").eq("status", "active"),
+    const [empRes, strRes, payRes, brRes, secRes] = await Promise.all([
+      supabase.from("employees" as any).select("id, employee_code, first_name, last_name, salary, branch_id, department_id, section_id, employee_category").eq("status", "active"),
       supabase.from("salary_structures" as any).select("*").order("effective_from", { ascending: false }),
       supabase.from("payroll" as any).select("*").eq("month", selMonth).eq("year", selYear).order("created_at"),
       supabase.from("branches").select("id, name").eq("status", "active"),
+      supabase.from("sections" as any).select("id, name, branch_id"),
     ]);
     if (empRes.data) setEmployees(empRes.data as any);
     if (strRes.data) setStructures(strRes.data as any);
     if (payRes.data) setPayroll(payRes.data as any);
     if (brRes.data) setBranches(brRes.data as any);
+    if (secRes.data) setSections(secRes.data as any);
   }, [selMonth, selYear]);
+
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
