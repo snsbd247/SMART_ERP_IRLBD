@@ -62,6 +62,7 @@ export default function EmployeesPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -71,16 +72,18 @@ export default function EmployeesPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   const fetchAll = useCallback(async () => {
-    const [empRes, deptRes, desigRes, branchRes] = await Promise.all([
+    const [empRes, deptRes, desigRes, branchRes, secRes] = await Promise.all([
       supabase.from("employees" as any).select("*").order("employee_code"),
       supabase.from("departments" as any).select("id, name").eq("status", "active"),
       supabase.from("designations" as any).select("id, name").eq("status", "active"),
       supabase.from("branches").select("id, name").eq("status", "active"),
+      supabase.from("sections" as any).select("id, name, branch_id").eq("status", "active"),
     ]);
     if (empRes.data) setEmployees(empRes.data as any);
     if (deptRes.data) setDepartments(deptRes.data as any);
     if (desigRes.data) setDesignations(desigRes.data as any);
     if (branchRes.data) setBranches(branchRes.data as any);
+    if (secRes.data) setSections(secRes.data as any);
 
     // Fetch which employees have linked user accounts
     const { data: profiles } = await supabase.from("profiles").select("id, employee_id, username").not("employee_id", "is", null);
@@ -92,6 +95,7 @@ export default function EmployeesPage() {
       setLinkedUsers(map);
     }
   }, []);
+
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
