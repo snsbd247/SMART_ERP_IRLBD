@@ -366,6 +366,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         });
         Route::middleware('permission:purchase_orders.create')->post('purchase-orders', [\App\Http\Controllers\SalesWorkflow\PurchaseOrderController::class, 'store']);
         Route::middleware('permission:purchase_orders.edit')->put('purchase-orders/{id}', [\App\Http\Controllers\SalesWorkflow\PurchaseOrderController::class, 'update']);
+        Route::middleware('permission:purchase_orders.delete')->delete('purchase-orders/{id}', [\App\Http\Controllers\SalesWorkflow\PurchaseOrderController::class, 'destroy']);
 
         // Dispatch
         Route::middleware('permission:dispatch.view')->group(function () {
