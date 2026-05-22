@@ -254,6 +254,7 @@ export const swApi = {
         status: due <= 0 ? "paid" : "partially_paid",
       }).eq("id", invoiceId);
     }
+    await audit("invoice_processing", "create", p, `Payment ${p.payment_number} (TDS ${payload.tds_amount || 0})`);
     return { data: p, error: null };
   },
   async listTds(filters: any = {}) {
