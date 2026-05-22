@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SalesWorkflow;
 use App\Http\Controllers\BaseController;
 use App\Models\Dispatch;
 use App\Services\DispatchService;
+use App\Services\DocumentDeleteGuard;
 use Illuminate\Http\Request;
 
 class DispatchController extends BaseController
@@ -46,5 +47,12 @@ class DispatchController extends BaseController
     {
         $r->validate(['status' => 'required|in:draft,dispatched,delivered,received,cancelled']);
         return $this->success($this->service->transitionStatus($id, $r->status, $r->user()?->id, $r->input('notes')));
+    }
+
+    public function destroy(Request $r, string $id)
+    {
+        DocumentDeleteGuard::forUser($r->user())->dispatch($id);
+        Dispatch::findOrFail($id)->delete();
+        return $this->success(['deleted' => true]);
     }
 }
