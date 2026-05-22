@@ -53,41 +53,46 @@ const SalesInvoiceDetailPage = () => {
     notes: "",
   });
 
-  useEffect(() => {
+  const load = async () => {
     if (!id) return;
-    const load = async () => {
-      setLoading(true);
-      const [invRes, itemsRes, allocRes] = await Promise.all([
-        supabase.from("sales_invoices").select("*").eq("id", id).single(),
-        supabase.from("sales_invoice_items").select("*").eq("sales_invoice_id", id),
-        supabase.from("payment_allocations" as any).select("allocated_amount").eq("invoice_id", id).eq("invoice_type", "sales_invoice"),
-      ]);
-      if (invRes.data) {
-        setInvoice(invRes.data as any);
-        if (invRes.data.customer_id) {
-          const { data: cust } = await supabase.from("customers").select("*").eq("id", invRes.data.customer_id).single();
-          if (cust) { setCustomerName(cust.name); setCustomerInfo(cust); }
-        }
-        if (invRes.data.branch_id) {
-          const { data: br } = await supabase.from("branches").select("name").eq("id", invRes.data.branch_id).single();
-          if (br) setBranchName(br.name);
-        }
+    setLoading(true);
+    const [invRes, itemsRes, allocRes] = await Promise.all([
+      supabase.from("sales_invoices").select("*").eq("id", id).single(),
+      supabase.from("sales_invoice_items").select("*").eq("sales_invoice_id", id),
+      supabase.from("payment_allocations" as any)
+        .select("id, allocated_amount, payment:party_payments(id, payment_number, payment_date, amount, payment_method, reference, notes)")
+        .eq("invoice_id", id).eq("invoice_type", "sales_invoice"),
+    ]);
+    if (invRes.data) {
+      setInvoice(invRes.data as any);
+      if (invRes.data.customer_id) {
+        const { data: cust } = await supabase.from("customers").select("*").eq("id", invRes.data.customer_id).single();
+        if (cust) { setCustomerName(cust.name); setCustomerInfo(cust); }
       }
-      const products = (itemsRes.data || []) as any[];
-      if (products.length > 0) {
-        const productIds = [...new Set(products.map(p => p.product_id))];
-        const { data: prods } = await supabase.from("item_master").select("id, item_name, item_code").in("id", productIds);
-        const prodMap = new Map((prods || []).map((p: any) => [p.id, p]));
-        setItems(products.map(item => ({
-          ...item,
-          product_name: prodMap.get(item.product_id)?.item_name || "—",
-          product_code: prodMap.get(item.product_id)?.item_code || "",
-          vat_rate: item.vat_rate ?? DEFAULT_VAT_RATE,
-        })));
+      if (invRes.data.branch_id) {
+        const { data: br } = await supabase.from("branches").select("name").eq("id", invRes.data.branch_id).single();
+        if (br) setBranchName(br.name);
       }
-      const paid = ((allocRes.data as any[]) || []).reduce((s: number, a: any) => s + Number(a.allocated_amount || 0), 0);
-      setPaidAmount(paid);
-      setLoading(false);
+    }
+    const products = (itemsRes.data || []) as any[];
+    if (products.length > 0) {
+      const productIds = [...new Set(products.map(p => p.product_id))];
+      const { data: prods } = await supabase.from("item_master").select("id, item_name, item_code").in("id", productIds);
+      const prodMap = new Map((prods || []).map((p: any) => [p.id, p]));
+      setItems(products.map(item => ({
+        ...item,
+        product_name: prodMap.get(item.product_id)?.item_name || "—",
+        product_code: prodMap.get(item.product_id)?.item_code || "",
+        vat_rate: item.vat_rate ?? DEFAULT_VAT_RATE,
+      })));
+    }
+    const allocs = ((allocRes.data as any[]) || []);
+    setPaidAmount(allocs.reduce((s: number, a: any) => s + Number(a.allocated_amount || 0), 0));
+    setPayments(allocs.filter(a => a.payment).map(a => ({ ...a.payment, allocation_id: a.id, allocated_amount: Number(a.allocated_amount || 0) })));
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [id]);
     };
     load();
   }, [id]);
