@@ -29,6 +29,8 @@ const SuppliersPage = () => {
   const [open, setOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
+  const [parentAccountId, setParentAccountId] = useState<string>("");
+  const [liabAccounts, setLiabAccounts] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
