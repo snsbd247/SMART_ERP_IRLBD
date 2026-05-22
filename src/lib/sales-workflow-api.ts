@@ -223,6 +223,7 @@ export const swApi = {
     await supabase.from("invoice_challans").insert(vatChallanIds.map((vcId) => ({ invoice_id: inv.id, vat_challan_id: vcId })));
     await supabase.from("vat_challans").update({ status: "invoiced" }).in("id", vatChallanIds);
     await supabase.from("delivery_challans").update({ status: "invoiced" }).in("vat_challan_id", vatChallanIds);
+    await audit("invoice_processing", "create", inv, `Invoice ${inv.invoice_number}`);
     return { data: inv, error: null };
   },
   async recordPayment(invoiceId: string, payload: any) {
