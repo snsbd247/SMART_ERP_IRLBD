@@ -51,16 +51,27 @@ const CustomersPage = () => {
   const [actionType, setActionType] = useState<"approve" | "cancel" | null>(null);
   const [actionTarget, setActionTarget] = useState<Customer | null>(null);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadAccounts(); }, []);
 
   const load = async () => {
     const { data } = await supabase.from("customers").select("*").order("name");
     setCustomers(data || []);
   };
 
+  const loadAccounts = async () => {
+    const { data } = await supabase
+      .from("chart_of_accounts")
+      .select("id, account_code, account_name")
+      .eq("account_type", "asset")
+      .eq("is_active", true)
+      .order("account_code");
+    setAssetAccounts(data || []);
+  };
+
   const openCreate = () => {
     setEditingCustomer(null);
     setForm({ name: "", email: "", phone: "", address: "" });
+    setParentAccountId("");
     setOpen(true);
   };
 
