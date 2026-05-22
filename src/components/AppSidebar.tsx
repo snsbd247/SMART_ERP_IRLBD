@@ -37,6 +37,7 @@ const navGroups: NavGroup[] = [
     requiredModules: ["accounts"],
     children: [
       { to: "/accounts/chart", label: "Chart of Accounts", icon: BookOpen, permission: "accounts.view" },
+      { to: "/reports/chart-of-accounts-vertical", label: "CoA — Vertical Report", icon: BookOpen, permission: "accounts.view" },
       { to: "/accounts/vouchers", label: "Accounting Vouchers", icon: FileText, permission: "journal.view,payment.view,receipt.view,contra.view" },
       { to: "/reports/trial-balance", label: "Trial Balance", icon: FileText, permission: "accounts.view" },
       { to: "/reports/profit-loss", label: "Profit & Loss", icon: TrendingUp, permission: "accounts.view" },
