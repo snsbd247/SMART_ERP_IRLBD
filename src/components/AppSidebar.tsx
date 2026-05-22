@@ -165,7 +165,7 @@ const navGroups: NavGroup[] = [
     label: "Sales Workflow (BD VAT)",
     icon: FileText,
     permission: "sales.view",
-    requiredModules: ["sales"],
+    requiredModules: ["sales_vat"],
     children: [
       { to: "/sales-workflow/po", label: "Purchase Orders", icon: ClipboardList, permission: "sales.view" },
       { to: "/sales-workflow/dispatch", label: "Dispatch", icon: Truck, permission: "sales.view" },
