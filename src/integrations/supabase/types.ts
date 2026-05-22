@@ -1351,6 +1351,7 @@ export type Database = {
           department_id: string | null
           designation_id: string | null
           email: string | null
+          employee_category: string
           employee_code: string
           employment_type: string
           first_name: string
@@ -1361,6 +1362,7 @@ export type Database = {
           national_id: string | null
           photo_url: string | null
           salary: number
+          section_id: string | null
           shift_id: string | null
           status: string
           updated_at: string
@@ -1373,6 +1375,7 @@ export type Database = {
           department_id?: string | null
           designation_id?: string | null
           email?: string | null
+          employee_category?: string
           employee_code: string
           employment_type?: string
           first_name: string
@@ -1383,6 +1386,7 @@ export type Database = {
           national_id?: string | null
           photo_url?: string | null
           salary?: number
+          section_id?: string | null
           shift_id?: string | null
           status?: string
           updated_at?: string
@@ -1395,6 +1399,7 @@ export type Database = {
           department_id?: string | null
           designation_id?: string | null
           email?: string | null
+          employee_category?: string
           employee_code?: string
           employment_type?: string
           first_name?: string
@@ -1405,6 +1410,7 @@ export type Database = {
           national_id?: string | null
           photo_url?: string | null
           salary?: number
+          section_id?: string | null
           shift_id?: string | null
           status?: string
           updated_at?: string
@@ -1430,6 +1436,13 @@ export type Database = {
             columns: ["designation_id"]
             isOneToOne: false
             referencedRelation: "designations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
           {
@@ -3496,6 +3509,54 @@ export type Database = {
             columns: ["sales_invoice_id"]
             isOneToOne: false
             referencedRelation: "sales_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sections: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          department_id: string | null
+          description: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sections_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sections_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
         ]
