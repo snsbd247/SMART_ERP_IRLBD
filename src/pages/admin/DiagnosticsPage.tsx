@@ -217,6 +217,24 @@ const DiagnosticsPage = () => {
     }
   };
 
+  // ============ G. SEED DEMO DATA ============
+  const [seeding, setSeeding] = useState(false);
+  const [seedStats, setSeedStats] = useState<any>(null);
+  const runSeedDemo = async () => {
+    setSeeding(true); setSeedStats(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-and-seed-demo");
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Seeding failed");
+      setSeedStats(data.stats);
+      toast.success("Demo data seeded", { description: `${data.stats.vouchers} vouchers, ${data.stats.sales} invoices` });
+    } catch (e: any) {
+      toast.error("Seeding failed", { description: e.message });
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   useEffect(() => {
     if (isSuperAdmin) {
       runAccessTest();
