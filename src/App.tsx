@@ -113,6 +113,7 @@ import AccountsPayableReport from "./pages/reports/accounting/AccountsPayableRep
 import { ARAgingReport, APAgingReport } from "./pages/reports/accounting/AgingReports";
 import { ExpenseAnalysisReport, IncomeAnalysisReport } from "./pages/reports/accounting/AnalysisReports";
 import FinancialSummaryDashboard from "./pages/reports/accounting/FinancialSummaryDashboard";
+import ChartOfAccountsVertical from "./pages/reports/accounting/ChartOfAccountsVertical";
 import CustomerStatementPage from "./pages/reports/CustomerStatementPage";
 
 // Sales Workflow (BD VAT)
