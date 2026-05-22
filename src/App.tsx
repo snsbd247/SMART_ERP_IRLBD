@@ -257,6 +257,7 @@ const App = () => (
                 <Route path="/reports/financial" element={<P perm="reports.view"><FinancialReports /></P>} />
                 <Route path="/reports/financial-summary" element={<P perm="reports.view"><FinancialSummaryDashboard /></P>} />
                 <Route path="/reports/trial-balance" element={<P perm="accounts.view"><TrialBalanceReport /></P>} />
+                <Route path="/reports/chart-of-accounts-vertical" element={<P perm="accounts.view"><ChartOfAccountsVertical /></P>} />
                 <Route path="/reports/profit-loss" element={<P perm="accounts.view"><ProfitLossReport /></P>} />
                 <Route path="/reports/balance-sheet" element={<P perm="accounts.view"><BalanceSheetReport /></P>} />
                 <Route path="/reports/general-ledger" element={<P perm="accounts.view"><GeneralLedgerReport /></P>} />
