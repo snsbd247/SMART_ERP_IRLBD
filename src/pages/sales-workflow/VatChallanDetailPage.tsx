@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PrintVatChallan } from "@/components/sales-workflow/SalesWorkflowPrints";
 
 export default function VatChallanDetailPage() {
   const { id } = useParams();
