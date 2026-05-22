@@ -11,10 +11,10 @@ async function nextNumber(prefix: string) {
     .maybeSingle();
   let serial = 1;
   if (seq) {
-    serial = (seq.last_serial || 0) + 1;
-    await supabase.from("number_sequences").update({ last_serial: serial }).eq("id", seq.id);
+    serial = (Number((seq as any).current_number) || 0) + 1;
+    await supabase.from("number_sequences").update({ current_number: serial } as any).eq("id", (seq as any).id);
   } else {
-    await supabase.from("number_sequences").insert({ prefix, year, last_serial: 1 });
+    await supabase.from("number_sequences").insert([{ prefix, year, current_number: 1, description: prefix } as any]);
   }
   return `${prefix}-${year}-${String(serial).padStart(5, "0")}`;
 }
