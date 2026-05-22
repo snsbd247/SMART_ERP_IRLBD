@@ -9,10 +9,11 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseOrderService
 {
-    public function __construct(private NumberSequenceService $seq) {}
+    public function __construct(private NumberSequenceService $seq, private FinancialPeriodGuard $period) {}
 
     public function create(array $data, array $items): PurchaseOrder
     {
+        $this->period->assertOpen($data['po_date'] ?? null, 'Purchase Order');
         return DB::transaction(function () use ($data, $items) {
             [$subtotal, $vat, $grand] = $this->computeTotals($items);
             $po = PurchaseOrder::create(array_merge($data, [
