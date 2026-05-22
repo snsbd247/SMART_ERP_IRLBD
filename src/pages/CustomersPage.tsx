@@ -225,6 +225,21 @@ const CustomersPage = () => {
             <div><Label>Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
             <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+            {!editingCustomer && (
+              <div>
+                <Label>Parent Ledger (Chart of Accounts)</Label>
+                <SearchableAccountSelect
+                  accounts={assetAccounts}
+                  value={parentAccountId || "__auto__"}
+                  onChange={(v) => setParentAccountId(v === "__auto__" ? "" : v)}
+                  allowAll
+                  allLabel="Auto (Accounts Receivable)"
+                  allValue="__auto__"
+                  placeholder="Auto (Accounts Receivable)"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Leave as Auto to place under Accounts Receivable.</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
