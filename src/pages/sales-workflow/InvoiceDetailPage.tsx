@@ -1,0 +1,95 @@
+import { useEffect, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { swApi } from "@/lib/sales-workflow-api";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { toast } from "@/hooks/use-toast";
+
+export default function InvoiceDetailPage() {
+  const { id } = useParams();
+  const [inv, setInv] = useState<any>(null);
+  const [pay, setPay] = useState<any>({
+    payment_date: new Date().toISOString().slice(0, 10),
+    mode: "bank", amount_received: 0, tds_amount: 0, tds_pct: 0,
+    tds_certificate_no: "", tds_certificate_date: "", reference: "",
+  });
+  const load = () => swApi.getInvoice(id!).then(({ data }) => setInv(data));
+  useEffect(() => { load(); }, [id]);
+
+  const submitPayment = async () => {
+    if (!pay.amount_received && !pay.tds_amount) return toast({ title: "Enter amount", variant: "destructive" });
+    const { error } = await swApi.recordPayment(id!, pay);
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    toast({ title: "Payment recorded" });
+    setPay({ ...pay, amount_received: 0, tds_amount: 0 });
+    load();
+  };
+
+  if (!inv) return <div className="p-6">Loading…</div>;
+
+  return (
+    <div className="p-6 space-y-4 max-w-6xl">
+      <div className="flex justify-between">
+        <div><h1 className="text-2xl font-bold">{inv.invoice_number}</h1>
+          <p className="text-muted-foreground">{inv.customer?.name} • {inv.invoice_date} • Mode: {inv.mode}</p></div>
+        <Badge>{inv.status}</Badge>
+      </div>
+      <Card className="p-4">
+        <h3 className="font-semibold mb-2">Line Items</h3>
+        <Table>
+          <TableHeader><TableRow><TableHead>Product</TableHead><TableHead>Qty</TableHead><TableHead>Rate</TableHead><TableHead>VAT %</TableHead><TableHead className="text-right">VAT</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {inv.items?.map((it: any) => (
+              <TableRow key={it.id}><TableCell>{it.product?.name}</TableCell><TableCell>{it.qty}</TableCell><TableCell>{Number(it.rate).toFixed(2)}</TableCell><TableCell>{it.vat_pct}</TableCell><TableCell className="text-right">{Number(it.vat_amount).toFixed(2)}</TableCell><TableCell className="text-right">{Number(it.line_total).toFixed(2)}</TableCell></TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <div className="text-right mt-3 space-y-1">
+          <div>Subtotal: {Number(inv.subtotal).toFixed(2)}</div>
+          <div>VAT: {Number(inv.vat_total).toFixed(2)}</div>
+          <div className="font-bold">Grand Total: {Number(inv.grand_total).toFixed(2)}</div>
+          <div>Paid: {Number(inv.paid_amount).toFixed(2)} | TDS: {Number(inv.tds_amount).toFixed(2)}</div>
+          <div className="text-lg font-bold text-primary">Due: {Number(inv.due_amount).toFixed(2)}</div>
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="font-semibold mb-3">Record Payment / TDS</h3>
+        <div className="grid md:grid-cols-4 gap-3">
+          <div><Label>Date</Label><Input type="date" value={pay.payment_date} onChange={(e) => setPay({ ...pay, payment_date: e.target.value })} /></div>
+          <div><Label>Mode</Label>
+            <select className="w-full border rounded px-2 h-10 bg-background" value={pay.mode} onChange={(e) => setPay({ ...pay, mode: e.target.value })}>
+              <option value="cash">Cash</option><option value="bank">Bank</option><option value="cheque">Cheque</option><option value="online">Online</option>
+            </select>
+          </div>
+          <div><Label>Amount Received</Label><Input type="number" step="0.01" value={pay.amount_received} onChange={(e) => setPay({ ...pay, amount_received: e.target.value })} /></div>
+          <div><Label>TDS Amount</Label><Input type="number" step="0.01" value={pay.tds_amount} onChange={(e) => setPay({ ...pay, tds_amount: e.target.value })} /></div>
+          <div><Label>TDS %</Label><Input type="number" step="0.01" value={pay.tds_pct} onChange={(e) => setPay({ ...pay, tds_pct: e.target.value })} /></div>
+          <div><Label>TDS Cert No</Label><Input value={pay.tds_certificate_no} onChange={(e) => setPay({ ...pay, tds_certificate_no: e.target.value })} /></div>
+          <div><Label>TDS Cert Date</Label><Input type="date" value={pay.tds_certificate_date} onChange={(e) => setPay({ ...pay, tds_certificate_date: e.target.value })} /></div>
+          <div><Label>Reference</Label><Input value={pay.reference} onChange={(e) => setPay({ ...pay, reference: e.target.value })} /></div>
+        </div>
+        <div className="flex justify-end mt-3"><Button onClick={submitPayment}>Record</Button></div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="font-semibold mb-2">Payments History</h3>
+        <Table>
+          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">TDS</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {inv.payments?.map((p: any) => (
+              <TableRow key={p.id}><TableCell>{p.payment_number}</TableCell><TableCell>{p.payment_date}</TableCell><TableCell>{p.mode}</TableCell><TableCell className="text-right">{Number(p.amount_received).toFixed(2)}</TableCell><TableCell className="text-right">{Number(p.tds_amount).toFixed(2)}</TableCell><TableCell className="text-right">{Number(p.total_settled).toFixed(2)}</TableCell></TableRow>
+            ))}
+            {!inv.payments?.length && <TableRow><TableCell colSpan={6} className="text-center py-4 text-muted-foreground">No payments yet</TableCell></TableRow>}
+          </TableBody>
+        </Table>
+      </Card>
+
+      <Link to="/sales-workflow/invoices"><Button variant="outline">Back</Button></Link>
+    </div>
+  );
+}
