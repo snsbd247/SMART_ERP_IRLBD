@@ -292,11 +292,16 @@ const SalesInvoiceDetailPage = () => {
             <p className="text-sm text-muted-foreground mt-0.5">Sales Invoice</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {dueAmount > 0 && (
+            <Button size="sm" onClick={() => setPayOpen(true)}>
+              <Wallet className="w-4 h-4 mr-1.5" />Receive Payment
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
             <Printer className="w-4 h-4 mr-1.5" />Print
           </Button>
-          <Button size="sm" onClick={() => setPrintOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
             <Download className="w-4 h-4 mr-1.5" />PDF
           </Button>
         </div>
