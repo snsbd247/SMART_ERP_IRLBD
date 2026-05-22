@@ -283,6 +283,49 @@ const DiagnosticsPage = () => {
         </CardContent>
       </Card>
 
+      {/* DEMO DATA SEEDER */}
+      <Card className="border-amber-500/40 bg-amber-500/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Database className="w-4 h-4 text-amber-600" />Seed 1-Year Operational Demo Data
+          </CardTitle>
+          <CardDescription>
+            ⚠️ Wipes ALL transactional data (vouchers, sales, purchases, payroll, attendance, etc.) and rebuilds a full
+            financial year of demo activity covering every module and every ledger (VAT, TDS, PF, returns, production, transfers).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={seeding}>
+                {seeding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                Reset & Seed Demo Data
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Wipe and reseed demo data?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently DELETE all current transactional data, employees, customers, suppliers,
+                  products and re-create a full year of demo records. Master settings (CoA, branches, roles, users) are preserved.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={runSeedDemo}>Yes, wipe and seed</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          {seedStats && (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs grid grid-cols-2 md:grid-cols-4 gap-2">
+              {Object.entries(seedStats).map(([k, v]) => (
+                <div key={k}><span className="text-muted-foreground">{k}:</span> <strong>{String(v)}</strong></div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* SUPER ADMIN VALIDATOR */}
       <Card>
         <CardHeader className="pb-3">
