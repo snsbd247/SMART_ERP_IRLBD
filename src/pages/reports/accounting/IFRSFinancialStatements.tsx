@@ -537,13 +537,30 @@ const IFRSFinancialStatements = () => {
         <h1 className="text-xl font-semibold text-foreground">IFRS Financial Statements</h1>
       </div>
 
-      <Card><CardContent className="p-4 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-        <div><Label className="text-xs">Current From</Label><Input type="date" value={curFrom} onChange={e => setCurFrom(e.target.value)} /></div>
-        <div><Label className="text-xs">Current To</Label><Input type="date" value={curTo} onChange={e => setCurTo(e.target.value)} /></div>
-        <div><Label className="text-xs">Previous From</Label><Input type="date" value={prvFrom} onChange={e => setPrvFrom(e.target.value)} /></div>
-        <div><Label className="text-xs">Previous To</Label><Input type="date" value={prvTo} onChange={e => setPrvTo(e.target.value)} /></div>
-        <Button onClick={generate} disabled={loading}>
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Generate"}
+      <Card><CardContent className="p-4 grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+        <div className="md:col-span-2">
+          <Label className="text-xs">Period Preset</Label>
+          <Select value={preset} onValueChange={applyPreset}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="custom">Custom Range</SelectItem>
+              {financialYears.length >= 2 && (
+                <SelectItem value="fy_compare">
+                  {financialYears[0].name} vs {financialYears[1].name}
+                </SelectItem>
+              )}
+              <SelectItem value="last_12m">Last 12 Months vs Prior 12 Months</SelectItem>
+              <SelectItem value="ytd">YTD vs Same Period Last Year</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div><Label className="text-xs">Current From</Label><Input type="date" value={curFrom} onChange={e => { setCurFrom(e.target.value); setPreset("custom"); }} /></div>
+        <div><Label className="text-xs">Current To</Label><Input type="date" value={curTo} onChange={e => { setCurTo(e.target.value); setPreset("custom"); }} /></div>
+        <div><Label className="text-xs">Previous From</Label><Input type="date" value={prvFrom} onChange={e => { setPrvFrom(e.target.value); setPreset("custom"); }} /></div>
+        <div><Label className="text-xs">Previous To</Label><Input type="date" value={prvTo} onChange={e => { setPrvTo(e.target.value); setPreset("custom"); }} /></div>
+        <Button onClick={generate} disabled={loading} className="md:col-span-6 md:w-auto md:justify-self-end">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+          Generate Report
         </Button>
       </CardContent></Card>
 
@@ -562,8 +579,11 @@ const IFRSFinancialStatements = () => {
               <TabsTrigger value="notes">Notes</TabsTrigger>
             </TabsList>
             <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={exportExcel}>
+                <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel
+              </Button>
               <Button variant="outline" size="sm" onClick={() => handlePrint(`IFRS — ${activeTab.toUpperCase()}`)}>
-                <Printer className="w-4 h-4 mr-1" /> Print
+                <Printer className="w-4 h-4 mr-1" /> Print / PDF
               </Button>
             </div>
           </div>
