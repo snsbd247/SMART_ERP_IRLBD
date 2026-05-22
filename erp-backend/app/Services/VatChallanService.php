@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class VatChallanService
 {
-    public function __construct(private NumberSequenceService $seq) {}
+    public function __construct(private NumberSequenceService $seq, private FinancialPeriodGuard $period) {}
 
     /**
      * Create a VAT challan + items. For each item, also auto-create a separate
@@ -17,6 +17,7 @@ class VatChallanService
      */
     public function create(array $data, array $items): VatChallan
     {
+        $this->period->assertOpen($data['challan_date'] ?? null, 'VAT Challan');
         return DB::transaction(function () use ($data, $items) {
             [$sub, $vat, $grand] = $this->computeTotals($items);
             $challan = VatChallan::create(array_merge($data, [
