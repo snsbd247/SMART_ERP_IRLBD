@@ -109,10 +109,12 @@ export default function EmployeesPage() {
       mobile: emp.mobile || "", email: emp.email || "", address: emp.address || "",
       national_id: emp.national_id || "", department_id: emp.department_id || "",
       designation_id: emp.designation_id || "", branch_id: emp.branch_id || "",
+      section_id: emp.section_id || "", employee_category: emp.employee_category || "staff",
       joining_date: emp.joining_date, salary: emp.salary,
       employment_type: emp.employment_type, status: emp.status,
       create_login: hasLogin, username: hasLogin ? linkedUsers[emp.id] : "", password: "",
     });
+
     setShowPassword(false);
     setDialogOpen(true);
   };
