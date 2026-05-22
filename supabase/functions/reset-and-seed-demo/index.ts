@@ -758,6 +758,12 @@ Deno.serve(async (req) => {
     await bulk("invoice_payments", IPAYs);
     await bulk("tds_entries", TDSs);
 
+    // Flush vouchers/entries added during sales-workflow loop
+    const vFlushed = (globalThis as any).__vFlushed ?? 0;
+    const veFlushed = (globalThis as any).__veFlushed ?? 0;
+    await bulk("acc_vouchers", vouchers.slice(vFlushed), 400);
+    await bulk("voucher_entries", ventries.slice(veFlushed), 600);
+
     // ===== Number sequences =====
     await bulk("number_sequences", [
       { id:"sales_invoice", prefix:"INV", current_number:sc, year: Number(fyTag), description:"Sales Invoice" },
