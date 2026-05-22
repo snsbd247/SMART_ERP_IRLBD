@@ -113,6 +113,25 @@ import { ExpenseAnalysisReport, IncomeAnalysisReport } from "./pages/reports/acc
 import FinancialSummaryDashboard from "./pages/reports/accounting/FinancialSummaryDashboard";
 import CustomerStatementPage from "./pages/reports/CustomerStatementPage";
 
+// Sales Workflow (BD VAT)
+import PurchaseOrdersPage from "./pages/sales-workflow/PurchaseOrdersPage";
+import PurchaseOrderFormPage from "./pages/sales-workflow/PurchaseOrderFormPage";
+import PurchaseOrderDetailPage from "./pages/sales-workflow/PurchaseOrderDetailPage";
+import DispatchPage from "./pages/sales-workflow/DispatchPage";
+import DispatchFormPage from "./pages/sales-workflow/DispatchFormPage";
+import DispatchDetailPage from "./pages/sales-workflow/DispatchDetailPage";
+import VatChallansPage from "./pages/sales-workflow/VatChallansPage";
+import VatChallanFormPage from "./pages/sales-workflow/VatChallanFormPage";
+import VatChallanDetailPage from "./pages/sales-workflow/VatChallanDetailPage";
+import DeliveryChallansPage from "./pages/sales-workflow/DeliveryChallansPage";
+import CustomerReceivePage from "./pages/sales-workflow/CustomerReceivePage";
+import HoReceivePage from "./pages/sales-workflow/HoReceivePage";
+import InvoiceQueuePage from "./pages/sales-workflow/InvoiceQueuePage";
+import InvoicesPage from "./pages/sales-workflow/InvoicesPage";
+import InvoiceDetailPage from "./pages/sales-workflow/InvoiceDetailPage";
+import TdsRegisterPage from "./pages/sales-workflow/TdsRegisterPage";
+
+
 const queryClient = new QueryClient();
 
 /** Helper: wraps a page with permission check */
@@ -262,6 +281,24 @@ const App = () => (
                 <Route path="/admin/branding" element={<P perm="settings.view"><BrandingPage /></P>} />
                 <Route path="/admin/sms" element={<P perm="settings.view"><SmsSettingsPage /></P>} />
                 <Route path="/admin/diagnostics" element={<DiagnosticsPage />} />
+
+                {/* ─── Sales Workflow (BD VAT) ─────────────────── */}
+                <Route path="/sales-workflow/po" element={<P perm="sales.view"><PurchaseOrdersPage /></P>} />
+                <Route path="/sales-workflow/po/new" element={<P perm="sales.add"><PurchaseOrderFormPage /></P>} />
+                <Route path="/sales-workflow/po/:id" element={<P perm="sales.view"><PurchaseOrderDetailPage /></P>} />
+                <Route path="/sales-workflow/dispatch" element={<P perm="sales.view"><DispatchPage /></P>} />
+                <Route path="/sales-workflow/dispatch/new" element={<P perm="sales.add"><DispatchFormPage /></P>} />
+                <Route path="/sales-workflow/dispatch/:id" element={<P perm="sales.view"><DispatchDetailPage /></P>} />
+                <Route path="/sales-workflow/vat-challan" element={<P perm="sales.view"><VatChallansPage /></P>} />
+                <Route path="/sales-workflow/vat-challan/new" element={<P perm="sales.add"><VatChallanFormPage /></P>} />
+                <Route path="/sales-workflow/vat-challan/:id" element={<P perm="sales.view"><VatChallanDetailPage /></P>} />
+                <Route path="/sales-workflow/delivery-challan" element={<P perm="sales.view"><DeliveryChallansPage /></P>} />
+                <Route path="/sales-workflow/customer-receive" element={<P perm="sales.edit"><CustomerReceivePage /></P>} />
+                <Route path="/sales-workflow/ho-receive" element={<P perm="sales.edit"><HoReceivePage /></P>} />
+                <Route path="/sales-workflow/invoice-queue" element={<P perm="sales.add"><InvoiceQueuePage /></P>} />
+                <Route path="/sales-workflow/invoices" element={<P perm="sales.view"><InvoicesPage /></P>} />
+                <Route path="/sales-workflow/invoice/:id" element={<P perm="sales.view"><InvoiceDetailPage /></P>} />
+                <Route path="/sales-workflow/tds" element={<P perm="sales.view"><TdsRegisterPage /></P>} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
