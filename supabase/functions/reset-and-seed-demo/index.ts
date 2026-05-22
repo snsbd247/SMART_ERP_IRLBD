@@ -508,9 +508,6 @@ Deno.serve(async (req) => {
     const ventriesFlushedTo = ventries.length;
     await bulk("acc_vouchers", vouchers.slice(0, vouchersFlushedTo), 400);
     await bulk("voucher_entries", ventries.slice(0, ventriesFlushedTo), 600);
-    // Mark these as already-inserted by tagging the arrays' offsets via closure vars
-    (globalThis as any).__vFlushed = vouchersFlushedTo;
-    (globalThis as any).__veFlushed = ventriesFlushedTo;
 
     // ===== Attendance =====
     const att: any[] = [];
@@ -745,6 +742,11 @@ Deno.serve(async (req) => {
         }
       }
     }
+    // Flush vouchers/entries added during sales-workflow loop before dependent rows
+    // such as sales_invoices_v2, invoice_payments and tds_entries reference voucher_id.
+    await bulk("acc_vouchers", vouchers.slice(vouchersFlushedTo), 400);
+    await bulk("voucher_entries", ventries.slice(ventriesFlushedTo), 600);
+
     await bulk("purchase_orders", POs);
     await bulk("purchase_order_items", POitems);
     await bulk("dispatches", DSPs);
@@ -760,12 +762,6 @@ Deno.serve(async (req) => {
     await bulk("invoice_challans", INVCHs);
     await bulk("invoice_payments", IPAYs);
     await bulk("tds_entries", TDSs);
-
-    // Flush vouchers/entries added during sales-workflow loop
-    const vFlushed = (globalThis as any).__vFlushed ?? 0;
-    const veFlushed = (globalThis as any).__veFlushed ?? 0;
-    await bulk("acc_vouchers", vouchers.slice(vFlushed), 400);
-    await bulk("voucher_entries", ventries.slice(veFlushed), 600);
 
     // ===== Number sequences =====
     await bulk("number_sequences", [
