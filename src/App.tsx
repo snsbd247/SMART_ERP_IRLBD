@@ -139,6 +139,7 @@ import InvoiceRegisterReport from "./pages/sales-workflow/reports/InvoiceRegiste
 import InvoicePendingReport from "./pages/sales-workflow/reports/InvoicePendingReport";
 import CollectionReport from "./pages/sales-workflow/reports/CollectionReport";
 import ArAgingReport from "./pages/sales-workflow/reports/ArAgingReport";
+import Mushak91Page from "./pages/sales-workflow/reports/Mushak91Page";
 
 
 const queryClient = new QueryClient();
