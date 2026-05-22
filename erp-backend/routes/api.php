@@ -67,37 +67,37 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:sales.view')->group(function () {
             Route::get('sales-invoices', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'index']);
             Route::get('sales-invoices/{id}', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'show']);
-            Route::get('customers', [\App\Http\Controllers\Sales\CustomerController::class, 'index']);
-            Route::get('customers/{id}', [\App\Http\Controllers\Sales\CustomerController::class, 'show']);
         });
         Route::middleware('permission:sales.create')->group(function () {
             Route::post('sales-invoices', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'store']);
-            Route::post('customers', [\App\Http\Controllers\Sales\CustomerController::class, 'store']);
         });
-        Route::middleware('permission:sales.edit')->group(function () {
-            Route::put('customers/{id}', [\App\Http\Controllers\Sales\CustomerController::class, 'update']);
+
+        // ─── Customers (separate permission key) ────────────────
+        Route::middleware('permission:customers.view')->group(function () {
+            Route::get('customers', [\App\Http\Controllers\Sales\CustomerController::class, 'index']);
+            Route::get('customers/{id}', [\App\Http\Controllers\Sales\CustomerController::class, 'show']);
         });
-        Route::middleware('permission:sales.delete')->group(function () {
-            Route::delete('customers/{id}', [\App\Http\Controllers\Sales\CustomerController::class, 'destroy']);
-        });
+        Route::middleware('permission:customers.create')->post('customers', [\App\Http\Controllers\Sales\CustomerController::class, 'store']);
+        Route::middleware('permission:customers.edit')->put('customers/{id}', [\App\Http\Controllers\Sales\CustomerController::class, 'update']);
+        Route::middleware('permission:customers.delete')->delete('customers/{id}', [\App\Http\Controllers\Sales\CustomerController::class, 'destroy']);
 
         // ─── Purchase ───────────────────────────────────────────
         Route::middleware('permission:purchase.view')->group(function () {
             Route::get('purchases', [\App\Http\Controllers\Purchase\PurchaseController::class, 'index']);
             Route::get('purchases/{id}', [\App\Http\Controllers\Purchase\PurchaseController::class, 'show']);
-            Route::get('suppliers', [\App\Http\Controllers\Purchase\SupplierController::class, 'index']);
-            Route::get('suppliers/{id}', [\App\Http\Controllers\Purchase\SupplierController::class, 'show']);
         });
         Route::middleware('permission:purchase.create')->group(function () {
             Route::post('purchases', [\App\Http\Controllers\Purchase\PurchaseController::class, 'store']);
-            Route::post('suppliers', [\App\Http\Controllers\Purchase\SupplierController::class, 'store']);
         });
-        Route::middleware('permission:purchase.edit')->group(function () {
-            Route::put('suppliers/{id}', [\App\Http\Controllers\Purchase\SupplierController::class, 'update']);
+
+        // ─── Suppliers (separate permission key) ────────────────
+        Route::middleware('permission:suppliers.view')->group(function () {
+            Route::get('suppliers', [\App\Http\Controllers\Purchase\SupplierController::class, 'index']);
+            Route::get('suppliers/{id}', [\App\Http\Controllers\Purchase\SupplierController::class, 'show']);
         });
-        Route::middleware('permission:purchase.delete')->group(function () {
-            Route::delete('suppliers/{id}', [\App\Http\Controllers\Purchase\SupplierController::class, 'destroy']);
-        });
+        Route::middleware('permission:suppliers.create')->post('suppliers', [\App\Http\Controllers\Purchase\SupplierController::class, 'store']);
+        Route::middleware('permission:suppliers.edit')->put('suppliers/{id}', [\App\Http\Controllers\Purchase\SupplierController::class, 'update']);
+        Route::middleware('permission:suppliers.delete')->delete('suppliers/{id}', [\App\Http\Controllers\Purchase\SupplierController::class, 'destroy']);
 
         // ─── Inventory ──────────────────────────────────────────
         Route::middleware('permission:inventory.view')->group(function () {
