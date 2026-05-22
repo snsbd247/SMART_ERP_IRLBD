@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Pencil, Check, X, Lock, ShieldAlert, Eye } from "lucide-react";
+import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
 
 interface Customer {
   id: string;
@@ -38,6 +39,8 @@ const CustomersPage = () => {
   const [open, setOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
+  const [parentAccountId, setParentAccountId] = useState<string>("");
+  const [assetAccounts, setAssetAccounts] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -48,16 +51,27 @@ const CustomersPage = () => {
   const [actionType, setActionType] = useState<"approve" | "cancel" | null>(null);
   const [actionTarget, setActionTarget] = useState<Customer | null>(null);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadAccounts(); }, []);
 
   const load = async () => {
     const { data } = await supabase.from("customers").select("*").order("name");
     setCustomers(data || []);
   };
 
+  const loadAccounts = async () => {
+    const { data } = await supabase
+      .from("chart_of_accounts")
+      .select("id, account_code, account_name")
+      .eq("account_type", "asset")
+      .eq("is_active", true)
+      .order("account_code");
+    setAssetAccounts(data || []);
+  };
+
   const openCreate = () => {
     setEditingCustomer(null);
     setForm({ name: "", email: "", phone: "", address: "" });
+    setParentAccountId("");
     setOpen(true);
   };
 
@@ -97,8 +111,9 @@ const CustomersPage = () => {
       } else {
         const { error } = await supabase.from("customers").insert({ ...form, status: "active" });
         if (error) throw error;
-        await createCustomerLedger(form.name.trim());
-        toast({ title: "Customer added", description: "Ledger created under Accounts Receivable" });
+        await createCustomerLedger(form.name.trim(), parentAccountId || undefined);
+        const parentName = parentAccountId ? assetAccounts.find((a) => a.id === parentAccountId)?.account_name : "Accounts Receivable";
+        toast({ title: "Customer added", description: `Ledger created under ${parentName}` });
       }
       setOpen(false);
       load();
@@ -210,6 +225,21 @@ const CustomersPage = () => {
             <div><Label>Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
             <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+            {!editingCustomer && (
+              <div>
+                <Label>Parent Ledger (Chart of Accounts)</Label>
+                <SearchableAccountSelect
+                  accounts={assetAccounts}
+                  value={parentAccountId || "__auto__"}
+                  onChange={(v) => setParentAccountId(v === "__auto__" ? "" : v)}
+                  allowAll
+                  allLabel="Auto (Accounts Receivable)"
+                  allValue="__auto__"
+                  placeholder="Auto (Accounts Receivable)"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Leave as Auto to place under Accounts Receivable.</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

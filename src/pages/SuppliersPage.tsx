@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Pencil, Check, X, ShieldAlert, Eye } from "lucide-react";
+import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
 
 const SuppliersPage = () => {
   const navigate = useNavigate();
@@ -28,6 +29,8 @@ const SuppliersPage = () => {
   const [open, setOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
+  const [parentAccountId, setParentAccountId] = useState<string>("");
+  const [liabAccounts, setLiabAccounts] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -38,16 +41,27 @@ const SuppliersPage = () => {
   const [actionType, setActionType] = useState<"approve" | "cancel" | null>(null);
   const [actionTarget, setActionTarget] = useState<any | null>(null);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadAccounts(); }, []);
 
   const load = async () => {
     const { data } = await supabase.from("suppliers").select("*").order("name");
     setSuppliers(data || []);
   };
 
+  const loadAccounts = async () => {
+    const { data } = await supabase
+      .from("chart_of_accounts")
+      .select("id, account_code, account_name")
+      .eq("account_type", "liability")
+      .eq("is_active", true)
+      .order("account_code");
+    setLiabAccounts(data || []);
+  };
+
   const openCreate = () => {
     setEditingSupplier(null);
     setForm({ name: "", email: "", phone: "", address: "" });
+    setParentAccountId("");
     setOpen(true);
   };
 
@@ -86,8 +100,9 @@ const SuppliersPage = () => {
       } else {
         const { error } = await supabase.from("suppliers").insert({ ...form, status: "active" });
         if (error) throw error;
-        await createSupplierLedger(form.name.trim());
-        toast({ title: "Supplier added", description: "Ledger created under Supplier Payable" });
+        await createSupplierLedger(form.name.trim(), parentAccountId || undefined);
+        const parentName = parentAccountId ? liabAccounts.find((a) => a.id === parentAccountId)?.account_name : "Supplier Payable";
+        toast({ title: "Supplier added", description: `Ledger created under ${parentName}` });
       }
       setOpen(false);
       load();
@@ -198,6 +213,21 @@ const SuppliersPage = () => {
             <div><Label>Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
             <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+            {!editingSupplier && (
+              <div>
+                <Label>Parent Ledger (Chart of Accounts)</Label>
+                <SearchableAccountSelect
+                  accounts={liabAccounts}
+                  value={parentAccountId || "__auto__"}
+                  onChange={(v) => setParentAccountId(v === "__auto__" ? "" : v)}
+                  allowAll
+                  allLabel="Auto (Supplier Payable)"
+                  allValue="__auto__"
+                  placeholder="Auto (Supplier Payable)"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Leave as Auto to place under Supplier Payable.</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

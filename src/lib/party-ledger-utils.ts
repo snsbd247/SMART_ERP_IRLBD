@@ -62,6 +62,7 @@ async function createPartyLedger(
   candidateNames: string[],
   accountType: "asset" | "liability",
   fallbackParentCode: string,
+  parentId?: string,
 ): Promise<void> {
   try {
     // Avoid duplicates by exact name
@@ -73,7 +74,18 @@ async function createPartyLedger(
       .limit(1);
     if (existing && existing.length > 0) return;
 
-    const parent = await findOrCreateParent(candidateNames, accountType, fallbackParentCode);
+    let parent: { id: string; account_code: string } | null = null;
+    if (parentId) {
+      const { data } = await supabase
+        .from("chart_of_accounts")
+        .select("id, account_code")
+        .eq("id", parentId)
+        .limit(1);
+      if (data && data.length > 0) parent = data[0] as any;
+    }
+    if (!parent) {
+      parent = await findOrCreateParent(candidateNames, accountType, fallbackParentCode);
+    }
     if (!parent) return;
 
     const code = await nextChildCode(parent.account_code);
@@ -93,8 +105,9 @@ async function createPartyLedger(
   }
 }
 
-export const createSupplierLedger = (name: string) =>
-  createPartyLedger(name, SUPPLIER_PARENT_NAMES, "liability", "2100");
+export const createSupplierLedger = (name: string, parentId?: string) =>
+  createPartyLedger(name, SUPPLIER_PARENT_NAMES, "liability", "2100", parentId);
 
-export const createCustomerLedger = (name: string) =>
-  createPartyLedger(name, CUSTOMER_PARENT_NAMES, "asset", "1200");
+export const createCustomerLedger = (name: string, parentId?: string) =>
+  createPartyLedger(name, CUSTOMER_PARENT_NAMES, "asset", "1200", parentId);
+
