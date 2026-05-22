@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
+import { PrintDeliveryChallan } from "@/components/sales-workflow/SalesWorkflowPrints";
 
 const STATUS_COLORS: Record<string, string> = {
   issued: "secondary", delivered: "outline", customer_received: "default",
