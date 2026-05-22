@@ -18,7 +18,10 @@ import { voucherApi } from "@/lib/voucher-api";
 interface Employee {
   id: string; employee_code: string; first_name: string; last_name: string;
   salary: number; branch_id: string | null; department_id: string | null;
+  section_id: string | null; employee_category: string;
 }
+interface Section { id: string; name: string; branch_id: string | null; }
+
 interface SalaryStructure {
   id: string; employee_id: string; basic_salary: number;
   house_rent: number; medical_allowance: number; other_allowance: number;
