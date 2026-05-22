@@ -17,7 +17,7 @@ export default function VatChallanDetailPage() {
       <div className="flex justify-between">
         <div><h1 className="text-2xl font-bold">{v.challan_number}</h1>
           <p className="text-muted-foreground">{v.customer?.name} • {v.challan_date}</p></div>
-        <Badge>{v.status}</Badge>
+        <div className="flex items-center gap-2"><PrintVatChallan v={v} /><Badge>{v.status}</Badge></div>
       </div>
       <Card className="p-4">
         <h3 className="font-semibold mb-2">Items</h3>
