@@ -13,6 +13,7 @@ const REPORTS = [
   { to: "/sales-workflow/reports/collection", label: "Collection Report" },
   { to: "/sales-workflow/reports/aging", label: "AR Aging" },
   { to: "/sales-workflow/tds", label: "TDS Register" },
+  { to: "/sales-workflow/reports/mushak-9-1", label: "Mushak 9.1 — Monthly VAT Return" },
 ];
 
 export default function SalesWorkflowReportsIndex() {

@@ -139,6 +139,7 @@ import InvoiceRegisterReport from "./pages/sales-workflow/reports/InvoiceRegiste
 import InvoicePendingReport from "./pages/sales-workflow/reports/InvoicePendingReport";
 import CollectionReport from "./pages/sales-workflow/reports/CollectionReport";
 import ArAgingReport from "./pages/sales-workflow/reports/ArAgingReport";
+import Mushak91Page from "./pages/sales-workflow/reports/Mushak91Page";
 
 
 const queryClient = new QueryClient();
@@ -317,6 +318,7 @@ const App = () => (
                 <Route path="/sales-workflow/reports/invoice-pending" element={<P perm="reports.view"><InvoicePendingReport /></P>} />
                 <Route path="/sales-workflow/reports/collection" element={<P perm="reports.view"><CollectionReport /></P>} />
                 <Route path="/sales-workflow/reports/aging" element={<P perm="reports.view"><ArAgingReport /></P>} />
+                <Route path="/sales-workflow/reports/mushak-9-1" element={<P perm="reports.view"><Mushak91Page /></P>} />
 
               </Route>
               <Route path="*" element={<NotFound />} />

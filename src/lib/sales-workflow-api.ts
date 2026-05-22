@@ -1,4 +1,17 @@
 import { supabase } from "@/integrations/supabase/client";
+import { logCreate, logUpdate } from "@/lib/audit-utils";
+
+async function audit(module: string, action: "create" | "update", record: any, details?: string) {
+  try {
+    const { data: u } = await supabase.auth.getUser();
+    const uid = u?.user?.id;
+    if (action === "create") {
+      await logCreate({ userId: uid, module, recordId: record?.id, newData: record, details });
+    } else {
+      await logUpdate({ userId: uid, module, recordId: record?.id, oldData: {}, newData: record, details: details || "status change" });
+    }
+  } catch { /* non-blocking */ }
+}
 
 // Helper to fetch the next document number from the number_sequences table.
 async function nextNumber(prefix: string) {
@@ -53,6 +66,7 @@ export const swApi = {
       line_total: Number(i.qty_ordered) * Number(i.rate),
     }));
     await supabase.from("purchase_order_items").insert(rows);
+    await audit("purchase_orders", "create", po, `PO ${po.po_number}`);
     return { data: po, error: null };
   },
 
@@ -92,12 +106,14 @@ export const swApi = {
         }
       }
     }
+    await audit("dispatch", "create", d, `Dispatch ${d.dispatch_number}`);
     return { data: d, error: null };
   },
   async setDispatchStatus(id: string, status: string, userId?: string) {
     const { data: cur } = await supabase.from("dispatches").select("status").eq("id", id).maybeSingle();
     await supabase.from("dispatches").update({ status }).eq("id", id);
     await supabase.from("dispatch_status_logs").insert({ dispatch_id: id, old_status: cur?.status, new_status: status, changed_by: userId });
+    await audit("dispatch", "update", { id, status }, `${cur?.status} → ${status}`);
     return { data: { id, status }, error: null };
   },
 
@@ -137,8 +153,10 @@ export const swApi = {
         customer_id: payload.customer_id, status: "issued", branch_id: payload.branch_id,
       });
     }
+    await audit("vat_challan", "create", v, `Mushak 6.3 ${v.challan_number}`);
     return { data: v, error: null };
   },
+
 
   // -------- Delivery Challans --------
   async listDeliveryChallans(filters: any = {}) {
@@ -205,6 +223,7 @@ export const swApi = {
     await supabase.from("invoice_challans").insert(vatChallanIds.map((vcId) => ({ invoice_id: inv.id, vat_challan_id: vcId })));
     await supabase.from("vat_challans").update({ status: "invoiced" }).in("id", vatChallanIds);
     await supabase.from("delivery_challans").update({ status: "invoiced" }).in("vat_challan_id", vatChallanIds);
+    await audit("invoice_processing", "create", inv, `Invoice ${inv.invoice_number}`);
     return { data: inv, error: null };
   },
   async recordPayment(invoiceId: string, payload: any) {
@@ -235,6 +254,7 @@ export const swApi = {
         status: due <= 0 ? "paid" : "partially_paid",
       }).eq("id", invoiceId);
     }
+    await audit("invoice_processing", "create", p, `Payment ${p.payment_number} (TDS ${payload.tds_amount || 0})`);
     return { data: p, error: null };
   },
   async listTds(filters: any = {}) {
