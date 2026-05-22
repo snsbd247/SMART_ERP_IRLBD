@@ -14,21 +14,22 @@ class DatabaseSeeder extends Seeder
         // Branch
         $branch = Branch::create(['code' => 'HQ', 'name' => 'Head Office', 'phone' => '+1234567890', 'address' => '123 Main St']);
 
-        // All permission modules (must match frontend MODULES list & route middleware)
+        // Canonical permission modules (MUST match frontend RolesPage MODULES & route middleware)
         $allModules = [
             // Core
-            'dashboard',
+            'dashboard', 'messaging',
             // Accounting
             'accounts', 'journal', 'payment', 'receipt', 'contra',
             // Business
-            'sales', 'purchase', 'inventory', 'manufacturing', 'bank',
+            'sales', 'purchase', 'customers', 'suppliers', 'inventory', 'manufacturing', 'bank',
             // HRM
-            'hrm',
+            'hrm', 'employees', 'attendance', 'leave', 'payroll', 'portal',
             // Reports
             'reports',
             // Administration
             'branches', 'users', 'roles', 'financial_years',
             'settings', 'audit_log', 'backup',
+            'sms', 'branding', 'shortcuts', 'document_numbering', 'modules',
         ];
 
         // Super Admin Role (all permissions)
@@ -37,10 +38,28 @@ class DatabaseSeeder extends Seeder
             RolePermission::create(['custom_role_id' => $superAdmin->id, 'module' => $mod, 'can_view' => 1, 'can_add' => 1, 'can_edit' => 1, 'can_delete' => 1]);
         }
 
-        // Staff role (limited — business modules only, no delete)
+        // Staff role (business modules, view/add/edit, no delete)
         $staff = CustomRole::create(['name' => 'Staff', 'description' => 'Standard staff access']);
-        foreach (['dashboard', 'accounts', 'journal', 'payment', 'receipt', 'contra', 'sales', 'purchase', 'inventory', 'reports'] as $mod) {
+        foreach (['dashboard', 'messaging', 'accounts', 'journal', 'payment', 'receipt', 'contra', 'sales', 'purchase', 'customers', 'suppliers', 'inventory', 'reports', 'portal'] as $mod) {
             RolePermission::create(['custom_role_id' => $staff->id, 'module' => $mod, 'can_view' => 1, 'can_add' => 1, 'can_edit' => 1, 'can_delete' => 0]);
+        }
+
+        // Accountant role (accounting + reports + bank + party masters, no delete)
+        $accountant = CustomRole::create(['name' => 'Accountant', 'description' => 'Accounting and finance access']);
+        foreach (['dashboard', 'messaging', 'accounts', 'journal', 'payment', 'receipt', 'contra', 'bank', 'customers', 'suppliers', 'reports', 'portal'] as $mod) {
+            RolePermission::create(['custom_role_id' => $accountant->id, 'module' => $mod, 'can_view' => 1, 'can_add' => 1, 'can_edit' => 1, 'can_delete' => 0]);
+        }
+
+        // HR Manager role (HRM + employees + payroll + portal)
+        $hrManager = CustomRole::create(['name' => 'HR Manager', 'description' => 'HRM, attendance and payroll access']);
+        foreach (['dashboard', 'messaging', 'hrm', 'employees', 'attendance', 'leave', 'payroll', 'portal', 'reports'] as $mod) {
+            RolePermission::create(['custom_role_id' => $hrManager->id, 'module' => $mod, 'can_view' => 1, 'can_add' => 1, 'can_edit' => 1, 'can_delete' => 0]);
+        }
+
+        // Employee role (portal + messaging only)
+        $employee = CustomRole::create(['name' => 'Employee', 'description' => 'Self-service portal access only']);
+        foreach (['dashboard', 'messaging', 'portal'] as $mod) {
+            RolePermission::create(['custom_role_id' => $employee->id, 'module' => $mod, 'can_view' => 1, 'can_add' => 0, 'can_edit' => 0, 'can_delete' => 0]);
         }
 
         // Admin User (employee_id = NULL → Super Admin)
