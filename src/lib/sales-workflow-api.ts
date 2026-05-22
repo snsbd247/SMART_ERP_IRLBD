@@ -66,6 +66,7 @@ export const swApi = {
       line_total: Number(i.qty_ordered) * Number(i.rate),
     }));
     await supabase.from("purchase_order_items").insert(rows);
+    await audit("purchase_orders", "create", po, `PO ${po.po_number}`);
     return { data: po, error: null };
   },
 
