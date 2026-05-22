@@ -3,14 +3,21 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { PrintLayout } from "@/components/PrintLayout";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Printer, Receipt, Download, Building2, User, FileText, CalendarDays } from "lucide-react";
+import { ArrowLeft, Printer, Receipt, Download, Building2, User, FileText, CalendarDays, Wallet, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/hooks/use-toast";
 
 interface InvoiceData {
   id: string; invoice_number: string; invoice_date: string; customer_id: string | null;
@@ -26,53 +33,133 @@ const SalesInvoiceDetailPage = () => {
   const navigate = useNavigate();
   const { fc } = useCurrency();
   const { settings } = useCompanySettings();
+  const { user } = useAuth();
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [items, setItems] = useState<any[]>([]);
   const [customerName, setCustomerName] = useState("");
   const [customerInfo, setCustomerInfo] = useState<any>(null);
   const [branchName, setBranchName] = useState("");
   const [paidAmount, setPaidAmount] = useState(0);
+  const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [printOpen, setPrintOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [pay, setPay] = useState({
+    payment_date: new Date().toISOString().split("T")[0],
+    amount: "",
+    payment_method: "cash",
+    reference: "",
+    notes: "",
+  });
 
-  useEffect(() => {
+  const load = async () => {
     if (!id) return;
-    const load = async () => {
-      setLoading(true);
-      const [invRes, itemsRes, allocRes] = await Promise.all([
-        supabase.from("sales_invoices").select("*").eq("id", id).single(),
-        supabase.from("sales_invoice_items").select("*").eq("sales_invoice_id", id),
-        supabase.from("payment_allocations" as any).select("allocated_amount").eq("invoice_id", id).eq("invoice_type", "sales_invoice"),
-      ]);
-      if (invRes.data) {
-        setInvoice(invRes.data as any);
-        if (invRes.data.customer_id) {
-          const { data: cust } = await supabase.from("customers").select("*").eq("id", invRes.data.customer_id).single();
-          if (cust) { setCustomerName(cust.name); setCustomerInfo(cust); }
-        }
-        if (invRes.data.branch_id) {
-          const { data: br } = await supabase.from("branches").select("name").eq("id", invRes.data.branch_id).single();
-          if (br) setBranchName(br.name);
-        }
+    setLoading(true);
+    const [invRes, itemsRes, allocRes] = await Promise.all([
+      supabase.from("sales_invoices").select("*").eq("id", id).single(),
+      supabase.from("sales_invoice_items").select("*").eq("sales_invoice_id", id),
+      supabase.from("payment_allocations" as any)
+        .select("id, allocated_amount, payment:party_payments(id, payment_number, payment_date, amount, payment_method, reference, notes)")
+        .eq("invoice_id", id).eq("invoice_type", "sales_invoice"),
+    ]);
+    if (invRes.data) {
+      setInvoice(invRes.data as any);
+      if (invRes.data.customer_id) {
+        const { data: cust } = await supabase.from("customers").select("*").eq("id", invRes.data.customer_id).single();
+        if (cust) { setCustomerName(cust.name); setCustomerInfo(cust); }
       }
-      const products = (itemsRes.data || []) as any[];
-      if (products.length > 0) {
-        const productIds = [...new Set(products.map(p => p.product_id))];
-        const { data: prods } = await supabase.from("item_master").select("id, item_name, item_code").in("id", productIds);
-        const prodMap = new Map((prods || []).map((p: any) => [p.id, p]));
-        setItems(products.map(item => ({
-          ...item,
-          product_name: prodMap.get(item.product_id)?.item_name || "—",
-          product_code: prodMap.get(item.product_id)?.item_code || "",
-          vat_rate: item.vat_rate ?? DEFAULT_VAT_RATE,
-        })));
+      if (invRes.data.branch_id) {
+        const { data: br } = await supabase.from("branches").select("name").eq("id", invRes.data.branch_id).single();
+        if (br) setBranchName(br.name);
       }
-      const paid = ((allocRes.data as any[]) || []).reduce((s: number, a: any) => s + Number(a.allocated_amount || 0), 0);
-      setPaidAmount(paid);
-      setLoading(false);
-    };
+    }
+    const products = (itemsRes.data || []) as any[];
+    if (products.length > 0) {
+      const productIds = [...new Set(products.map(p => p.product_id))];
+      const { data: prods } = await supabase.from("item_master").select("id, item_name, item_code").in("id", productIds);
+      const prodMap = new Map((prods || []).map((p: any) => [p.id, p]));
+      setItems(products.map(item => ({
+        ...item,
+        product_name: prodMap.get(item.product_id)?.item_name || "—",
+        product_code: prodMap.get(item.product_id)?.item_code || "",
+        vat_rate: item.vat_rate ?? DEFAULT_VAT_RATE,
+      })));
+    }
+    const allocs = ((allocRes.data as any[]) || []);
+    setPaidAmount(allocs.reduce((s: number, a: any) => s + Number(a.allocated_amount || 0), 0));
+    setPayments(allocs.filter(a => a.payment).map(a => ({ ...a.payment, allocation_id: a.id, allocated_amount: Number(a.allocated_amount || 0) })));
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [id]);
+
+  const submitPayment = async () => {
+    if (!id || !invoice?.customer_id) return;
+    const amt = Number(pay.amount);
+    if (!amt || amt <= 0) {
+      toast({ title: "Enter amount", variant: "destructive" });
+      return;
+    }
+    if (amt > dueAmount + 0.01) {
+      toast({ title: "Exceeds due", description: `Due is ${dueAmount.toFixed(2)}`, variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      // 1) Generate payment_number
+      const year = new Date().getFullYear();
+      const { data: seq } = await supabase.from("number_sequences").select("*").eq("prefix", "RCP").eq("year", year).maybeSingle();
+      let serial = 1;
+      if (seq) {
+        serial = (Number((seq as any).current_number) || 0) + 1;
+        await supabase.from("number_sequences").update({ current_number: serial } as any).eq("id", (seq as any).id);
+      } else {
+        await supabase.from("number_sequences").insert([{ prefix: "RCP", year, current_number: 1, description: "Receipt" } as any]);
+      }
+      const payment_number = `RCP-${year}-${String(serial).padStart(5, "0")}`;
+
+      // 2) Insert party_payment
+      const { data: payData, error: payErr } = await supabase.from("party_payments" as any).insert({
+        party_type: "customer",
+        party_id: invoice.customer_id,
+        payment_number,
+        payment_date: pay.payment_date,
+        amount: amt,
+        payment_method: pay.payment_method,
+        reference: pay.reference || null,
+        notes: pay.notes || null,
+        created_by: user?.id || null,
+      } as any).select().single();
+      if (payErr) throw payErr;
+
+      // 3) Insert allocation to this invoice
+      const { error: aErr } = await supabase.from("payment_allocations" as any).insert({
+        payment_id: (payData as any).id,
+        invoice_type: "sales_invoice",
+        invoice_id: id,
+        allocated_amount: amt,
+      } as any);
+      if (aErr) throw aErr;
+
+      toast({ title: "Payment recorded", description: `${payment_number} • ${amt.toFixed(2)}` });
+      setPayOpen(false);
+      setPay({ payment_date: new Date().toISOString().split("T")[0], amount: "", payment_method: "cash", reference: "", notes: "" });
+      load();
+    } catch (e: any) {
+      toast({ title: "Failed", description: e?.message || "Could not record payment", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const deletePayment = async (paymentId: string) => {
+    if (!confirm("Delete this payment? Allocation will be removed.")) return;
+    const { error } = await supabase.from("party_payments" as any).delete().eq("id", paymentId);
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    toast({ title: "Payment deleted" });
     load();
-  }, [id]);
+  };
 
   if (loading) return (
     <div className="p-6 space-y-4 max-w-5xl mx-auto">
@@ -205,11 +292,16 @@ const SalesInvoiceDetailPage = () => {
             <p className="text-sm text-muted-foreground mt-0.5">Sales Invoice</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {dueAmount > 0 && (
+            <Button size="sm" onClick={() => setPayOpen(true)}>
+              <Wallet className="w-4 h-4 mr-1.5" />Receive Payment
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
             <Printer className="w-4 h-4 mr-1.5" />Print
           </Button>
-          <Button size="sm" onClick={() => setPrintOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
             <Download className="w-4 h-4 mr-1.5" />PDF
           </Button>
         </div>
@@ -388,6 +480,113 @@ const SalesInvoiceDetailPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Payments History */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2"><Receipt className="w-4 h-4 text-primary" />Payments Received</h3>
+            {dueAmount > 0 && (
+              <Button size="sm" variant="outline" onClick={() => setPayOpen(true)}>
+                <Wallet className="w-3.5 h-3.5 mr-1.5" />Receive Payment
+              </Button>
+            )}
+          </div>
+          {payments.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No payments recorded yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Receipt #</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Method</TableHead>
+                  <TableHead>Reference</TableHead>
+                  <TableHead className="text-right">Allocated</TableHead>
+                  <TableHead className="w-10" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payments.map((p: any) => (
+                  <TableRow key={p.allocation_id}>
+                    <TableCell className="font-mono text-xs">{p.payment_number || p.id.slice(0, 8)}</TableCell>
+                    <TableCell>{p.payment_date}</TableCell>
+                    <TableCell className="capitalize">{p.payment_method}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{p.reference || "—"}</TableCell>
+                    <TableCell className="text-right tabular-nums font-medium">{fc(p.allocated_amount)}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletePayment(p.id)}>
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Receive Payment Dialog */}
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Receive Payment — {invoice.invoice_number}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Outstanding Due</span>
+              <span className="font-bold text-destructive tabular-nums">{fc(dueAmount)}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Payment Date</Label>
+                <Input type="date" value={pay.payment_date} onChange={(e) => setPay({ ...pay, payment_date: e.target.value })} />
+              </div>
+              <div>
+                <Label>Method</Label>
+                <Select value={pay.payment_method} onValueChange={(v) => setPay({ ...pay, payment_method: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="bank">Bank Transfer</SelectItem>
+                    <SelectItem value="cheque">Cheque</SelectItem>
+                    <SelectItem value="online">Online</SelectItem>
+                    <SelectItem value="mobile_banking">Mobile Banking</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2">
+                <Label>Amount</Label>
+                <Input type="number" step="0.01" min="0" max={dueAmount} value={pay.amount}
+                  onChange={(e) => setPay({ ...pay, amount: e.target.value })}
+                  placeholder={`Up to ${dueAmount.toFixed(2)}`} />
+                <div className="flex justify-end mt-1">
+                  <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs"
+                    onClick={() => setPay({ ...pay, amount: String(dueAmount) })}>
+                    Pay full due ({fc(dueAmount)})
+                  </Button>
+                </div>
+              </div>
+              <div className="col-span-2">
+                <Label>Reference (cheque no / txn id)</Label>
+                <Input value={pay.reference} onChange={(e) => setPay({ ...pay, reference: e.target.value })} />
+              </div>
+              <div className="col-span-2">
+                <Label>Notes</Label>
+                <Textarea rows={2} value={pay.notes} onChange={(e) => setPay({ ...pay, notes: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayOpen(false)} disabled={submitting}>Cancel</Button>
+            <Button onClick={submitPayment} disabled={submitting}>
+              {submitting ? "Recording…" : "Record Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Notes & Terms */}
       {invoice.notes && (
