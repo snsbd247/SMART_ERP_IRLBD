@@ -532,7 +532,7 @@ export default function DeploySyncPage() {
                       Pull {status.counts.added + status.counts.modified} change(s)
                     </Button>
                     {status.has_backup && (
-                      <Button variant="outline" onClick={() => doRollback()} disabled={!!jobActive}>
+                      <Button variant="outline" onClick={() => openRestoreDialog()} disabled={!!jobActive}>
                         <Undo2 className="w-4 h-4 mr-2" /> Rollback Last Pull
                       </Button>
                     )}
@@ -636,7 +636,7 @@ export default function DeploySyncPage() {
                       <td className="p-2 font-mono text-[11px]">{b.job_id || "—"}</td>
                       <td className="p-2 text-right">
                         <Button size="sm" variant="outline" disabled={!!jobActive}
-                          onClick={() => doRollback(b.backup_id)}>
+                          onClick={() => openRestoreDialog(b)}>
                           <Undo2 className="w-3.5 h-3.5 mr-1" /> Restore
                         </Button>
                       </td>
