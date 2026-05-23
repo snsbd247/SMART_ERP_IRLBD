@@ -54,6 +54,8 @@ class DeploySyncController extends BaseController
             'id' => $row->id, 'owner' => $row->owner, 'repo' => $row->repo, 'branch' => $row->branch,
             'token' => $token, 'auto_migrate' => (bool)$row->auto_migrate,
             'has_token' => !empty($token),
+            'retention_count' => (int)($row->retention_count ?? 10),
+            'retention_days' => (int)($row->retention_days ?? 30),
             'last_pulled_at' => $row->last_pulled_at, 'last_backup_id' => $row->last_backup_id,
         ];
     }
@@ -122,10 +124,15 @@ class DeploySyncController extends BaseController
             'owner' => 'required|string|max:100', 'repo' => 'required|string|max:100',
             'branch' => 'required|string|max:100', 'token' => 'nullable|string',
             'auto_migrate' => 'boolean',
+            'retention_count' => 'nullable|integer|min:1|max:500',
+            'retention_days' => 'nullable|integer|min:1|max:3650',
         ]);
         $update = [
             'owner' => $data['owner'], 'repo' => $data['repo'], 'branch' => $data['branch'],
-            'auto_migrate' => $data['auto_migrate'] ?? false, 'updated_at' => now(),
+            'auto_migrate' => $data['auto_migrate'] ?? false,
+            'retention_count' => $data['retention_count'] ?? 10,
+            'retention_days' => $data['retention_days'] ?? 30,
+            'updated_at' => now(),
         ];
         if (!empty($data['token'])) {
             $update['token_encrypted'] = Crypt::encryptString($data['token']);
