@@ -39,7 +39,9 @@ Deno.serve(async (req) => {
     // ===== RESET =====
     const resetGroups: string[][] = [
       ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","purchase_items","purchase_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","bom_items","fund_transactions","employee_fund_settings","overtime_records","leave_requests","attendance","employee_documents","employee_bank_info","employee_education","employee_experience","employee_emergency_contacts","salary_structures","face_data","biometric_logs","payroll","party_notes","audit_log","login_logs","backup_history","messages","conversation_participants",
-        "tds_entries","invoice_payments","invoice_challans","sales_invoice_items_v2","customer_receives","ho_receives","dispatch_po_allocations","vat_challan_items","dispatch_items","purchase_order_items"],
+        "tds_entries","invoice_payments","invoice_challans","sales_invoice_items_v2","customer_receives","ho_receives","dispatch_po_allocations","vat_challan_items","dispatch_items","purchase_order_items",
+        // Status logs / amendments — defensive (cascade would also handle these)
+        "dispatch_status_logs","invoice_status_logs","po_amendments"],
       // Returns must be deleted BEFORE their parent invoices/purchases
       ["sales_returns","purchase_returns"],
       ["sales_invoices_v2","delivery_challans","vat_challans","dispatches","purchase_orders"],
@@ -315,7 +317,7 @@ Deno.serve(async (req) => {
         const vat = round2(subtotal * VAT_RATE);
         const gross = round2(subtotal + vat);
         pc++;
-        const pnum = `PO-${fyTag}-${String(pc).padStart(5,"0")}`;
+        const pnum = `PUR-${fyTag}-${String(pc).padStart(5,"0")}`;
         const credit = R() < 0.6;
         pinv.push({ id:pId, purchase_number:pnum, purchase_date:ds, supplier_id:sup.id, branch_id:BR_DHK,
           total_amount:gross, payment_method:credit?"credit":"cash", status:"approved", created_by:UID });
@@ -766,7 +768,7 @@ Deno.serve(async (req) => {
     // ===== Number sequences =====
     await bulk("number_sequences", [
       { id:"sales_invoice", prefix:"INV", current_number:sc, year: Number(fyTag), description:"Sales Invoice" },
-      { id:"purchase", prefix:"PO", current_number:pc, year: Number(fyTag), description:"Purchase" },
+      { id:"purchase", prefix:"PUR", current_number:pc, year: Number(fyTag), description:"Purchase" },
       { id:"sales_return", prefix:"SRN", current_number:src, year: Number(fyTag), description:"Sales Return" },
       { id:"purchase_return", prefix:"PRN", current_number:prc, year: Number(fyTag), description:"Purchase Return" },
       { id:"production", prefix:"PRD", current_number:prdc, year: Number(fyTag), description:"Production" },
@@ -775,14 +777,37 @@ Deno.serve(async (req) => {
       { id:"payment_voucher", prefix:"PV", current_number:vc.PV, year: Number(fyTag), description:"Payment Voucher" },
       { id:"receipt_voucher", prefix:"RV", current_number:vc.RV, year: Number(fyTag), description:"Receipt Voucher" },
       { id:"contra_voucher", prefix:"CV", current_number:vc.CV, year: Number(fyTag), description:"Contra Voucher" },
-      { id:"purchase_order", prefix:"PO", current_number:poc, year: Number(fyTag), description:"Purchase Order (BD VAT)" },
-      { id:"dispatch", prefix:"DSP", current_number:dspc, year: Number(fyTag), description:"Dispatch" },
-      { id:"vat_challan", prefix:"VCH", current_number:vchc, year: Number(fyTag), description:"VAT Challan" },
+      { id:"purchase_order", prefix:"PO", current_number:poc, year: Number(fyTag), description:"Customer Purchase Order" },
+      { id:"dispatch", prefix:"DSP", current_number:dspc, year: Number(fyTag), description:"Dispatch / Gate Pass" },
+      { id:"vat_challan", prefix:"VCH", current_number:vchc, year: Number(fyTag), description:"VAT Challan (Mushak 6.3)" },
       { id:"delivery_challan", prefix:"DC", current_number:dcc, year: Number(fyTag), description:"Delivery Challan" },
-      { id:"invoice_v2", prefix:"INV2", current_number:inv2c, year: Number(fyTag), description:"Tax Invoice v2" },
-      { id:"invoice_payment", prefix:"RCP", current_number:ipayc, year: Number(fyTag), description:"Invoice Payment" },
-      { id:"tds", prefix:"TDS", current_number:tdsc, year: Number(fyTag), description:"TDS Entry" },
+      { id:"sales_invoice_v2", prefix:"INV2", current_number:inv2c, year: Number(fyTag), description:"Consolidated Sales Invoice" },
+      { id:"invoice_payment", prefix:"RCP", current_number:ipayc, year: Number(fyTag), description:"Invoice Payment Receipt" },
+      { id:"tds_entry", prefix:"TDS", current_number:tdsc, year: Number(fyTag), description:"TDS Entry" },
     ]);
+
+    // ===== Demo Party Notes (showcase party notes feature) =====
+    const noteSnippets = [
+      "Reliable client — pays within 15 days.",
+      "Requested quarterly statement.",
+      "Prefers delivery before noon.",
+      "Negotiated 2% discount on bulk orders.",
+      "Phone updated; check before next billing.",
+    ];
+    const partyNotes: any[] = [];
+    for (const c of customers.slice(0, 8)) {
+      partyNotes.push({
+        id: U(), party_id: c.id, party_type: "customer",
+        note: pick(noteSnippets), created_by: UID,
+      });
+    }
+    for (const s of suppliers.slice(0, 5)) {
+      partyNotes.push({
+        id: U(), party_id: s.id, party_type: "supplier",
+        note: pick(noteSnippets), created_by: UID,
+      });
+    }
+    await bulk("party_notes", partyNotes);
 
     return new Response(JSON.stringify({
       success: true,
@@ -797,6 +822,7 @@ Deno.serve(async (req) => {
         products: products.length, customers: customers.length, suppliers: suppliers.length, employees: employees.length,
         purchase_orders: poc, dispatches: dspc, vat_challans: vchc, delivery_challans: dcc,
         invoices_v2: inv2c, invoice_payments: ipayc, tds_entries: tdsc,
+        party_notes: partyNotes.length,
       },
       log,
     }), { headers: { ...corsHeaders, "Content-Type":"application/json" } });
