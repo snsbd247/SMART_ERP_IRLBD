@@ -369,7 +369,7 @@ export default function DeploySyncPage() {
         <TabsList>
           <TabsTrigger value="sync"><GitBranch className="w-4 h-4 mr-2" />Sync</TabsTrigger>
           <TabsTrigger value="backups" onClick={loadBackups}><Archive className="w-4 h-4 mr-2" />Backups</TabsTrigger>
-          <TabsTrigger value="audit" onClick={loadAudit}><ClipboardList className="w-4 h-4 mr-2" />Audit Log</TabsTrigger>
+          <TabsTrigger value="audit" onClick={() => loadAudit(1)}><ClipboardList className="w-4 h-4 mr-2" />Audit Log</TabsTrigger>
           <TabsTrigger value="settings"><Settings className="w-4 h-4 mr-2" />Settings</TabsTrigger>
         </TabsList>
 
@@ -621,7 +621,7 @@ export default function DeploySyncPage() {
               <option value="test_connection">Test Connection</option>
               <option value="settings_update">Settings Update</option>
             </select>
-            <Button size="sm" variant="outline" onClick={loadAudit}>
+            <Button size="sm" variant="outline" onClick={() => loadAudit(1)}>
               <RefreshCw className="w-4 h-4 mr-2" /> Refresh
             </Button>
             <Button size="sm" variant="outline" onClick={exportAuditCSV} disabled={audit.length === 0}>
