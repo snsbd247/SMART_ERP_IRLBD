@@ -105,11 +105,24 @@ export default function DeploySyncPage() {
   const [latestBackupId, setLatestBackupId] = useState<string | null>(null);
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [auditFilter, setAuditFilter] = useState<string>("");
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditPerPage, setAuditPerPage] = useState(25);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditLastPage, setAuditLastPage] = useState(1);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
+  const [restorePreview, setRestorePreview] = useState<RestorePreview | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<Backup | null>(null);
+  const [restoreConfirm, setRestoreConfirm] = useState("");
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [streamMode, setStreamMode] = useState<"sse" | "poll">("sse");
   const pollRef = useRef<number | null>(null);
+  const sseRef = useRef<EventSource | null>(null);
 
-  const [form, setForm] = useState({ owner: "", repo: "", branch: "", token: "", auto_migrate: false });
+  const [form, setForm] = useState({
+    owner: "", repo: "", branch: "", token: "",
+    auto_migrate: false, retention_count: 10, retention_days: 30,
+  });
 
   const loadAll = async () => {
     setLoading(true);
