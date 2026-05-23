@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Artisan;
 
 /**
  * GitHub Deploy Sync — Super Admin only.
- * Features: configurable settings, diff viewer, dry-run, async jobs, auto-migrate.
+ * Features: configurable settings, diff viewer, dry-run, async jobs, auto-migrate,
+ * audit log, multi-backup restore, job log export, GitHub test-connection.
  */
 class DeploySyncController extends BaseController
 {
@@ -92,6 +93,22 @@ class DeploySyncController extends BaseController
         return sha1('blob ' . strlen($c) . "\0" . $c);
     }
 
+    // ─── Audit logging ───────────────────────────────────────────
+    private function audit(Request $r, string $event, string $status, array $extra = []): void
+    {
+        try {
+            $u = $r->user();
+            DB::table('deploy_sync_audit_log')->insert(array_merge([
+                'event' => $event,
+                'status' => $status,
+                'user_id' => $u?->id,
+                'user_name' => $u?->name ?? 'system',
+                'ip_address' => $r->ip(),
+                'created_at' => now(),
+            ], $extra));
+        } catch (\Throwable $e) { /* never break the request for audit */ }
+    }
+
     // ─── Settings ─────────────────────────────────────────────────
     public function getConfig(Request $r) {
         $this->guard($r);
@@ -114,13 +131,72 @@ class DeploySyncController extends BaseController
             $update['token_encrypted'] = Crypt::encryptString($data['token']);
         }
         DB::table('deploy_sync_settings')->where('id', $this->getSettings()['id'])->update($update);
+        $this->audit($r, 'settings_update', 'success', [
+            'branch' => $data['branch'],
+            'message' => "owner={$data['owner']} repo={$data['repo']} branch={$data['branch']}"
+                . (!empty($data['token']) ? ' (token updated)' : ''),
+        ]);
         return $this->success(null, 'Settings saved');
     }
 
     public function clearToken(Request $r) {
         $this->guard($r);
         DB::table('deploy_sync_settings')->update(['token_encrypted' => null, 'updated_at' => now()]);
+        $this->audit($r, 'settings_update', 'success', ['message' => 'Token cleared']);
         return $this->success(null, 'Token cleared');
+    }
+
+    /** Test the configured/provided GitHub repo+branch+token. */
+    public function testConnection(Request $r) {
+        $this->guard($r);
+        $data = $r->validate([
+            'owner' => 'required|string', 'repo' => 'required|string',
+            'branch' => 'required|string', 'token' => 'nullable|string',
+        ]);
+        // If token blank but stored token exists, fall back to stored
+        $token = !empty($data['token']) ? $data['token'] : ($this->getSettings()['token'] ?? null);
+        $h = ['Accept' => 'application/vnd.github+json', 'User-Agent' => 'SmartERP-DeploySync'];
+        if ($token) $h['Authorization'] = 'Bearer ' . $token;
+
+        // 1. Validate repo
+        $repo = Http::withHeaders($h)->get("{$this->apiBase}/repos/{$data['owner']}/{$data['repo']}");
+        if (!$repo->successful()) {
+            $msg = "Repo check failed (HTTP {$repo->status()}): " . ($repo->json('message') ?? 'unknown');
+            $this->audit($r, 'test_connection', 'failed', ['branch' => $data['branch'], 'message' => $msg]);
+            return $this->error($msg, 400);
+        }
+        $private = (bool) $repo->json('private');
+
+        // 2. Validate branch
+        $br = Http::withHeaders($h)->get("{$this->apiBase}/repos/{$data['owner']}/{$data['repo']}/branches/{$data['branch']}");
+        if (!$br->successful()) {
+            $msg = "Branch '{$data['branch']}' not found (HTTP {$br->status()})";
+            $this->audit($r, 'test_connection', 'failed', ['branch' => $data['branch'], 'message' => $msg]);
+            return $this->error($msg, 400);
+        }
+
+        // 3. Validate token scopes (if private repo, token required)
+        $tokenOk = !$private || !empty($token);
+        $commitSha = $br->json('commit.sha');
+        $commitMsg = $br->json('commit.commit.message');
+        $commitDate = $br->json('commit.commit.committer.date');
+
+        $this->audit($r, 'test_connection', 'success', [
+            'branch' => $data['branch'],
+            'message' => "OK private={$private} latest={$commitSha}",
+        ]);
+
+        return $this->success([
+            'repo' => $data['owner'] . '/' . $data['repo'],
+            'branch' => $data['branch'],
+            'private' => $private,
+            'token_used' => !empty($token),
+            'token_required' => $private,
+            'token_ok' => $tokenOk,
+            'latest_commit' => substr($commitSha, 0, 7),
+            'latest_message' => $commitMsg,
+            'latest_date' => $commitDate,
+        ], 'Connection OK');
     }
 
     // ─── Status / Diff ────────────────────────────────────────────
@@ -198,6 +274,42 @@ class DeploySyncController extends BaseController
         return $this->success($job);
     }
 
+    /** Download a job's full progress + migrate output as a text file. */
+    public function jobExport(Request $r, string $id) {
+        $this->guard($r);
+        $job = $this->readJob($id);
+        if (!$job) return $this->error('Job not found', 404);
+        $lines = [];
+        $lines[] = '=== Deploy Sync Job Export ===';
+        $lines[] = 'Job ID:     ' . $id;
+        $lines[] = 'Type:       ' . ($job['type'] ?? '');
+        $lines[] = 'Status:     ' . ($job['status'] ?? '');
+        $lines[] = 'Progress:   ' . ($job['progress'] ?? 0) . '%';
+        $lines[] = 'Updated:    ' . ($job['updated_at'] ?? '');
+        $lines[] = 'Backup ID:  ' . ($job['backup_id'] ?? '-');
+        $lines[] = 'Message:    ' . ($job['message'] ?? '');
+        $lines[] = '';
+        if (!empty($job['pulled'])) {
+            $lines[] = '--- Pulled Files (' . count($job['pulled']) . ') ---';
+            foreach ($job['pulled'] as $p) $lines[] = '  ' . $p;
+            $lines[] = '';
+        }
+        if (!empty($job['errors'])) {
+            $lines[] = '--- Errors ---';
+            foreach ($job['errors'] as $e) $lines[] = '  ' . json_encode($e);
+            $lines[] = '';
+        }
+        if (!empty($job['migrate_output'])) {
+            $lines[] = '--- Migrate Output ---';
+            $lines[] = $job['migrate_output'];
+        }
+        $body = implode("\n", $lines);
+        return response($body, 200, [
+            'Content-Type' => 'text/plain; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="deploy-sync-' . $id . '.txt"',
+        ]);
+    }
+
     /** Detach from client so work continues after response. */
     private function detach(): void {
         @ignore_user_abort(true);
@@ -214,7 +326,6 @@ class DeploySyncController extends BaseController
         $s = $this->getSettings();
 
         if ($dryRun) {
-            // Compute & return immediately, no writes.
             $tree = $this->fetchRemoteTree($s);
             $root = $this->projectRoot();
             $would = [];
@@ -231,6 +342,10 @@ class DeploySyncController extends BaseController
                     ];
                 }
             }
+            $this->audit($r, 'dry_run', 'success', [
+                'branch' => $s['branch'],
+                'message' => count($would) . ' file(s) would change',
+            ]);
             return $this->success([
                 'dry_run' => true,
                 'would_change_count' => count($would),
@@ -240,12 +355,30 @@ class DeploySyncController extends BaseController
             ]);
         }
 
-        // Async actual pull
         $jobId = 'pull_' . date('Ymd_His') . '_' . substr(md5(uniqid()), 0, 6);
         $this->writeJob($jobId, ['type' => 'pull', 'status' => 'queued', 'progress' => 0, 'message' => 'Starting...']);
+        $this->audit($r, 'pull', 'started', ['job_id' => $jobId, 'branch' => $s['branch']]);
+        $userName = $r->user()?->name; $userId = $r->user()?->id; $ip = $r->ip();
         $this->detach();
-        try { $this->runPull($jobId, $s); } catch (\Throwable $e) {
+        try {
+            $this->runPull($jobId, $s);
+            // Re-read final job to record outcome
+            $job = $this->readJob($jobId);
+            DB::table('deploy_sync_audit_log')->insert([
+                'event' => 'pull', 'status' => $job['status'] === 'done' ? 'success' : 'failed',
+                'user_id' => $userId, 'user_name' => $userName, 'ip_address' => $ip,
+                'job_id' => $jobId, 'backup_id' => $job['backup_id'] ?? null,
+                'branch' => $s['branch'],
+                'message' => ($job['message'] ?? '') . ' (pulled=' . ($job['pulled_count'] ?? 0) . ')',
+                'created_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
             $this->writeJob($jobId, ['type' => 'pull', 'status' => 'failed', 'progress' => 0, 'message' => $e->getMessage()]);
+            DB::table('deploy_sync_audit_log')->insert([
+                'event' => 'pull', 'status' => 'failed', 'user_id' => $userId, 'user_name' => $userName,
+                'ip_address' => $ip, 'job_id' => $jobId, 'branch' => $s['branch'],
+                'message' => $e->getMessage(), 'created_at' => now(),
+            ]);
         }
         return $this->success(['job_id' => $jobId, 'status' => 'queued']);
     }
@@ -292,6 +425,12 @@ class DeploySyncController extends BaseController
             ]);
         }
 
+        // Record metadata file alongside backup for friendly listing
+        @file_put_contents($backupDir . '/_meta.json', json_encode([
+            'job_id' => $jobId, 'pulled_count' => count($pulled),
+            'created_at' => now()->toIso8601String(), 'branch' => $s['branch'],
+        ]));
+
         DB::table('deploy_sync_settings')->update([
             'last_pulled_at' => now(), 'last_backup_id' => $stamp, 'updated_at' => now(),
         ]);
@@ -315,30 +454,79 @@ class DeploySyncController extends BaseController
         ]);
     }
 
-    // ─── Rollback (async) ────────────────────────────────────────
+    // ─── Backups: list + selective rollback ──────────────────────
+    public function listBackups(Request $r) {
+        $this->guard($r);
+        $base = storage_path('app/deploy_sync/backups');
+        if (!is_dir($base)) return $this->success(['backups' => []]);
+        $entries = [];
+        foreach (scandir($base) as $name) {
+            if ($name === '.' || $name === '..') continue;
+            $full = $base . '/' . $name;
+            if (!is_dir($full)) continue;
+            $meta = is_file($full . '/_meta.json') ? json_decode(file_get_contents($full . '/_meta.json'), true) : [];
+            // count files
+            $count = 0;
+            try {
+                $rii = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($full, \RecursiveDirectoryIterator::SKIP_DOTS));
+                foreach ($rii as $f) if (!$f->isDir() && $f->getFilename() !== '_meta.json') $count++;
+            } catch (\Throwable $e) {}
+            $entries[] = [
+                'backup_id' => $name,
+                'file_count' => $count,
+                'created_at' => $meta['created_at'] ?? date('c', @filemtime($full) ?: time()),
+                'branch' => $meta['branch'] ?? null,
+                'job_id' => $meta['job_id'] ?? null,
+            ];
+        }
+        usort($entries, fn($a, $b) => strcmp($b['backup_id'], $a['backup_id']));
+        $current = $this->getSettings()['last_backup_id'];
+        return $this->success(['backups' => $entries, 'latest_backup_id' => $current]);
+    }
+
     public function rollback(Request $r) {
         $this->guard($r);
         $s = $this->getSettings();
-        if (empty($s['last_backup_id'])) return $this->error('No backup available', 404);
-        $backupDir = storage_path('app/deploy_sync/backups/' . $s['last_backup_id']);
+        $backupId = $r->input('backup_id') ?: $s['last_backup_id'];
+        if (empty($backupId)) return $this->error('No backup available', 404);
+        // Sanitize
+        if (!preg_match('/^[A-Za-z0-9_\-]+$/', $backupId)) return $this->error('Invalid backup id', 400);
+        $backupDir = storage_path('app/deploy_sync/backups/' . $backupId);
         if (!is_dir($backupDir)) return $this->error('Backup folder missing', 404);
 
         $jobId = 'rb_' . date('Ymd_His') . '_' . substr(md5(uniqid()), 0, 6);
-        $this->writeJob($jobId, ['type' => 'rollback', 'status' => 'queued', 'progress' => 0, 'message' => 'Starting...']);
+        $this->writeJob($jobId, ['type' => 'rollback', 'status' => 'queued', 'progress' => 0, 'message' => 'Starting...', 'backup_id' => $backupId]);
+        $this->audit($r, 'rollback', 'started', ['job_id' => $jobId, 'backup_id' => $backupId, 'branch' => $s['branch']]);
+        $userName = $r->user()?->name; $userId = $r->user()?->id; $ip = $r->ip();
         $this->detach();
-        try { $this->runRollback($jobId, $backupDir, $s['last_backup_id']); } catch (\Throwable $e) {
+        try {
+            $this->runRollback($jobId, $backupDir, $backupId);
+            $job = $this->readJob($jobId);
+            DB::table('deploy_sync_audit_log')->insert([
+                'event' => 'rollback', 'status' => $job['status'] === 'done' ? 'success' : 'failed',
+                'user_id' => $userId, 'user_name' => $userName, 'ip_address' => $ip,
+                'job_id' => $jobId, 'backup_id' => $backupId, 'branch' => $s['branch'],
+                'message' => ($job['message'] ?? '') . ' (restored=' . ($job['restored_count'] ?? 0) . ')',
+                'created_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
             $this->writeJob($jobId, ['type' => 'rollback', 'status' => 'failed', 'progress' => 0, 'message' => $e->getMessage()]);
+            DB::table('deploy_sync_audit_log')->insert([
+                'event' => 'rollback', 'status' => 'failed', 'user_id' => $userId, 'user_name' => $userName,
+                'ip_address' => $ip, 'job_id' => $jobId, 'backup_id' => $backupId, 'branch' => $s['branch'],
+                'message' => $e->getMessage(), 'created_at' => now(),
+            ]);
         }
-        return $this->success(['job_id' => $jobId, 'status' => 'queued']);
+        return $this->success(['job_id' => $jobId, 'status' => 'queued', 'backup_id' => $backupId]);
     }
 
     private function runRollback(string $jobId, string $backupDir, string $stamp): void
     {
-        $this->writeJob($jobId, ['type' => 'rollback', 'status' => 'running', 'progress' => 10, 'message' => 'Scanning backup...']);
+        $this->writeJob($jobId, ['type' => 'rollback', 'status' => 'running', 'progress' => 10, 'message' => 'Scanning backup...', 'backup_id' => $stamp]);
         $root = $this->projectRoot();
         $files = [];
         $rii = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($backupDir, \RecursiveDirectoryIterator::SKIP_DOTS));
-        foreach ($rii as $f) if (!$f->isDir()) $files[] = $f->getPathname();
+        foreach ($rii as $f) if (!$f->isDir() && $f->getFilename() !== '_meta.json') $files[] = $f->getPathname();
         $total = max(count($files), 1);
         $restored = [];
         foreach ($files as $i => $abs) {
@@ -349,7 +537,7 @@ class DeploySyncController extends BaseController
             @copy($abs, $dest);
             $restored[] = $rel;
             $progress = 10 + (int)(($i + 1) / $total * 85);
-            $this->writeJob($jobId, ['type' => 'rollback', 'status' => 'running', 'progress' => $progress, 'message' => "Restored {$rel}"]);
+            $this->writeJob($jobId, ['type' => 'rollback', 'status' => 'running', 'progress' => $progress, 'message' => "Restored {$rel}", 'backup_id' => $stamp]);
         }
         $this->writeJob($jobId, [
             'type' => 'rollback', 'status' => 'done', 'progress' => 100,
@@ -363,9 +551,23 @@ class DeploySyncController extends BaseController
         $this->guard($r);
         try {
             Artisan::call('migrate', ['--force' => true]);
-            return $this->success(['output' => Artisan::output()], 'Migrations executed');
+            $out = Artisan::output();
+            $this->audit($r, 'migrate', 'success', ['message' => substr($out, 0, 500)]);
+            return $this->success(['output' => $out], 'Migrations executed');
         } catch (\Throwable $e) {
+            $this->audit($r, 'migrate', 'failed', ['message' => $e->getMessage()]);
             return $this->error('Migration failed: ' . $e->getMessage(), 500);
         }
+    }
+
+    // ─── Audit log listing ───────────────────────────────────────
+    public function auditLog(Request $r) {
+        $this->guard($r);
+        $perPage = min(max((int)$r->query('per_page', 50), 10), 200);
+        $q = DB::table('deploy_sync_audit_log')->orderByDesc('id');
+        if ($e = $r->query('event')) $q->where('event', $e);
+        if ($st = $r->query('status')) $q->where('status', $st);
+        $rows = $q->limit($perPage)->get();
+        return $this->success(['items' => $rows]);
     }
 }

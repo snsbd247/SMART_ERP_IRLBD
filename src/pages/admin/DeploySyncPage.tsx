@@ -12,7 +12,8 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import {
   GitBranch, Download, Undo2, RefreshCw, AlertTriangle, CheckCircle2,
-  Eye, Settings, Database, Loader2, FileSearch,
+  Eye, Settings, Database, Loader2, FileSearch, Archive, ClipboardList,
+  Plug, FileDown,
 } from "lucide-react";
 
 type StatusFile = { path: string; remote_sha: string; local_sha?: string; size?: number };
@@ -34,16 +35,26 @@ type Job = {
   pulled_count?: number; pulled?: string[]; errors?: any[];
   restored_count?: number; backup_id?: string; migrate_output?: string;
 };
+type Backup = { backup_id: string; file_count: number; created_at: string; branch: string | null; job_id: string | null };
+type AuditRow = {
+  id: number; event: string; status: string; user_name: string | null;
+  job_id: string | null; backup_id: string | null; branch: string | null;
+  message: string | null; ip_address: string | null; created_at: string;
+};
 
 const API = "/api/v1/deploy-sync";
 
-async function call(path: string, opts: { method?: string; body?: any } = {}) {
+function authHeaders(): Record<string, string> {
   const token = localStorage.getItem("auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function call(path: string, opts: { method?: string; body?: any } = {}) {
   const res = await fetch(`${API}${path}`, {
     method: opts.method || "GET",
     headers: {
       Accept: "application/json", "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...authHeaders(),
     },
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
@@ -56,7 +67,6 @@ async function call(path: string, opts: { method?: string; body?: any } = {}) {
 function buildLineDiff(local: string, remote: string) {
   const a = local.split("\n");
   const b = remote.split("\n");
-  // LCS-based minimal diff
   const n = a.length, m = b.length;
   const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
   for (let i = n - 1; i >= 0; i--)
@@ -85,9 +95,14 @@ export default function DeploySyncPage() {
   const [diffData, setDiffData] = useState<{ path: string; local: string; remote: string } | null>(null);
   const [diffLoading, setDiffLoading] = useState(false);
   const [dryRunResult, setDryRunResult] = useState<any>(null);
+  const [backups, setBackups] = useState<Backup[]>([]);
+  const [latestBackupId, setLatestBackupId] = useState<string | null>(null);
+  const [audit, setAudit] = useState<AuditRow[]>([]);
+  const [auditFilter, setAuditFilter] = useState<string>("");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
   const pollRef = useRef<number | null>(null);
 
-  // Config form state
   const [form, setForm] = useState({ owner: "", repo: "", branch: "", token: "", auto_migrate: false });
 
   const loadAll = async () => {
@@ -112,9 +127,27 @@ export default function DeploySyncPage() {
     }
   };
 
+  const loadBackups = async () => {
+    try {
+      const d = await call("/backups");
+      setBackups(d.backups || []);
+      setLatestBackupId(d.latest_backup_id || null);
+    } catch (e: any) {
+      toast({ title: "Failed to load backups", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const loadAudit = async () => {
+    try {
+      const d = await call(`/audit-log${auditFilter ? `?event=${auditFilter}` : ""}`);
+      setAudit(d.items || []);
+    } catch (e: any) {
+      toast({ title: "Failed to load audit log", description: e.message, variant: "destructive" });
+    }
+  };
+
   useEffect(() => { loadConfigOnly(); }, []);
 
-  // Job polling
   useEffect(() => {
     if (!jobId) return;
     pollRef.current = window.setInterval(async () => {
@@ -125,7 +158,7 @@ export default function DeploySyncPage() {
           if (pollRef.current) clearInterval(pollRef.current);
           if (j.status === "done") {
             toast({ title: `${j.type === "pull" ? "Pull" : "Rollback"} complete`, description: j.message });
-            loadAll();
+            loadAll(); loadBackups();
           } else {
             toast({ title: "Job failed", description: j.message, variant: "destructive" });
           }
@@ -156,6 +189,20 @@ export default function DeploySyncPage() {
     loadConfigOnly();
   };
 
+  const doTestConnection = async () => {
+    setTesting(true); setTestResult(null);
+    try {
+      const d = await call("/test-connection", { method: "POST", body: {
+        owner: form.owner, repo: form.repo, branch: form.branch, token: form.token,
+      }});
+      setTestResult({ ok: true, ...d });
+      toast({ title: "Connection OK", description: `Latest commit: ${d.latest_commit}` });
+    } catch (e: any) {
+      setTestResult({ ok: false, message: e.message });
+      toast({ title: "Connection failed", description: e.message, variant: "destructive" });
+    } finally { setTesting(false); }
+  };
+
   const doDryRun = async () => {
     setLoading(true); setDryRunResult(null);
     try {
@@ -175,12 +222,13 @@ export default function DeploySyncPage() {
     } catch (e: any) { toast({ title: "Pull failed to start", description: e.message, variant: "destructive" }); }
   };
 
-  const doRollback = async () => {
-    if (!confirm("Restore latest backup? This overwrites current files.")) return;
+  const doRollback = async (backupId?: string) => {
+    const label = backupId ? `backup "${backupId}"` : "the latest backup";
+    if (!confirm(`Restore ${label}? This overwrites current files.`)) return;
     try {
-      const d = await call("/rollback", { method: "POST" });
+      const d = await call("/rollback", { method: "POST", body: backupId ? { backup_id: backupId } : {} });
       setJobId(d.job_id);
-      setJob({ type: "rollback", status: "queued", progress: 0, message: "Starting..." });
+      setJob({ type: "rollback", status: "queued", progress: 0, message: "Starting...", backup_id: d.backup_id });
     } catch (e: any) { toast({ title: "Rollback failed to start", description: e.message, variant: "destructive" }); }
   };
 
@@ -204,31 +252,64 @@ export default function DeploySyncPage() {
     } finally { setDiffLoading(false); }
   };
 
+  const downloadJobLog = async (id: string) => {
+    try {
+      const res = await fetch(`${API}/jobs/${id}/export`, { headers: authHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `deploy-sync-${id}.txt`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast({ title: "Download failed", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const exportAuditCSV = () => {
+    const header = ["id","created_at","event","status","user_name","branch","backup_id","job_id","ip_address","message"];
+    const escape = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = [header.join(",")].concat(
+      audit.map(r => header.map(k => escape((r as any)[k])).join(","))
+    );
+    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `deploy-sync-audit-${Date.now()}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const jobActive = job && (job.status === "queued" || job.status === "running");
   const diffLines = diffData ? buildLineDiff(diffData.local, diffData.remote) : [];
+  const statusBadgeClass = (st: string) =>
+    st === "success" || st === "done" ? "bg-green-600" :
+    st === "failed" ? "bg-destructive" :
+    st === "started" || st === "running" ? "bg-blue-600" : "bg-muted";
 
   return (
     <div className="p-6 space-y-4 max-w-6xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <GitBranch className="w-6 h-6" /> GitHub Deploy Sync
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Configure GitHub source, preview changes, and pull updates safely. Background jobs report progress.
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <GitBranch className="w-6 h-6" /> GitHub Deploy Sync
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Configure GitHub source, preview changes, pull updates, manage backups, and review audit history.
+        </p>
       </div>
 
       <Tabs defaultValue="sync">
         <TabsList>
           <TabsTrigger value="sync"><GitBranch className="w-4 h-4 mr-2" />Sync</TabsTrigger>
+          <TabsTrigger value="backups" onClick={loadBackups}><Archive className="w-4 h-4 mr-2" />Backups</TabsTrigger>
+          <TabsTrigger value="audit" onClick={loadAudit}><ClipboardList className="w-4 h-4 mr-2" />Audit Log</TabsTrigger>
           <TabsTrigger value="settings"><Settings className="w-4 h-4 mr-2" />Settings</TabsTrigger>
         </TabsList>
 
         {/* ─── Sync tab ─── */}
         <TabsContent value="sync" className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button onClick={loadAll} disabled={loading || !!jobActive} variant="outline">
               <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
               Check for Updates
@@ -241,7 +322,6 @@ export default function DeploySyncPage() {
             </Button>
           </div>
 
-          {/* Job progress */}
           {job && (
             <Card>
               <CardHeader className="pb-2">
@@ -250,11 +330,19 @@ export default function DeploySyncPage() {
                    job.status === "done" ? <CheckCircle2 className="w-4 h-4 text-green-600" /> :
                    <AlertTriangle className="w-4 h-4 text-destructive" />}
                   {job.type === "pull" ? "Pull Job" : "Rollback Job"} — {job.status}
+                  {jobId && (
+                    <Button size="sm" variant="ghost" className="ml-auto" onClick={() => downloadJobLog(jobId)}>
+                      <FileDown className="w-3.5 h-3.5 mr-1" /> Export log
+                    </Button>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Progress value={job.progress} />
                 <p className="text-xs text-muted-foreground">{job.message}</p>
+                {job.backup_id && (
+                  <p className="text-xs">Backup ID: <code className="text-xs">{job.backup_id}</code></p>
+                )}
                 {job.status === "done" && job.migrate_output && (
                   <pre className="text-xs bg-muted p-2 rounded max-h-40 overflow-auto">{job.migrate_output}</pre>
                 )}
@@ -267,7 +355,6 @@ export default function DeploySyncPage() {
             </Card>
           )}
 
-          {/* Dry run result */}
           {dryRunResult && (
             <Card>
               <CardHeader className="pb-2">
@@ -301,7 +388,6 @@ export default function DeploySyncPage() {
             </Card>
           )}
 
-          {/* Status */}
           {status && (
             <>
               <Card>
@@ -339,7 +425,7 @@ export default function DeploySyncPage() {
                       Pull {status.counts.added + status.counts.modified} change(s)
                     </Button>
                     {status.has_backup && (
-                      <Button variant="outline" onClick={doRollback} disabled={!!jobActive}>
+                      <Button variant="outline" onClick={() => doRollback()} disabled={!!jobActive}>
                         <Undo2 className="w-4 h-4 mr-2" /> Rollback Last Pull
                       </Button>
                     )}
@@ -404,6 +490,126 @@ export default function DeploySyncPage() {
           )}
         </TabsContent>
 
+        {/* ─── Backups tab ─── */}
+        <TabsContent value="backups" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Each pull creates a timestamped backup. You can restore any of them — not just the latest.
+            </p>
+            <Button variant="outline" size="sm" onClick={loadBackups}>
+              <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+            </Button>
+          </div>
+          <Card>
+            <CardContent className="p-0">
+              <table className="w-full text-xs">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="text-left p-2">Backup ID</th>
+                    <th className="text-left p-2">Created</th>
+                    <th className="text-left p-2">Branch</th>
+                    <th className="text-right p-2">Files</th>
+                    <th className="text-left p-2">Job ID</th>
+                    <th className="text-right p-2 w-32">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {backups.length === 0 && (
+                    <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No backups yet.</td></tr>
+                  )}
+                  {backups.map((b) => (
+                    <tr key={b.backup_id} className="border-t">
+                      <td className="p-2 font-mono">
+                        {b.backup_id}
+                        {b.backup_id === latestBackupId && <Badge className="ml-2 bg-blue-600">latest</Badge>}
+                      </td>
+                      <td className="p-2">{new Date(b.created_at).toLocaleString()}</td>
+                      <td className="p-2">{b.branch || "—"}</td>
+                      <td className="p-2 text-right">{b.file_count}</td>
+                      <td className="p-2 font-mono text-[11px]">{b.job_id || "—"}</td>
+                      <td className="p-2 text-right">
+                        <Button size="sm" variant="outline" disabled={!!jobActive}
+                          onClick={() => doRollback(b.backup_id)}>
+                          <Undo2 className="w-3.5 h-3.5 mr-1" /> Restore
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ─── Audit Log tab ─── */}
+        <TabsContent value="audit" className="space-y-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Label className="text-xs">Filter:</Label>
+            <select className="text-sm border rounded px-2 py-1 bg-background"
+              value={auditFilter} onChange={(e) => setAuditFilter(e.target.value)}>
+              <option value="">All events</option>
+              <option value="pull">Pull</option>
+              <option value="rollback">Rollback</option>
+              <option value="dry_run">Dry Run</option>
+              <option value="migrate">Migrate</option>
+              <option value="test_connection">Test Connection</option>
+              <option value="settings_update">Settings Update</option>
+            </select>
+            <Button size="sm" variant="outline" onClick={loadAudit}>
+              <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+            </Button>
+            <Button size="sm" variant="outline" onClick={exportAuditCSV} disabled={audit.length === 0}>
+              <FileDown className="w-4 h-4 mr-2" /> Export CSV
+            </Button>
+            <span className="text-xs text-muted-foreground ml-auto">{audit.length} entries</span>
+          </div>
+          <Card>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[60vh]">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted sticky top-0">
+                    <tr>
+                      <th className="text-left p-2">Time</th>
+                      <th className="text-left p-2">Event</th>
+                      <th className="text-left p-2">Status</th>
+                      <th className="text-left p-2">User</th>
+                      <th className="text-left p-2">Branch</th>
+                      <th className="text-left p-2">Backup ID</th>
+                      <th className="text-left p-2">Job ID</th>
+                      <th className="text-left p-2">Message</th>
+                      <th className="text-right p-2 w-20">Log</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {audit.length === 0 && (
+                      <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">No audit entries.</td></tr>
+                    )}
+                    {audit.map((a) => (
+                      <tr key={a.id} className="border-t">
+                        <td className="p-2 whitespace-nowrap">{new Date(a.created_at).toLocaleString()}</td>
+                        <td className="p-2"><Badge variant="outline">{a.event}</Badge></td>
+                        <td className="p-2"><Badge className={statusBadgeClass(a.status)}>{a.status}</Badge></td>
+                        <td className="p-2">{a.user_name || "—"}</td>
+                        <td className="p-2">{a.branch || "—"}</td>
+                        <td className="p-2 font-mono text-[11px]">{a.backup_id || "—"}</td>
+                        <td className="p-2 font-mono text-[11px]">{a.job_id || "—"}</td>
+                        <td className="p-2 max-w-md truncate" title={a.message ?? ""}>{a.message || "—"}</td>
+                        <td className="p-2 text-right">
+                          {a.job_id && (
+                            <Button size="sm" variant="ghost" onClick={() => downloadJobLog(a.job_id!)}>
+                              <FileDown className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ─── Settings tab ─── */}
         <TabsContent value="settings">
           <Card>
@@ -445,13 +651,42 @@ export default function DeploySyncPage() {
                 </div>
                 <Switch checked={form.auto_migrate} onCheckedChange={(v) => setForm({ ...form, auto_migrate: v })} />
               </div>
-              <Button onClick={saveConfig}>Save Settings</Button>
+
+              <div className="flex gap-2">
+                <Button onClick={saveConfig}>Save Settings</Button>
+                <Button variant="outline" onClick={doTestConnection} disabled={testing || !form.owner || !form.repo || !form.branch}>
+                  {testing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plug className="w-4 h-4 mr-2" />}
+                  Test Connection
+                </Button>
+              </div>
+
+              {testResult && (
+                <div className={`text-sm border rounded p-3 ${testResult.ok ? "border-green-500/30 bg-green-500/5" : "border-destructive/30 bg-destructive/5"}`}>
+                  {testResult.ok ? (
+                    <>
+                      <div className="font-medium flex items-center gap-2 text-green-700 dark:text-green-400">
+                        <CheckCircle2 className="w-4 h-4" /> Connection OK
+                      </div>
+                      <ul className="text-xs mt-2 space-y-1">
+                        <li>Repo: <code>{testResult.repo}</code> ({testResult.private ? "private" : "public"})</li>
+                        <li>Branch: <code>{testResult.branch}</code></li>
+                        <li>Token used: {testResult.token_used ? "yes" : "no"} {testResult.token_required && !testResult.token_used && <span className="text-destructive">(token required for private repo)</span>}</li>
+                        <li>Latest commit: <code>{testResult.latest_commit}</code> — {testResult.latest_message}</li>
+                        <li>Committed: {testResult.latest_date && new Date(testResult.latest_date).toLocaleString()}</li>
+                      </ul>
+                    </>
+                  ) : (
+                    <div className="text-destructive flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" /> {testResult.message}
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Diff Dialog */}
       <Dialog open={diffOpen} onOpenChange={setDiffOpen}>
         <DialogContent className="max-w-5xl max-h-[85vh]">
           <DialogHeader>
