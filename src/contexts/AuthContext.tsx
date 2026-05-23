@@ -1,6 +1,14 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { logLoginAttempt, logLogout } from "@/lib/audit-utils";
+import {
+  isLaravelMode,
+  laravelLogin,
+  laravelLogout,
+  laravelMe,
+  getLaravelToken,
+  type LaravelUser,
+} from "@/lib/laravel-auth";
 import type { User, Session } from "@supabase/supabase-js";
 
 interface Profile {
@@ -25,13 +33,29 @@ interface AuthContextType {
   isSuperAdmin: boolean;
   /** Accepts "module.action" (new) or (module, action) legacy format */
   hasPermission: (moduleOrPermission: string, action?: string) => boolean;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  /** In Laravel mode the first arg is treated as a username. */
+  signIn: (emailOrUsername: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, meta?: Record<string, string>) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const LARAVEL = isLaravelMode();
+
+function laravelUserToProfile(u: LaravelUser): Profile {
+  return {
+    id: u.id,
+    name: u.name,
+    username: u.username,
+    email: u.email,
+    phone: u.phone,
+    branch_id: u.branch_id,
+    employee_id: u.employee_id ?? null,
+    status: "active",
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -40,8 +64,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // ───────── Laravel mode helpers ─────────
+  const applyLaravelUser = useCallback((u: LaravelUser) => {
+    setProfile(laravelUserToProfile(u));
+    setPermissions(u.is_super_admin ? ["*"] : (u.permissions ?? []));
+    // Synthesize a minimal User/Session shape so existing code paths don't break.
+    setUser({ id: u.id, email: u.email } as unknown as User);
+    setSession({ access_token: getLaravelToken() ?? "", user: { id: u.id } } as unknown as Session);
+  }, []);
+
+  // ───────── Supabase profile fetch (unchanged) ─────────
   const fetchProfile = useCallback(async (userId: string) => {
-    // Fetch profile
     const { data: profileData } = await supabase
       .from("profiles")
       .select("*")
@@ -61,13 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: p.status,
       });
 
-      // Super Admin = employee_id is NULL
       const isSA = p.employee_id === null || p.employee_id === undefined;
-
       if (isSA) {
-        setPermissions(["*"]); // Wildcard = full access
+        setPermissions(["*"]);
       } else {
-        // Fetch custom role permissions
         const { data: customRoleLinks } = await supabase
           .from("user_custom_roles" as any)
           .select("custom_role_id")
@@ -82,10 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           if (perms) {
             const actionMap: Record<string, string> = {
-              can_view: "view",
-              can_add: "create",
-              can_edit: "edit",
-              can_delete: "delete",
+              can_view: "view", can_add: "create", can_edit: "edit", can_delete: "delete",
             };
             const merged: Record<string, Record<string, boolean>> = {};
             perms.forEach((p: any) => {
@@ -94,7 +121,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (p[col]) merged[p.module][action] = true;
               });
             });
-
             const flatPerms: string[] = [];
             Object.entries(merged).forEach(([mod, actions]) => {
               Object.entries(actions).forEach(([action, granted]) => {
@@ -102,21 +128,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               });
             });
             setPermissions(flatPerms);
-          } else {
-            setPermissions([]);
-          }
-        } else {
-          setPermissions([]);
-        }
+          } else setPermissions([]);
+        } else setPermissions([]);
       }
     }
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    if (user) await fetchProfile(user.id);
-  }, [user, fetchProfile]);
+    if (LARAVEL) {
+      const u = await laravelMe();
+      if (u) applyLaravelUser(u);
+    } else if (user) {
+      await fetchProfile(user.id);
+    }
+  }, [user, fetchProfile, applyLaravelUser]);
 
+  // ───────── Bootstrap ─────────
   useEffect(() => {
+    if (LARAVEL) {
+      const token = getLaravelToken();
+      if (token) {
+        laravelMe().then((u) => {
+          if (u) applyLaravelUser(u);
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
+      return;
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -137,21 +178,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+  }, [fetchProfile, applyLaravelUser]);
 
-  const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  // ───────── signIn ─────────
+  const signIn = async (emailOrUsername: string, password: string) => {
+    if (LARAVEL) {
+      try {
+        const u = await laravelLogin(emailOrUsername, password);
+        applyLaravelUser(u);
+        return { error: null };
+      } catch (e: any) {
+        return { error: e as Error };
+      }
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email: emailOrUsername, password });
     try {
-      await logLoginAttempt({ userId: data?.user?.id, email, success: !error });
-      // Log to login_logs table for activity tracking
+      await logLoginAttempt({ userId: data?.user?.id, email: emailOrUsername, success: !error });
       if (!error && data?.user?.id) {
         await supabase.from("login_logs" as any).insert({
           user_id: data.user.id,
-          ip_address: null, // Not available client-side
+          ip_address: null,
           user_agent: navigator.userAgent,
           login_time: new Date().toISOString(),
         });
-        // Update last_login_at on profile
         await supabase.from("profiles").update({ last_login_at: new Date().toISOString() }).eq("id", data.user.id);
       }
     } catch { /* ignore */ }
@@ -159,6 +209,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, meta?: Record<string, string>) => {
+    if (LARAVEL) {
+      return { error: new Error("Signup not supported in Laravel mode. Ask an admin to create your account.") };
+    }
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -168,9 +221,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    if (LARAVEL) {
+      await laravelLogout();
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setPermissions([]);
+      return;
+    }
+
     try {
       await logLogout(user?.id);
-      // Update logout_time in login_logs
       if (user?.id) {
         const { data: latestLog } = await supabase
           .from("login_logs" as any)
@@ -188,19 +249,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
-  // Super Admin = employee_id is null (or wildcard permissions)
   const isSuperAdmin = profile?.employee_id === null || profile?.employee_id === undefined || permissions.includes("*");
   const isAdmin = isSuperAdmin;
-
-  // Derive legacy roles array from permissions/super admin status
   const roles: string[] = isSuperAdmin ? ["super_admin"] : [];
 
   const hasPermission = useCallback(
     (moduleOrPermission: string, action?: string): boolean => {
       if (isSuperAdmin) return true;
       if (permissions.includes("*")) return true;
-
-      // Legacy 2-arg format: hasPermission("sales", "can_view") → "sales.view"
       if (action) {
         const actionMap: Record<string, string> = {
           can_view: "view", can_add: "create", can_edit: "edit", can_delete: "delete",
@@ -208,8 +264,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const mapped = actionMap[action] || action;
         return permissions.includes(`${moduleOrPermission}.${mapped}`);
       }
-
-      // New 1-arg format: hasPermission("sales.view")
       return permissions.includes(moduleOrPermission);
     },
     [isSuperAdmin, permissions]
