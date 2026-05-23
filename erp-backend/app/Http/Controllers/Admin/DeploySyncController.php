@@ -54,6 +54,8 @@ class DeploySyncController extends BaseController
             'id' => $row->id, 'owner' => $row->owner, 'repo' => $row->repo, 'branch' => $row->branch,
             'token' => $token, 'auto_migrate' => (bool)$row->auto_migrate,
             'has_token' => !empty($token),
+            'retention_count' => (int)($row->retention_count ?? 10),
+            'retention_days' => (int)($row->retention_days ?? 30),
             'last_pulled_at' => $row->last_pulled_at, 'last_backup_id' => $row->last_backup_id,
         ];
     }
@@ -122,10 +124,15 @@ class DeploySyncController extends BaseController
             'owner' => 'required|string|max:100', 'repo' => 'required|string|max:100',
             'branch' => 'required|string|max:100', 'token' => 'nullable|string',
             'auto_migrate' => 'boolean',
+            'retention_count' => 'nullable|integer|min:1|max:500',
+            'retention_days' => 'nullable|integer|min:1|max:3650',
         ]);
         $update = [
             'owner' => $data['owner'], 'repo' => $data['repo'], 'branch' => $data['branch'],
-            'auto_migrate' => $data['auto_migrate'] ?? false, 'updated_at' => now(),
+            'auto_migrate' => $data['auto_migrate'] ?? false,
+            'retention_count' => $data['retention_count'] ?? 10,
+            'retention_days' => $data['retention_days'] ?? 30,
+            'updated_at' => now(),
         ];
         if (!empty($data['token'])) {
             $update['token_encrypted'] = Crypt::encryptString($data['token']);
@@ -446,11 +453,17 @@ class DeploySyncController extends BaseController
             }
         }
 
+        // Apply retention cleanup (best-effort)
+        $deletedBackups = [];
+        try { $deletedBackups = $this->applyRetention((int)($s['retention_count'] ?? 10), (int)($s['retention_days'] ?? 30)); }
+        catch (\Throwable $e) { /* ignore */ }
+
         $this->writeJob($jobId, [
             'type' => 'pull', 'status' => 'done', 'progress' => 100,
             'message' => 'Pull complete', 'pulled_count' => count($pulled),
             'pulled' => $pulled, 'errors' => $errors,
             'backup_id' => $stamp, 'migrate_output' => $migrateOut,
+            'retention_deleted' => $deletedBackups,
         ]);
     }
 
@@ -484,15 +497,54 @@ class DeploySyncController extends BaseController
         return $this->success(['backups' => $entries, 'latest_backup_id' => $current]);
     }
 
+    /** Preview which files a backup would change if restored. */
+    public function previewRestore(Request $r, string $backupId) {
+        $this->guard($r);
+        if (!preg_match('/^[A-Za-z0-9_\-]+$/', $backupId)) return $this->error('Invalid backup id', 400);
+        $backupDir = storage_path('app/deploy_sync/backups/' . $backupId);
+        if (!is_dir($backupDir)) return $this->error('Backup not found', 404);
+        $root = $this->projectRoot();
+        $changes = [];
+        $rii = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($backupDir, \RecursiveDirectoryIterator::SKIP_DOTS));
+        foreach ($rii as $f) {
+            if ($f->isDir() || $f->getFilename() === '_meta.json') continue;
+            $rel = ltrim(str_replace($backupDir, '', $f->getPathname()), '/\\');
+            if ($this->isProtected($rel)) continue;
+            $dest = $root . '/' . $rel;
+            $backupSha = $this->gitBlobSha($f->getPathname());
+            $currentSha = $this->gitBlobSha($dest);
+            if ($backupSha === $currentSha) continue;
+            $changes[] = [
+                'path' => $rel,
+                'action' => $currentSha === null ? 'create' : 'overwrite',
+                'backup_size' => $f->getSize(),
+                'current_exists' => is_file($dest),
+            ];
+        }
+        return $this->success([
+            'backup_id' => $backupId,
+            'would_change_count' => count($changes),
+            'changes' => $changes,
+            'protected_skipped' => $this->protectedPaths,
+        ]);
+    }
+
     public function rollback(Request $r) {
         $this->guard($r);
         $s = $this->getSettings();
         $backupId = $r->input('backup_id') ?: $s['last_backup_id'];
         if (empty($backupId)) return $this->error('No backup available', 404);
-        // Sanitize
         if (!preg_match('/^[A-Za-z0-9_\-]+$/', $backupId)) return $this->error('Invalid backup id', 400);
         $backupDir = storage_path('app/deploy_sync/backups/' . $backupId);
         if (!is_dir($backupDir)) return $this->error('Backup folder missing', 404);
+
+        // Require confirmation keyword for non-latest backups
+        if ($backupId !== $s['last_backup_id']) {
+            $confirm = trim((string)$r->input('confirmation', ''));
+            if ($confirm !== 'RESTORE') {
+                return $this->error('Type RESTORE to confirm restoring a non-latest backup', 422);
+            }
+        }
 
         $jobId = 'rb_' . date('Ymd_His') . '_' . substr(md5(uniqid()), 0, 6);
         $this->writeJob($jobId, ['type' => 'rollback', 'status' => 'queued', 'progress' => 0, 'message' => 'Starting...', 'backup_id' => $backupId]);
@@ -546,6 +598,54 @@ class DeploySyncController extends BaseController
         ]);
     }
 
+    /** Delete one specific backup folder. */
+    public function deleteBackup(Request $r, string $backupId) {
+        $this->guard($r);
+        if (!preg_match('/^[A-Za-z0-9_\-]+$/', $backupId)) return $this->error('Invalid backup id', 400);
+        $dir = storage_path('app/deploy_sync/backups/' . $backupId);
+        if (!is_dir($dir)) return $this->error('Backup not found', 404);
+        File::deleteDirectory($dir);
+        $this->audit($r, 'backup_delete', 'success', ['backup_id' => $backupId, 'message' => 'Manually deleted']);
+        return $this->success(null, 'Backup deleted');
+    }
+
+    /** Apply retention rules: keep latest N OR within X days. Returns deleted list. */
+    public function cleanupBackups(Request $r) {
+        $this->guard($r);
+        $s = $this->getSettings();
+        $deleted = $this->applyRetention($s['retention_count'], $s['retention_days']);
+        $this->audit($r, 'backup_cleanup', 'success', [
+            'message' => 'Deleted ' . count($deleted) . " backup(s) (keep={$s['retention_count']} or {$s['retention_days']}d)",
+        ]);
+        return $this->success(['deleted' => $deleted, 'count' => count($deleted)], 'Cleanup complete');
+    }
+
+    private function applyRetention(int $keepCount, int $keepDays): array {
+        $base = storage_path('app/deploy_sync/backups');
+        if (!is_dir($base)) return [];
+        $entries = [];
+        foreach (scandir($base) as $n) {
+            if ($n === '.' || $n === '..') continue;
+            $full = $base . '/' . $n;
+            if (!is_dir($full)) continue;
+            $entries[] = ['id' => $n, 'mtime' => @filemtime($full) ?: 0];
+        }
+        usort($entries, fn($a, $b) => $b['mtime'] <=> $a['mtime']);
+        $cutoff = time() - ($keepDays * 86400);
+        $latest = $this->getSettings()['last_backup_id'];
+        $deleted = [];
+        foreach ($entries as $i => $e) {
+            if ($e['id'] === $latest) continue;
+            $tooOld = $e['mtime'] < $cutoff;
+            $overCount = $i >= $keepCount;
+            if ($tooOld || $overCount) {
+                File::deleteDirectory($base . '/' . $e['id']);
+                $deleted[] = $e['id'];
+            }
+        }
+        return $deleted;
+    }
+
     // ─── Manual migrate button ───────────────────────────────────
     public function migrate(Request $r) {
         $this->guard($r);
@@ -560,14 +660,65 @@ class DeploySyncController extends BaseController
         }
     }
 
-    // ─── Audit log listing ───────────────────────────────────────
+    // ─── Audit log listing (paginated) ───────────────────────────
     public function auditLog(Request $r) {
         $this->guard($r);
-        $perPage = min(max((int)$r->query('per_page', 50), 10), 200);
+        $perPage = min(max((int)$r->query('per_page', 25), 5), 200);
+        $page = max((int)$r->query('page', 1), 1);
         $q = DB::table('deploy_sync_audit_log')->orderByDesc('id');
         if ($e = $r->query('event')) $q->where('event', $e);
         if ($st = $r->query('status')) $q->where('status', $st);
-        $rows = $q->limit($perPage)->get();
-        return $this->success(['items' => $rows]);
+        $total = (clone $q)->count();
+        $rows = $q->forPage($page, $perPage)->get();
+        return $this->success([
+            'items' => $rows,
+            'page' => $page,
+            'per_page' => $perPage,
+            'total' => $total,
+            'last_page' => max(1, (int)ceil($total / $perPage)),
+        ]);
+    }
+
+    // ─── SSE stream for live job progress ────────────────────────
+    public function jobStream(Request $r, string $id) {
+        $this->guard($r);
+        // SSE response — flush per chunk, poll job file server-side.
+        return response()->stream(function () use ($id) {
+            @set_time_limit(0);
+            @ignore_user_abort(false);
+            $lastJson = '';
+            $start = time();
+            // Hard cap 90s so cPanel doesn't keep workers forever; client will reconnect.
+            while (time() - $start < 90) {
+                $job = $this->readJob($id);
+                if ($job) {
+                    $json = json_encode($job);
+                    if ($json !== $lastJson) {
+                        echo "event: progress\n";
+                        echo 'data: ' . $json . "\n\n";
+                        @ob_flush(); @flush();
+                        $lastJson = $json;
+                    }
+                    if (in_array($job['status'] ?? '', ['done', 'failed'], true)) {
+                        echo "event: end\ndata: {}\n\n";
+                        @ob_flush(); @flush();
+                        return;
+                    }
+                } else {
+                    echo "event: missing\ndata: {}\n\n";
+                    @ob_flush(); @flush();
+                }
+                // Heartbeat to keep proxies happy
+                echo ": ping\n\n";
+                @ob_flush(); @flush();
+                usleep(1000000); // 1s
+                if (connection_aborted()) return;
+            }
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache, no-transform',
+            'X-Accel-Buffering' => 'no',
+            'Connection' => 'keep-alive',
+        ]);
     }
 }
