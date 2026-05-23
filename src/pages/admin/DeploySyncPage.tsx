@@ -437,6 +437,11 @@ export default function DeploySyncPage() {
                    job.status === "done" ? <CheckCircle2 className="w-4 h-4 text-green-600" /> :
                    <AlertTriangle className="w-4 h-4 text-destructive" />}
                   {job.type === "pull" ? "Pull Job" : "Rollback Job"} — {job.status}
+                  {jobActive && (
+                    <Badge variant="outline" className="ml-1 text-[10px]">
+                      <Radio className="w-3 h-3 mr-1" />{streamMode === "sse" ? "live" : "polling"}
+                    </Badge>
+                  )}
                   {jobId && (
                     <Button size="sm" variant="ghost" className="ml-auto" onClick={() => downloadJobLog(jobId)}>
                       <FileDown className="w-3.5 h-3.5 mr-1" /> Export log
