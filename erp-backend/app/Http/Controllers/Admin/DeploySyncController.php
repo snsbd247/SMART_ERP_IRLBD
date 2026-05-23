@@ -453,11 +453,17 @@ class DeploySyncController extends BaseController
             }
         }
 
+        // Apply retention cleanup (best-effort)
+        $deletedBackups = [];
+        try { $deletedBackups = $this->applyRetention((int)($s['retention_count'] ?? 10), (int)($s['retention_days'] ?? 30)); }
+        catch (\Throwable $e) { /* ignore */ }
+
         $this->writeJob($jobId, [
             'type' => 'pull', 'status' => 'done', 'progress' => 100,
             'message' => 'Pull complete', 'pulled_count' => count($pulled),
             'pulled' => $pulled, 'errors' => $errors,
             'backup_id' => $stamp, 'migrate_output' => $migrateOut,
+            'retention_deleted' => $deletedBackups,
         ]);
     }
 

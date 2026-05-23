@@ -419,6 +419,10 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::get('jobs/{id}', [\App\Http\Controllers\Admin\DeploySyncController::class, 'jobStatus']);
             Route::get('jobs/{id}/export', [\App\Http\Controllers\Admin\DeploySyncController::class, 'jobExport']);
             Route::get('backups', [\App\Http\Controllers\Admin\DeploySyncController::class, 'listBackups']);
+            Route::get('backups/{backupId}/preview', [\App\Http\Controllers\Admin\DeploySyncController::class, 'previewRestore']);
+            Route::delete('backups/{backupId}', [\App\Http\Controllers\Admin\DeploySyncController::class, 'deleteBackup']);
+            Route::post('backups/cleanup', [\App\Http\Controllers\Admin\DeploySyncController::class, 'cleanupBackups']);
+            Route::get('jobs/{id}/stream', [\App\Http\Controllers\Admin\DeploySyncController::class, 'jobStream']);
             Route::get('audit-log', [\App\Http\Controllers\Admin\DeploySyncController::class, 'auditLog']);
         });
     });
