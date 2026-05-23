@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use App\Models\{Branch, User, CustomRole, RolePermission, FinancialYear, CompanySetting, NumberSequence, ChartOfAccount};
 
 /**
@@ -195,6 +197,52 @@ class DatabaseSeeder extends Seeder
                 'parent_id'    => $parentCode ? ($parentMap[$parentCode] ?? null) : null,
             ]);
             $parentMap[$code] = $acct->id;
+        }
+
+        // ---------- 6. Module Settings (all enabled by default) ----------
+        $modules = [
+            ['inventory',       'Inventory'],
+            ['multi_warehouse', 'Multi Warehouse'],
+            ['multi_branch',    'Multi Branch'],
+            ['hrm',             'HRM'],
+            ['accounts',        'Accounts'],
+            ['bank',            'Bank'],
+            ['purchase',        'Purchase'],
+            ['sales',           'Sales'],
+            ['sales_basic',     'Sales (Basic)'],
+            ['sales_vat',       'Sales (BD VAT Workflow)'],
+            ['reports',         'Reports'],
+            ['manufacturing',   'Manufacturing'],
+        ];
+        $now = now();
+        foreach ($modules as [$key, $name]) {
+            DB::table('module_settings')->insertOrIgnore([
+                'id'          => (string) Str::uuid(),
+                'module_key'  => $key,
+                'module_name' => $name,
+                'is_enabled'  => 1,
+                'updated_by'  => null,
+                'created_at'  => $now,
+                'updated_at'  => $now,
+            ]);
+        }
+
+        // ---------- 7. Extra Number Sequences (BD VAT workflow) ----------
+        // These mirror what the BD VAT migration seeds; insertOrIgnore makes it idempotent.
+        $extraSequences = [
+            ['id' => 'purchase_order',  'prefix' => 'PO',  'description' => 'Customer Purchase Order'],
+            ['id' => 'dispatch',        'prefix' => 'DSP', 'description' => 'Dispatch / Gate Pass'],
+            ['id' => 'vat_challan',     'prefix' => 'VCH', 'description' => 'VAT Challan (Mushak 6.3)'],
+            ['id' => 'delivery_challan','prefix' => 'DC',  'description' => 'Delivery Challan'],
+            ['id' => 'sales_invoice_v2','prefix' => 'INV', 'description' => 'Consolidated Sales Invoice'],
+            ['id' => 'invoice_payment', 'prefix' => 'RCP', 'description' => 'Invoice Payment Receipt'],
+            ['id' => 'tds_entry',       'prefix' => 'TDS', 'description' => 'TDS Entry'],
+        ];
+        foreach ($extraSequences as $s) {
+            DB::table('number_sequences')->insertOrIgnore(array_merge($s, [
+                'current_number' => 0,
+                'year' => 2026,
+            ]));
         }
     }
 }
