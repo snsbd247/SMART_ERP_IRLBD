@@ -130,7 +130,7 @@ export default function DeploySyncPage() {
       const [cfg, st] = await Promise.all([call("/config"), call("/status")]);
       setConfig(cfg);
       setStatus(st);
-      setForm({ owner: cfg.owner, repo: cfg.repo, branch: cfg.branch, token: "", auto_migrate: cfg.auto_migrate });
+      setForm({ owner: cfg.owner, repo: cfg.repo, branch: cfg.branch, token: "", auto_migrate: cfg.auto_migrate, retention_count: cfg.retention_count ?? 10, retention_days: cfg.retention_days ?? 30 });
     } catch (e: any) {
       toast({ title: "Failed to load", description: e.message, variant: "destructive" });
     } finally { setLoading(false); }
@@ -140,7 +140,7 @@ export default function DeploySyncPage() {
     try {
       const cfg = await call("/config");
       setConfig(cfg);
-      setForm({ owner: cfg.owner, repo: cfg.repo, branch: cfg.branch, token: "", auto_migrate: cfg.auto_migrate });
+      setForm({ owner: cfg.owner, repo: cfg.repo, branch: cfg.branch, token: "", auto_migrate: cfg.auto_migrate, retention_count: cfg.retention_count ?? 10, retention_days: cfg.retention_days ?? 30 });
     } catch (e: any) {
       toast({ title: "Failed to load config", description: e.message, variant: "destructive" });
     }
