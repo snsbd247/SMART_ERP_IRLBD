@@ -297,36 +297,49 @@ const GeneralSettingsPage = () => {
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-2">
-                    {[
-                      { key: "sales_basic" as ModuleKey, name: "Basic Sales", desc: "Direct flow: Invoice → Payment. Best for counter sales, simple B2C." },
-                      { key: "sales_vat" as ModuleKey, name: "Bangladesh VAT Sales Workflow", desc: "Full flow: PO → Dispatch → VAT Challan (Mushak 6.3) → Delivery → Invoice → Payment + TDS → Mushak 9.1. Required for NBR-compliant B2B sales." },
-                    ].map((mod) => {
-                      const active = isModuleEnabled(mod.key);
-                      return (
-                        <button
-                          key={mod.key}
-                          type="button"
-                          onClick={async () => {
-                            if (active) return;
-                            const other = mod.key === "sales_basic" ? "sales_vat" : "sales_basic";
-                            await toggleModule(mod.key, true);
-                            await toggleModule(other as ModuleKey, false);
-                          }}
-                          className={`text-left p-3 rounded-md border transition-colors ${
-                            active ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:bg-accent/50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${active ? "border-primary" : "border-muted-foreground"}`}>
-                              {active && <div className="w-2 h-2 rounded-full bg-primary" />}
+                    {(() => {
+                      const basicOn = isModuleEnabled("sales_basic" as ModuleKey);
+                      const vatOn = isModuleEnabled("sales_vat" as ModuleKey);
+                      // Mutual exclusion: if both on, prefer VAT; if neither, default Basic
+                      const selectedKey: ModuleKey = vatOn && basicOn
+                        ? ("sales_vat" as ModuleKey)
+                        : vatOn
+                        ? ("sales_vat" as ModuleKey)
+                        : basicOn
+                        ? ("sales_basic" as ModuleKey)
+                        : ("sales_basic" as ModuleKey);
+                      return [
+                        { key: "sales_basic" as ModuleKey, name: "Basic Sales", desc: "Direct flow: Invoice → Payment. Best for counter sales, simple B2C." },
+                        { key: "sales_vat" as ModuleKey, name: "Bangladesh VAT Sales Workflow", desc: "Full flow: PO → Dispatch → VAT Challan (Mushak 6.3) → Delivery → Invoice → Payment + TDS → Mushak 9.1. Required for NBR-compliant B2B sales." },
+                      ].map((mod) => {
+                        const active = selectedKey === mod.key;
+                        return (
+                          <button
+                            key={mod.key}
+                            type="button"
+                            onClick={async () => {
+                              if (active) return;
+                              const other = mod.key === "sales_basic" ? "sales_vat" : "sales_basic";
+                              await toggleModule(other as ModuleKey, false);
+                              await toggleModule(mod.key, true);
+                            }}
+                            className={`text-left p-3 rounded-md border transition-colors ${
+                              active ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:bg-accent/50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${active ? "border-primary" : "border-muted-foreground"}`}>
+                                {active && <div className="w-2 h-2 rounded-full bg-primary" />}
+                              </div>
+                              <p className="text-sm font-medium text-foreground">{mod.name}</p>
                             </div>
-                            <p className="text-sm font-medium text-foreground">{mod.name}</p>
-                          </div>
-                          <p className="text-xs text-muted-foreground leading-relaxed mt-1 ml-6">{mod.desc}</p>
-                        </button>
-                      );
-                    })}
+                            <p className="text-xs text-muted-foreground leading-relaxed mt-1 ml-6">{mod.desc}</p>
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
+
                 </div>
 
                 {([
