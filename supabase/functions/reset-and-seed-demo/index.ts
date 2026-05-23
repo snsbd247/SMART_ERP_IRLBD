@@ -39,7 +39,9 @@ Deno.serve(async (req) => {
     // ===== RESET =====
     const resetGroups: string[][] = [
       ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","purchase_items","purchase_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","bom_items","fund_transactions","employee_fund_settings","overtime_records","leave_requests","attendance","employee_documents","employee_bank_info","employee_education","employee_experience","employee_emergency_contacts","salary_structures","face_data","biometric_logs","payroll","party_notes","audit_log","login_logs","backup_history","messages","conversation_participants",
-        "tds_entries","invoice_payments","invoice_challans","sales_invoice_items_v2","customer_receives","ho_receives","dispatch_po_allocations","vat_challan_items","dispatch_items","purchase_order_items"],
+        "tds_entries","invoice_payments","invoice_challans","sales_invoice_items_v2","customer_receives","ho_receives","dispatch_po_allocations","vat_challan_items","dispatch_items","purchase_order_items",
+        // Status logs / amendments — defensive (cascade would also handle these)
+        "dispatch_status_logs","invoice_status_logs","po_amendments"],
       // Returns must be deleted BEFORE their parent invoices/purchases
       ["sales_returns","purchase_returns"],
       ["sales_invoices_v2","delivery_challans","vat_challans","dispatches","purchase_orders"],
