@@ -319,6 +319,9 @@ const DiagnosticsPage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="text-xs text-muted-foreground">
+            Backend: <Badge variant="outline" className="ml-1">{USE_LARAVEL ? "Laravel (php artisan demo:seed)" : "Supabase Edge Function"}</Badge>
+          </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="sm" disabled={seeding}>
@@ -326,6 +329,7 @@ const DiagnosticsPage = () => {
                 Reset & Seed Demo Data
               </Button>
             </AlertDialogTrigger>
+
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Wipe and reseed demo data?</AlertDialogTitle>
