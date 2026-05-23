@@ -822,6 +822,7 @@ Deno.serve(async (req) => {
         products: products.length, customers: customers.length, suppliers: suppliers.length, employees: employees.length,
         purchase_orders: poc, dispatches: dspc, vat_challans: vchc, delivery_challans: dcc,
         invoices_v2: inv2c, invoice_payments: ipayc, tds_entries: tdsc,
+        party_notes: partyNotes.length,
       },
       log,
     }), { headers: { ...corsHeaders, "Content-Type":"application/json" } });
