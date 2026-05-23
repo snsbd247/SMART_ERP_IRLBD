@@ -664,7 +664,7 @@ export default function DeploySyncPage() {
           <div className="flex items-center gap-2 flex-wrap">
             <Label className="text-xs">Filter:</Label>
             <select className="text-sm border rounded px-2 py-1 bg-background"
-              value={auditFilter} onChange={(e) => setAuditFilter(e.target.value)}>
+              value={auditFilter} onChange={(e) => { setAuditFilter(e.target.value); }}>
               <option value="">All events</option>
               <option value="pull">Pull</option>
               <option value="rollback">Rollback</option>
@@ -672,6 +672,13 @@ export default function DeploySyncPage() {
               <option value="migrate">Migrate</option>
               <option value="test_connection">Test Connection</option>
               <option value="settings_update">Settings Update</option>
+              <option value="backup_delete">Backup Delete</option>
+              <option value="backup_cleanup">Backup Cleanup</option>
+            </select>
+            <Label className="text-xs ml-2">Page size:</Label>
+            <select className="text-sm border rounded px-2 py-1 bg-background"
+              value={auditPerPage} onChange={(e) => { const n = Number(e.target.value); setAuditPerPage(n); loadAudit(1, n); }}>
+              {[10, 25, 50, 100, 200].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
             <Button size="sm" variant="outline" onClick={() => loadAudit(1)}>
               <RefreshCw className="w-4 h-4 mr-2" /> Refresh
@@ -679,7 +686,17 @@ export default function DeploySyncPage() {
             <Button size="sm" variant="outline" onClick={exportAuditCSV} disabled={audit.length === 0}>
               <FileDown className="w-4 h-4 mr-2" /> Export CSV
             </Button>
-            <span className="text-xs text-muted-foreground ml-auto">{audit.length} entries</span>
+            <div className="flex items-center gap-1 ml-auto">
+              <Button size="sm" variant="ghost" disabled={auditPage <= 1} onClick={() => loadAudit(auditPage - 1)}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Page {auditPage} / {auditLastPage} · {auditTotal} total
+              </span>
+              <Button size="sm" variant="ghost" disabled={auditPage >= auditLastPage} onClick={() => loadAudit(auditPage + 1)}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
           <Card>
             <CardContent className="p-0">
