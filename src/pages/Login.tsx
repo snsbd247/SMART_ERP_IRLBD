@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getEmailByUsername } from "@/lib/db-utils";
+import { isLaravelMode } from "@/lib/laravel-auth";
 import { useBranding } from "@/contexts/BrandingContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,12 +28,14 @@ const Login = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const email = await getEmailByUsername(username);
-      if (!email) {
-        throw new Error("Username not found.");
+      let loginId = username;
+      if (!isLaravelMode()) {
+        const email = await getEmailByUsername(username);
+        if (!email) throw new Error("Username not found.");
+        loginId = email;
       }
 
-      const { error } = await signIn(email, password);
+      const { error } = await signIn(loginId, password);
       if (error) throw error;
       navigate("/");
     } catch (err: any) {
