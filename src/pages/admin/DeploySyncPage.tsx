@@ -868,6 +868,66 @@ export default function DeploySyncPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Restore Preview + Confirmation Dialog */}
+      <Dialog open={!!restoreTarget} onOpenChange={(o) => { if (!o) { setRestoreTarget(null); setRestorePreview(null); setRestoreConfirm(""); } }}>
+        <DialogContent className="max-w-3xl max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Undo2 className="w-4 h-4" /> Preview restore — <code className="font-mono text-sm">{restoreTarget?.backup_id}</code>
+              {restoreTarget?.backup_id === latestBackupId && <Badge className="bg-blue-600">latest</Badge>}
+            </DialogTitle>
+          </DialogHeader>
+          {restoreLoading && <div className="py-10 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>}
+          {restorePreview && (
+            <div className="space-y-3">
+              <p className="text-sm">
+                <Badge>{restorePreview.would_change_count}</Badge> file(s) would change if this backup is restored.
+              </p>
+              <ScrollArea className="h-64 border rounded">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted sticky top-0"><tr>
+                    <th className="text-left p-2 w-24">Action</th><th className="text-left p-2">Path</th><th className="text-right p-2 w-24">Size</th>
+                  </tr></thead>
+                  <tbody>
+                    {restorePreview.changes.length === 0 && (
+                      <tr><td colSpan={3} className="p-4 text-center text-muted-foreground">No changes — backup matches current files.</td></tr>
+                    )}
+                    {restorePreview.changes.map(c => (
+                      <tr key={c.path} className="border-t">
+                        <td className="p-2"><Badge variant="outline">{c.action}</Badge></td>
+                        <td className="p-2 font-mono">{c.path}</td>
+                        <td className="p-2 text-right">{c.backup_size}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollArea>
+              {restoreTarget && restoreTarget.backup_id !== latestBackupId && (
+                <div className="border border-destructive/30 bg-destructive/5 rounded p-3 space-y-2">
+                  <p className="text-sm flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="w-4 h-4" />
+                    You are restoring a non-latest backup. Type <code className="font-bold">RESTORE</code> to confirm.
+                  </p>
+                  <Input value={restoreConfirm} onChange={(e) => setRestoreConfirm(e.target.value)} placeholder="Type RESTORE" />
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setRestoreTarget(null); setRestorePreview(null); setRestoreConfirm(""); }}>Cancel</Button>
+            <Button
+              disabled={
+                !restorePreview || !!jobActive ||
+                (restoreTarget?.backup_id !== latestBackupId && restoreConfirm !== "RESTORE")
+              }
+              onClick={() => restoreTarget && doRollbackNow(restoreTarget.backup_id, restoreConfirm || undefined)}
+            >
+              <Undo2 className="w-4 h-4 mr-2" /> Restore now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
