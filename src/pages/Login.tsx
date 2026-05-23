@@ -28,12 +28,14 @@ const Login = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const email = await getEmailByUsername(username);
-      if (!email) {
-        throw new Error("Username not found.");
+      let loginId = username;
+      if (!isLaravelMode()) {
+        const email = await getEmailByUsername(username);
+        if (!email) throw new Error("Username not found.");
+        loginId = email;
       }
 
-      const { error } = await signIn(email, password);
+      const { error } = await signIn(loginId, password);
       if (error) throw error;
       navigate("/");
     } catch (err: any) {
