@@ -364,6 +364,8 @@ export const AppSidebar = () => {
           <div className="my-2 border-t border-sidebar-border" />
           {navGroups.map((group) => {
             if (group.requiredModules && group.requiredModules.some((m) => !isModuleEnabled(m))) return null;
+            // Sales mode mutual exclusion: if VAT workflow is enabled, hide Basic Sales menu
+            if (group.requiredModules?.includes("sales_basic") && isModuleEnabled("sales_vat")) return null;
             if (group.portalOnly && !hasEmployeeRecord && !isHrAdmin) return null;
             if (group.permission && !hasAnyPermission(group.permission, hasPermission)) return null;
             return <CollapsibleGroup key={group.label} group={group} isModuleEnabled={isModuleEnabled} hasPermission={hasPermission} />;
