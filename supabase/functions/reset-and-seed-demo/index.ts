@@ -317,7 +317,7 @@ Deno.serve(async (req) => {
         const vat = round2(subtotal * VAT_RATE);
         const gross = round2(subtotal + vat);
         pc++;
-        const pnum = `PO-${fyTag}-${String(pc).padStart(5,"0")}`;
+        const pnum = `PUR-${fyTag}-${String(pc).padStart(5,"0")}`;
         const credit = R() < 0.6;
         pinv.push({ id:pId, purchase_number:pnum, purchase_date:ds, supplier_id:sup.id, branch_id:BR_DHK,
           total_amount:gross, payment_method:credit?"credit":"cash", status:"approved", created_by:UID });
