@@ -7,13 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import {
   GitBranch, Download, Undo2, RefreshCw, AlertTriangle, CheckCircle2,
   Eye, Settings, Database, Loader2, FileSearch, Archive, ClipboardList,
-  Plug, FileDown,
+  Plug, FileDown, Trash2, ChevronLeft, ChevronRight, Radio,
 } from "lucide-react";
 
 type StatusFile = { path: string; remote_sha: string; local_sha?: string; size?: number };
@@ -27,6 +27,7 @@ type StatusData = {
 type Config = {
   owner: string; repo: string; branch: string;
   auto_migrate: boolean; has_token: boolean;
+  retention_count: number; retention_days: number;
   last_pulled_at: string | null; last_backup_id: string | null;
 };
 type Job = {
@@ -34,12 +35,17 @@ type Job = {
   progress: number; message: string;
   pulled_count?: number; pulled?: string[]; errors?: any[];
   restored_count?: number; backup_id?: string; migrate_output?: string;
+  retention_deleted?: string[];
 };
 type Backup = { backup_id: string; file_count: number; created_at: string; branch: string | null; job_id: string | null };
 type AuditRow = {
   id: number; event: string; status: string; user_name: string | null;
   job_id: string | null; backup_id: string | null; branch: string | null;
   message: string | null; ip_address: string | null; created_at: string;
+};
+type RestorePreview = {
+  backup_id: string; would_change_count: number;
+  changes: { path: string; action: string; backup_size: number; current_exists: boolean }[];
 };
 
 const API = "/api/v1/deploy-sync";
