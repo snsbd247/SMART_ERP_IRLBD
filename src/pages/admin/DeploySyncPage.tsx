@@ -156,10 +156,15 @@ export default function DeploySyncPage() {
     }
   };
 
-  const loadAudit = async () => {
+  const loadAudit = async (page = auditPage, perPage = auditPerPage) => {
     try {
-      const d = await call(`/audit-log${auditFilter ? `?event=${auditFilter}` : ""}`);
+      const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+      if (auditFilter) params.set("event", auditFilter);
+      const d = await call(`/audit-log?${params.toString()}`);
       setAudit(d.items || []);
+      setAuditTotal(d.total ?? 0);
+      setAuditLastPage(d.last_page ?? 1);
+      setAuditPage(d.page ?? page);
     } catch (e: any) {
       toast({ title: "Failed to load audit log", description: e.message, variant: "destructive" });
     }
@@ -167,27 +172,69 @@ export default function DeploySyncPage() {
 
   useEffect(() => { loadConfigOnly(); }, []);
 
+  // Real-time job updates: try SSE first, fall back to polling.
   useEffect(() => {
     if (!jobId) return;
-    pollRef.current = window.setInterval(async () => {
-      try {
-        const j: Job = await call(`/jobs/${jobId}`);
-        setJob(j);
-        if (j.status === "done" || j.status === "failed") {
-          if (pollRef.current) clearInterval(pollRef.current);
-          if (j.status === "done") {
-            toast({ title: `${j.type === "pull" ? "Pull" : "Rollback"} complete`, description: j.message });
-            loadAll(); loadBackups();
-          } else {
-            toast({ title: "Job failed", description: j.message, variant: "destructive" });
-          }
-        }
-      } catch (e: any) {
-        if (pollRef.current) clearInterval(pollRef.current);
-        toast({ title: "Polling error", description: e.message, variant: "destructive" });
+
+    const finish = (j: Job) => {
+      if (j.status === "done") {
+        toast({ title: `${j.type === "pull" ? "Pull" : "Rollback"} complete`, description: j.message });
+        loadAll(); loadBackups();
+      } else if (j.status === "failed") {
+        toast({ title: "Job failed", description: j.message, variant: "destructive" });
       }
-    }, 1500);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    };
+
+    const startPolling = () => {
+      setStreamMode("poll");
+      pollRef.current = window.setInterval(async () => {
+        try {
+          const j: Job = await call(`/jobs/${jobId}`);
+          setJob(j);
+          if (j.status === "done" || j.status === "failed") {
+            if (pollRef.current) clearInterval(pollRef.current);
+            finish(j);
+          }
+        } catch (e: any) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          toast({ title: "Polling error", description: e.message, variant: "destructive" });
+        }
+      }, 1500);
+    };
+
+    // EventSource cannot send Authorization headers, so token is passed as a query param
+    // only when the backend supports it; otherwise SSE will 401 and we fall back.
+    try {
+      const token = localStorage.getItem("auth_token");
+      const url = `${API}/jobs/${jobId}/stream${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+      const es = new EventSource(url, { withCredentials: true });
+      sseRef.current = es;
+      setStreamMode("sse");
+      es.addEventListener("progress", (ev: MessageEvent) => {
+        try {
+          const j: Job = JSON.parse(ev.data);
+          setJob(j);
+          if (j.status === "done" || j.status === "failed") {
+            es.close();
+            finish(j);
+          }
+        } catch { /* ignore */ }
+      });
+      es.addEventListener("end", () => es.close());
+      es.onerror = () => {
+        es.close();
+        sseRef.current = null;
+        // Fall back to polling silently
+        if (!pollRef.current) startPolling();
+      };
+    } catch {
+      startPolling();
+    }
+
+    return () => {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+      if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
+    };
   }, [jobId]);
 
   const saveConfig = async () => {
