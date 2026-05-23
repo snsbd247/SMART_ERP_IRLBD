@@ -787,6 +787,25 @@ export default function DeploySyncPage() {
                 <Switch checked={form.auto_migrate} onCheckedChange={(v) => setForm({ ...form, auto_migrate: v })} />
               </div>
 
+              <div className="border rounded p-3 space-y-3">
+                <div>
+                  <Label className="text-sm font-medium">Backup Retention</Label>
+                  <p className="text-xs text-muted-foreground">Old backups are deleted automatically after each pull. The latest backup is always kept.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Keep latest (count)</Label>
+                    <Input type="number" min={1} max={500} value={form.retention_count}
+                      onChange={(e) => setForm({ ...form, retention_count: Math.max(1, Number(e.target.value) || 1) })} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Keep within (days)</Label>
+                    <Input type="number" min={1} max={3650} value={form.retention_days}
+                      onChange={(e) => setForm({ ...form, retention_days: Math.max(1, Number(e.target.value) || 1) })} />
+                  </div>
+                </div>
+              </div>
+
               <div className="flex gap-2">
                 <Button onClick={saveConfig}>Save Settings</Button>
                 <Button variant="outline" onClick={doTestConnection} disabled={testing || !form.owner || !form.repo || !form.branch}>
