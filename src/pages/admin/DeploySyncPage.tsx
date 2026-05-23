@@ -599,13 +599,18 @@ export default function DeploySyncPage() {
 
         {/* ─── Backups tab ─── */}
         <TabsContent value="backups" className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-sm text-muted-foreground">
-              Each pull creates a timestamped backup. You can restore any of them — not just the latest.
+              Each pull creates a timestamped backup. Preview before restoring and prune old ones with retention.
             </p>
-            <Button variant="outline" size="sm" onClick={loadBackups}>
-              <RefreshCw className="w-4 h-4 mr-2" /> Refresh
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={cleanupBackups}>
+                <Trash2 className="w-4 h-4 mr-2" /> Apply retention
+              </Button>
+              <Button variant="outline" size="sm" onClick={loadBackups}>
+                <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+              </Button>
+            </div>
           </div>
           <Card>
             <CardContent className="p-0">
@@ -617,7 +622,7 @@ export default function DeploySyncPage() {
                     <th className="text-left p-2">Branch</th>
                     <th className="text-right p-2">Files</th>
                     <th className="text-left p-2">Job ID</th>
-                    <th className="text-right p-2 w-32">Action</th>
+                    <th className="text-right p-2 w-56">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -634,10 +639,15 @@ export default function DeploySyncPage() {
                       <td className="p-2">{b.branch || "—"}</td>
                       <td className="p-2 text-right">{b.file_count}</td>
                       <td className="p-2 font-mono text-[11px]">{b.job_id || "—"}</td>
-                      <td className="p-2 text-right">
+                      <td className="p-2 text-right space-x-1">
                         <Button size="sm" variant="outline" disabled={!!jobActive}
                           onClick={() => openRestoreDialog(b)}>
-                          <Undo2 className="w-3.5 h-3.5 mr-1" /> Restore
+                          <Eye className="w-3.5 h-3.5 mr-1" /> Preview &amp; Restore
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-destructive"
+                          disabled={!!jobActive || b.backup_id === latestBackupId}
+                          onClick={() => deleteBackup(b)} title={b.backup_id === latestBackupId ? "Cannot delete latest backup" : "Delete"}>
+                          <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </td>
                     </tr>
@@ -647,6 +657,7 @@ export default function DeploySyncPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
 
         {/* ─── Audit Log tab ─── */}
         <TabsContent value="audit" className="space-y-4">
