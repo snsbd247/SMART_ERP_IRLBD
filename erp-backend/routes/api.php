@@ -285,6 +285,11 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::put('settings', [\App\Http\Controllers\Admin\BackupController::class, 'settings']);
         });
 
+        // ─── Demo Data Seeder (Super Admin only) ─────────────────
+        Route::post('admin/demo/seed', [\App\Http\Controllers\Admin\DemoSeedController::class, 'run']);
+
+
+
         // ─── Audit Log (read-only) ──────────────────────────────
         Route::middleware('permission:audit_log.view')->group(function () {
             Route::get('audit-log', function (\Illuminate\Http\Request $request) {
