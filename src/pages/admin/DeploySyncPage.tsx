@@ -7,13 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import {
   GitBranch, Download, Undo2, RefreshCw, AlertTriangle, CheckCircle2,
   Eye, Settings, Database, Loader2, FileSearch, Archive, ClipboardList,
-  Plug, FileDown,
+  Plug, FileDown, Trash2, ChevronLeft, ChevronRight, Radio,
 } from "lucide-react";
 
 type StatusFile = { path: string; remote_sha: string; local_sha?: string; size?: number };
@@ -27,6 +27,7 @@ type StatusData = {
 type Config = {
   owner: string; repo: string; branch: string;
   auto_migrate: boolean; has_token: boolean;
+  retention_count: number; retention_days: number;
   last_pulled_at: string | null; last_backup_id: string | null;
 };
 type Job = {
@@ -34,12 +35,17 @@ type Job = {
   progress: number; message: string;
   pulled_count?: number; pulled?: string[]; errors?: any[];
   restored_count?: number; backup_id?: string; migrate_output?: string;
+  retention_deleted?: string[];
 };
 type Backup = { backup_id: string; file_count: number; created_at: string; branch: string | null; job_id: string | null };
 type AuditRow = {
   id: number; event: string; status: string; user_name: string | null;
   job_id: string | null; backup_id: string | null; branch: string | null;
   message: string | null; ip_address: string | null; created_at: string;
+};
+type RestorePreview = {
+  backup_id: string; would_change_count: number;
+  changes: { path: string; action: string; backup_size: number; current_exists: boolean }[];
 };
 
 const API = "/api/v1/deploy-sync";
@@ -99,11 +105,24 @@ export default function DeploySyncPage() {
   const [latestBackupId, setLatestBackupId] = useState<string | null>(null);
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [auditFilter, setAuditFilter] = useState<string>("");
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditPerPage, setAuditPerPage] = useState(25);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditLastPage, setAuditLastPage] = useState(1);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
+  const [restorePreview, setRestorePreview] = useState<RestorePreview | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<Backup | null>(null);
+  const [restoreConfirm, setRestoreConfirm] = useState("");
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [streamMode, setStreamMode] = useState<"sse" | "poll">("sse");
   const pollRef = useRef<number | null>(null);
+  const sseRef = useRef<EventSource | null>(null);
 
-  const [form, setForm] = useState({ owner: "", repo: "", branch: "", token: "", auto_migrate: false });
+  const [form, setForm] = useState({
+    owner: "", repo: "", branch: "", token: "",
+    auto_migrate: false, retention_count: 10, retention_days: 30,
+  });
 
   const loadAll = async () => {
     setLoading(true);
@@ -111,7 +130,7 @@ export default function DeploySyncPage() {
       const [cfg, st] = await Promise.all([call("/config"), call("/status")]);
       setConfig(cfg);
       setStatus(st);
-      setForm({ owner: cfg.owner, repo: cfg.repo, branch: cfg.branch, token: "", auto_migrate: cfg.auto_migrate });
+      setForm({ owner: cfg.owner, repo: cfg.repo, branch: cfg.branch, token: "", auto_migrate: cfg.auto_migrate, retention_count: cfg.retention_count ?? 10, retention_days: cfg.retention_days ?? 30 });
     } catch (e: any) {
       toast({ title: "Failed to load", description: e.message, variant: "destructive" });
     } finally { setLoading(false); }
@@ -121,7 +140,7 @@ export default function DeploySyncPage() {
     try {
       const cfg = await call("/config");
       setConfig(cfg);
-      setForm({ owner: cfg.owner, repo: cfg.repo, branch: cfg.branch, token: "", auto_migrate: cfg.auto_migrate });
+      setForm({ owner: cfg.owner, repo: cfg.repo, branch: cfg.branch, token: "", auto_migrate: cfg.auto_migrate, retention_count: cfg.retention_count ?? 10, retention_days: cfg.retention_days ?? 30 });
     } catch (e: any) {
       toast({ title: "Failed to load config", description: e.message, variant: "destructive" });
     }
@@ -137,10 +156,15 @@ export default function DeploySyncPage() {
     }
   };
 
-  const loadAudit = async () => {
+  const loadAudit = async (page = auditPage, perPage = auditPerPage) => {
     try {
-      const d = await call(`/audit-log${auditFilter ? `?event=${auditFilter}` : ""}`);
+      const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+      if (auditFilter) params.set("event", auditFilter);
+      const d = await call(`/audit-log?${params.toString()}`);
       setAudit(d.items || []);
+      setAuditTotal(d.total ?? 0);
+      setAuditLastPage(d.last_page ?? 1);
+      setAuditPage(d.page ?? page);
     } catch (e: any) {
       toast({ title: "Failed to load audit log", description: e.message, variant: "destructive" });
     }
@@ -148,27 +172,69 @@ export default function DeploySyncPage() {
 
   useEffect(() => { loadConfigOnly(); }, []);
 
+  // Real-time job updates: try SSE first, fall back to polling.
   useEffect(() => {
     if (!jobId) return;
-    pollRef.current = window.setInterval(async () => {
-      try {
-        const j: Job = await call(`/jobs/${jobId}`);
-        setJob(j);
-        if (j.status === "done" || j.status === "failed") {
-          if (pollRef.current) clearInterval(pollRef.current);
-          if (j.status === "done") {
-            toast({ title: `${j.type === "pull" ? "Pull" : "Rollback"} complete`, description: j.message });
-            loadAll(); loadBackups();
-          } else {
-            toast({ title: "Job failed", description: j.message, variant: "destructive" });
-          }
-        }
-      } catch (e: any) {
-        if (pollRef.current) clearInterval(pollRef.current);
-        toast({ title: "Polling error", description: e.message, variant: "destructive" });
+
+    const finish = (j: Job) => {
+      if (j.status === "done") {
+        toast({ title: `${j.type === "pull" ? "Pull" : "Rollback"} complete`, description: j.message });
+        loadAll(); loadBackups();
+      } else if (j.status === "failed") {
+        toast({ title: "Job failed", description: j.message, variant: "destructive" });
       }
-    }, 1500);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    };
+
+    const startPolling = () => {
+      setStreamMode("poll");
+      pollRef.current = window.setInterval(async () => {
+        try {
+          const j: Job = await call(`/jobs/${jobId}`);
+          setJob(j);
+          if (j.status === "done" || j.status === "failed") {
+            if (pollRef.current) clearInterval(pollRef.current);
+            finish(j);
+          }
+        } catch (e: any) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          toast({ title: "Polling error", description: e.message, variant: "destructive" });
+        }
+      }, 1500);
+    };
+
+    // EventSource cannot send Authorization headers, so token is passed as a query param
+    // only when the backend supports it; otherwise SSE will 401 and we fall back.
+    try {
+      const token = localStorage.getItem("auth_token");
+      const url = `${API}/jobs/${jobId}/stream${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+      const es = new EventSource(url, { withCredentials: true });
+      sseRef.current = es;
+      setStreamMode("sse");
+      es.addEventListener("progress", (ev: MessageEvent) => {
+        try {
+          const j: Job = JSON.parse(ev.data);
+          setJob(j);
+          if (j.status === "done" || j.status === "failed") {
+            es.close();
+            finish(j);
+          }
+        } catch { /* ignore */ }
+      });
+      es.addEventListener("end", () => es.close());
+      es.onerror = () => {
+        es.close();
+        sseRef.current = null;
+        // Fall back to polling silently
+        if (!pollRef.current) startPolling();
+      };
+    } catch {
+      startPolling();
+    }
+
+    return () => {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+      if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
+    };
   }, [jobId]);
 
   const saveConfig = async () => {
@@ -222,14 +288,55 @@ export default function DeploySyncPage() {
     } catch (e: any) { toast({ title: "Pull failed to start", description: e.message, variant: "destructive" }); }
   };
 
-  const doRollback = async (backupId?: string) => {
-    const label = backupId ? `backup "${backupId}"` : "the latest backup";
-    if (!confirm(`Restore ${label}? This overwrites current files.`)) return;
+  // Open the restore preview dialog for a chosen backup (or latest if none).
+  const openRestoreDialog = async (backup?: Backup) => {
+    const target = backup ?? backups.find(b => b.backup_id === latestBackupId) ?? null;
+    if (!target) {
+      // Fall back: just trigger rollback of latest with confirm()
+      if (!confirm("Restore the latest backup? This overwrites current files.")) return;
+      doRollbackNow(undefined);
+      return;
+    }
+    setRestoreTarget(target);
+    setRestoreConfirm("");
+    setRestorePreview(null);
+    setRestoreLoading(true);
     try {
-      const d = await call("/rollback", { method: "POST", body: backupId ? { backup_id: backupId } : {} });
+      const d = await call(`/backups/${encodeURIComponent(target.backup_id)}/preview`);
+      setRestorePreview(d);
+    } catch (e: any) {
+      toast({ title: "Preview failed", description: e.message, variant: "destructive" });
+    } finally { setRestoreLoading(false); }
+  };
+
+  const doRollbackNow = async (backupId?: string, confirmation?: string) => {
+    try {
+      const body: any = {};
+      if (backupId) body.backup_id = backupId;
+      if (confirmation) body.confirmation = confirmation;
+      const d = await call("/rollback", { method: "POST", body });
       setJobId(d.job_id);
       setJob({ type: "rollback", status: "queued", progress: 0, message: "Starting...", backup_id: d.backup_id });
+      setRestoreTarget(null); setRestorePreview(null); setRestoreConfirm("");
     } catch (e: any) { toast({ title: "Rollback failed to start", description: e.message, variant: "destructive" }); }
+  };
+
+  const deleteBackup = async (b: Backup) => {
+    if (!confirm(`Delete backup "${b.backup_id}"? This cannot be undone.`)) return;
+    try {
+      await call(`/backups/${encodeURIComponent(b.backup_id)}`, { method: "DELETE" });
+      toast({ title: "Backup deleted" });
+      loadBackups();
+    } catch (e: any) { toast({ title: "Delete failed", description: e.message, variant: "destructive" }); }
+  };
+
+  const cleanupBackups = async () => {
+    if (!confirm(`Apply retention now (keep latest ${form.retention_count} OR within ${form.retention_days} days)?`)) return;
+    try {
+      const d = await call("/backups/cleanup", { method: "POST" });
+      toast({ title: "Cleanup complete", description: `Deleted ${d.count} backup(s)` });
+      loadBackups();
+    } catch (e: any) { toast({ title: "Cleanup failed", description: e.message, variant: "destructive" }); }
   };
 
   const doMigrate = async () => {
@@ -303,7 +410,7 @@ export default function DeploySyncPage() {
         <TabsList>
           <TabsTrigger value="sync"><GitBranch className="w-4 h-4 mr-2" />Sync</TabsTrigger>
           <TabsTrigger value="backups" onClick={loadBackups}><Archive className="w-4 h-4 mr-2" />Backups</TabsTrigger>
-          <TabsTrigger value="audit" onClick={loadAudit}><ClipboardList className="w-4 h-4 mr-2" />Audit Log</TabsTrigger>
+          <TabsTrigger value="audit" onClick={() => loadAudit(1)}><ClipboardList className="w-4 h-4 mr-2" />Audit Log</TabsTrigger>
           <TabsTrigger value="settings"><Settings className="w-4 h-4 mr-2" />Settings</TabsTrigger>
         </TabsList>
 
@@ -330,6 +437,11 @@ export default function DeploySyncPage() {
                    job.status === "done" ? <CheckCircle2 className="w-4 h-4 text-green-600" /> :
                    <AlertTriangle className="w-4 h-4 text-destructive" />}
                   {job.type === "pull" ? "Pull Job" : "Rollback Job"} — {job.status}
+                  {jobActive && (
+                    <Badge variant="outline" className="ml-1 text-[10px]">
+                      <Radio className="w-3 h-3 mr-1" />{streamMode === "sse" ? "live" : "polling"}
+                    </Badge>
+                  )}
                   {jobId && (
                     <Button size="sm" variant="ghost" className="ml-auto" onClick={() => downloadJobLog(jobId)}>
                       <FileDown className="w-3.5 h-3.5 mr-1" /> Export log
@@ -425,7 +537,7 @@ export default function DeploySyncPage() {
                       Pull {status.counts.added + status.counts.modified} change(s)
                     </Button>
                     {status.has_backup && (
-                      <Button variant="outline" onClick={() => doRollback()} disabled={!!jobActive}>
+                      <Button variant="outline" onClick={() => openRestoreDialog()} disabled={!!jobActive}>
                         <Undo2 className="w-4 h-4 mr-2" /> Rollback Last Pull
                       </Button>
                     )}
@@ -492,13 +604,18 @@ export default function DeploySyncPage() {
 
         {/* ─── Backups tab ─── */}
         <TabsContent value="backups" className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-sm text-muted-foreground">
-              Each pull creates a timestamped backup. You can restore any of them — not just the latest.
+              Each pull creates a timestamped backup. Preview before restoring and prune old ones with retention.
             </p>
-            <Button variant="outline" size="sm" onClick={loadBackups}>
-              <RefreshCw className="w-4 h-4 mr-2" /> Refresh
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={cleanupBackups}>
+                <Trash2 className="w-4 h-4 mr-2" /> Apply retention
+              </Button>
+              <Button variant="outline" size="sm" onClick={loadBackups}>
+                <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+              </Button>
+            </div>
           </div>
           <Card>
             <CardContent className="p-0">
@@ -510,7 +627,7 @@ export default function DeploySyncPage() {
                     <th className="text-left p-2">Branch</th>
                     <th className="text-right p-2">Files</th>
                     <th className="text-left p-2">Job ID</th>
-                    <th className="text-right p-2 w-32">Action</th>
+                    <th className="text-right p-2 w-56">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -527,10 +644,15 @@ export default function DeploySyncPage() {
                       <td className="p-2">{b.branch || "—"}</td>
                       <td className="p-2 text-right">{b.file_count}</td>
                       <td className="p-2 font-mono text-[11px]">{b.job_id || "—"}</td>
-                      <td className="p-2 text-right">
+                      <td className="p-2 text-right space-x-1">
                         <Button size="sm" variant="outline" disabled={!!jobActive}
-                          onClick={() => doRollback(b.backup_id)}>
-                          <Undo2 className="w-3.5 h-3.5 mr-1" /> Restore
+                          onClick={() => openRestoreDialog(b)}>
+                          <Eye className="w-3.5 h-3.5 mr-1" /> Preview &amp; Restore
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-destructive"
+                          disabled={!!jobActive || b.backup_id === latestBackupId}
+                          onClick={() => deleteBackup(b)} title={b.backup_id === latestBackupId ? "Cannot delete latest backup" : "Delete"}>
+                          <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </td>
                     </tr>
@@ -541,12 +663,13 @@ export default function DeploySyncPage() {
           </Card>
         </TabsContent>
 
+
         {/* ─── Audit Log tab ─── */}
         <TabsContent value="audit" className="space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
             <Label className="text-xs">Filter:</Label>
             <select className="text-sm border rounded px-2 py-1 bg-background"
-              value={auditFilter} onChange={(e) => setAuditFilter(e.target.value)}>
+              value={auditFilter} onChange={(e) => { setAuditFilter(e.target.value); }}>
               <option value="">All events</option>
               <option value="pull">Pull</option>
               <option value="rollback">Rollback</option>
@@ -554,14 +677,31 @@ export default function DeploySyncPage() {
               <option value="migrate">Migrate</option>
               <option value="test_connection">Test Connection</option>
               <option value="settings_update">Settings Update</option>
+              <option value="backup_delete">Backup Delete</option>
+              <option value="backup_cleanup">Backup Cleanup</option>
             </select>
-            <Button size="sm" variant="outline" onClick={loadAudit}>
+            <Label className="text-xs ml-2">Page size:</Label>
+            <select className="text-sm border rounded px-2 py-1 bg-background"
+              value={auditPerPage} onChange={(e) => { const n = Number(e.target.value); setAuditPerPage(n); loadAudit(1, n); }}>
+              {[10, 25, 50, 100, 200].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <Button size="sm" variant="outline" onClick={() => loadAudit(1)}>
               <RefreshCw className="w-4 h-4 mr-2" /> Refresh
             </Button>
             <Button size="sm" variant="outline" onClick={exportAuditCSV} disabled={audit.length === 0}>
               <FileDown className="w-4 h-4 mr-2" /> Export CSV
             </Button>
-            <span className="text-xs text-muted-foreground ml-auto">{audit.length} entries</span>
+            <div className="flex items-center gap-1 ml-auto">
+              <Button size="sm" variant="ghost" disabled={auditPage <= 1} onClick={() => loadAudit(auditPage - 1)}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Page {auditPage} / {auditLastPage} · {auditTotal} total
+              </span>
+              <Button size="sm" variant="ghost" disabled={auditPage >= auditLastPage} onClick={() => loadAudit(auditPage + 1)}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
           <Card>
             <CardContent className="p-0">
@@ -652,6 +792,25 @@ export default function DeploySyncPage() {
                 <Switch checked={form.auto_migrate} onCheckedChange={(v) => setForm({ ...form, auto_migrate: v })} />
               </div>
 
+              <div className="border rounded p-3 space-y-3">
+                <div>
+                  <Label className="text-sm font-medium">Backup Retention</Label>
+                  <p className="text-xs text-muted-foreground">Old backups are deleted automatically after each pull. The latest backup is always kept.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Keep latest (count)</Label>
+                    <Input type="number" min={1} max={500} value={form.retention_count}
+                      onChange={(e) => setForm({ ...form, retention_count: Math.max(1, Number(e.target.value) || 1) })} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Keep within (days)</Label>
+                    <Input type="number" min={1} max={3650} value={form.retention_days}
+                      onChange={(e) => setForm({ ...form, retention_days: Math.max(1, Number(e.target.value) || 1) })} />
+                  </div>
+                </div>
+              </div>
+
               <div className="flex gap-2">
                 <Button onClick={saveConfig}>Save Settings</Button>
                 <Button variant="outline" onClick={doTestConnection} disabled={testing || !form.owner || !form.repo || !form.branch}>
@@ -712,6 +871,66 @@ export default function DeploySyncPage() {
               </pre>
             </ScrollArea>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Restore Preview + Confirmation Dialog */}
+      <Dialog open={!!restoreTarget} onOpenChange={(o) => { if (!o) { setRestoreTarget(null); setRestorePreview(null); setRestoreConfirm(""); } }}>
+        <DialogContent className="max-w-3xl max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Undo2 className="w-4 h-4" /> Preview restore — <code className="font-mono text-sm">{restoreTarget?.backup_id}</code>
+              {restoreTarget?.backup_id === latestBackupId && <Badge className="bg-blue-600">latest</Badge>}
+            </DialogTitle>
+          </DialogHeader>
+          {restoreLoading && <div className="py-10 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>}
+          {restorePreview && (
+            <div className="space-y-3">
+              <p className="text-sm">
+                <Badge>{restorePreview.would_change_count}</Badge> file(s) would change if this backup is restored.
+              </p>
+              <ScrollArea className="h-64 border rounded">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted sticky top-0"><tr>
+                    <th className="text-left p-2 w-24">Action</th><th className="text-left p-2">Path</th><th className="text-right p-2 w-24">Size</th>
+                  </tr></thead>
+                  <tbody>
+                    {restorePreview.changes.length === 0 && (
+                      <tr><td colSpan={3} className="p-4 text-center text-muted-foreground">No changes — backup matches current files.</td></tr>
+                    )}
+                    {restorePreview.changes.map(c => (
+                      <tr key={c.path} className="border-t">
+                        <td className="p-2"><Badge variant="outline">{c.action}</Badge></td>
+                        <td className="p-2 font-mono">{c.path}</td>
+                        <td className="p-2 text-right">{c.backup_size}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollArea>
+              {restoreTarget && restoreTarget.backup_id !== latestBackupId && (
+                <div className="border border-destructive/30 bg-destructive/5 rounded p-3 space-y-2">
+                  <p className="text-sm flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="w-4 h-4" />
+                    You are restoring a non-latest backup. Type <code className="font-bold">RESTORE</code> to confirm.
+                  </p>
+                  <Input value={restoreConfirm} onChange={(e) => setRestoreConfirm(e.target.value)} placeholder="Type RESTORE" />
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setRestoreTarget(null); setRestorePreview(null); setRestoreConfirm(""); }}>Cancel</Button>
+            <Button
+              disabled={
+                !restorePreview || !!jobActive ||
+                (restoreTarget?.backup_id !== latestBackupId && restoreConfirm !== "RESTORE")
+              }
+              onClick={() => restoreTarget && doRollbackNow(restoreTarget.backup_id, restoreConfirm || undefined)}
+            >
+              <Undo2 className="w-4 h-4 mr-2" /> Restore now
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
