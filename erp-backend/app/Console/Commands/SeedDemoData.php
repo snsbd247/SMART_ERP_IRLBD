@@ -31,7 +31,6 @@ class SeedDemoData extends Command
 
     private function R(): float
     {
-        // Simple deterministic float [0,1) seeded at 42
         $this->_s = ($this->_s * 1103515245 + 12345) & 0x7fffffff;
         return $this->_s / 2147483648.0;
     }
@@ -83,9 +82,9 @@ class SeedDemoData extends Command
     private array $branches = [], $customers = [], $suppliers = [], $employees = [];
     private array $products = [], $productMap = [];
     private array $units = [], $categories = [];
-    private array $Ac = []; // Chart of account aliases
-    private array $lts = []; // Leave types
-    private string $UID; // Admin user ID
+    private array $Ac = [];
+    private array $lts = [];
+    private string $UID;
     private string $fyTag;
 
     // Accumulators
@@ -163,7 +162,6 @@ class SeedDemoData extends Command
             }
         }
 
-        DB::table('profiles')->whereNotNull('employee_id')->delete();
         DB::statement('SET FOREIGN_KEY_CHECKS=1');
         $this->info('Reset complete.');
     }
@@ -393,11 +391,11 @@ class SeedDemoData extends Command
                 'department_id'=>$this->DEPT,'designation_id'=>$this->DESIG,
                 'branch_id'=>$i<10?$this->BR_DHK:$this->BR_CTG,
                 'joining_date'=>$join,'salary'=>$basic,'employment_type'=>'permanent','status'=>'active',
-                'employee_category'=>'staff','created_at'=>now(),'updated_at'=>now(),
+                'created_at'=>now(),'updated_at'=>now(),
             ];
-            $hr = (int) floor($basic*0.4);
-            $med = (int) floor($basic*0.1);
-            $oth = (int) floor($basic*0.05);
+            $hr = (int) floor($basic * 0.4);
+            $med = (int) floor($basic * 0.1);
+            $oth = (int) floor($basic * 0.05);
             $salRows[] = [
                 'id'=>$this->U(),'employee_id'=>$id,'basic_salary'=>$basic,'house_rent'=>$hr,'medical_allowance'=>$med,
                 'other_allowance'=>$oth,'total_salary'=>$basic+$hr+$med+$oth,'effective_from'=>$join,
@@ -434,7 +432,6 @@ class SeedDemoData extends Command
             $this->ventries[] = [
                 'id'=>$this->U(),'voucher_id'=>$vid,'account_id'=>$e[0],
                 'debit'=>$this->round2($e[1]),'credit'=>$this->round2($e[2]),'narration'=>$e[3],'sort_order'=>$idx,
-                'created_at'=>now(),'updated_at'=>now(),
             ];
         }
         return $vid;
@@ -495,12 +492,12 @@ class SeedDemoData extends Command
                 foreach ($rows as $r) {
                     $sitems[] = [
                         'id'=>$this->U(),'sales_invoice_id'=>$invId,'product_id'=>$r[4],'quantity'=>$r[1],
-                        'price'=>$r[2],'discount'=>0,'total'=>$r[3],'created_at'=>now(),'updated_at'=>now(),
+                        'price'=>$r[2],'discount'=>0,'total'=>$r[3],
                     ];
                     $smov[] = [
                         'id'=>$this->U(),'product_id'=>$r[4],'item_id'=>$r[4],'warehouse_id'=>$this->WH_DHK,
                         'branch_id'=>$this->BR_DHK,'movement_type'=>'sale','reference_type'=>'sales_invoice',
-                        'reference_id'=>$invId,'quantity'=>$r[1],
+                        'reference_id'=>$invId,'quantity'=>$r[1],'created_at'=>now(),
                     ];
                 }
                 $cash = $this->R() < 0.35;
@@ -539,12 +536,12 @@ class SeedDemoData extends Command
                 foreach ($rows as $r) {
                     $pitems[] = [
                         'id'=>$this->U(),'purchase_id'=>$pId,'product_id'=>$r[4],'quantity'=>$r[1],
-                        'unit_price'=>$r[2],'total'=>$r[3],'created_at'=>now(),'updated_at'=>now(),
+                        'unit_price'=>$r[2],'total'=>$r[3],
                     ];
                     $smov[] = [
                         'id'=>$this->U(),'product_id'=>$r[4],'item_id'=>$r[4],'warehouse_id'=>$this->WH_DHK,
                         'branch_id'=>$this->BR_DHK,'movement_type'=>'purchase','reference_type'=>'purchase',
-                        'reference_id'=>$pId,'quantity'=>$r[1],
+                        'reference_id'=>$pId,'quantity'=>$r[1],'created_at'=>now(),
                     ];
                 }
                 $cr = $credit ? $this->Ac['ap'] : $this->Ac['cash'];
@@ -583,7 +580,7 @@ class SeedDemoData extends Command
                 $retTotal += $tot;
                 $sretItems[] = [
                     'id'=>$this->U(),'sales_return_id'=>$rid,'product_id'=>$it->product_id,'quantity'=>$rqty,
-                    'price'=>$it->price,'total'=>$tot,'created_at'=>now(),'updated_at'=>now(),
+                    'price'=>$it->price,'total'=>$tot,
                 ];
             }
             $sret[] = [
@@ -616,7 +613,7 @@ class SeedDemoData extends Command
                 $retTotal += $tot;
                 $pretItems[] = [
                     'id'=>$this->U(),'purchase_return_id'=>$rid,'product_id'=>$it->product_id,'quantity'=>$rqty,
-                    'unit_price'=>$it->unit_price,'total'=>$tot,'created_at'=>now(),'updated_at'=>now(),
+                    'unit_price'=>$it->unit_price,'total'=>$tot,
                 ];
             }
             $pret[] = [
@@ -812,7 +809,7 @@ class SeedDemoData extends Command
                 }
                 $att[] = [
                     'id'=>$this->U(),'employee_id'=>$e['id'],'date'=>$ds,'check_in'=>$ci,'check_out'=>$co,'status'=>$st,
-                    'created_at'=>now(),'updated_at'=>now(),
+                    'created_at'=>now(),
                 ];
             }
         }
@@ -827,13 +824,14 @@ class SeedDemoData extends Command
                 if ($s > $this->fyEnd) continue;
                 $dur = $this->RI(1, 3);
                 $en = $s->copy()->addDays($dur - 1);
+                $endDate = $en->gt($this->fyEnd) ? $this->fyEnd : $en;
                 $leaves[] = [
                     'id'=>$this->U(),'employee_id'=>$e['id'],'leave_type_id'=>$this->pick($this->lts)->id,
-                    'start_date'=>$this->ymd($s),'end_date'=>$this->ymd(min($en, $this->fyEnd)),
+                    'start_date'=>$this->ymd($s),'end_date'=>$this->ymd($endDate),
                     'reason'=>$this->pick(['Personal','Family event','Medical','Travel']),
                     'status'=>$this->pick(['approved','approved','approved','pending']),
                     'approved_by'=>$this->UID,
-                    'created_at'=>now(),'updated_at'=>now(),
+                    'created_at'=>now(),
                 ];
             }
         }
@@ -986,6 +984,7 @@ class SeedDemoData extends Command
                 ];
                 $DSPallocs[] = [
                     'id'=>$this->U(),'dispatch_item_id'=>$diId,'po_item_id'=>$r['id'],'po_id'=>$poId,'allocated_qty'=>$r['qty_ordered'],
+                    'created_at'=>now(),
                 ];
 
                 // VAT Challan item (per product)
@@ -1064,7 +1063,7 @@ class SeedDemoData extends Command
                     'source_vat_challan_item_id'=>$vciByProduct[$r['product_id']],'sort_order'=>$idx,
                 ];
             }
-            $INVCHs[] = ['id'=>$this->U(),'invoice_id'=>$invId,'vat_challan_id'=>$vchId];
+            $INVCHs[] = ['id'=>$this->U(),'invoice_id'=>$invId,'vat_challan_id'=>$vchId,'created_at'=>now()];
 
             // Invoice Payment
             if ($paidAmt > 0) {
