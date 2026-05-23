@@ -288,14 +288,55 @@ export default function DeploySyncPage() {
     } catch (e: any) { toast({ title: "Pull failed to start", description: e.message, variant: "destructive" }); }
   };
 
-  const doRollback = async (backupId?: string) => {
-    const label = backupId ? `backup "${backupId}"` : "the latest backup";
-    if (!confirm(`Restore ${label}? This overwrites current files.`)) return;
+  // Open the restore preview dialog for a chosen backup (or latest if none).
+  const openRestoreDialog = async (backup?: Backup) => {
+    const target = backup ?? backups.find(b => b.backup_id === latestBackupId) ?? null;
+    if (!target) {
+      // Fall back: just trigger rollback of latest with confirm()
+      if (!confirm("Restore the latest backup? This overwrites current files.")) return;
+      doRollbackNow(undefined);
+      return;
+    }
+    setRestoreTarget(target);
+    setRestoreConfirm("");
+    setRestorePreview(null);
+    setRestoreLoading(true);
     try {
-      const d = await call("/rollback", { method: "POST", body: backupId ? { backup_id: backupId } : {} });
+      const d = await call(`/backups/${encodeURIComponent(target.backup_id)}/preview`);
+      setRestorePreview(d);
+    } catch (e: any) {
+      toast({ title: "Preview failed", description: e.message, variant: "destructive" });
+    } finally { setRestoreLoading(false); }
+  };
+
+  const doRollbackNow = async (backupId?: string, confirmation?: string) => {
+    try {
+      const body: any = {};
+      if (backupId) body.backup_id = backupId;
+      if (confirmation) body.confirmation = confirmation;
+      const d = await call("/rollback", { method: "POST", body });
       setJobId(d.job_id);
       setJob({ type: "rollback", status: "queued", progress: 0, message: "Starting...", backup_id: d.backup_id });
+      setRestoreTarget(null); setRestorePreview(null); setRestoreConfirm("");
     } catch (e: any) { toast({ title: "Rollback failed to start", description: e.message, variant: "destructive" }); }
+  };
+
+  const deleteBackup = async (b: Backup) => {
+    if (!confirm(`Delete backup "${b.backup_id}"? This cannot be undone.`)) return;
+    try {
+      await call(`/backups/${encodeURIComponent(b.backup_id)}`, { method: "DELETE" });
+      toast({ title: "Backup deleted" });
+      loadBackups();
+    } catch (e: any) { toast({ title: "Delete failed", description: e.message, variant: "destructive" }); }
+  };
+
+  const cleanupBackups = async () => {
+    if (!confirm(`Apply retention now (keep latest ${form.retention_count} OR within ${form.retention_days} days)?`)) return;
+    try {
+      const d = await call("/backups/cleanup", { method: "POST" });
+      toast({ title: "Cleanup complete", description: `Deleted ${d.count} backup(s)` });
+      loadBackups();
+    } catch (e: any) { toast({ title: "Cleanup failed", description: e.message, variant: "destructive" }); }
   };
 
   const doMigrate = async () => {
