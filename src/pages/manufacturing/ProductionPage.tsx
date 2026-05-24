@@ -243,7 +243,5 @@ const ProductionPage = () => {
   );
 };
 
-// Helper to fix reference
-const setBomItems = (items: any[]) => {};
 
 export default ProductionPage;
