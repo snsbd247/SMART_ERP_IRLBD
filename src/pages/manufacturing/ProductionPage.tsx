@@ -221,7 +221,7 @@ const ProductionPage = () => {
               {matItems.map((item, idx) => (
                 <div key={idx} className="flex gap-2 items-end">
                   <div className="flex-1">
-                    <Select value={item.material_id} onValueChange={(v) => { const n = [...matItems]; n[idx].material_id = v; setBomItems(n); }}>
+                    <Select value={item.material_id} onValueChange={(v) => { const n = [...matItems]; n[idx].material_id = v; setMatItems(n); }}>
                       <SelectTrigger><SelectValue placeholder="Material" /></SelectTrigger>
                       <SelectContent>{materials.map((m) => <SelectItem key={m.id} value={m.id}>{m.item_name}</SelectItem>)}</SelectContent>
                     </Select>
@@ -243,7 +243,5 @@ const ProductionPage = () => {
   );
 };
 
-// Helper to fix reference
-const setBomItems = (items: any[]) => {};
 
 export default ProductionPage;
