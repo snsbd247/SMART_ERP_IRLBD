@@ -369,12 +369,30 @@ ln -sf /etc/nginx/sites-available/studio   /etc/nginx/sites-enabled/studio
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 
-# SSL — needs domains pointing to this VPS first
+# SSL — needs domains pointing to this VPS first.
+# Try each hostname separately so one bad DNS record (e.g. missing www
+# subdomain) doesn't block certs for the others.
 log "Requesting SSL certificates (make sure DNS A-records already point to this server)..."
-certbot --nginx --non-interactive --agree-tos -m "${ADMIN_EMAIL}" \
-  -d "${DOMAIN}" -d "www.${DOMAIN}" \
-  -d "${SUPABASE_SUBDOMAIN}" -d "${STUDIO_SUBDOMAIN}" || \
-  warn "SSL failed — fix DNS, then run: certbot --nginx -d ${DOMAIN} -d www.${DOMAIN} -d ${SUPABASE_SUBDOMAIN} -d ${STUDIO_SUBDOMAIN}"
+SERVER_IP="$(curl -fsS https://api.ipify.org || echo '')"
+issue_cert() {
+  local host="$1"
+  local resolved
+  resolved="$(getent hosts "$host" | awk '{print $1}' | head -n1 || true)"
+  if [ -z "$resolved" ]; then
+    warn "SSL skip: $host does not resolve (add A-record -> ${SERVER_IP})"
+    return
+  fi
+  if [ -n "$SERVER_IP" ] && [ "$resolved" != "$SERVER_IP" ]; then
+    warn "SSL skip: $host -> $resolved (expected ${SERVER_IP}). Fix DNS, then: certbot --nginx -d $host"
+    return
+  fi
+  certbot --nginx --non-interactive --agree-tos -m "${ADMIN_EMAIL}" -d "$host" || \
+    warn "SSL failed for $host — retry later: certbot --nginx -d $host"
+}
+issue_cert "${DOMAIN}"
+issue_cert "www.${DOMAIN}"
+issue_cert "${SUPABASE_SUBDOMAIN}"
+issue_cert "${STUDIO_SUBDOMAIN}"
 
 # ===================== 9. SUMMARY ==========================
 log "Step 9/9  Saving credentials..."
