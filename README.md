@@ -30,7 +30,7 @@ Deploy the entire stack (self-hosted Supabase + Laravel + React) on a fresh **Ub
 ### One-Command Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/snsbd247/audit-treasure/main/deploy/vps/install.sh -o install.sh
+curl -fsSL https://raw.githubusercontent.com/snsbd247/smart_accounting/main/deploy/vps/install.sh -o install.sh
 chmod +x install.sh
 DOMAIN=yourdomain.com ADMIN_EMAIL=you@yourdomain.com ./install.sh
 ```
@@ -50,6 +50,8 @@ The installer will:
 4. Login and start using SmartERP
 
 > **Tip:** If the `supabase-analytics` container fails on small VPS plans, the installer automatically relaxes its health check and continues. The app will still work; analytics/logs are optional.
+
+If installation stops early, the installer now saves any generated recovery credentials to `/root/smarterp-credentials.txt` with `Status: FAILED/PARTIAL`. Fix the shown error in `/root/install.log`, then rerun the installer.
 
 ---
 
