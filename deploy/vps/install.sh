@@ -124,6 +124,9 @@ DASHBOARD_USER="admin"
 DASHBOARD_PASS="$(rand 12)"
 SECRET_KEY_BASE="$(b64 64)"
 VAULT_ENC_KEY="$(rand 16)"
+LOGFLARE_PUBLIC_TOKEN="$(rand 32)"
+LOGFLARE_PRIVATE_TOKEN="$(rand 32)"
+POOLER_TENANT_ID="${POOLER_TENANT_ID:-smarterp}"
 
 sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${POSTGRES_PASSWORD}|" .env
 sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${JWT_SECRET}|" .env
@@ -137,8 +140,41 @@ sed -i "s|^SITE_URL=.*|SITE_URL=https://${DOMAIN}|" .env
 sed -i "s|^API_EXTERNAL_URL=.*|API_EXTERNAL_URL=https://${SUPABASE_SUBDOMAIN}|" .env
 sed -i "s|^SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=https://${SUPABASE_SUBDOMAIN}|" .env
 
+# --- Logflare / Analytics: REQUIRED, otherwise the analytics container fails
+# and brings the whole stack down via depends_on. Replace placeholder tokens.
+if grep -q '^LOGFLARE_PUBLIC_ACCESS_TOKEN=' .env; then
+  sed -i "s|^LOGFLARE_PUBLIC_ACCESS_TOKEN=.*|LOGFLARE_PUBLIC_ACCESS_TOKEN=${LOGFLARE_PUBLIC_TOKEN}|" .env
+else
+  echo "LOGFLARE_PUBLIC_ACCESS_TOKEN=${LOGFLARE_PUBLIC_TOKEN}" >> .env
+fi
+if grep -q '^LOGFLARE_PRIVATE_ACCESS_TOKEN=' .env; then
+  sed -i "s|^LOGFLARE_PRIVATE_ACCESS_TOKEN=.*|LOGFLARE_PRIVATE_ACCESS_TOKEN=${LOGFLARE_PRIVATE_TOKEN}|" .env
+else
+  echo "LOGFLARE_PRIVATE_ACCESS_TOKEN=${LOGFLARE_PRIVATE_TOKEN}" >> .env
+fi
+# Legacy var name some compose files still read
+if grep -q '^LOGFLARE_API_KEY=' .env; then
+  sed -i "s|^LOGFLARE_API_KEY=.*|LOGFLARE_API_KEY=${LOGFLARE_PRIVATE_TOKEN}|" .env
+fi
+# Supavisor pooler tenant id (must not be default 'your-tenant-id')
+if grep -q '^POOLER_TENANT_ID=' .env; then
+  sed -i "s|^POOLER_TENANT_ID=.*|POOLER_TENANT_ID=${POOLER_TENANT_ID}|" .env
+fi
+
+# Fresh start — if a previous failed run left a half-initialised analytics
+# volume, the DB user/credentials inside it won't match new env values.
+log "Cleaning any previous half-initialised Supabase volumes..."
+docker compose down -v 2>/dev/null || true
+
 docker compose pull
-docker compose up -d
+# Bring analytics up FIRST so the rest of the stack can wait on a healthy one.
+# Use --wait with a generous timeout; don't kill the whole installer if it
+# stalls — we'll surface the issue and continue.
+if ! docker compose up -d --wait --wait-timeout 300; then
+  warn "Some Supabase containers are not healthy yet. Showing analytics logs:"
+  docker compose logs --tail=50 analytics || true
+  warn "Continuing installation — you can run 'docker compose up -d' in ${SUPABASE_DIR}/docker after fixing."
+fi
 
 # ===================== 7. APP CODE =========================
 log "Step 7/9  Cloning project & building frontend..."
