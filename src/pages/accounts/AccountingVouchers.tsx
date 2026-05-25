@@ -649,14 +649,28 @@ const AccountingVouchers = () => {
                             </div>
                           </TableCell>
                           <TableCell className="pt-3">
-                            <Input type="number" className="h-9 text-right tabular-nums"
-                              value={entry.debit || ""} disabled={entry.dr_cr !== "dr"}
-                              onChange={(e) => updateEntry(entry.id, "debit", parseFloat(e.target.value) || 0)} />
+                            <Input
+                              type="text" inputMode="decimal"
+                              className="h-9 text-right tabular-nums"
+                              placeholder="0 or =20+50"
+                              value={rawAmounts[`${entry.id}-debit`] ?? (entry.debit ? String(entry.debit) : "")}
+                              disabled={entry.dr_cr !== "dr"}
+                              onChange={(e) => setRawAmounts((p) => ({ ...p, [`${entry.id}-debit`]: e.target.value }))}
+                              onBlur={() => commitAmount(entry.id, "debit")}
+                              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.currentTarget as HTMLInputElement).blur(); } }}
+                            />
                           </TableCell>
                           <TableCell className="pt-3">
-                            <Input type="number" className="h-9 text-right tabular-nums"
-                              value={entry.credit || ""} disabled={entry.dr_cr !== "cr"}
-                              onChange={(e) => updateEntry(entry.id, "credit", parseFloat(e.target.value) || 0)} />
+                            <Input
+                              type="text" inputMode="decimal"
+                              className="h-9 text-right tabular-nums"
+                              placeholder="0 or =20+50"
+                              value={rawAmounts[`${entry.id}-credit`] ?? (entry.credit ? String(entry.credit) : "")}
+                              disabled={entry.dr_cr !== "cr"}
+                              onChange={(e) => setRawAmounts((p) => ({ ...p, [`${entry.id}-credit`]: e.target.value }))}
+                              onBlur={() => commitAmount(entry.id, "credit")}
+                              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.currentTarget as HTMLInputElement).blur(); } }}
+                            />
                           </TableCell>
                           <TableCell className="pt-3">
                             <Input className="h-9 text-xs" placeholder="Narration (optional)" value={entry.narration}
