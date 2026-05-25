@@ -95,6 +95,8 @@ const AccountingVouchers = () => {
     { id: "1", account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
     { id: "2", account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
   ]);
+  // Raw text for formula-style input (e.g. "=20+50+80+100"). Keyed by `${entryId}-${field}`.
+  const [rawAmounts, setRawAmounts] = useState<Record<string, string>>({});
 
   // Print state
   const [printVoucher, setPrintVoucher] = useState<Voucher | null>(null);
