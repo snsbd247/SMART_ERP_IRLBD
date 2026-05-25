@@ -5,7 +5,7 @@
 #  Tested on: Ubuntu 22.04 / 24.04 LTS  (root or sudo user)
 # ============================================================
 #  Usage (on a fresh VPS):
-#     curl -fsSL https://raw.githubusercontent.com/snsbd247/audit-treasure/main/deploy/vps/install.sh -o install.sh
+#     curl -fsSL https://raw.githubusercontent.com/snsbd247/smart_accounting/main/deploy/vps/install.sh -o install.sh
 #     chmod +x install.sh
 #     sudo ./install.sh
 # ============================================================
@@ -23,6 +23,7 @@ NODE_MAJOR="${NODE_MAJOR:-20}"
 PHP_VERSION="${PHP_VERSION:-8.2}"
 MYSQL_DB="${MYSQL_DB:-smarterp}"
 MYSQL_USER="${MYSQL_USER:-smarterp}"
+CRED_FILE="${CRED_FILE:-/root/smarterp-credentials.txt}"
 # -----------------------------------------------------------
 
 C_GREEN='\033[0;32m'; C_YELLOW='\033[1;33m'; C_RED='\033[0;31m'; C_NC='\033[0m'
@@ -34,6 +35,50 @@ if [[ $EUID -ne 0 ]]; then err "Run as root (sudo ./install.sh)"; exit 1; fi
 if ! grep -qiE 'ubuntu|debian' /etc/os-release; then
   warn "This script targets Ubuntu/Debian. Continuing anyway..."
 fi
+
+write_credentials() {
+  local status="${1:-PARTIAL}"
+  cat > "${CRED_FILE}" <<EOF
+=========================================================
+ SmartERP — Installation Summary  ($(date))
+=========================================================
+ Status                : ${status}
+
+ Frontend (App)        : https://${DOMAIN}
+ Supabase API Gateway  : https://${SUPABASE_SUBDOMAIN}
+ Supabase Studio       : https://${STUDIO_SUBDOMAIN}
+
+ Studio Login          : ${DASHBOARD_USER:-admin} / ${DASHBOARD_PASS:-not-generated-yet}
+
+ Supabase Anon Key     : ${ANON_KEY:-not-generated-yet}
+ Supabase Service Key  : ${SERVICE_ROLE_KEY:-not-generated-yet}
+ JWT Secret            : ${JWT_SECRET:-not-generated-yet}
+ Postgres Password     : ${POSTGRES_PASSWORD:-not-generated-yet}
+
+ MySQL DB / User / Pwd : ${MYSQL_DB} / ${MYSQL_USER} / ${MYSQL_PASS:-not-generated-yet}
+
+ App Path              : ${APP_DIR}
+ Supabase Path         : ${SUPABASE_DIR}/docker
+=========================================================
+ Next steps:
+   1. Open https://${DOMAIN}/install   (Laravel installer wizard)
+   2. Use the MySQL credentials above
+   3. Create the Super Admin account
+   4. Login & enjoy SmartERP
+=========================================================
+EOF
+  chmod 600 "${CRED_FILE}"
+}
+
+on_exit() {
+  local status=$?
+  if [[ ${status} -ne 0 ]]; then
+    warn "Installer stopped before completion. Saving available credentials for recovery..."
+    write_credentials "FAILED/PARTIAL - check /root/install.log" || true
+    warn "Credentials saved to: ${CRED_FILE}  (chmod 600)"
+  fi
+}
+trap on_exit EXIT
 
 rand() { openssl rand -hex "${1:-24}"; }
 b64()  { openssl rand -base64 "${1:-32}" | tr -d '\n'; }
