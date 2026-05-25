@@ -375,35 +375,8 @@ certbot --nginx --non-interactive --agree-tos -m "${ADMIN_EMAIL}" \
 
 # ===================== 9. SUMMARY ==========================
 log "Step 9/9  Saving credentials..."
-CRED_FILE="/root/smarterp-credentials.txt"
-cat > "${CRED_FILE}" <<EOF
-=========================================================
- SmartERP — Installation Summary  ($(date))
-=========================================================
- Frontend (App)        : https://${DOMAIN}
- Supabase API Gateway  : https://${SUPABASE_SUBDOMAIN}
- Supabase Studio       : https://${STUDIO_SUBDOMAIN}
-
- Studio Login          : ${DASHBOARD_USER} / ${DASHBOARD_PASS}
-
- Supabase Anon Key     : ${ANON_KEY}
- Supabase Service Key  : ${SERVICE_ROLE_KEY}
- JWT Secret            : ${JWT_SECRET}
- Postgres Password     : ${POSTGRES_PASSWORD}
-
- MySQL DB / User / Pwd : ${MYSQL_DB} / ${MYSQL_USER} / ${MYSQL_PASS}
-
- App Path              : ${APP_DIR}
- Supabase Path         : ${SUPABASE_DIR}/docker
-=========================================================
- Next steps:
-   1. Open https://${DOMAIN}/install   (Laravel installer wizard)
-   2. Use the MySQL credentials above
-   3. Create the Super Admin account
-   4. Login & enjoy SmartERP
-=========================================================
-EOF
-chmod 600 "${CRED_FILE}"
+write_credentials "COMPLETE"
+trap - EXIT
 
 echo
 log "✅ Installation complete!"
