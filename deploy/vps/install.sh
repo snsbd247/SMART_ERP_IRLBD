@@ -228,8 +228,11 @@ YML
 
 # Fresh start — if a previous failed run left a half-initialised analytics
 # volume, the DB user/credentials inside it won't match new env values.
+# Supabase's compose uses bind-mounted ./volumes/db/data for Postgres, so
+# `down -v` alone does NOT reset the database — we must also wipe the dir.
 log "Cleaning any previous half-initialised Supabase volumes..."
 docker compose down -v 2>/dev/null || true
+rm -rf ./volumes/db/data ./volumes/storage ./volumes/pooler 2>/dev/null || true
 
 docker compose pull
 # Bring analytics up FIRST so the rest of the stack can wait on a healthy one.
