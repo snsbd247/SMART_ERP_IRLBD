@@ -95,6 +95,8 @@ const AccountingVouchers = () => {
     { id: "1", account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
     { id: "2", account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
   ]);
+  // Raw text for formula-style input (e.g. "=20+50+80+100"). Keyed by `${entryId}-${field}`.
+  const [rawAmounts, setRawAmounts] = useState<Record<string, string>>({});
 
   // Print state
   const [printVoucher, setPrintVoucher] = useState<Voucher | null>(null);
@@ -188,6 +190,49 @@ const AccountingVouchers = () => {
       }
       return next;
     }));
+  };
+
+  // ── Formula-style amount input helpers ──
+  // Accepts "=20+50+80+100", bare numbers, or Bengali digits. Returns NaN on invalid.
+  const evalFormula = (raw: string): number => {
+    if (raw === undefined || raw === null) return 0;
+    const bnMap = "০১২৩৪৫৬৭৮৯";
+    let t = String(raw).replace(/[০-৯]/g, (d) => String(bnMap.indexOf(d))).trim();
+    if (!t) return 0;
+    if (t.startsWith("=")) t = t.slice(1).trim();
+    if (!t) return 0;
+    if (!/^[\d+\-*/().\s]+$/.test(t)) return NaN;
+    try {
+      // eslint-disable-next-line no-new-func
+      const v = Function(`"use strict"; return (${t})`)();
+      return typeof v === "number" && isFinite(v) ? v : NaN;
+    } catch { return NaN; }
+  };
+
+  const commitAmount = (entryId: string, field: "debit" | "credit") => {
+    const key = `${entryId}-${field}`;
+    const raw = rawAmounts[key];
+    if (raw === undefined) return;
+    const val = evalFormula(raw);
+    if (!isFinite(val) || isNaN(val)) {
+      toast({ title: "Invalid formula", description: "Use numbers and + - * / only, e.g. =20+50+80", variant: "destructive" });
+      return;
+    }
+    // Update source value + mirror to single empty opposite row (if any)
+    const oppField: "debit" | "credit" = field === "debit" ? "credit" : "debit";
+    const oppDrCr = field === "debit" ? "cr" : "dr";
+    setEntries((prev) => {
+      const updated = prev.map((e) => e.id === entryId ? { ...e, [field]: val } : e);
+      const sourceTotal = updated.filter((e) => e.dr_cr === (field === "debit" ? "dr" : "cr")).reduce((s, e) => s + (Number(e[field]) || 0), 0);
+      const oppRows = updated.filter((e) => e.dr_cr === oppDrCr);
+      const oppTotal = oppRows.reduce((s, e) => s + (Number(e[oppField]) || 0), 0);
+      // Mirror only when opposite side has exactly one row and it's empty/zero
+      if (oppRows.length === 1 && oppTotal === 0) {
+        return updated.map((e) => e.dr_cr === oppDrCr ? { ...e, [oppField]: sourceTotal } : e);
+      }
+      return updated;
+    });
+    setRawAmounts((p) => { const n = { ...p }; delete n[key]; return n; });
   };
 
   const openCreate = () => {
@@ -604,14 +649,28 @@ const AccountingVouchers = () => {
                             </div>
                           </TableCell>
                           <TableCell className="pt-3">
-                            <Input type="number" className="h-9 text-right tabular-nums"
-                              value={entry.debit || ""} disabled={entry.dr_cr !== "dr"}
-                              onChange={(e) => updateEntry(entry.id, "debit", parseFloat(e.target.value) || 0)} />
+                            <Input
+                              type="text" inputMode="decimal"
+                              className="h-9 text-right tabular-nums"
+                              placeholder="0 or =20+50"
+                              value={rawAmounts[`${entry.id}-debit`] ?? (entry.debit ? String(entry.debit) : "")}
+                              disabled={entry.dr_cr !== "dr"}
+                              onChange={(e) => setRawAmounts((p) => ({ ...p, [`${entry.id}-debit`]: e.target.value }))}
+                              onBlur={() => commitAmount(entry.id, "debit")}
+                              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.currentTarget as HTMLInputElement).blur(); } }}
+                            />
                           </TableCell>
                           <TableCell className="pt-3">
-                            <Input type="number" className="h-9 text-right tabular-nums"
-                              value={entry.credit || ""} disabled={entry.dr_cr !== "cr"}
-                              onChange={(e) => updateEntry(entry.id, "credit", parseFloat(e.target.value) || 0)} />
+                            <Input
+                              type="text" inputMode="decimal"
+                              className="h-9 text-right tabular-nums"
+                              placeholder="0 or =20+50"
+                              value={rawAmounts[`${entry.id}-credit`] ?? (entry.credit ? String(entry.credit) : "")}
+                              disabled={entry.dr_cr !== "cr"}
+                              onChange={(e) => setRawAmounts((p) => ({ ...p, [`${entry.id}-credit`]: e.target.value }))}
+                              onBlur={() => commitAmount(entry.id, "credit")}
+                              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.currentTarget as HTMLInputElement).blur(); } }}
+                            />
                           </TableCell>
                           <TableCell className="pt-3">
                             <Input className="h-9 text-xs" placeholder="Narration (optional)" value={entry.narration}
