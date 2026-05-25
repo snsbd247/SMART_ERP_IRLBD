@@ -12,11 +12,11 @@
 set -euo pipefail
 
 # --------- CONFIG (edit these or pass as env vars) ----------
-DOMAIN="${DOMAIN:-smarterp365.com}"
+DOMAIN="${DOMAIN:-erp.irlbd.com}"
 SUPABASE_SUBDOMAIN="${SUPABASE_SUBDOMAIN:-supabase.${DOMAIN}}"
 STUDIO_SUBDOMAIN="${STUDIO_SUBDOMAIN:-studio.${DOMAIN}}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-admin@${DOMAIN}}"
-REPO_URL="${REPO_URL:-https://github.com/snsbd247/audit-treasure.git}"
+REPO_URL="${REPO_URL:-https://github.com/snsbd247/smart_accounting.git}"
 APP_DIR="${APP_DIR:-/var/www/smarterp}"
 SUPABASE_DIR="${SUPABASE_DIR:-/opt/supabase}"
 NODE_MAJOR="${NODE_MAJOR:-20}"
