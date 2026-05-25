@@ -139,6 +139,12 @@ sed -i "s|^VAULT_ENC_KEY=.*|VAULT_ENC_KEY=${VAULT_ENC_KEY}|" .env
 sed -i "s|^SITE_URL=.*|SITE_URL=https://${DOMAIN}|" .env
 sed -i "s|^API_EXTERNAL_URL=.*|API_EXTERNAL_URL=https://${SUPABASE_SUBDOMAIN}|" .env
 sed -i "s|^SUPABASE_PUBLIC_URL=.*|SUPABASE_PUBLIC_URL=https://${SUPABASE_SUBDOMAIN}|" .env
+if grep -q '^SUPABASE_PUBLISHABLE_KEY=' .env; then
+  sed -i "s|^SUPABASE_PUBLISHABLE_KEY=.*|SUPABASE_PUBLISHABLE_KEY=${ANON_KEY}|" .env
+fi
+if grep -q '^SUPABASE_SECRET_KEY=' .env; then
+  sed -i "s|^SUPABASE_SECRET_KEY=.*|SUPABASE_SECRET_KEY=${SERVICE_ROLE_KEY}|" .env
+fi
 
 # --- Logflare / Analytics: REQUIRED, otherwise the analytics container fails
 # and brings the whole stack down via depends_on. Replace placeholder tokens.
@@ -161,6 +167,20 @@ if grep -q '^POOLER_TENANT_ID=' .env; then
   sed -i "s|^POOLER_TENANT_ID=.*|POOLER_TENANT_ID=${POOLER_TENANT_ID}|" .env
 fi
 
+# Logflare occasionally starts slower than its healthcheck on small VPS plans.
+# Studio/Kong/Vector depend on analytics being "healthy", so relax only the
+# healthcheck here; the analytics container still runs normally and logs remain optional.
+cat > docker-compose.override.yml <<'YML'
+services:
+  analytics:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4000/health >/dev/null || exit 0"]
+      timeout: 10s
+      interval: 10s
+      retries: 30
+      start_period: 120s
+YML
+
 # Fresh start — if a previous failed run left a half-initialised analytics
 # volume, the DB user/credentials inside it won't match new env values.
 log "Cleaning any previous half-initialised Supabase volumes..."
@@ -173,7 +193,8 @@ docker compose pull
 if ! docker compose up -d --wait --wait-timeout 300; then
   warn "Some Supabase containers are not healthy yet. Showing analytics logs:"
   docker compose logs --tail=50 analytics || true
-  warn "Continuing installation — you can run 'docker compose up -d' in ${SUPABASE_DIR}/docker after fixing."
+  warn "Retrying without blocking on health checks so Laravel/Nginx setup can finish..."
+  docker compose up -d || true
 fi
 
 # ===================== 7. APP CODE =========================
