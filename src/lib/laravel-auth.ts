@@ -15,7 +15,8 @@ export function getApiBaseUrl(): string | null {
     return `${window.location.origin}/api`;
   }
   if (!url) return null;
-  return url.replace(/\/+$/, "");
+  const clean = url.replace(/\/+$/, "");
+  return clean.endsWith("/api") ? clean : `${clean}/api`;
 }
 
 export function isLaravelMode(): boolean {
