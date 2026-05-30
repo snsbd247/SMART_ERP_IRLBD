@@ -22,6 +22,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
     Route::prefix('auth')->group(function () {
         Route::post('logout', [\App\Http\Controllers\Auth\AuthController::class, 'logout']);
         Route::get('me', [\App\Http\Controllers\Auth\AuthController::class, 'me']);
+        Route::put('profile', [\App\Http\Controllers\Auth\AuthController::class, 'updateProfile']);
         Route::post('change-password', [\App\Http\Controllers\Auth\AuthController::class, 'changePassword']);
     });
 
