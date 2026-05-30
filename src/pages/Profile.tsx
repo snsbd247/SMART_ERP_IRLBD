@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { isLaravelMode, laravelChangePassword, laravelUpdateProfile } from "@/lib/laravel-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,7 @@ import { Save, Key, User, Building2, Shield } from "lucide-react";
 const Profile = () => {
   const { profile, roles, refreshProfile } = useAuth();
   const { toast } = useToast();
+  const laravelMode = isLaravelMode();
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -40,11 +42,15 @@ const Profile = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ name, username, email, phone, updated_at: new Date().toISOString() })
-        .eq("id", profile!.id);
-      if (error) throw error;
+      if (laravelMode) {
+        await laravelUpdateProfile({ name, username, email, phone });
+      } else {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ name, username, email, phone, updated_at: new Date().toISOString() })
+          .eq("id", profile!.id);
+        if (error) throw error;
+      }
       await refreshProfile();
       toast({ title: "Profile updated successfully" });
     } catch (err: any) {
@@ -66,8 +72,12 @@ const Profile = () => {
     }
     setChangingPassword(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
+      if (laravelMode) {
+        await laravelChangePassword(newPassword, confirmPassword);
+      } else {
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+      }
       setNewPassword("");
       setConfirmPassword("");
       toast({ title: "Password updated successfully" });
