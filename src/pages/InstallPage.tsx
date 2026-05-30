@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, XCircle, Loader2, Server, Database, UserPlus, Rocket, ArrowRight, ArrowLeft, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { getApiBaseUrl } from "@/lib/laravel-auth";
 
-const API_BASE = (import.meta.env.VITE_API_URL || window.location.origin) + "/api";
+const API_BASE = getApiBaseUrl() || `${window.location.origin}/api`;
 
 interface EnvCheck {
   label: string;

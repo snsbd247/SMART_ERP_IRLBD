@@ -4,14 +4,19 @@
  */
 
 const TOKEN_KEY = "laravel_auth_token";
+const LEGACY_TOKEN_KEY = "auth_token";
 
 export function getApiBaseUrl(): string | null {
   const url =
     (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
     (import.meta.env.VITE_API_URL as string | undefined) ||
     null;
+  if (!url && typeof window !== "undefined" && window.location.hostname === "erp.irlbd.com") {
+    return `${window.location.origin}/api`;
+  }
   if (!url) return null;
-  return url.replace(/\/+$/, "");
+  const clean = url.replace(/\/+$/, "");
+  return clean.endsWith("/api") ? clean : `${clean}/api`;
 }
 
 export function isLaravelMode(): boolean {
@@ -19,30 +24,42 @@ export function isLaravelMode(): boolean {
 }
 
 export function getLaravelToken(): string | null {
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
   if (!token) return null;
   // Browser Headers only accept ISO-8859-1-safe values. If an old placeholder
   // or copied Bengali text was stored as token, remove it before fetch().
   if (!/^[\x20-\x7E]+$/.test(token)) {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
     return null;
   }
   return token;
 }
 
 export function setLaravelToken(token: string | null) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(LEGACY_TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+  }
+}
+
+export function getLaravelAuthHeaders(includeJson = false): Record<string, string> {
+  const token = getLaravelToken();
+  return {
+    Accept: "application/json",
+    ...(includeJson ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
 }
 
 async function request<T = any>(path: string, init: RequestInit = {}): Promise<T> {
   const base = getApiBaseUrl();
   if (!base) throw new Error("Laravel API URL not configured");
-  const token = getLaravelToken();
   const headers: Record<string, string> = {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...getLaravelAuthHeaders(true),
     ...((init.headers as Record<string, string>) || {}),
   };
   const res = await fetch(`${base}${path}`, { ...init, headers });
