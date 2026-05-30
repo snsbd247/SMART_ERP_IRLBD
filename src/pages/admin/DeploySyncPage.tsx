@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { getLaravelAuthHeaders, getLaravelToken } from "@/lib/laravel-auth";
 import {
   GitBranch, Download, Undo2, RefreshCw, AlertTriangle, CheckCircle2,
   Eye, Settings, Database, Loader2, FileSearch, Archive, ClipboardList,
@@ -51,8 +52,7 @@ type RestorePreview = {
 const API = "/api/v1/deploy-sync";
 
 function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem("auth_token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return getLaravelAuthHeaders();
 }
 
 async function call(path: string, opts: { method?: string; body?: any } = {}) {
@@ -205,7 +205,7 @@ export default function DeploySyncPage() {
     // EventSource cannot send Authorization headers, so token is passed as a query param
     // only when the backend supports it; otherwise SSE will 401 and we fall back.
     try {
-      const token = localStorage.getItem("auth_token");
+      const token = getLaravelToken();
       const url = `${API}/jobs/${jobId}/stream${token ? `?token=${encodeURIComponent(token)}` : ""}`;
       const es = new EventSource(url, { withCredentials: true });
       sseRef.current = es;
