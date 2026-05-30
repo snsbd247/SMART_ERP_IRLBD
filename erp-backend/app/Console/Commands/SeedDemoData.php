@@ -109,8 +109,13 @@ class SeedDemoData extends Command
         }
         $this->UID = $admin->id;
 
-        if ($this->option('reset')) {
+        if ($this->option('reset') || $this->option('wipe')) {
             $this->resetData();
+        }
+
+        if ($this->option('wipe')) {
+            $this->info('Wipe-only mode: demo / transactional data cleared. Skipping seed.');
+            return 0;
         }
 
         $this->resolveMasters();
