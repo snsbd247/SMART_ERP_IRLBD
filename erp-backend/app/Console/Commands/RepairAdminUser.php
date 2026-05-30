@@ -23,10 +23,8 @@ class RepairAdminUser extends Command
         $password = (string) $this->option('password');
         $name = trim((string) $this->option('name')) ?: $username;
 
-        $user = User::withTrashed()
-            ->where('username', $username)
-            ->orWhere('email', $email)
-            ->first();
+        $user = User::withTrashed()->where('username', $username)->first()
+            ?: User::withTrashed()->where('email', $email)->first();
 
         $payload = [
             'username' => $username,
