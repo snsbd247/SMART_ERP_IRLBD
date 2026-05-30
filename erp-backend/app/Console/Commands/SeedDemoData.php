@@ -23,7 +23,7 @@ use App\Models\{
 
 class SeedDemoData extends Command
 {
-    protected $signature = 'demo:seed {--reset : Reset all transactional data first}';
+    protected $signature = 'demo:seed {--reset : Reset all transactional data first} {--wipe : Wipe transactional data and exit (do not seed)}';
     protected $description = 'Seed 1-year operational demo data covering all ERP modules';
 
     // Deterministic RNG state
@@ -109,8 +109,13 @@ class SeedDemoData extends Command
         }
         $this->UID = $admin->id;
 
-        if ($this->option('reset')) {
+        if ($this->option('reset') || $this->option('wipe')) {
             $this->resetData();
+        }
+
+        if ($this->option('wipe')) {
+            $this->info('Wipe-only mode: demo / transactional data cleared. Skipping seed.');
+            return 0;
         }
 
         $this->resolveMasters();
