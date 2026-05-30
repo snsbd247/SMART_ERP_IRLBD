@@ -4,9 +4,22 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL ||
-  "https://ezwsrtsqiumhxukwgiou.supabase.co";
+function getRuntimeSupabaseUrl(): string {
+  const configured = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  if (configured) return configured.replace(/\/+$/, "");
+
+  if (typeof window !== "undefined") {
+    const parts = window.location.hostname.split(".");
+    if (parts.length >= 2) {
+      const rootDomain = parts.slice(-2).join(".");
+      return `https://supabase.${rootDomain}`;
+    }
+  }
+
+  return "https://ezwsrtsqiumhxukwgiou.supabase.co";
+}
+
+const SUPABASE_URL = getRuntimeSupabaseUrl();
 
 const SUPABASE_PUBLISHABLE_KEY =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
