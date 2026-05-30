@@ -18,17 +18,20 @@ class AuthController extends BaseController
     {
         $request->validate(['username' => 'required', 'password' => 'required']);
 
-        $user = User::where('username', $request->username)->whereNotNull('username')->first();
+        $login = trim((string) $request->username);
+        $user = User::where(function ($query) use ($login) {
+            $query->where('username', $login)->orWhere('email', $login);
+        })->first();
         if (!$user || !Hash::check($request->password, $user->password)) {
-            $this->activityService->log('failed_login', "Failed login for: {$request->username}", $request, null, [
-                'username' => $request->username,
+            $this->activityService->log('failed_login', "Failed login for: {$login}", $request, null, [
+                'username' => $login,
                 'status' => 'failed',
             ]);
             return $this->error('Invalid credentials', 401);
         }
         if ($user->status !== 'active') {
-            $this->activityService->log('failed_login', "Disabled account login: {$request->username}", $request, $user->id, [
-                'username' => $request->username,
+            $this->activityService->log('failed_login', "Disabled account login: {$login}", $request, $user->id, [
+                'username' => $login,
                 'status' => 'disabled',
             ]);
             return $this->error('Account is disabled', 403);

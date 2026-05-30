@@ -12,6 +12,7 @@ import {
 import { ShieldCheck, ShieldAlert, CheckCircle2, XCircle, Loader2, Database, Hash, FileText, HardDrive, RefreshCw, Play } from "lucide-react";
 import { toast } from "sonner";
 import { friendlyRlsMessage } from "@/lib/supabase-errors";
+import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 import { formatDistanceToNow } from "date-fns";
 
 interface AccessRow { table: string; ok: boolean; count?: number; error?: string; }
@@ -220,20 +221,16 @@ const DiagnosticsPage = () => {
   // ============ G. SEED DEMO DATA ============
   const [seeding, setSeeding] = useState(false);
   const [seedStats, setSeedStats] = useState<any>(null);
-  const LARAVEL_API = import.meta.env.VITE_API_URL || "";
-  const USE_LARAVEL = !!LARAVEL_API;
+  const LARAVEL_API = getApiBaseUrl() || "";
+  const USE_LARAVEL = isLaravelMode();
 
   const runSeedDemo = async () => {
     setSeeding(true); setSeedStats(null);
     try {
       if (USE_LARAVEL) {
-        const token = localStorage.getItem("auth_token");
-        const res = await fetch(`${LARAVEL_API}/api/v1/admin/demo/seed`, {
+        const res = await fetch(`${LARAVEL_API}/v1/admin/demo/seed`, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
+          headers: getLaravelAuthHeaders(),
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || json?.success === false) {

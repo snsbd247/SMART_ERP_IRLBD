@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,8 +15,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, Upload, Database, Clock, FileText, Trash2, AlertTriangle, CheckCircle, XCircle, Settings, RefreshCw, Shield, Cloud, HardDrive } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
-const USE_LARAVEL = !!import.meta.env.VITE_API_URL;
+const API_BASE = getApiBaseUrl() || "";
+const USE_LARAVEL = isLaravelMode();
 
 interface BackupRecord {
   id: string; file_name: string; file_size: number; backup_type: string; format: string;
@@ -42,11 +43,7 @@ function formatDate(d: string): string {
 }
 
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem("auth_token");
-  return {
-    Authorization: `Bearer ${token}`,
-    Accept: "application/json",
-  };
+  return getLaravelAuthHeaders();
 }
 
 async function laravelApiCall(url: string, options: RequestInit = {}) {
