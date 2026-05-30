@@ -98,15 +98,32 @@ class AuthController extends BaseController
         ]);
     }
 
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'username' => 'required|string|max:255|unique:users,username,' . $user->id,
+            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string|max:50',
+        ]);
+
+        $user->update($validated);
+        $this->activityService->log('profile_update', 'Profile updated', $request, $user->id);
+
+        return $this->success(['user' => $user->fresh()->load('roles.permissions', 'branch')], 'Profile updated');
+    }
+
     public function changePassword(Request $request)
     {
         $request->validate([
-            'current_password' => 'required',
+            'current_password' => 'nullable',
             'new_password' => 'required|min:6|confirmed',
         ]);
 
         $user = $request->user();
-        if (!Hash::check($request->current_password, $user->password)) {
+        if ($request->filled('current_password') && !Hash::check($request->current_password, $user->password)) {
             return $this->error('Current password is incorrect', 422);
         }
 
