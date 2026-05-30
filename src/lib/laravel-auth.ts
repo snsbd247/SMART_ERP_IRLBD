@@ -23,12 +23,13 @@ export function isLaravelMode(): boolean {
 }
 
 export function getLaravelToken(): string | null {
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
   if (!token) return null;
   // Browser Headers only accept ISO-8859-1-safe values. If an old placeholder
   // or copied Bengali text was stored as token, remove it before fetch().
   if (!/^[\x20-\x7E]+$/.test(token)) {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
     return null;
   }
   return token;
