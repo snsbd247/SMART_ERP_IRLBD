@@ -12,6 +12,7 @@ import {
 import { ShieldCheck, ShieldAlert, CheckCircle2, XCircle, Loader2, Database, Hash, FileText, HardDrive, RefreshCw, Play } from "lucide-react";
 import { toast } from "sonner";
 import { friendlyRlsMessage } from "@/lib/supabase-errors";
+import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 import { formatDistanceToNow } from "date-fns";
 
 interface AccessRow { table: string; ok: boolean; count?: number; error?: string; }
