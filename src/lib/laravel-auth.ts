@@ -19,7 +19,15 @@ export function isLaravelMode(): boolean {
 }
 
 export function getLaravelToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) return null;
+  // Browser Headers only accept ISO-8859-1-safe values. If an old placeholder
+  // or copied Bengali text was stored as token, remove it before fetch().
+  if (!/^[\x20-\x7E]+$/.test(token)) {
+    localStorage.removeItem(TOKEN_KEY);
+    return null;
+  }
+  return token;
 }
 
 export function setLaravelToken(token: string | null) {
@@ -88,4 +96,23 @@ export async function laravelMe(): Promise<LaravelUser | null> {
 export async function laravelLogout(): Promise<void> {
   try { await request("/auth/logout", { method: "POST" }); } catch { /* ignore */ }
   setLaravelToken(null);
+}
+
+export async function laravelUpdateProfile(data: Pick<LaravelUser, "name" | "username" | "email" | "phone">): Promise<LaravelUser> {
+  const res = await request<{ success: boolean; data: { user: LaravelUser } }>("/auth/profile", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  return ((res as any).data?.user ?? (res as any).user ?? (res as any).data ?? res) as LaravelUser;
+}
+
+export async function laravelChangePassword(newPassword: string, confirmPassword: string, currentPassword?: string): Promise<void> {
+  await request("/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({
+      current_password: currentPassword || undefined,
+      new_password: newPassword,
+      new_password_confirmation: confirmPassword,
+    }),
+  });
 }
