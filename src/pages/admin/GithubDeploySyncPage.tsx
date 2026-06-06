@@ -75,7 +75,7 @@ type TrackedFile = {
 };
 
 const TRACKED: TrackedFile[] = [
-  { key: "installer",  label: "One-Command Installer", description: "Tracked deploy script (status verified server-side on Pull & Deploy)", path: "vps/install.sh", critical: true },
+  { key: "installer",  label: "One-Command Installer", description: "Tracked deploy script (status verified server-side on Pull & Deploy)", path: "vps/install.sh" },
   { key: "vps-setup",  label: "VPS Setup (Step 1)",    description: "Tracked deploy script (status verified server-side on Pull & Deploy)", path: "vps/setup.sh" },
   { key: "app-clone",  label: "App Clone (Step 2)",    description: "Tracked deploy script (status verified server-side on Pull & Deploy)", path: "vps/clone.sh" },
   { key: "deploy-up",  label: "Deploy Update",         description: "Tracked deploy script (status verified server-side on Pull & Deploy)", path: "vps/update.sh" },
