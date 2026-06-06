@@ -413,27 +413,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:invoice_payment.create')->post('invoices-v2/{id}/payments', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'payment']);
         Route::middleware('permission:invoice_processing.delete')->delete('invoices-v2/{id}', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'destroy']);
 
-        // ─── Deploy Sync (Super Admin only — guarded inside controller) ──
-        Route::prefix('deploy-sync')->group(function () {
-            Route::get('config', [\App\Http\Controllers\Admin\DeploySyncController::class, 'getConfig']);
-            Route::put('config', [\App\Http\Controllers\Admin\DeploySyncController::class, 'updateConfig']);
-            Route::post('config', [\App\Http\Controllers\Admin\DeploySyncController::class, 'updateConfig']);
-            Route::delete('config/token', [\App\Http\Controllers\Admin\DeploySyncController::class, 'clearToken']);
-            Route::post('test-connection', [\App\Http\Controllers\Admin\DeploySyncController::class, 'testConnection']);
-            Route::get('status', [\App\Http\Controllers\Admin\DeploySyncController::class, 'status']);
-            Route::get('diff', [\App\Http\Controllers\Admin\DeploySyncController::class, 'diff']);
-            Route::post('pull', [\App\Http\Controllers\Admin\DeploySyncController::class, 'pull']);
-            Route::post('rollback', [\App\Http\Controllers\Admin\DeploySyncController::class, 'rollback']);
-            Route::post('migrate', [\App\Http\Controllers\Admin\DeploySyncController::class, 'migrate']);
-            Route::get('jobs/{id}', [\App\Http\Controllers\Admin\DeploySyncController::class, 'jobStatus']);
-            Route::get('jobs/{id}/export', [\App\Http\Controllers\Admin\DeploySyncController::class, 'jobExport']);
-            Route::get('backups', [\App\Http\Controllers\Admin\DeploySyncController::class, 'listBackups']);
-            Route::get('backups/{backupId}/preview', [\App\Http\Controllers\Admin\DeploySyncController::class, 'previewRestore']);
-            Route::delete('backups/{backupId}', [\App\Http\Controllers\Admin\DeploySyncController::class, 'deleteBackup']);
-            Route::post('backups/cleanup', [\App\Http\Controllers\Admin\DeploySyncController::class, 'cleanupBackups']);
-            Route::get('jobs/{id}/stream', [\App\Http\Controllers\Admin\DeploySyncController::class, 'jobStream']);
-            Route::get('audit-log', [\App\Http\Controllers\Admin\DeploySyncController::class, 'auditLog']);
-        });
+        // Deploy Sync removed — to be reintroduced later.
     });
 });
 
