@@ -12,7 +12,7 @@ import {
   ArrowLeftRight, Calendar, Activity, Menu, X, CircleDot, Truck, UserCheck,
   Briefcase, Clock, CalendarDays, DollarSign, FileCheck, BadgeCheck, User,
   Fingerprint, ScanFace, Timer, Gauge, Keyboard, Palette, MessageSquare,
-  Mail, Factory, Settings2,
+  Mail, Factory, Settings2, Github,
 } from "lucide-react";
 import { useBranding } from "@/contexts/BrandingContext";
 import { Button } from "@/components/ui/button";
@@ -206,6 +206,7 @@ const navGroups: NavGroup[] = [
       { to: "/admin/backup", label: "Backup & Restore", icon: Database, permission: "backup.view" },
       { to: "/admin/audit-log", label: "Activity Logs", icon: Activity, permission: "audit_log.view" },
       { to: "/admin/diagnostics", label: "System Diagnostics", icon: Gauge, permission: "settings.view" },
+      { to: "/admin/github-deploy", label: "GitHub Deploy Sync", icon: Github, permission: "settings.view" },
       
       { to: "/admin/numbering", label: "Document Numbering", icon: ScrollText, permission: "document_numbering.view,settings.view" },
       { to: "/admin/shortcuts", label: "Page Shortcuts", icon: Keyboard, permission: "shortcuts.view,settings.view" },

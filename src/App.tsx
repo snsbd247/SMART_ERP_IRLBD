@@ -24,6 +24,7 @@ import BackupPage from "./pages/admin/BackupPage";
 import GeneralSettingsPage from "./pages/admin/GeneralSettingsPage";
 import DocumentNumberingPage from "./pages/admin/DocumentNumberingPage";
 import DiagnosticsPage from "./pages/admin/DiagnosticsPage";
+import GithubDeploySyncPage from "./pages/admin/GithubDeploySyncPage";
 
 import ChartOfAccounts from "./pages/accounts/ChartOfAccounts";
 import AccountingVouchers from "./pages/accounts/AccountingVouchers";
@@ -302,6 +303,7 @@ const App = () => (
                 <Route path="/admin/branding" element={<P perm="settings.view"><BrandingPage /></P>} />
                 <Route path="/admin/sms" element={<P perm="settings.view"><SmsSettingsPage /></P>} />
                 <Route path="/admin/diagnostics" element={<DiagnosticsPage />} />
+                <Route path="/admin/github-deploy" element={<P perm="settings.view"><GithubDeploySyncPage /></P>} />
                 
 
                 {/* ─── Sales Workflow (BD VAT) ─────────────────── */}
