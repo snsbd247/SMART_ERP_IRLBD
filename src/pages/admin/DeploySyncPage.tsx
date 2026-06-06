@@ -239,7 +239,7 @@ export default function DeploySyncPage() {
 
   const saveConfig = async () => {
     try {
-      await call("/config", { method: "PUT", body: form });
+      await call("/config", { method: "POST", body: form });
       toast({ title: "Settings saved" });
       await loadConfigOnly();
       setForm((f) => ({ ...f, token: "" }));
