@@ -24,7 +24,7 @@ import BackupPage from "./pages/admin/BackupPage";
 import GeneralSettingsPage from "./pages/admin/GeneralSettingsPage";
 import DocumentNumberingPage from "./pages/admin/DocumentNumberingPage";
 import DiagnosticsPage from "./pages/admin/DiagnosticsPage";
-import DeploySyncPage from "./pages/admin/DeploySyncPage";
+
 import ChartOfAccounts from "./pages/accounts/ChartOfAccounts";
 import AccountingVouchers from "./pages/accounts/AccountingVouchers";
 import PurchasesPage from "./pages/purchase/PurchasesPage";
@@ -302,7 +302,7 @@ const App = () => (
                 <Route path="/admin/branding" element={<P perm="settings.view"><BrandingPage /></P>} />
                 <Route path="/admin/sms" element={<P perm="settings.view"><SmsSettingsPage /></P>} />
                 <Route path="/admin/diagnostics" element={<DiagnosticsPage />} />
-                <Route path="/admin/deploy-sync" element={<ProtectedRoute requireSuperAdmin><DeploySyncPage /></ProtectedRoute>} />
+                
 
                 {/* ─── Sales Workflow (BD VAT) ─────────────────── */}
                 <Route path="/sales-workflow/po" element={<P perm="sales.view"><PurchaseOrdersPage /></P>} />
