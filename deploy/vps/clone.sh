@@ -41,9 +41,11 @@ if [[ -d "${APP_DIR}/erp-backend" ]]; then
   cd "${APP_DIR}/erp-backend"
   export COMPOSER_ALLOW_SUPERUSER=1
   composer config --global --no-plugins allow-plugins.php-http/discovery true || true
-  composer config policy.advisories.block false || true
+  composer config --global --no-plugins policy.advisories.block false || true
+  composer config --no-plugins policy.advisories.block false || true
   composer update --no-dev --optimize-autoloader --no-interaction --no-plugins \
-    || composer install --no-dev --optimize-autoloader --no-interaction --no-plugins
+    --ignore-platform-req=ext-imagick --no-audit \
+    || composer install --no-dev --optimize-autoloader --no-interaction --no-plugins --no-audit
   [[ -f .env ]] || cp .env.example .env
   php artisan key:generate --force || true
   php artisan storage:link || true
