@@ -6,15 +6,15 @@
 
 // Database Configuration
 define('DB_HOST', 'localhost');
-define('DB_DATABASE', 'erp_db');
-define('DB_USERNAME', 'erp_user');
+define('DB_DATABASE', 'smarterp_db');
+define('DB_USERNAME', 'smarterp_user');
 define('DB_PASSWORD', 'yourpassword');
 define('DB_CHARSET', 'utf8mb4');
 
 // Application Settings
 define('APP_NAME', 'SmartERP');
 define('APP_VERSION', '1.0');
-define('APP_URL', 'https://yourdomain.com/erp');
+define('APP_URL', 'https://erp.irlbd.com/erp');
 define('APP_SECRET', 'change-this-to-a-random-64-char-string');
 
 // JWT Settings
