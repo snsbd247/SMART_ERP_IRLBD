@@ -244,5 +244,50 @@ class DatabaseSeeder extends Seeder
                 'year' => 2026,
             ]));
         }
+
+        // ---------- 8. Demo Page Shortcuts (keyboard quick-jump codes) ----------
+        $shortcuts = [
+            // Accounting
+            ['COA',  'Chart of Accounts',     '/accounts/chart',            'accounts'],
+            ['JV',   'Journal Vouchers',      '/accounts/vouchers?tab=jv',  'accounts'],
+            ['PV',   'Payment Vouchers',      '/accounts/vouchers?tab=pv',  'accounts'],
+            ['RV',   'Receipt Vouchers',      '/accounts/vouchers?tab=rv',  'accounts'],
+            ['CV',   'Contra Vouchers',       '/accounts/vouchers?tab=cv',  'accounts'],
+            // Sales & Purchase
+            ['SAL',  'Sales Invoices',        '/sales',                     'sales'],
+            ['PUR',  'Purchases',             '/purchase',                  'purchase'],
+            ['CUS',  'Customers',             '/customers',                 'customers'],
+            ['SUP',  'Suppliers',             '/suppliers',                 'suppliers'],
+            // BD VAT Workflow
+            ['PO',   'Purchase Orders',       '/sales-workflow/po',         'sales'],
+            ['DSP',  'Dispatch',              '/sales-workflow/dispatch',   'sales'],
+            ['VCH',  'VAT Challan (6.3)',     '/sales-workflow/vat-challan','sales'],
+            ['M91',  'Mushak 9.1',            '/sales-workflow/mushak-9-1', 'reports'],
+            // Inventory
+            ['ITM',  'Items',                 '/inventory/items',           'inventory'],
+            ['STK',  'Stock Report',          '/inventory/stock',           'inventory'],
+            // HRM
+            ['EMP',  'Employees',             '/hrm/employees',             'employees'],
+            ['ATT',  'Attendance',            '/hrm/attendance',            'attendance'],
+            ['PAY',  'Payroll',               '/hrm/payroll',               'payroll'],
+            // Reports & Admin
+            ['RPT',  'Reports',               '/reports',                   'reports'],
+            ['USR',  'Users',                 '/admin/users',               'users'],
+            ['BRN',  'Branches',              '/admin/branches',            'branches'],
+            ['SET',  'Settings',              '/admin/settings',            'settings'],
+        ];
+        foreach ($shortcuts as [$code, $name, $url, $module]) {
+            DB::table('page_shortcuts')->insertOrIgnore([
+                'id'            => (string) Str::uuid(),
+                'shortcut_code' => $code,
+                'page_name'     => $name,
+                'page_url'      => $url,
+                'module_name'   => $module,
+                'is_active'     => 1,
+                'created_at'    => $now,
+                'updated_at'    => $now,
+            ]);
+        }
     }
 }
+
