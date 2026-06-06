@@ -26,7 +26,7 @@ define('DB_HOST', 'localhost');
 define('DB_DATABASE', 'your_cpanel_db_name');
 define('DB_USERNAME', 'your_cpanel_db_user');
 define('DB_PASSWORD', 'your_db_password');
-define('APP_URL', 'https://yourdomain.com/erp');
+define('APP_URL', 'https://erp.irlbd.com/erp');
 define('APP_SECRET', 'random-64-char-string');
 define('JWT_SECRET', 'another-random-64-char-string');
 ```
@@ -58,13 +58,13 @@ public_html/erp/
 
 In cPanel:
 1. Go to **MySQL Databases**
-2. Create database: `erp_db`
-3. Create user: `erp_user` with a strong password
+2. Create database: `smarterp_db`
+3. Create user: `smarterp_user` with a strong password
 4. Add user to database with **ALL PRIVILEGES**
 
 ## Step 5: Run Installer
 
-1. Visit: `https://yourdomain.com/erp/api/install.php`
+1. Visit: `https://erp.irlbd.com/erp/api/install.php`
 2. Enter your MySQL credentials
 3. The installer will import the schema and demo data
 4. Create your Super Admin account
@@ -75,7 +75,7 @@ In cPanel:
 Before building, update `src/lib/api-client.ts` to point to your server:
 
 ```typescript
-const API_BASE = 'https://yourdomain.com/erp/api';
+const API_BASE = 'https://erp.irlbd.com/erp/api';
 ```
 
 Then rebuild with `npm run build`.

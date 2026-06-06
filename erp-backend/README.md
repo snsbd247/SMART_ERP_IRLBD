@@ -69,7 +69,7 @@ chown -R www-data:www-data storage bootstrap/cache
 
 ## API Base URL
 ```
-https://yourdomain.com/erp/api/v1
+https://erp.irlbd.com/erp/api/v1
 ```
 
 All endpoints require `Authorization: Bearer {token}` header except `/auth/login`.

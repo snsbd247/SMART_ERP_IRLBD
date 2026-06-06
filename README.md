@@ -22,17 +22,17 @@ Deploy the entire stack (self-hosted Supabase + Laravel + React) on a fresh **Ub
 
 | Host | Purpose |
 |------|---------|
-| `yourdomain.com` | Main app |
-| `www.yourdomain.com` | Redirect / app |
-| `supabase.yourdomain.com` | Supabase API gateway (Kong) |
-| `studio.yourdomain.com` | Supabase Studio admin UI |
+| `erp.irlbd.com` | Main app |
+| `www.erp.irlbd.com` | Redirect / app |
+| `supabase.erp.irlbd.com` | Supabase API gateway (Kong) |
+| `studio.erp.irlbd.com` | Supabase Studio admin UI |
 
 ### One-Command Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/snsbd247/smart_accounting/main/deploy/vps/install.sh -o install.sh
 chmod +x install.sh
-DOMAIN=yourdomain.com ADMIN_EMAIL=you@yourdomain.com ./install.sh
+DOMAIN=erp.irlbd.com ADMIN_EMAIL=you@erp.irlbd.com ./install.sh
 ```
 
 The installer will:
@@ -44,7 +44,7 @@ The installer will:
 6. Save all credentials to `/root/smarterp-credentials.txt`
 
 ### Post-Install
-1. Open `https://yourdomain.com/install` → Laravel installer wizard
+1. Open `https://erp.irlbd.com/install` → Laravel installer wizard
 2. Use the MySQL credentials from `/root/smarterp-credentials.txt`
 3. Create the Super Admin account
 4. Login and start using SmartERP
