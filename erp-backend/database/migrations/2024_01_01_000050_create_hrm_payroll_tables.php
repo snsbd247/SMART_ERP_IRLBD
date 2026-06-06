@@ -156,7 +156,7 @@ return new class extends Migration
             $table->string('designation', 200)->default('');
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
-            $table->text('job_description')->default('');
+            $table->text('job_description')->nullable();
             $table->timestamp('created_at')->useCurrent();
 
             $table->foreign('employee_id')->references('id')->on('employees')->cascadeOnDelete();
@@ -168,7 +168,7 @@ return new class extends Migration
             $table->string('name', 200)->default('');
             $table->string('relation', 100)->default('');
             $table->string('phone', 30)->default('');
-            $table->text('address')->default('');
+            $table->text('address')->nullable();
             $table->timestamp('created_at')->useCurrent();
 
             $table->foreign('employee_id')->references('id')->on('employees')->cascadeOnDelete();
