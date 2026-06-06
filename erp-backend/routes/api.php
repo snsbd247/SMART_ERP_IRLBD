@@ -2,9 +2,11 @@
 
 use Illuminate\Support\Facades\Route;
 
-// ─── Installer Routes (public, blocked after install) ────────────
-Route::prefix('install')->group(function () {
-    Route::get('status', [\App\Http\Controllers\InstallController::class, 'status']);
+// ─── Installer Routes ────────────
+// status is always public so the SPA can decide whether to redirect to /install
+Route::get('install/status', [\App\Http\Controllers\InstallController::class, 'status']);
+// The rest are blocked after install via InstallGuard
+Route::prefix('install')->middleware(\App\Http\Middleware\InstallGuard::class)->group(function () {
     Route::get('check-environment', [\App\Http\Controllers\InstallController::class, 'checkEnvironment']);
     Route::post('test-database', [\App\Http\Controllers\InstallController::class, 'testDatabase']);
     Route::post('run', [\App\Http\Controllers\InstallController::class, 'install']);
