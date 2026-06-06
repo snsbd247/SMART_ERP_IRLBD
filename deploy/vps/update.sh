@@ -37,7 +37,7 @@ git reset --hard "origin/${REPO_BRANCH}"
 
 log "Rebuilding frontend..."
 if [[ -f package.json ]]; then
-  npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+  npm install --no-audit --no-fund --legacy-peer-deps
   npm run build
 fi
 
