@@ -264,7 +264,7 @@ VITE_SUPABASE_PROJECT_ID=self-hosted
 VITE_API_BASE_URL=https://${DOMAIN}/api
 EOF
 
-npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+npm install --legacy-peer-deps --no-audit --no-fund
 npm run build
 
 # Laravel install
