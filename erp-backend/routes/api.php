@@ -2,8 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 
-// ─── Installer Routes (public, blocked after install) ────────────
-Route::prefix('install')->group(function () {
+// ─── Installer Routes (public, blocked after install via InstallGuard) ────────────
+Route::prefix('install')->middleware(\App\Http\Middleware\InstallGuard::class)->group(function () {
     Route::get('status', [\App\Http\Controllers\InstallController::class, 'status']);
     Route::get('check-environment', [\App\Http\Controllers\InstallController::class, 'checkEnvironment']);
     Route::post('test-database', [\App\Http\Controllers\InstallController::class, 'testDatabase']);
