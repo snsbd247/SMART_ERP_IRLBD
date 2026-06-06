@@ -34,7 +34,7 @@ const DEFAULTS: RepoSettings = {
   basePath: "deploy",
   protectedPaths: DEFAULT_PROTECTED,
 };
-const LS_KEY = "github_deploy_sync_settings_v2";
+const LS_KEY = "github_deploy_sync_settings_v3";
 
 function loadSettings(): RepoSettings {
   try {
