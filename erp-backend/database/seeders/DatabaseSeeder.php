@@ -85,7 +85,7 @@ class DatabaseSeeder extends Seeder
             'username' => 'admin',
             'name' => 'System Administrator',
             'email' => 'admin@erp.com',
-            'password' => Hash::make('admin123'),
+            'password' => Hash::make('Admin@123'),
             'branch_id' => $branch->id,
             'employee_id' => null, // NULL = Super Admin (bypasses RBAC + branch isolation)
         ]);
