@@ -39,7 +39,11 @@ fi
 log "Installing backend (Laravel) deps..."
 if [[ -d "${APP_DIR}/erp-backend" ]]; then
   cd "${APP_DIR}/erp-backend"
-  composer install --no-dev --optimize-autoloader --no-interaction
+  export COMPOSER_ALLOW_SUPERUSER=1
+  composer config --global --no-plugins allow-plugins.php-http/discovery true || true
+  composer config policy.advisories.block false || true
+  composer update --no-dev --optimize-autoloader --no-interaction --no-plugins \
+    || composer install --no-dev --optimize-autoloader --no-interaction --no-plugins
   [[ -f .env ]] || cp .env.example .env
   php artisan key:generate --force || true
   php artisan storage:link || true
