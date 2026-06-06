@@ -90,14 +90,14 @@ Update these values:
 ```env
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://yourdomain.com
+APP_URL=https://erp.irlbd.com
 
 DB_DATABASE=username_erp
 DB_USERNAME=username_erpuser
 DB_PASSWORD=your_strong_password
 
-SANCTUM_STATEFUL_DOMAINS=yourdomain.com
-SESSION_DOMAIN=.yourdomain.com
+SANCTUM_STATEFUL_DOMAINS=erp.irlbd.com
+SESSION_DOMAIN=.erp.irlbd.com
 ```
 
 ### 8. Initialize Application
@@ -175,7 +175,7 @@ php artisan config:clear
 ### CORS Errors
 Update `.env`:
 ```env
-SANCTUM_STATEFUL_DOMAINS=yourdomain.com
+SANCTUM_STATEFUL_DOMAINS=erp.irlbd.com
 ```
 
 ### File Upload Issues

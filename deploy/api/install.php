@@ -1,7 +1,7 @@
 <?php
 /**
  * SmartERP - Installation Script
- * Access via: https://yourdomain.com/erp/api/install.php
+ * Access via: https://erp.irlbd.com/erp/api/install.php
  * 
  * IMPORTANT: Delete this file after installation!
  */
@@ -155,7 +155,7 @@ session_start();
             <label>MySQL Host</label>
             <input name="db_host" value="localhost" required>
             <label>Database Name</label>
-            <input name="db_name" placeholder="erp_db" required>
+            <input name="db_name" placeholder="smarterp_db" required>
             <label>Database Username</label>
             <input name="db_user" required>
             <label>Database Password</label>

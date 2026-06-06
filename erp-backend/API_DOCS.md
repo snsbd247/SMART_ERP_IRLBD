@@ -1,6 +1,6 @@
 # ERP API Documentation
 
-Base URL: `https://yourdomain.com/api/v1`
+Base URL: `https://erp.irlbd.com/api/v1`
 
 All requests require `Authorization: Bearer {token}` unless noted.
 

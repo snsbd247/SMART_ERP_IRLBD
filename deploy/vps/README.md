@@ -10,17 +10,17 @@ On a fresh **Ubuntu 22.04 / 24.04** VPS as `root`:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/snsbd247/audit-treasure/main/deploy/vps/install.sh -o install.sh
 chmod +x install.sh
-DOMAIN=smarterp365.com ADMIN_EMAIL=you@smarterp365.com ./install.sh
+DOMAIN=erp.irlbd.com ADMIN_EMAIL=you@erp.irlbd.com ./install.sh
 ```
 
 ## Required DNS (A records → your VPS IP)
 
 | Host | Purpose |
 |---|---|
-| `smarterp365.com` | Main app |
-| `www.smarterp365.com` | Redirect / app |
-| `supabase.smarterp365.com` | Supabase API gateway (Kong) |
-| `studio.smarterp365.com` | Supabase Studio (admin) |
+| `erp.irlbd.com` | Main app |
+| `www.erp.irlbd.com` | Redirect / app |
+| `supabase.erp.irlbd.com` | Supabase API gateway (Kong) |
+| `studio.erp.irlbd.com` | Supabase Studio (admin) |
 
 ## What it installs
 
