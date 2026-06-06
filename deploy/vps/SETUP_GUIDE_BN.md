@@ -8,170 +8,69 @@
 | Server IP | `163.227.239.159` |
 | GitHub Repo | `https://github.com/snsbd247/audit-treasure-6d69be20.git` |
 | App folder | `/opt/smarterp` |
+| DB / User / Pass | `smarterp` / `smarterp` / `StrongPass@2026` |
 | Admin login | `admin / Admin@123` (প্রথম login-এর পরেই পাল্টে নিন) |
 
 ---
 
-## ধাপ ০ — DNS সেট করুন (সবচেয়ে আগে)
+## ধাপ ০ — DNS সেট করুন (সবচেয়ে আগে, বাধ্যতামূলক)
 
-আপনার ডোমেইন প্রোভাইডারে গিয়ে নিচের রেকর্ড যোগ করুন:
+আপনার ডোমেইন প্রোভাইডারে গিয়ে এই রেকর্ড যোগ করুন:
 
 | Type | Name | Value | TTL |
 |---|---|---|---|
 | A | `erp` | `163.227.239.159` | 3600 |
 
-✅ Verify (আপনার computer/mobile থেকে):
+✅ Verify:
 ```bash
 ping erp.irlbd.com
 ```
-উত্তরে `163.227.239.159` আসলে DNS ঠিক আছে। (DNS propagation-এ ৫–৩০ মিনিট লাগতে পারে)।
+উত্তরে `163.227.239.159` আসলে DNS ঠিক আছে। (Propagation-এ ৫–৩০ মিনিট লাগতে পারে। SSL ধাপ কাজ করার জন্য DNS ready থাকা জরুরি।)
 
 ---
 
 ## ধাপ ১ — VPS-এ লগইন
 
-আপনার computer-এর terminal খুলে:
 ```bash
 ssh root@163.227.239.159
 ```
-পাসওয়ার্ড দিন। লগইন হলে পরের ধাপে যান।
 
 ---
 
-## ধাপ ২ — Base সিস্টেম সেটাপ (Nginx + PHP + MySQL + Node)
+## ধাপ ২ — One-Command Full Install 🎉
 
-নিচের কমান্ডটি **একবারে** কপি করে paste করুন:
+নিচের **একটি কমান্ড** কপি করে paste করুন — এটি একসাথে করবে:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/snsbd247/audit-treasure-6d69be20/main/deploy/vps/setup.sh -o /tmp/setup.sh \
-  && chmod +x /tmp/setup.sh \
-  && sudo /tmp/setup.sh
-```
-
-⏱️ ৫–১০ মিনিট লাগবে। শেষে দেখাবে: `Base VPS setup complete.`
-
----
-
-## ধাপ ৩ — MySQL ডাটাবেজ তৈরি করুন
+1. Base setup (Nginx + PHP 8.2 + MySQL + Node 20 + Composer)
+2. MySQL ডাটাবেজ + ইউজার তৈরি
+3. GitHub থেকে কোড clone + frontend build + composer install
+4. `.env` কনফিগ + `key:generate` + `migrate --seed`
+5. Nginx vhost তৈরি + reload
+6. SSL সার্টিফিকেট (Let's Encrypt) ইনস্টল + HTTPS redirect
 
 ```bash
-sudo mysql <<'SQL'
-CREATE DATABASE smarterp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'smarterp'@'localhost' IDENTIFIED BY 'StrongPass@2026';
-GRANT ALL PRIVILEGES ON smarterp.* TO 'smarterp'@'localhost';
-FLUSH PRIVILEGES;
-SQL
+curl -fsSL https://raw.githubusercontent.com/snsbd247/audit-treasure-6d69be20/main/deploy/vps/quick-install.sh -o /tmp/qi.sh \
+  && chmod +x /tmp/qi.sh \
+  && sudo DOMAIN=erp.irlbd.com \
+          ADMIN_EMAIL=admin@irlbd.com \
+          DB_PASS='StrongPass@2026' \
+          /tmp/qi.sh
 ```
 
-> 🔒 `StrongPass@2026` — এটি বদলে আপনার নিজের শক্তিশালী পাসওয়ার্ড দিন এবং কোথাও সংরক্ষণ করুন।
+⏱️ মোট সময়: **১০–২০ মিনিট** (ইন্টারনেট স্পিড অনুযায়ী)।
 
----
+> 🔒 **DB_PASS** বদলে নিজের শক্তিশালী পাসওয়ার্ড দিন — পরে `/root/smarterp-credentials.txt` ফাইলে সংরক্ষিত থাকবে।
 
-## ধাপ ৪ — অ্যাপ Clone ও Install
+> 💡 যদি DNS এখনো propagate না হয়ে থাকে, SSL স্কিপ করতে `SKIP_SSL=1` যোগ করুন। পরে চালান: `sudo certbot --nginx -d erp.irlbd.com`
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/snsbd247/audit-treasure-6d69be20/main/deploy/vps/clone.sh -o /tmp/clone.sh \
-  && chmod +x /tmp/clone.sh \
-  && sudo REPO_URL=https://github.com/snsbd247/audit-treasure-6d69be20.git \
-          APP_DIR=/opt/smarterp \
-          /tmp/clone.sh
+শেষে দেখাবে:
 ```
-
-⏱️ ৫–১০ মিনিট লাগবে (frontend build + composer install)।
-
----
-
-## ধাপ ৫ — `.env` কনফিগার করুন
-
-```bash
-sudo nano /opt/smarterp/erp-backend/.env
-```
-
-নিচের লাইনগুলো খুঁজে এডিট করুন:
-
-```env
-APP_NAME=SmartERP
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://erp.irlbd.com
-
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=smarterp
-DB_USERNAME=smarterp
-DB_PASSWORD=StrongPass@2026
-```
-
-সেভ করুন: `Ctrl+O` → `Enter` → `Ctrl+X`
-
-তারপর:
-```bash
-cd /opt/smarterp/erp-backend
-sudo php artisan key:generate --force
-sudo php artisan migrate --seed --force
-sudo php artisan config:cache
-sudo chown -R www-data:www-data storage bootstrap/cache public
+✅ All done!  Open:  https://erp.irlbd.com
 ```
 
 ---
 
-## ধাপ ৬ — Nginx সাইট কনফিগ করুন
-
-```bash
-sudo tee /etc/nginx/sites-available/smarterp > /dev/null <<'NGINX'
-server {
-    listen 80;
-    server_name erp.irlbd.com;
-    root /opt/smarterp/erp-backend/public;
-    index index.php index.html;
-
-    client_max_body_size 64M;
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-Content-Type-Options "nosniff";
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
-        fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-        fastcgi_read_timeout 300;
-    }
-
-    location ~ /\.(?!well-known).* { deny all; }
-}
-NGINX
-
-sudo ln -sf /etc/nginx/sites-available/smarterp /etc/nginx/sites-enabled/smarterp
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-এখন browser-এ যান: **http://erp.irlbd.com** — লগইন পেজ আসবে ✅
-
----
-
-## ধাপ ৭ — SSL (HTTPS) ইনস্টল করুন (ফ্রি, Let's Encrypt)
-
-```bash
-sudo apt-get install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d erp.irlbd.com --non-interactive --agree-tos -m admin@irlbd.com --redirect
-```
-
-এখন site চলবে: **https://erp.irlbd.com** 🔒
-
-Auto-renew check:
-```bash
-sudo certbot renew --dry-run
-```
-
----
-
-## ধাপ ৮ — প্রথম লগইন
+## ধাপ ৩ — প্রথম লগইন
 
 URL: **https://erp.irlbd.com**
 
@@ -194,7 +93,7 @@ sudo APP_DIR=/opt/smarterp /opt/smarterp/deploy/vps/update.sh
 
 বা ERP-র ভিতরে **Admin → GitHub Deploy Sync → Pull & Deploy** চাপুন।
 
-✅ এটি **পুরোনো ডাটা ডিলিট করে না**, শুধু কোড ও schema additive ভাবে আপডেট হয়।
+✅ **পুরোনো ডাটা ডিলিট হয় না** — শুধু কোড ও schema additive ভাবে আপডেট হয়।
 ✅ Migration চালানোর আগে automatic database backup নেয় (`/var/backups/smarterp/`)।
 
 ---
@@ -203,24 +102,36 @@ sudo APP_DIR=/opt/smarterp /opt/smarterp/deploy/vps/update.sh
 
 | সমস্যা | কমান্ড |
 |---|---|
+| Credentials দেখুন | `sudo cat /root/smarterp-credentials.txt` |
 | সাইট খুলছে না | `sudo systemctl status nginx` |
 | 502 Bad Gateway | `sudo systemctl status php8.2-fpm` |
-| DB error | `sudo tail -50 /opt/smarterp/erp-backend/storage/logs/laravel.log` |
+| DB / app error | `sudo tail -50 /opt/smarterp/erp-backend/storage/logs/laravel.log` |
 | Nginx error | `sudo tail -50 /var/log/nginx/error.log` |
 | Restart সব | `sudo systemctl restart nginx php8.2-fpm mysql` |
+| SSL আবার চালান | `sudo certbot --nginx -d erp.irlbd.com` |
 
 ---
 
-## 📦 Backup ফাইল কোথায় থাকে
+## 📦 Backup
 
 ```bash
-ls -lh /var/backups/smarterp/
+ls -lh /var/backups/smarterp/                                 # auto backups
+sudo mysqldump -u smarterp -p smarterp | gzip > ~/smarterp-$(date +%F).sql.gz  # manual
 ```
 
-ম্যানুয়াল backup নিতে:
-```bash
-sudo mysqldump -u smarterp -p smarterp | gzip > ~/smarterp-$(date +%F).sql.gz
-```
+---
+
+## ⚙️ চাইলে ধাপ ধাপে চালাতে চান?
+
+`quick-install.sh` যা করে, সেগুলো আলাদা আলাদা স্ক্রিপ্টেও আছে:
+
+| ধাপ | স্ক্রিপ্ট |
+|---|---|
+| Base প্যাকেজ | `deploy/vps/setup.sh` |
+| Clone + build | `deploy/vps/clone.sh` |
+| পরবর্তী আপডেট | `deploy/vps/update.sh` |
+
+কিন্তু সাধারণ ব্যবহারে শুধু **ধাপ ২-এর এক কমান্ড**ই যথেষ্ট।
 
 ---
 
