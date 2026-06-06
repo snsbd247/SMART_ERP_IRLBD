@@ -302,7 +302,7 @@ const App = () => (
                 <Route path="/admin/branding" element={<P perm="settings.view"><BrandingPage /></P>} />
                 <Route path="/admin/sms" element={<P perm="settings.view"><SmsSettingsPage /></P>} />
                 <Route path="/admin/diagnostics" element={<DiagnosticsPage />} />
-                <Route path="/admin/deploy-sync" element={<ProtectedRoute requireSuperAdmin><DeploySyncPage /></ProtectedRoute>} />
+                
 
                 {/* ─── Sales Workflow (BD VAT) ─────────────────── */}
                 <Route path="/sales-workflow/po" element={<P perm="sales.view"><PurchaseOrdersPage /></P>} />
