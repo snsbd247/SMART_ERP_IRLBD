@@ -32,7 +32,7 @@ fi
 log "Installing frontend deps and building..."
 cd "${APP_DIR}"
 if [[ -f package.json ]]; then
-  npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+  npm install --no-audit --no-fund --legacy-peer-deps
   npm run build
 fi
 
