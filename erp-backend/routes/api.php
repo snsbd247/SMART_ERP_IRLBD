@@ -415,6 +415,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::prefix('deploy-sync')->group(function () {
             Route::get('config', [\App\Http\Controllers\Admin\DeploySyncController::class, 'getConfig']);
             Route::put('config', [\App\Http\Controllers\Admin\DeploySyncController::class, 'updateConfig']);
+            Route::post('config', [\App\Http\Controllers\Admin\DeploySyncController::class, 'updateConfig']);
             Route::delete('config/token', [\App\Http\Controllers\Admin\DeploySyncController::class, 'clearToken']);
             Route::post('test-connection', [\App\Http\Controllers\Admin\DeploySyncController::class, 'testConnection']);
             Route::get('status', [\App\Http\Controllers\Admin\DeploySyncController::class, 'status']);
