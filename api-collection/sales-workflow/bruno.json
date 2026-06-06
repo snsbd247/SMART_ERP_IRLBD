@@ -14,7 +14,7 @@ the env for the next step.
 
 | Key             | Example                                |
 | --------------- | -------------------------------------- |
-| `base_url`      | `https://accounting.syncsolutionbd.com` |
+| `base_url`      | `https://erp.irlbd.com` |
 | `token`         | Sanctum bearer token                   |
 | `customer_id`   | UUID of a customer                     |
 | `product_id_1`  | UUID of a product                      |
