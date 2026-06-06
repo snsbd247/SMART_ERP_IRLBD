@@ -14,7 +14,7 @@ use App\Models\{Branch, User, CustomRole, RolePermission, FinancialYear, Company
  * Seeds ONLY the essentials required for first login:
  *   - 1 Branch (FK target for users)
  *   - Roles + Role Permissions (Super Admin, Staff, Accountant, HR Manager, Employee)
- *   - Super Admin user  (admin / admin123, employee_id = NULL)
+ *   - Super Admin user  (admin / Admin@123, employee_id = NULL)
  *   - 1 active Financial Year + Company Settings + Number Sequences
  *   - Bangladesh-standard Chart of Accounts
  *
