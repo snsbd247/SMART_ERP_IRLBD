@@ -302,16 +302,43 @@ SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}
 EOF
 php artisan key:generate --force
 
-# Copy built frontend into Laravel public
-rm -rf erp-backend/public/assets 2>/dev/null || true
+# Copy built frontend into Laravel public (preserve index.php + .htaccess)
+rm -rf "${APP_DIR}/erp-backend/public/assets" 2>/dev/null || true
 cp -r "${APP_DIR}/dist/"* "${APP_DIR}/erp-backend/public/" 2>/dev/null || true
 
 chown -R www-data:www-data "${APP_DIR}"
 
+# ----- systemd queue worker -----
+log "Installing systemd queue worker (smarterp-queue)..."
+cat > /etc/systemd/system/smarterp-queue.service <<UNIT
+[Unit]
+Description=SmartERP Laravel Queue Worker
+After=network.target mysql.service
+
+[Service]
+User=www-data
+Group=www-data
+Restart=always
+RestartSec=5
+WorkingDirectory=${APP_DIR}/erp-backend
+ExecStart=/usr/bin/php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+systemctl daemon-reload
+systemctl enable --now smarterp-queue.service || warn "queue worker failed to start"
+
+# ----- Laravel scheduler cron -----
+log "Installing Laravel scheduler cron entry..."
+CRON_LINE="* * * * * www-data cd ${APP_DIR}/erp-backend && /usr/bin/php artisan schedule:run >> /var/log/smarterp-schedule.log 2>&1"
+echo "${CRON_LINE}" > /etc/cron.d/smarterp-scheduler
+chmod 644 /etc/cron.d/smarterp-scheduler
+
 # ===================== 8. NGINX + SSL ======================
 log "Step 8/9  Configuring Nginx + Let's Encrypt SSL..."
 
-# Main app vhost
+# Main app vhost (API -> Laravel PHP, everything else -> React SPA index.html)
 cat > /etc/nginx/sites-available/smarterp <<NGINX
 server {
     listen 80;
@@ -320,9 +347,19 @@ server {
     index index.php index.html;
     client_max_body_size 50M;
 
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
+    # Laravel API routes
+    location ^~ /api/ {
+        try_files \$uri /index.php?\$query_string;
     }
+    location = /install {
+        try_files \$uri /index.php?\$query_string;
+    }
+
+    # React SPA — deep links fall back to index.html
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
     location ~ \.php\$ {
         include snippets/fastcgi-php.conf;
         fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
