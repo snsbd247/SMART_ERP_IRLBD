@@ -29,12 +29,12 @@ const DEFAULT_PROTECTED = [
 ];
 
 const DEFAULTS: RepoSettings = {
-  repoUrl: "https://github.com/snsbd247/smart_isp.git",
+  repoUrl: "https://github.com/snsbd247/audit-treasure-6d69be20.git",
   branch: "main",
-  basePath: "ISP-Backend/deploy",
+  basePath: "deploy",
   protectedPaths: DEFAULT_PROTECTED,
 };
-const LS_KEY = "github_deploy_sync_settings_v1";
+const LS_KEY = "github_deploy_sync_settings_v2";
 
 function loadSettings(): RepoSettings {
   try {
