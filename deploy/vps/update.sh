@@ -37,6 +37,15 @@ git reset --hard "origin/${REPO_BRANCH}"
 
 log "Rebuilding frontend..."
 if [[ -f package.json ]]; then
+  APP_URL="https://erp.irlbd.com"
+  if [[ -f "${APP_DIR}/erp-backend/.env" ]]; then
+    APP_URL_FROM_ENV=$(grep -E '^APP_URL=' "${APP_DIR}/erp-backend/.env" | cut -d= -f2- | tr -d '"' || true)
+    [[ -n "${APP_URL_FROM_ENV:-}" ]] && APP_URL="${APP_URL_FROM_ENV%/}"
+  fi
+  export VITE_API_BASE_URL="${APP_URL}/api"
+  export VITE_SUPABASE_URL="${APP_URL}/supabase-disabled"
+  export VITE_SUPABASE_PUBLISHABLE_KEY="vps-laravel-mode-no-supabase"
+  export VITE_SUPABASE_PROJECT_ID="vps-laravel"
   npm install --no-audit --no-fund --legacy-peer-deps
   npm run build
 fi
