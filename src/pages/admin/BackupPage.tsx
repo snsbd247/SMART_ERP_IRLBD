@@ -676,6 +676,22 @@ const BackupPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Demo Import Confirmation */}
+      <Dialog open={confirmDemo} onOpenChange={setConfirmDemo}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" />Import demo configuration?</DialogTitle>
+            <DialogDescription>
+              This will insert missing Chart of Accounts, IFRS Mapping, Roles &amp; Permissions, Document Numbering and Page Shortcuts. Existing rows are kept as-is. No transactional data is touched.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDemo(false)}>Cancel</Button>
+            <Button onClick={handleImportDemoConfig}><Sparkles className="w-4 h-4 mr-2" />Yes, import</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
