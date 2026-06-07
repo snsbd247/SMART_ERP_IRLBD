@@ -218,42 +218,8 @@ const DiagnosticsPage = () => {
     }
   };
 
-  // ============ G. SEED DEMO DATA ============
-  const [seeding, setSeeding] = useState(false);
-  const [seedStats, setSeedStats] = useState<any>(null);
-  const LARAVEL_API = getApiBaseUrl() || "";
-  const USE_LARAVEL = isLaravelMode();
+  // Demo seeding removed per request.
 
-  const runSeedDemo = async () => {
-    setSeeding(true); setSeedStats(null);
-    try {
-      if (USE_LARAVEL) {
-        const res = await fetch(`${LARAVEL_API}/v1/admin/demo/seed`, {
-          method: "POST",
-          headers: getLaravelAuthHeaders(),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok || json?.success === false) {
-          throw new Error(json?.message || json?.error || `HTTP ${res.status}`);
-        }
-        const stats = json?.data?.stats ?? json?.stats ?? {};
-        setSeedStats(stats);
-        toast.success("Demo data seeded (Laravel)", {
-          description: `${stats.vouchers ?? 0} vouchers, ${stats.sales ?? 0} invoices`,
-        });
-      } else {
-        const { data, error } = await supabase.functions.invoke("reset-and-seed-demo");
-        if (error) throw error;
-        if (!data?.success) throw new Error(data?.error || "Seeding failed");
-        setSeedStats(data.stats);
-        toast.success("Demo data seeded", { description: `${data.stats.vouchers} vouchers, ${data.stats.sales} invoices` });
-      }
-    } catch (e: any) {
-      toast.error("Seeding failed", { description: e.message });
-    } finally {
-      setSeeding(false);
-    }
-  };
 
 
   useEffect(() => {
