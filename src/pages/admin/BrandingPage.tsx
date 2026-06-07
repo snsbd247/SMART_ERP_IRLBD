@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranding } from "@/contexts/BrandingContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
+import {
+  getApiBaseUrl,
+  getLaravelAuthHeaders,
+  isLaravelMode,
+  isSupabaseDisabledError,
+  markSupabaseUnavailable,
+} from "@/lib/laravel-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,8 +18,19 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Palette, Upload, Eye, Save, Building2, Globe, Type, Image as ImageIcon } from "lucide-react";
 
-const USE_LARAVEL = isLaravelMode();
-const API_BASE = getApiBaseUrl() || "";
+// Compute on each call so the auto-fallback flag (set after a 503) is honored.
+const useLaravel = () => isLaravelMode();
+const apiBase = () => getApiBaseUrl() || "";
+
+/** Format a validation-error object into a single readable line. */
+function formatErrors(payload: any): string {
+  if (!payload) return "";
+  if (typeof payload === "string") return payload;
+  if (payload.errors && typeof payload.errors === "object") {
+    return Object.values(payload.errors).flat().join(" • ");
+  }
+  return payload.message || payload.error || "";
+}
 
 const BRANDING_FIELDS = [
   { key: "software_name", label: "Software Name", icon: Type, placeholder: "SmartERP" },
