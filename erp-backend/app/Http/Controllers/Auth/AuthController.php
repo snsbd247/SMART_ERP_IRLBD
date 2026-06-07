@@ -23,37 +23,49 @@ class AuthController extends BaseController
             $query->where('username', $login)->orWhere('email', $login);
         })->first();
         if (!$user || !Hash::check($request->password, $user->password)) {
-            $this->activityService->log('failed_login', "Failed login for: {$login}", $request, null, [
-                'username' => $login,
-                'status' => 'failed',
-            ]);
+            try {
+                $this->activityService->log('failed_login', "Failed login for: {$login}", $request, null, [
+                    'username' => $login,
+                    'status' => 'failed',
+                ]);
+            } catch (\Throwable) {
+                // Login/audit logging must never turn an auth response into a 500.
+            }
             return $this->error('Invalid credentials', 401);
         }
         if ($user->status !== 'active') {
-            $this->activityService->log('failed_login', "Disabled account login: {$login}", $request, $user->id, [
-                'username' => $login,
-                'status' => 'disabled',
-            ]);
+            try {
+                $this->activityService->log('failed_login', "Disabled account login: {$login}", $request, $user->id, [
+                    'username' => $login,
+                    'status' => 'disabled',
+                ]);
+            } catch (\Throwable) {
+                // Login/audit logging must never turn an auth response into a 500.
+            }
             return $this->error('Account is disabled', 403);
         }
 
         $token = $user->createToken('api')->plainTextToken;
-        $user->update(['is_online' => true, 'last_seen_at' => now(), 'last_login_at' => now()]);
+        try {
+            $user->update(['is_online' => true, 'last_seen_at' => now(), 'last_login_at' => now()]);
+        } catch (\Throwable) {
+            // Keep login working even if optional presence columns are not available yet.
+        }
         $roles = $user->roles()->with('permissions')->get();
         $permissions = $user->getAllPermissions();
 
-        // Log login activity
-        LoginLog::create([
-            'user_id' => $user->id,
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'login_time' => now(),
-        ]);
-
-        // Log successful login
-        $this->activityService->logLogin($user->id, $request, true);
-
-        Log::info("User logged in: {$user->username}, Super Admin: " . ($user->isSuperAdmin() ? 'YES' : 'NO') . ", Permissions: " . json_encode($permissions));
+        try {
+            LoginLog::create([
+                'user_id' => $user->id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'login_time' => now(),
+            ]);
+            $this->activityService->logLogin($user->id, $request, true);
+            Log::info("User logged in: {$user->username}, Super Admin: " . ($user->isSuperAdmin() ? 'YES' : 'NO') . ", Permissions: " . json_encode($permissions));
+        } catch (\Throwable) {
+            // Login/audit logging must never turn a successful auth into a 500.
+        }
 
         return $this->success([
             'token' => $token,
