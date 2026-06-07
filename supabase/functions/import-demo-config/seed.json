@@ -415,55 +415,242 @@
     }
   ],
   "ifrs": [
-    { "account_code": "1101", "ifrs_line": "Cash and cash equivalents", "notes": null },
-    { "account_code": "1102", "ifrs_line": "Cash and cash equivalents", "notes": null },
-    { "account_code": "1103", "ifrs_line": "Trade receivables", "notes": null },
-    { "account_code": "1104", "ifrs_line": "Trade receivables", "notes": "Advance to supplier" },
-    { "account_code": "1105", "ifrs_line": "Inventories", "notes": null },
-    { "account_code": "1106", "ifrs_line": "Other current assets", "notes": null },
-    { "account_code": "1107", "ifrs_line": "Other current assets", "notes": "TDS receivable" },
-    { "account_code": "1201", "ifrs_line": "Property, plant and equipment", "notes": null },
-    { "account_code": "1202", "ifrs_line": "Property, plant and equipment", "notes": null },
-    { "account_code": "1203", "ifrs_line": "Property, plant and equipment", "notes": null },
-    { "account_code": "1204", "ifrs_line": "Property, plant and equipment", "notes": null },
-    { "account_code": "1205", "ifrs_line": "Property, plant and equipment", "notes": "Accumulated depreciation (contra)" },
-    { "account_code": "2101", "ifrs_line": "Trade payables", "notes": null },
-    { "account_code": "2102", "ifrs_line": "Trade payables", "notes": null },
-    { "account_code": "2103", "ifrs_line": "Other current liabilities", "notes": "Accrued expenses" },
-    { "account_code": "2104", "ifrs_line": "Current tax liabilities", "notes": null },
-    { "account_code": "2105", "ifrs_line": "Short-term borrowings", "notes": null },
-    { "account_code": "2106", "ifrs_line": "Other current liabilities", "notes": "Provident fund liability" },
-    { "account_code": "2107", "ifrs_line": "Other current liabilities", "notes": "Savings fund liability" },
-    { "account_code": "2201", "ifrs_line": "Long-term borrowings", "notes": null },
-    { "account_code": "2202", "ifrs_line": "Long-term borrowings", "notes": "Directors loan" },
-    { "account_code": "3101", "ifrs_line": "Issued capital", "notes": null },
-    { "account_code": "3102", "ifrs_line": "Retained earnings", "notes": null },
-    { "account_code": "3103", "ifrs_line": "Retained earnings", "notes": "Owner drawings (contra equity)" },
-    { "account_code": "4101", "ifrs_line": "Revenue", "notes": null },
-    { "account_code": "4102", "ifrs_line": "Revenue", "notes": null },
-    { "account_code": "4103", "ifrs_line": "Other income", "notes": null },
-    { "account_code": "4104", "ifrs_line": "Other income", "notes": "Discount received" },
-    { "account_code": "4105", "ifrs_line": "Revenue", "notes": "Sales return (contra revenue)" },
-    { "account_code": "5101", "ifrs_line": "Cost of sales", "notes": "Purchases" },
-    { "account_code": "5102", "ifrs_line": "Cost of sales", "notes": null },
-    { "account_code": "5103", "ifrs_line": "Cost of sales", "notes": "Purchase return (contra)" },
-    { "account_code": "5201", "ifrs_line": "Administrative expenses", "notes": null },
-    { "account_code": "5202", "ifrs_line": "Administrative expenses", "notes": null },
-    { "account_code": "5203", "ifrs_line": "Administrative expenses", "notes": "Utilities" },
-    { "account_code": "5204", "ifrs_line": "Administrative expenses", "notes": null },
-    { "account_code": "5205", "ifrs_line": "Distribution costs", "notes": "Transportation" },
-    { "account_code": "5206", "ifrs_line": "Distribution costs", "notes": "Marketing" },
-    { "account_code": "5207", "ifrs_line": "Administrative expenses", "notes": "Internet bill" },
-    { "account_code": "5208", "ifrs_line": "Administrative expenses", "notes": "Maintenance" },
-    { "account_code": "5209", "ifrs_line": "Administrative expenses", "notes": "Provident fund expense" },
-    { "account_code": "5210", "ifrs_line": "Administrative expenses", "notes": "Savings fund expense" },
-    { "account_code": "5301", "ifrs_line": "Finance costs", "notes": "Bank charges" },
-    { "account_code": "5302", "ifrs_line": "Finance costs", "notes": null },
-    { "account_code": "6101", "ifrs_line": "Current tax liabilities", "notes": "Input VAT (recoverable)" },
-    { "account_code": "6102", "ifrs_line": "Current tax liabilities", "notes": "Output VAT" },
-    { "account_code": "6103", "ifrs_line": "Current tax liabilities", "notes": "VAT payable duplicate" }
+    {
+      "account_code": "1101",
+      "ifrs_line": "Cash and cash equivalents",
+      "notes": null
+    },
+    {
+      "account_code": "1102",
+      "ifrs_line": "Cash and cash equivalents",
+      "notes": null
+    },
+    {
+      "account_code": "1103",
+      "ifrs_line": "Trade receivables",
+      "notes": null
+    },
+    {
+      "account_code": "1104",
+      "ifrs_line": "Trade receivables",
+      "notes": "Advance to supplier"
+    },
+    {
+      "account_code": "1105",
+      "ifrs_line": "Inventories",
+      "notes": null
+    },
+    {
+      "account_code": "1106",
+      "ifrs_line": "Other current assets",
+      "notes": null
+    },
+    {
+      "account_code": "1107",
+      "ifrs_line": "Other current assets",
+      "notes": "TDS receivable"
+    },
+    {
+      "account_code": "1201",
+      "ifrs_line": "Property, plant and equipment",
+      "notes": null
+    },
+    {
+      "account_code": "1202",
+      "ifrs_line": "Property, plant and equipment",
+      "notes": null
+    },
+    {
+      "account_code": "1203",
+      "ifrs_line": "Property, plant and equipment",
+      "notes": null
+    },
+    {
+      "account_code": "1204",
+      "ifrs_line": "Property, plant and equipment",
+      "notes": null
+    },
+    {
+      "account_code": "1205",
+      "ifrs_line": "Property, plant and equipment",
+      "notes": "Accumulated depreciation (contra)"
+    },
+    {
+      "account_code": "2101",
+      "ifrs_line": "Trade payables",
+      "notes": null
+    },
+    {
+      "account_code": "2102",
+      "ifrs_line": "Trade payables",
+      "notes": null
+    },
+    {
+      "account_code": "2103",
+      "ifrs_line": "Other current liabilities",
+      "notes": "Accrued expenses"
+    },
+    {
+      "account_code": "2104",
+      "ifrs_line": "Current tax liabilities",
+      "notes": null
+    },
+    {
+      "account_code": "2105",
+      "ifrs_line": "Short-term borrowings",
+      "notes": null
+    },
+    {
+      "account_code": "2106",
+      "ifrs_line": "Other current liabilities",
+      "notes": "Provident fund liability"
+    },
+    {
+      "account_code": "2107",
+      "ifrs_line": "Other current liabilities",
+      "notes": "Savings fund liability"
+    },
+    {
+      "account_code": "2201",
+      "ifrs_line": "Long-term borrowings",
+      "notes": null
+    },
+    {
+      "account_code": "2202",
+      "ifrs_line": "Long-term borrowings",
+      "notes": "Directors loan"
+    },
+    {
+      "account_code": "3101",
+      "ifrs_line": "Issued capital",
+      "notes": null
+    },
+    {
+      "account_code": "3102",
+      "ifrs_line": "Retained earnings",
+      "notes": null
+    },
+    {
+      "account_code": "3103",
+      "ifrs_line": "Retained earnings",
+      "notes": "Owner drawings (contra equity)"
+    },
+    {
+      "account_code": "4101",
+      "ifrs_line": "Revenue",
+      "notes": null
+    },
+    {
+      "account_code": "4102",
+      "ifrs_line": "Revenue",
+      "notes": null
+    },
+    {
+      "account_code": "4103",
+      "ifrs_line": "Other income",
+      "notes": null
+    },
+    {
+      "account_code": "4104",
+      "ifrs_line": "Other income",
+      "notes": "Discount received"
+    },
+    {
+      "account_code": "4105",
+      "ifrs_line": "Revenue",
+      "notes": "Sales return (contra revenue)"
+    },
+    {
+      "account_code": "5101",
+      "ifrs_line": "Cost of sales",
+      "notes": "Purchases"
+    },
+    {
+      "account_code": "5102",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5103",
+      "ifrs_line": "Cost of sales",
+      "notes": "Purchase return (contra)"
+    },
+    {
+      "account_code": "5201",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "5202",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "5203",
+      "ifrs_line": "Administrative expenses",
+      "notes": "Utilities"
+    },
+    {
+      "account_code": "5204",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "5205",
+      "ifrs_line": "Distribution costs",
+      "notes": "Transportation"
+    },
+    {
+      "account_code": "5206",
+      "ifrs_line": "Distribution costs",
+      "notes": "Marketing"
+    },
+    {
+      "account_code": "5207",
+      "ifrs_line": "Administrative expenses",
+      "notes": "Internet bill"
+    },
+    {
+      "account_code": "5208",
+      "ifrs_line": "Administrative expenses",
+      "notes": "Maintenance"
+    },
+    {
+      "account_code": "5209",
+      "ifrs_line": "Administrative expenses",
+      "notes": "Provident fund expense"
+    },
+    {
+      "account_code": "5210",
+      "ifrs_line": "Administrative expenses",
+      "notes": "Savings fund expense"
+    },
+    {
+      "account_code": "5301",
+      "ifrs_line": "Finance costs",
+      "notes": "Bank charges"
+    },
+    {
+      "account_code": "5302",
+      "ifrs_line": "Finance costs",
+      "notes": null
+    },
+    {
+      "account_code": "6101",
+      "ifrs_line": "Current tax liabilities",
+      "notes": "Input VAT (recoverable)"
+    },
+    {
+      "account_code": "6102",
+      "ifrs_line": "Current tax liabilities",
+      "notes": "Output VAT"
+    },
+    {
+      "account_code": "6103",
+      "ifrs_line": "Current tax liabilities",
+      "notes": "VAT payable duplicate"
+    }
   ],
-
   "sequences": [
     {
       "id": "contra_voucher",
@@ -1359,385 +1546,11 @@
   ],
   "roles": [
     {
-      "name": "Accountant",
-      "description": "Access to accounting and financial reports",
-      "permissions": [
-        {
-          "module": "accounts",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": false
-        },
-        {
-          "module": "bank",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "dashboard",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "inventory",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "purchase",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "reports",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "sales",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        }
-      ]
-    },
-    {
-      "name": "Admin",
-      "description": "Full system access to all modules",
-      "permissions": [
-        {
-          "module": "accounts",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": false
-        },
-        {
-          "module": "audit_log",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "backup",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "bank",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": false
-        },
-        {
-          "module": "branches",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "dashboard",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "financial_years",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "hrm",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": false
-        },
-        {
-          "module": "inventory",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": false
-        },
-        {
-          "module": "manufacturing",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": false
-        },
-        {
-          "module": "purchase",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": false
-        },
-        {
-          "module": "reports",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": false
-        },
-        {
-          "module": "sales",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": false
-        },
-        {
-          "module": "settings",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "users",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        }
-      ]
-    },
-    {
-      "name": "Inventory Clerk",
-      "description": "Manage stock and warehouse operations",
+      "name": "Administrator",
+      "description": "Full system access except Backup Restore and Module Toggle (Super Admin only)",
       "permissions": [
         {
           "module": "dashboard",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "inventory",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "manufacturing",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": false
-        },
-        {
-          "module": "purchase",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": false
-        },
-        {
-          "module": "reports",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "sales",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        }
-      ]
-    },
-    {
-      "name": "Sales Manager",
-      "description": "Manage sales operations and customer relations",
-      "permissions": [
-        {
-          "module": "dashboard",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "inventory",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "purchase",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": false
-        },
-        {
-          "module": "reports",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "sales",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        }
-      ]
-    },
-    {
-      "name": "Super Admin",
-      "description": "Full system access to all modules",
-      "permissions": [
-        {
-          "module": "accounts",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "attendance",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "audit_log",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "backup",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "bank",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "branches",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "branding",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "contra",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "customers",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "dashboard",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "document_numbering",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "employees",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "financial_years",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "hrm",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "inventory",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "journal",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "leave",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "manufacturing",
           "can_view": true,
           "can_add": true,
           "can_edit": true,
@@ -1751,7 +1564,14 @@
           "can_delete": true
         },
         {
-          "module": "modules",
+          "module": "accounts",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "journal",
           "can_view": true,
           "can_add": true,
           "can_edit": true,
@@ -1759,6 +1579,97 @@
         },
         {
           "module": "payment",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "receipt",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "contra",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "sales",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "purchase",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "customers",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "suppliers",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "inventory",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "manufacturing",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "bank",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "hrm",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "employees",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "attendance",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "leave",
           "can_view": true,
           "can_add": true,
           "can_edit": true,
@@ -1774,26 +1685,26 @@
         {
           "module": "portal",
           "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "purchase",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
-        },
-        {
-          "module": "receipt",
-          "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
         },
         {
           "module": "reports",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "branches",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "users",
           "can_view": true,
           "can_add": true,
           "can_edit": true,
@@ -1802,12 +1713,12 @@
         {
           "module": "roles",
           "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
         },
         {
-          "module": "sales",
+          "module": "financial_years",
           "can_view": true,
           "can_add": true,
           "can_edit": true,
@@ -1821,11 +1732,18 @@
           "can_delete": true
         },
         {
-          "module": "shortcuts",
+          "module": "audit_log",
           "can_view": true,
-          "can_add": true,
-          "can_edit": true,
-          "can_delete": true
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "backup",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
         },
         {
           "module": "sms",
@@ -1835,39 +1753,39 @@
           "can_delete": true
         },
         {
-          "module": "suppliers",
+          "module": "branding",
           "can_view": true,
           "can_add": true,
           "can_edit": true,
           "can_delete": true
         },
         {
-          "module": "users",
+          "module": "shortcuts",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": false
+        },
+        {
+          "module": "document_numbering",
           "can_view": true,
           "can_add": true,
           "can_edit": true,
           "can_delete": true
+        },
+        {
+          "module": "modules",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
         }
       ]
     },
     {
-      "name": "Viewer",
-      "description": "Read-only access to all modules",
+      "name": "Accountant",
+      "description": "Full accounting and financial reports; read-only on master data",
       "permissions": [
-        {
-          "module": "accounts",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        },
-        {
-          "module": "bank",
-          "can_view": true,
-          "can_add": false,
-          "can_edit": false,
-          "can_delete": false
-        },
         {
           "module": "dashboard",
           "can_view": true,
@@ -1876,7 +1794,70 @@
           "can_delete": false
         },
         {
-          "module": "hrm",
+          "module": "messaging",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "accounts",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "journal",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "payment",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "receipt",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "contra",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "sales",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "purchase",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "customers",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "suppliers",
           "can_view": true,
           "can_add": false,
           "can_edit": false,
@@ -1897,8 +1878,50 @@
           "can_delete": false
         },
         {
-          "module": "purchase",
+          "module": "bank",
           "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "hrm",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "employees",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "attendance",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "leave",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "payroll",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "portal",
+          "can_view": false,
           "can_add": false,
           "can_edit": false,
           "can_delete": false
@@ -1911,8 +1934,1270 @@
           "can_delete": false
         },
         {
+          "module": "branches",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "users",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "roles",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "financial_years",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": false
+        },
+        {
+          "module": "settings",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "audit_log",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "backup",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "sms",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "branding",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "shortcuts",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "document_numbering",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": false
+        },
+        {
+          "module": "modules",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        }
+      ]
+    },
+    {
+      "name": "Sales Manager",
+      "description": "Sales invoices, customers, receipts, AR reports",
+      "permissions": [
+        {
+          "module": "dashboard",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "messaging",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "accounts",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "journal",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "payment",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "receipt",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "contra",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
           "module": "sales",
           "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "purchase",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "customers",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "suppliers",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "inventory",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "manufacturing",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "bank",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "hrm",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "employees",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "attendance",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "leave",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "payroll",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "portal",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "reports",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "branches",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "users",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "roles",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "financial_years",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "settings",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "audit_log",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "backup",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "sms",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "branding",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "shortcuts",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "document_numbering",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "modules",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        }
+      ]
+    },
+    {
+      "name": "Purchase Manager",
+      "description": "Purchase entries, suppliers, payments, AP reports",
+      "permissions": [
+        {
+          "module": "dashboard",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "messaging",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "accounts",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "journal",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "payment",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "receipt",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "contra",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "sales",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "purchase",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "customers",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "suppliers",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "inventory",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "manufacturing",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "bank",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "hrm",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "employees",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "attendance",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "leave",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "payroll",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "portal",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "reports",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "branches",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "users",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "roles",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "financial_years",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "settings",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "audit_log",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "backup",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "sms",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "branding",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "shortcuts",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "document_numbering",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "modules",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        }
+      ]
+    },
+    {
+      "name": "Inventory Manager",
+      "description": "Inventory, manufacturing, stock reports",
+      "permissions": [
+        {
+          "module": "dashboard",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "messaging",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "accounts",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "journal",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "payment",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "receipt",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "contra",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "sales",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "purchase",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "customers",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "suppliers",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "inventory",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "manufacturing",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "bank",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "hrm",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "employees",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "attendance",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "leave",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "payroll",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "portal",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "reports",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "branches",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "users",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "roles",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "financial_years",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "settings",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "audit_log",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "backup",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "sms",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "branding",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "shortcuts",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "document_numbering",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "modules",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        }
+      ]
+    },
+    {
+      "name": "HR Manager",
+      "description": "HRM, attendance, leave, payroll, employees",
+      "permissions": [
+        {
+          "module": "dashboard",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "messaging",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "accounts",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "journal",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "payment",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "receipt",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "contra",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "sales",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "purchase",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "customers",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "suppliers",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "inventory",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "manufacturing",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "bank",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "hrm",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "employees",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "attendance",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "leave",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "payroll",
+          "can_view": true,
+          "can_add": true,
+          "can_edit": true,
+          "can_delete": true
+        },
+        {
+          "module": "portal",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "reports",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "branches",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "users",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "roles",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "financial_years",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "settings",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "audit_log",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "backup",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "sms",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "branding",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "shortcuts",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "document_numbering",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "modules",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        }
+      ]
+    },
+    {
+      "name": "Employee",
+      "description": "Employee self-service portal only",
+      "permissions": [
+        {
+          "module": "dashboard",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "messaging",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "accounts",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "journal",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "payment",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "receipt",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "contra",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "sales",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "purchase",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "customers",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "suppliers",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "inventory",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "manufacturing",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "bank",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "hrm",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "employees",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "attendance",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "leave",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "payroll",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "portal",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "reports",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "branches",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "users",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "roles",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "financial_years",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "settings",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "audit_log",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "backup",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "sms",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "branding",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "shortcuts",
+          "can_view": true,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "document_numbering",
+          "can_view": false,
+          "can_add": false,
+          "can_edit": false,
+          "can_delete": false
+        },
+        {
+          "module": "modules",
+          "can_view": false,
           "can_add": false,
           "can_edit": false,
           "can_delete": false
