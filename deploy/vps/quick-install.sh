@@ -84,8 +84,10 @@ DB_DATABASE=${DB_NAME}
 DB_USERNAME=${DB_USER}
 DB_PASSWORD="${DB_PASS}"
 
-SANCTUM_STATEFUL_DOMAINS=${DOMAIN}
-SESSION_DOMAIN=.${DOMAIN}
+# Token-only API mode. Do not enable Sanctum stateful/session cookies here;
+# same-origin browser requests otherwise get routed through session middleware.
+SANCTUM_STATEFUL_DOMAINS=
+SESSION_DOMAIN=
 CORS_ALLOWED_ORIGINS=https://${DOMAIN}
 
 CACHE_DRIVER=file
