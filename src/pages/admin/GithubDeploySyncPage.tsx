@@ -208,7 +208,11 @@ export default function GithubDeploySyncPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        appendLog(`[status] ${data?.message || `HTTP ${res.status}`}`);
+        const message = data?.message || `HTTP ${res.status}`;
+        appendLog(`[status] ${message}`);
+        if (res.status >= 500) {
+          appendLog("[status] VPS endpoint failed before deploy runner started. Run update.sh once from SSH, then try Pull & Deploy again.");
+        }
         return { running: false, state: "failed" as const };
       }
       // Replace log buffer with server-side tail so we don't duplicate lines.
@@ -234,8 +238,12 @@ export default function GithubDeploySyncPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok && res.status !== 409) {
-        appendLog(`✗ ${data?.message || `HTTP ${res.status}`}`);
-        toast({ title: "Pull & Deploy failed", description: data?.message || `HTTP ${res.status}`, variant: "destructive" });
+        const message = data?.message || `HTTP ${res.status}`;
+        appendLog(`✗ ${message}`);
+        if (res.status >= 500) {
+          appendLog("Repair: sudo APP_DIR=/opt/smarterp /opt/smarterp/deploy/vps/update.sh");
+        }
+        toast({ title: "Pull & Deploy failed", description: message, variant: "destructive" });
         setBusy(null);
         return;
       }
