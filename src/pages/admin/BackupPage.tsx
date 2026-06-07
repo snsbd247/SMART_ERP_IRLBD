@@ -214,14 +214,14 @@ const BackupPage = () => {
           headers: getAuthHeaders(),
           body: formData,
         });
-        const result = await res.json();
-        if (!result.success) throw new Error(result.message);
+        const result = await res.json().catch(() => ({ message: `Restore failed (HTTP ${res.status})` }));
+        if (!res.ok || !result.success) throw new Error(result.message || result.error || "Restore failed");
       } else {
         // Read file content and invoke edge function
         const content = await restoreFile.text();
         setProgress(50);
         const { data, error } = await supabase.functions.invoke("restore-backup", {
-          body: { sql_content: content, file_name: restoreFile.name },
+          body: { content, sql_content: content, file_name: restoreFile.name },
         });
         if (error) throw error;
         if (data && !data.success) throw new Error(data.error || "Restore failed");
