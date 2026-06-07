@@ -113,6 +113,16 @@ sudo APP_DIR=/opt/smarterp /opt/smarterp/deploy/vps/update.sh
 
 ## 🆘 সমস্যা হলে চেক করুন
 
+### Login-এ 500 Internal Server Error হলে
+
+পুরনো deploy-তে Sanctum session mode cache হয়ে থাকলে browser থেকে `/api/auth/login` 500 দেখাতে পারে। VPS-এ লগইন করে একবার latest update চালান:
+
+```bash
+sudo APP_DIR=/opt/smarterp /opt/smarterp/deploy/vps/update.sh
+```
+
+এই update script Laravel API-কে token-only mode-এ রাখে এবং `storage/installed` flag repair করে।
+
 | সমস্যা | কমান্ড |
 |---|---|
 | Credentials দেখুন | `sudo cat /root/smarterp-credentials.txt` |

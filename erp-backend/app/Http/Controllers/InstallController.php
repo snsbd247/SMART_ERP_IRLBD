@@ -296,8 +296,8 @@ DB_DATABASE={$data['db_name']}
 DB_USERNAME={$data['db_user']}
 DB_PASSWORD="{$dbPass}"
 
-SANCTUM_STATEFUL_DOMAINS={$this->getStatefulDomain()}
-SESSION_DOMAIN={$this->getSessionDomain()}
+SANCTUM_STATEFUL_DOMAINS=
+SESSION_DOMAIN=
 
 CACHE_DRIVER=file
 QUEUE_CONNECTION=sync
@@ -308,16 +308,6 @@ FILESYSTEM_DISK=public
 ENV;
 
         file_put_contents(base_path('.env'), $env);
-    }
-
-    private function getStatefulDomain(): string
-    {
-        return request()->getHost();
-    }
-
-    private function getSessionDomain(): string
-    {
-        return '.' . request()->getHost();
     }
 
     /**
