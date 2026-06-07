@@ -10,16 +10,18 @@ function getRuntimeSupabaseUrl(): string {
     if (host === "erp.irlbd.com") {
       return "https://supabase.erp.irlbd.com";
     }
+  }
 
+  const configured = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  if (configured) return configured.replace(/\/+$/, "");
+
+  if (typeof window !== "undefined") {
     const parts = window.location.hostname.split(".");
     if (parts.length >= 2) {
       const rootDomain = parts.slice(-2).join(".");
       return `https://supabase.${rootDomain}`;
     }
   }
-
-  const configured = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-  if (configured) return configured.replace(/\/+$/, "");
 
   return "https://ezwsrtsqiumhxukwgiou.supabase.co";
 }
