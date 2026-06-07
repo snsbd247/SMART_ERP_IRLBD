@@ -45,6 +45,10 @@ if [[ -d "${APP_DIR}/erp-backend" ]]; then
   cd "${APP_DIR}/erp-backend"
   log "Updating backend deps..."
   composer install --no-dev --optimize-autoloader --no-interaction
+  mkdir -p storage/app/public storage/app/backups storage/framework/cache/data \
+           storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+  chown -R www-data:www-data storage bootstrap/cache
+  chmod -R 775 storage bootstrap/cache
 
   # ---------- SAFETY: backup DB before any schema change ----------
   if [[ -f .env ]]; then

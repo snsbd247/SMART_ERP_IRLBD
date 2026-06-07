@@ -74,7 +74,7 @@ APP_DEBUG=false
 APP_URL=https://${DOMAIN}
 APP_KEY=
 
-LOG_CHANNEL=daily
+LOG_CHANNEL=single
 LOG_LEVEL=warning
 
 DB_CONNECTION=mysql
@@ -96,6 +96,10 @@ FILESYSTEM_DISK=public
 EOF
 
 cd "${APP_DIR}/erp-backend"
+mkdir -p storage/app/public storage/app/backups storage/framework/cache/data \
+         storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache
+chmod -R 775 storage bootstrap/cache
 php artisan key:generate --force
 # Fresh install -> seed; if already migrated, just migrate.
 if php artisan migrate:status >/dev/null 2>&1 && \
