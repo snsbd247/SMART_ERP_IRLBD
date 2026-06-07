@@ -45,8 +45,14 @@ install_deploy_runner() {
   fi
 
   log "Refreshing Pull & Deploy runner (/usr/local/bin/smarterp-deploy)..."
-  install -m 0755 -o root -g root "${APP_DIR}/deploy/vps/deploy-runner.sh" /usr/local/bin/smarterp-deploy
-  sed -i "s|^APP_DIR=.*|APP_DIR=\"${APP_DIR}\"|" /usr/local/bin/smarterp-deploy
+  if install -m 0755 -o root -g root "${APP_DIR}/deploy/vps/deploy-runner.sh" /usr/local/bin/smarterp-deploy; then
+    sed -i "s|^APP_DIR=.*|APP_DIR=\"${APP_DIR}\"|" /usr/local/bin/smarterp-deploy
+  elif [[ -x /usr/local/bin/smarterp-deploy ]]; then
+    warn "Could not overwrite /usr/local/bin/smarterp-deploy; existing executable runner will be used."
+  else
+    err "Could not install /usr/local/bin/smarterp-deploy and no existing runner is executable."
+    exit 1
+  fi
 
   touch /var/log/smarterp-deploy.log /var/log/smarterp-deploy.state
   chown www-data:www-data /var/log/smarterp-deploy.log /var/log/smarterp-deploy.state
