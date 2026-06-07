@@ -95,8 +95,8 @@ class BackupController extends BaseController
         }
 
         try {
-            $path = $file->storeAs('backups', 'restore_' . date('Y_m_d_H_i_s') . '.sql');
-            $fullPath = storage_path('app/' . $path);
+            $path = $file->storeAs('backups', 'restore_' . date('Y_m_d_H_i_s') . '.sql', 'local');
+            $fullPath = Storage::disk('local')->path($path);
 
             // Try mysql command first
             $restored = $this->tryMysqlRestore($fullPath);
