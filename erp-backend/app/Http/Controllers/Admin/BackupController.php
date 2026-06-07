@@ -239,7 +239,7 @@ class BackupController extends BaseController
 
         $passArg = $password ? "--password=" . escapeshellarg($password) : "";
         $cmd = sprintf(
-            '%s --user=%s %s --host=%s --port=%d %s < %s 2>&1',
+            '%s --force --user=%s %s --host=%s --port=%d %s < %s 2>&1',
             escapeshellarg($mysql),
             escapeshellarg($username),
             $passArg,
