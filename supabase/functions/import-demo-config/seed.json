@@ -415,107 +415,55 @@
     }
   ],
   "ifrs": [
-    {
-      "account_code": "1101",
-      "ifrs_line": "Cash and cash equivalents",
-      "notes": null
-    },
-    {
-      "account_code": "1102",
-      "ifrs_line": "Cash and cash equivalents",
-      "notes": null
-    },
-    {
-      "account_code": "1103",
-      "ifrs_line": "Trade receivables",
-      "notes": null
-    },
-    {
-      "account_code": "1105",
-      "ifrs_line": "Inventories",
-      "notes": null
-    },
-    {
-      "account_code": "1106",
-      "ifrs_line": "Other current assets",
-      "notes": null
-    },
-    {
-      "account_code": "1200",
-      "ifrs_line": "Property, plant and equipment",
-      "notes": null
-    },
-    {
-      "account_code": "1205",
-      "ifrs_line": "Property, plant and equipment",
-      "notes": null
-    },
-    {
-      "account_code": "2101",
-      "ifrs_line": "Trade payables",
-      "notes": null
-    },
-    {
-      "account_code": "2102",
-      "ifrs_line": "Trade payables",
-      "notes": null
-    },
-    {
-      "account_code": "2104",
-      "ifrs_line": "Current tax liabilities",
-      "notes": null
-    },
-    {
-      "account_code": "2201",
-      "ifrs_line": "Long-term borrowings",
-      "notes": null
-    },
-    {
-      "account_code": "3101",
-      "ifrs_line": "Issued capital",
-      "notes": null
-    },
-    {
-      "account_code": "3102",
-      "ifrs_line": "Retained earnings",
-      "notes": null
-    },
-    {
-      "account_code": "4101",
-      "ifrs_line": "Revenue",
-      "notes": null
-    },
-    {
-      "account_code": "4102",
-      "ifrs_line": "Revenue",
-      "notes": null
-    },
-    {
-      "account_code": "5102",
-      "ifrs_line": "Cost of sales",
-      "notes": null
-    },
-    {
-      "account_code": "5201",
-      "ifrs_line": "Administrative expenses",
-      "notes": null
-    },
-    {
-      "account_code": "5202",
-      "ifrs_line": "Administrative expenses",
-      "notes": null
-    },
-    {
-      "account_code": "5301",
-      "ifrs_line": "Finance costs",
-      "notes": null
-    },
-    {
-      "account_code": "5302",
-      "ifrs_line": "Finance costs",
-      "notes": null
-    }
+    { "account_code": "1101", "ifrs_line": "Cash and cash equivalents", "notes": null },
+    { "account_code": "1102", "ifrs_line": "Cash and cash equivalents", "notes": null },
+    { "account_code": "1103", "ifrs_line": "Trade receivables", "notes": null },
+    { "account_code": "1104", "ifrs_line": "Trade receivables", "notes": "Advance to supplier" },
+    { "account_code": "1105", "ifrs_line": "Inventories", "notes": null },
+    { "account_code": "1106", "ifrs_line": "Other current assets", "notes": null },
+    { "account_code": "1107", "ifrs_line": "Other current assets", "notes": "TDS receivable" },
+    { "account_code": "1201", "ifrs_line": "Property, plant and equipment", "notes": null },
+    { "account_code": "1202", "ifrs_line": "Property, plant and equipment", "notes": null },
+    { "account_code": "1203", "ifrs_line": "Property, plant and equipment", "notes": null },
+    { "account_code": "1204", "ifrs_line": "Property, plant and equipment", "notes": null },
+    { "account_code": "1205", "ifrs_line": "Property, plant and equipment", "notes": "Accumulated depreciation (contra)" },
+    { "account_code": "2101", "ifrs_line": "Trade payables", "notes": null },
+    { "account_code": "2102", "ifrs_line": "Trade payables", "notes": null },
+    { "account_code": "2103", "ifrs_line": "Other current liabilities", "notes": "Accrued expenses" },
+    { "account_code": "2104", "ifrs_line": "Current tax liabilities", "notes": null },
+    { "account_code": "2105", "ifrs_line": "Short-term borrowings", "notes": null },
+    { "account_code": "2106", "ifrs_line": "Other current liabilities", "notes": "Provident fund liability" },
+    { "account_code": "2107", "ifrs_line": "Other current liabilities", "notes": "Savings fund liability" },
+    { "account_code": "2201", "ifrs_line": "Long-term borrowings", "notes": null },
+    { "account_code": "2202", "ifrs_line": "Long-term borrowings", "notes": "Directors loan" },
+    { "account_code": "3101", "ifrs_line": "Issued capital", "notes": null },
+    { "account_code": "3102", "ifrs_line": "Retained earnings", "notes": null },
+    { "account_code": "3103", "ifrs_line": "Retained earnings", "notes": "Owner drawings (contra equity)" },
+    { "account_code": "4101", "ifrs_line": "Revenue", "notes": null },
+    { "account_code": "4102", "ifrs_line": "Revenue", "notes": null },
+    { "account_code": "4103", "ifrs_line": "Other income", "notes": null },
+    { "account_code": "4104", "ifrs_line": "Other income", "notes": "Discount received" },
+    { "account_code": "4105", "ifrs_line": "Revenue", "notes": "Sales return (contra revenue)" },
+    { "account_code": "5101", "ifrs_line": "Cost of sales", "notes": "Purchases" },
+    { "account_code": "5102", "ifrs_line": "Cost of sales", "notes": null },
+    { "account_code": "5103", "ifrs_line": "Cost of sales", "notes": "Purchase return (contra)" },
+    { "account_code": "5201", "ifrs_line": "Administrative expenses", "notes": null },
+    { "account_code": "5202", "ifrs_line": "Administrative expenses", "notes": null },
+    { "account_code": "5203", "ifrs_line": "Administrative expenses", "notes": "Utilities" },
+    { "account_code": "5204", "ifrs_line": "Administrative expenses", "notes": null },
+    { "account_code": "5205", "ifrs_line": "Distribution costs", "notes": "Transportation" },
+    { "account_code": "5206", "ifrs_line": "Distribution costs", "notes": "Marketing" },
+    { "account_code": "5207", "ifrs_line": "Administrative expenses", "notes": "Internet bill" },
+    { "account_code": "5208", "ifrs_line": "Administrative expenses", "notes": "Maintenance" },
+    { "account_code": "5209", "ifrs_line": "Administrative expenses", "notes": "Provident fund expense" },
+    { "account_code": "5210", "ifrs_line": "Administrative expenses", "notes": "Savings fund expense" },
+    { "account_code": "5301", "ifrs_line": "Finance costs", "notes": "Bank charges" },
+    { "account_code": "5302", "ifrs_line": "Finance costs", "notes": null },
+    { "account_code": "6101", "ifrs_line": "Current tax liabilities", "notes": "Input VAT (recoverable)" },
+    { "account_code": "6102", "ifrs_line": "Current tax liabilities", "notes": "Output VAT" },
+    { "account_code": "6103", "ifrs_line": "Current tax liabilities", "notes": "VAT payable duplicate" }
   ],
+
   "sequences": [
     {
       "id": "contra_voucher",
