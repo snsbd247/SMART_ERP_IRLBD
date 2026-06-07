@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { isLaravelMode } from "@/lib/laravel-auth";
 
 export interface BrandingSettings {
   software_name: string;
@@ -48,6 +49,11 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchBranding = useCallback(async () => {
+    if (isLaravelMode()) {
+      setLoading(false);
+      return;
+    }
+
     const { data } = await supabase
       .from("system_settings")
       .select("setting_key, setting_value")

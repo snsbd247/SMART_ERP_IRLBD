@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { isLaravelMode } from "@/lib/laravel-auth";
 
 export interface CompanySettings {
   id: string;
@@ -22,6 +23,12 @@ export function useCompanySettings() {
   const [loading, setLoading] = useState(true);
 
   const fetch = async () => {
+    if (isLaravelMode()) {
+      setSettings(null);
+      setLoading(false);
+      return;
+    }
+
     const { data } = await supabase
       .from("company_settings" as any)
       .select("*")
