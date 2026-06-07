@@ -20,6 +20,7 @@ APP_DIR="${APP_DIR:-/opt/smarterp}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
 PHP_VERSION="${PHP_VERSION:-8.2}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/smarterp}"
+STARTED_UPDATE_SHA="$(sha256sum "$0" 2>/dev/null | awk '{print $1}' || true)"
 
 C_GREEN='\033[0;32m'; C_YELLOW='\033[1;33m'; C_RED='\033[0;31m'; C_NC='\033[0m'
 log()  { echo -e "${C_GREEN}[$(date +%H:%M:%S)]${C_NC} $*"; }
@@ -29,11 +30,54 @@ err()  { echo -e "${C_RED}[ERR ]${C_NC} $*" >&2; }
 if [[ $EUID -ne 0 ]]; then err "Run as root (sudo ./update.sh)"; exit 1; fi
 if [[ ! -d "${APP_DIR}/.git" ]]; then err "${APP_DIR} is not a git checkout. Run clone.sh first."; exit 1; fi
 
+install_deploy_runner() {
+  if [[ ! -f "${APP_DIR}/deploy/vps/deploy-runner.sh" ]]; then
+    warn "deploy-runner.sh not found; Pull & Deploy runner was not refreshed."
+    return 0
+  fi
+
+  log "Refreshing Pull & Deploy runner (/usr/local/bin/smarterp-deploy)..."
+  install -m 0755 -o root -g root "${APP_DIR}/deploy/vps/deploy-runner.sh" /usr/local/bin/smarterp-deploy
+  sed -i "s|^APP_DIR=.*|APP_DIR=\"${APP_DIR}\"|" /usr/local/bin/smarterp-deploy
+
+  touch /var/log/smarterp-deploy.log /var/log/smarterp-deploy.state
+  chown www-data:www-data /var/log/smarterp-deploy.log /var/log/smarterp-deploy.state
+  chmod 0664 /var/log/smarterp-deploy.log /var/log/smarterp-deploy.state
+
+  local sudoers_tmp
+  sudoers_tmp="$(mktemp)"
+  cat > "${sudoers_tmp}" <<SUDO
+www-data ALL=(root) NOPASSWD: /usr/local/bin/smarterp-deploy
+Defaults!/usr/local/bin/smarterp-deploy !requiretty
+SUDO
+  chmod 0440 "${sudoers_tmp}"
+  if visudo -cf "${sudoers_tmp}" >/dev/null; then
+    install -m 0440 -o root -g root "${sudoers_tmp}" /etc/sudoers.d/smarterp-deploy
+    rm -f "${sudoers_tmp}"
+  else
+    rm -f "${sudoers_tmp}"
+    err "Generated sudoers file is invalid; Pull & Deploy runner not installed."
+    exit 1
+  fi
+
+  sudo -u www-data sudo -n /usr/local/bin/smarterp-deploy --check >/dev/null \
+    || warn "Pull & Deploy sudo check failed; verify /etc/sudoers.d/smarterp-deploy."
+}
+
 cd "${APP_DIR}"
 log "Pulling latest from origin/${REPO_BRANCH}..."
 git fetch --all --prune
 git checkout "${REPO_BRANCH}"
 git reset --hard "origin/${REPO_BRANCH}"
+
+LATEST_UPDATE_SHA="$(sha256sum "${APP_DIR}/deploy/vps/update.sh" 2>/dev/null | awk '{print $1}' || true)"
+if [[ "${SMARTERP_UPDATE_REEXECED:-0}" != "1" && -n "${STARTED_UPDATE_SHA}" && -n "${LATEST_UPDATE_SHA}" && "${STARTED_UPDATE_SHA}" != "${LATEST_UPDATE_SHA}" ]]; then
+  log "update.sh changed during pull; restarting once with the latest script..."
+  export SMARTERP_UPDATE_REEXECED=1
+  exec bash "${APP_DIR}/deploy/vps/update.sh"
+fi
+
+install_deploy_runner
 
 log "Rebuilding frontend..."
 if [[ -f package.json ]]; then
@@ -125,24 +169,6 @@ SQL
 
   chown -R www-data:www-data storage bootstrap/cache public
   chmod -R 775 storage bootstrap/cache
-fi
-
-# Refresh the Pull & Deploy runner + sudoers (idempotent).
-if [[ -f "${APP_DIR}/deploy/vps/deploy-runner.sh" ]]; then
-  log "Refreshing /usr/local/bin/smarterp-deploy ..."
-  install -m 0755 -o root -g root "${APP_DIR}/deploy/vps/deploy-runner.sh" /usr/local/bin/smarterp-deploy
-  sed -i "s|^APP_DIR=.*|APP_DIR=\"${APP_DIR}\"|" /usr/local/bin/smarterp-deploy
-  touch /var/log/smarterp-deploy.log
-  chown www-data:www-data /var/log/smarterp-deploy.log
-  chmod 0664 /var/log/smarterp-deploy.log
-  if [[ ! -f /etc/sudoers.d/smarterp-deploy ]]; then
-    cat > /etc/sudoers.d/smarterp-deploy <<SUDO
-www-data ALL=(root) NOPASSWD: /usr/local/bin/smarterp-deploy
-Defaults!/usr/local/bin/smarterp-deploy !requiretty
-SUDO
-    chmod 0440 /etc/sudoers.d/smarterp-deploy
-    visudo -cf /etc/sudoers.d/smarterp-deploy >/dev/null || rm -f /etc/sudoers.d/smarterp-deploy
-  fi
 fi
 
 log "Reloading services..."
