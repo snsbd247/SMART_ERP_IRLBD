@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Carbon;
 
 class UpdateLastSeen
 {
@@ -16,7 +17,7 @@ class UpdateLastSeen
         $user = auth()->user();
 
         if ($user) {
-            $lastSeenAt = $user->last_seen_at;
+            $lastSeenAt = $user->last_seen_at ? Carbon::parse($user->last_seen_at) : null;
             $recentlyUpdated = $user->is_online && $lastSeenAt && $lastSeenAt->gt(now()->subMinutes(5));
 
             if (!$recentlyUpdated) {
