@@ -392,6 +392,13 @@ class DatabaseSeeder extends Seeder
                 ]
             );
         }
+
+        // ---------- 9. Demo Configuration Bundle ----------
+        // Imports CoA upgrades, IFRS mapping, extra roles/permissions,
+        // additional document numbering, and page shortcuts from
+        // database/seeders/data/demo_config_seed.json. Idempotent.
+        $this->call(DemoConfigSeeder::class);
     }
 }
+
 
