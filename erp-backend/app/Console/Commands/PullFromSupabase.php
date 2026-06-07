@@ -26,7 +26,9 @@ class PullFromSupabase extends Command
     protected $signature = 'data:pull-from-supabase
                             {--truncate : Truncate target MySQL tables before import}
                             {--only= : Comma-separated list of tables (default: all)}
-                            {--dry-run : Show counts only}';
+                            {--dry-run : Show counts only}
+                            {--url= : Supabase URL (overrides env)}
+                            {--key= : Supabase service_role key (overrides env)}';
     protected $description = 'One-off: pull all data from a Supabase project into MySQL via REST API';
 
     /**
