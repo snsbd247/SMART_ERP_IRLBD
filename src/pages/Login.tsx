@@ -60,6 +60,9 @@ const Login = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      if (isLaravelMode()) {
+        throw new Error("Password reset is managed by the VPS Laravel backend. Please ask an admin to reset your password.");
+      }
       const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
@@ -143,9 +146,11 @@ const Login = () => {
                 </Button>
               </form>
               <div className="mt-4 flex items-center justify-between">
-                <button type="button" className="text-xs text-primary hover:underline" onClick={() => setForgotMode(true)}>
-                  Forgot password?
-                </button>
+                {!isLaravelMode() ? (
+                  <button type="button" className="text-xs text-primary hover:underline" onClick={() => setForgotMode(true)}>
+                    Forgot password?
+                  </button>
+                ) : <span />}
                 <a href="/employee/verify" className="text-xs text-primary hover:underline">
                   Verify Employee
                 </a>
