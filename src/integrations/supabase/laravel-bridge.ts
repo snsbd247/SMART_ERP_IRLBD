@@ -88,11 +88,10 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
   select(cols = "*"): this {
     if (this._mode === "insert" || this._mode === "update" || this._mode === "upsert") {
       this._returning = true;
-      // strip relation hints: "rel(*)" -> drop
     } else {
       this._mode = "select";
     }
-    this._select = cols === "*" ? undefined : cols.split(",").map(s => s.trim()).filter(c => !c.includes("(")).join(",") || undefined;
+    this._select = cols === "*" ? undefined : stripRelationCols(cols) || undefined;
     return this;
   }
 
