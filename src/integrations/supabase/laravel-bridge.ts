@@ -55,6 +55,10 @@ function buildQS(params: {
   const sp = new URLSearchParams();
   if (params.select) sp.set("select", params.select);
   for (const f of params.filters) {
+    // Dotted columns (e.g. "acc_vouchers.status") are PostgREST relation
+    // filters — the generic Laravel endpoint cannot honor them, so drop
+    // silently to avoid 500s. Callers must filter via the parent table.
+    if (f.col.includes(".")) continue;
     const key = `f[${f.col}][${f.op}]`;
     if (f.op === "in" && Array.isArray(f.val)) sp.append(key, f.val.join(","));
     else sp.append(key, f.val === null ? "null" : String(f.val));
