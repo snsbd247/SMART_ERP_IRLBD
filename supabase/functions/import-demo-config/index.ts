@@ -60,8 +60,36 @@ Deno.serve(async (req) => {
     const { data: isSA } = await admin.rpc("is_super_admin", { _uid: userId });
     if (!isSA) return json({ success: false, error: "Super Admin only" }, 403);
 
+    // Optional reset flag — wipes ONLY configuration tables (no transactional data).
+    // Safe Extension: vouchers, invoices, stock, payroll are untouched.
+    let body: { reset?: boolean } = {};
+    try { body = await req.json(); } catch { /* no body */ }
+    const doReset = body?.reset === true;
+    const resetLog: string[] = [];
+
+    if (doReset) {
+      // Order matters: dependents first.
+      const resetTables = [
+        "role_permissions",
+        "user_custom_roles",
+        "custom_roles",
+        "ifrs_account_mapping",
+        "page_shortcuts",
+        "number_sequences",
+        "chart_of_accounts", // last — others may FK to it
+      ];
+      for (const t of resetTables) {
+        const { error } = await admin.from(t).delete().not("id", "is", null);
+        if (error) resetLog.push(`${t}: ${error.message}`);
+        else resetLog.push(`${t}: cleared`);
+      }
+    }
+
     const s = seed as Seed;
     const results: SectionResult[] = [];
+    if (doReset) {
+      results.push({ section: "reset", label: "Reset configuration tables", attempted: 7, inserted: 7, skipped: 0, status: "ok" });
+    }
 
     // ── 1) Chart of Accounts ──
     const coaRes: SectionResult = { section: "chart_of_accounts", label: "Chart of Accounts", attempted: s.coa.length, inserted: 0, skipped: 0, status: "ok" };
