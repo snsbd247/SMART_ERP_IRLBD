@@ -68,10 +68,12 @@ class GenericTableController extends BaseController
             if ($cols) $query->select($cols);
         }
 
-        // Filters: ?f[col][op]=value
+        // Filters: ?f[col][op]=value  (skip unknown columns to avoid 500s)
         $filters = (array) $request->query('f', []);
+        $tableCols = Schema::getColumnListing($table);
         foreach ($filters as $col => $ops) {
             if (!is_array($ops) || !preg_match('/^[a-z_][a-z0-9_]*$/i', $col)) continue;
+            if (!in_array($col, $tableCols, true)) continue; // ignore relation/foreign cols
             foreach ($ops as $op => $val) {
                 if ($op === 'in') {
                     $vals = is_array($val) ? $val : explode(',', (string) $val);
@@ -82,7 +84,6 @@ class GenericTableController extends BaseController
                     else $query->where($col, '=', $val);
                 } elseif (isset(self::ALLOWED_OPS[$op])) {
                     $sql = self::ALLOWED_OPS[$op];
-                    // MySQL has no ILIKE — fall back to LIKE lower-cased
                     if ($sql === 'ILIKE') {
                         $query->whereRaw("LOWER($col) LIKE ?", [strtolower((string) $val)]);
                     } else {
