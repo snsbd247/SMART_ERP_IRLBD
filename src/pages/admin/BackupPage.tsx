@@ -78,6 +78,7 @@ const BackupPage = () => {
   const [demoResults, setDemoResults] = useState<Array<{ section: string; label: string; attempted: number; inserted: number; skipped: number; status: string; error?: string }> | null>(null);
   const [demoOverall, setDemoOverall] = useState<"success" | "partial" | null>(null);
   const [confirmDemo, setConfirmDemo] = useState(false);
+  const [confirmResetDemo, setConfirmResetDemo] = useState(false);
 
   const DEMO_STEPS = [
     "Chart of Accounts",
@@ -87,17 +88,18 @@ const BackupPage = () => {
     "Page Shortcuts",
   ];
 
-  const handleImportDemoConfig = async () => {
+  const handleImportDemoConfig = async (reset = false) => {
     if (!isSuperAdmin) {
       toast({ title: "Access Denied", description: "Only Super Admins can run demo import.", variant: "destructive" });
       return;
     }
     setConfirmDemo(false);
+    setConfirmResetDemo(false);
     setImportingDemo(true);
     setDemoResults(null);
     setDemoOverall(null);
     setDemoProgress(5);
-    setDemoStatus("Validating Super Admin access...");
+    setDemoStatus(reset ? "Resetting configuration tables..." : "Validating Super Admin access...");
 
     // Simulated step progress (the server runs the full import in one call).
     let step = 0;
@@ -113,11 +115,12 @@ const BackupPage = () => {
         const res = await fetch(`${API_BASE}/v1/admin/demo/import-config`, {
           method: "POST",
           headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ reset }),
         });
         payload = await res.json().catch(() => ({ message: `Failed (HTTP ${res.status})` }));
         if (!res.ok) throw new Error(payload.message || payload.error || `HTTP ${res.status}`);
       } else {
-        const { data, error } = await supabase.functions.invoke("import-demo-config", { body: {} });
+        const { data, error } = await supabase.functions.invoke("import-demo-config", { body: { reset } });
         if (error) throw error;
         payload = data;
         if (payload && payload.success === false && !payload.results) throw new Error(payload.error || "Import failed");
