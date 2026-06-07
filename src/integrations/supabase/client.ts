@@ -1,14 +1,19 @@
 // Supabase client — env-driven so the same build works against
 // Lovable Cloud, Supabase Cloud, OR a self-hosted Supabase instance.
-// Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env (or .env.production).
+// In Laravel-only mode (VPS) we export a drop-in bridge that routes all
+// .from/.storage/.functions calls through the Laravel REST API instead.
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
+import { laravelSupabaseBridge } from './laravel-bridge';
 
 function isLaravelOnlyRuntime(): boolean {
-  if (typeof window !== "undefined" && window.location.hostname === "erp.irlbd.com") {
-    return true;
+  if (typeof window !== "undefined") {
+    if (window.location.hostname === "erp.irlbd.com") return true;
+    if ((window as any).__FORCE_LARAVEL_FALLBACK__) return true;
+    try {
+      if (sessionStorage.getItem("force_laravel_fallback")) return true;
+    } catch { /* ignore */ }
   }
-
   return Boolean(
     (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
     (import.meta.env.VITE_API_URL as string | undefined)
@@ -24,55 +29,38 @@ function clearSupabaseBrowserSession() {
     .forEach((key) => window.localStorage.removeItem(key));
 }
 
-function getRuntimeSupabaseUrl(): string {
-  if (LARAVEL_ONLY_MODE) {
-    return typeof window !== "undefined"
-      ? `${window.location.origin}/supabase-disabled`
-      : "http://localhost/supabase-disabled";
-  }
-
-  const configured = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-  if (configured) return configured.replace(/\/+$/, "");
-
-  if (typeof window !== "undefined") {
-    const parts = window.location.hostname.split(".");
-    if (parts.length >= 2) {
-      const rootDomain = parts.slice(-2).join(".");
-      return `https://supabase.${rootDomain}`;
-    }
-  }
-
-  return "https://ezwsrtsqiumhxukwgiou.supabase.co";
-}
-
-const SUPABASE_URL = getRuntimeSupabaseUrl();
-
-function getRuntimeSupabaseKey(): string {
-  if (LARAVEL_ONLY_MODE) {
-    return "vps-laravel-mode-no-supabase";
-  }
-
-  const configured = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
-  return configured || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6d3NydHNxaXVtaHh1a3dnaW91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzcxMzksImV4cCI6MjA4OTIxMzEzOX0.NFasz7XQPa3pmyTkzRRsozGXHWoHSldARGuyde6q-iE";
-}
-
-const SUPABASE_PUBLISHABLE_KEY = getRuntimeSupabaseKey();
-
 clearSupabaseBrowserSession();
 
-const disabledSupabaseFetch: typeof fetch = async () => new Response(
-  JSON.stringify({ message: "Supabase is disabled in Laravel VPS mode." }),
-  { status: 503, headers: { "Content-Type": "application/json" } }
-);
+// ─── Laravel-only VPS mode ──────────────────────────────────────────────
+// Export the bridge as `supabase` so every existing `supabase.from(...)`,
+// `supabase.storage.from(...)`, `supabase.functions.invoke(...)` call works
+// without touching the actual Supabase service.
+function makeLaravelOnlyClient() {
+  // eslint-disable-next-line no-console
+  console.info("[supabase] Laravel-only VPS mode — Supabase calls are routed to /api/v1/db/*");
+  return laravelSupabaseBridge as unknown as ReturnType<typeof createClient<Database>>;
+}
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    storage: LARAVEL_ONLY_MODE || typeof window === "undefined" ? undefined : window.localStorage,
-    persistSession: !LARAVEL_ONLY_MODE,
-    autoRefreshToken: !LARAVEL_ONLY_MODE,
-    detectSessionInUrl: !LARAVEL_ONLY_MODE,
-  },
-  ...(LARAVEL_ONLY_MODE ? {
-    global: { fetch: disabledSupabaseFetch },
-  } : {}),
-});
+// ─── Real Supabase client (Cloud / preview / *.lovable.app) ─────────────
+function makeSupabaseClient() {
+  const SUPABASE_URL =
+    (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/+$/, "") ||
+    "https://ezwsrtsqiumhxukwgiou.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY =
+    (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6d3NydHNxaXVtaHh1a3dnaW91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzcxMzksImV4cCI6MjA4OTIxMzEzOX0.NFasz7XQPa3pmyTkzRRsozGXHWoHSldARGuyde6q-iE";
+
+  return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+      storage: typeof window === "undefined" ? undefined : window.localStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
+}
+
+export const supabase = LARAVEL_ONLY_MODE ? makeLaravelOnlyClient() : makeSupabaseClient();
+
+/** Exposed for diagnostics pages — true on VPS, false on Cloud preview. */
+export const IS_LARAVEL_ONLY = LARAVEL_ONLY_MODE;
