@@ -101,6 +101,11 @@ PY
 # ===================== 1. SYSTEM PREP ======================
 log "Step 1/9  Updating system & installing base packages..."
 export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
+export NEEDRESTART_SUSPEND=1
+mkdir -p /etc/needrestart/conf.d
+echo "\$nrconf{restart} = 'a';" > /etc/needrestart/conf.d/99-auto.conf
+echo "\$nrconf{kernelhints} = 0;" >> /etc/needrestart/conf.d/99-auto.conf
 apt-get update -y
 apt-get install -y curl wget git unzip zip ca-certificates gnupg lsb-release \
   software-properties-common openssl python3 python3-pip ufw jq net-tools
