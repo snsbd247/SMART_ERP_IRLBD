@@ -105,25 +105,37 @@ class DeployController extends Controller
     /** GET /api/v1/admin/deploy/status — running flag + last 200 log lines. */
     public function status(Request $request)
     {
-        $this->guard($request);
+        try {
+            $this->guard($request);
 
-        $running = $this->isRunning();
-        $state   = is_file(self::STATE_FILE) ? trim((string) @file_get_contents(self::STATE_FILE)) : 'idle';
-        if (!$running && $state === 'running') {
-            // Process ended; mark final state based on last log line.
-            $state = $this->detectFinalState();
-            @file_put_contents(self::STATE_FILE, $state);
+            $running = $this->isRunning();
+            $state   = is_file(self::STATE_FILE) ? trim((string) @file_get_contents(self::STATE_FILE)) : 'idle';
+            if (!$running && $state === 'running') {
+                // Process ended; mark final state based on last log line.
+                $state = $this->detectFinalState();
+                $this->safeWrite(self::STATE_FILE, $state);
+            }
+
+            $log = $this->tailLog(200);
+
+            return response()->json([
+                'success'  => true,
+                'running'  => $running,
+                'state'    => $state,       // idle | running | success | failed
+                'log'      => $log,
+                'log_size' => is_file(self::LOG_FILE) ? @filesize(self::LOG_FILE) : 0,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Deploy status failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success'  => false,
+                'running'  => false,
+                'state'    => 'failed',
+                'log'      => $this->tailLog(200),
+                'log_size' => is_file(self::LOG_FILE) ? @filesize(self::LOG_FILE) : 0,
+                'message'  => 'Deploy status failed: ' . $e->getMessage(),
+            ], 500);
         }
-
-        $log = $this->tailLog(200);
-
-        return response()->json([
-            'success'  => true,
-            'running'  => $running,
-            'state'    => $state,       // idle | running | success | failed
-            'log'      => $log,
-            'log_size' => is_file(self::LOG_FILE) ? @filesize(self::LOG_FILE) : 0,
-        ]);
     }
 
     private function isRunning(): bool
