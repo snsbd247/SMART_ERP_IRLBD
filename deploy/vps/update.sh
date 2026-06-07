@@ -89,6 +89,13 @@ if [[ -d "${APP_DIR}/erp-backend" ]]; then
   php artisan route:cache
   php artisan view:cache
 
+  if [[ -d "${APP_DIR}/dist" ]]; then
+    log "Copying built frontend into Laravel public/ ..."
+    rm -rf "${APP_DIR}/erp-backend/public/assets" 2>/dev/null || true
+    rsync -a --exclude='index.php' --exclude='.htaccess' --exclude='storage' \
+      "${APP_DIR}/dist/" "${APP_DIR}/erp-backend/public/"
+  fi
+
   chown -R www-data:www-data storage bootstrap/cache public
   chmod -R 775 storage bootstrap/cache
 fi
