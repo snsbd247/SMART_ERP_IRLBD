@@ -73,35 +73,79 @@ const BackupPage = () => {
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [importingDemo, setImportingDemo] = useState(false);
-  const [demoStats, setDemoStats] = useState<Record<string, number> | null>(null);
+  const [demoProgress, setDemoProgress] = useState(0);
+  const [demoStatus, setDemoStatus] = useState<string>("");
+  const [demoResults, setDemoResults] = useState<Array<{ section: string; label: string; attempted: number; inserted: number; skipped: number; status: string; error?: string }> | null>(null);
+  const [demoOverall, setDemoOverall] = useState<"success" | "partial" | null>(null);
   const [confirmDemo, setConfirmDemo] = useState(false);
 
+  const DEMO_STEPS = [
+    "Chart of Accounts",
+    "IFRS Account Mapping",
+    "Roles & Permissions",
+    "Document Numbering",
+    "Page Shortcuts",
+  ];
+
   const handleImportDemoConfig = async () => {
+    if (!isSuperAdmin) {
+      toast({ title: "Access Denied", description: "Only Super Admins can run demo import.", variant: "destructive" });
+      return;
+    }
     setConfirmDemo(false);
     setImportingDemo(true);
-    setDemoStats(null);
+    setDemoResults(null);
+    setDemoOverall(null);
+    setDemoProgress(5);
+    setDemoStatus("Validating Super Admin access...");
+
+    // Simulated step progress (the server runs the full import in one call).
+    let step = 0;
+    const stepTimer = window.setInterval(() => {
+      step = Math.min(step + 1, DEMO_STEPS.length - 1);
+      setDemoStatus(`Importing: ${DEMO_STEPS[step]}...`);
+      setDemoProgress(Math.min(15 + step * 15, 85));
+    }, 700);
+
     try {
+      let payload: any = null;
       if (USE_LARAVEL) {
         const res = await fetch(`${API_BASE}/v1/admin/demo/import-config`, {
           method: "POST",
           headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         });
-        const result = await res.json().catch(() => ({ message: `Failed (HTTP ${res.status})` }));
-        if (!res.ok || result.success === false) throw new Error(result.message || result.error || "Import failed");
-        setDemoStats(result?.data?.stats || result?.stats || null);
+        payload = await res.json().catch(() => ({ message: `Failed (HTTP ${res.status})` }));
+        if (!res.ok) throw new Error(payload.message || payload.error || `HTTP ${res.status}`);
       } else {
         const { data, error } = await supabase.functions.invoke("import-demo-config", { body: {} });
         if (error) throw error;
-        if (data && data.success === false) throw new Error(data.error || "Import failed");
-        setDemoStats(data?.stats || null);
+        payload = data;
+        if (payload && payload.success === false && !payload.results) throw new Error(payload.error || "Import failed");
       }
-      toast({ title: "Demo configuration imported", description: "Chart of Accounts, IFRS, Roles, Numbering, Shortcuts loaded." });
+
+      const results = payload?.results || payload?.data?.results || null;
+      const overall: "success" | "partial" = payload?.overall || payload?.data?.overall || (payload?.success ? "success" : "partial");
+      setDemoResults(results);
+      setDemoOverall(overall);
+      setDemoProgress(100);
+      setDemoStatus(overall === "success" ? "Import completed successfully." : "Import completed with warnings.");
+
+      const total = results ? results.reduce((n: number, r: any) => n + (r.inserted || 0), 0) : 0;
+      toast({
+        title: overall === "success" ? "Demo configuration imported" : "Demo import finished with warnings",
+        description: `${total} new rows added across ${results?.length ?? 5} sections.`,
+        variant: overall === "success" ? "default" : "destructive",
+      });
     } catch (err: any) {
+      setDemoProgress(100);
+      setDemoStatus("Import failed.");
       toast({ title: "Import failed", description: err.message, variant: "destructive" });
     } finally {
+      window.clearInterval(stepTimer);
       setImportingDemo(false);
     }
   };
+
 
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
