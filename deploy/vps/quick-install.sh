@@ -113,6 +113,12 @@ else
   php artisan migrate --seed --force
 fi
 php artisan storage:link --force >/dev/null 2>&1 || true
+MYSQL_PWD="${DB_PASS}" mysql -h 127.0.0.1 -u "${DB_USER}" "${DB_NAME}" <<SQL
+INSERT INTO system_settings (setting_key, setting_value, is_encrypted, created_at, updated_at)
+VALUES ('setup_completed', 'true', 0, NOW(), NOW())
+ON DUPLICATE KEY UPDATE setting_value = 'true', updated_at = NOW();
+SQL
+touch storage/installed
 php artisan config:cache
 php artisan route:cache || true
 chown -R www-data:www-data "${APP_DIR}/erp-backend/storage" \
