@@ -37,30 +37,23 @@ export default function BrandingPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const entries = Object.entries(form).map(([key, value]) => ({
+      const rows = Object.entries(form).map(([key, value]) => ({
         setting_key: key,
-        setting_value: String(value),
+        setting_value: String(value ?? ""),
+        updated_at: new Date().toISOString(),
       }));
 
-      for (const entry of entries) {
-        const { error } = await supabase
-          .from("system_settings")
-          .update({ setting_value: entry.setting_value, updated_at: new Date().toISOString() })
-          .eq("setting_key", entry.setting_key);
+      // Upsert by unique key — works for both new and existing settings.
+      const { error } = await supabase
+        .from("system_settings")
+        .upsert(rows, { onConflict: "setting_key" });
 
-        if (error) {
-          // Try insert if update fails (no row matched)
-          await supabase.from("system_settings").insert({
-            setting_key: entry.setting_key,
-            setting_value: entry.setting_value,
-          });
-        }
-      }
+      if (error) throw error;
 
       await refetch();
       toast({ title: "Branding Updated", description: "All branding settings have been saved successfully." });
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
