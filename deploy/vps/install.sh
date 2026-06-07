@@ -263,10 +263,10 @@ cd "${APP_DIR}"
 
 # Frontend env
 cat > .env.production <<EOF
-VITE_SUPABASE_URL=https://${SUPABASE_SUBDOMAIN}
-VITE_SUPABASE_PUBLISHABLE_KEY=${ANON_KEY}
-VITE_SUPABASE_PROJECT_ID=self-hosted
 VITE_API_BASE_URL=https://${DOMAIN}/api
+VITE_SUPABASE_URL=https://${DOMAIN}/supabase-disabled
+VITE_SUPABASE_PUBLISHABLE_KEY=vps-laravel-mode-no-supabase
+VITE_SUPABASE_PROJECT_ID=vps-laravel
 EOF
 
 npm install --legacy-peer-deps --no-audit --no-fund
