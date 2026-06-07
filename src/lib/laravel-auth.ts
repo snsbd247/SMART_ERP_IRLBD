@@ -11,7 +11,11 @@ export function getApiBaseUrl(): string | null {
     (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
     (import.meta.env.VITE_API_URL as string | undefined) ||
     null;
-  if (!url && typeof window !== "undefined" && window.location.hostname === "erp.irlbd.com") {
+  if (
+    !url &&
+    typeof window !== "undefined" &&
+    ["erp.irlbd.com", "accounting.syncsolutionbd.com"].includes(window.location.hostname)
+  ) {
     return `${window.location.origin}/api`;
   }
   if (!url) return null;
