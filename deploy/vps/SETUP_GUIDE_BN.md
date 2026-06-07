@@ -1,5 +1,18 @@
 # 🚀 SmartERP — VPS Setup Guide (erp.irlbd.com)
 
+## 🌐 ডোমেইন স্ট্র্যাটেজি (গুরুত্বপূর্ণ)
+
+এই প্রজেক্টের **দুইটা সম্পূর্ণ আলাদা environment** আছে — এদের মধ্যে কোন backend শেয়ার নেই:
+
+| Environment | Domain | Backend | Database |
+|---|---|---|---|
+| **Lovable Preview / Demo** | `accounting.syncsolutionbd.com`, `audit-treasure.lovable.app`, `*.lovable.app/dev` | Cloud Supabase (edge functions) | Cloud Supabase Postgres |
+| **VPS Production** | `erp.irlbd.com` | Laravel API (`/api`, same-origin) | VPS MySQL (`smarterp`) |
+
+Frontend code (`src/lib/laravel-auth.ts`) hostname দেখে নিজে থেকেই সঠিক backend বেছে নেয় — VPS-এ deploy করতে গেলে আপনাকে কিছু override করতে হবে না। **VPS এ Cloud Supabase কখনো call হয় না**, Lovable preview-তে Laravel API কখনো call হয় না।
+
+---
+
 আপনার সার্ভার তথ্য:
 
 | বিষয় | মান |
