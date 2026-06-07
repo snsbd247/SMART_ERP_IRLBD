@@ -497,14 +497,28 @@ const BackupPage = () => {
                 <p className="font-medium">✔ Safe to run</p>
                 <p>Idempotent — existing records are kept untouched. Only missing rows are inserted. No transactional data (vouchers, invoices, stock) is touched.</p>
               </div>
-              <Button
-                onClick={() => setConfirmDemo(true)}
-                disabled={importingDemo || !isSuperAdmin}
-                className="w-full"
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
-                {importingDemo ? "Importing..." : "Import demo configuration"}
-              </Button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button
+                  onClick={() => setConfirmDemo(true)}
+                  disabled={importingDemo || !isSuperAdmin}
+                  className="w-full"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  {importingDemo ? "Working..." : "Import (keep existing)"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setConfirmResetDemo(true)}
+                  disabled={importingDemo || !isSuperAdmin}
+                  className="w-full"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Reset &amp; Re-import
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground -mt-2">
+                <strong>Reset &amp; Re-import</strong> wipes only the 5 configuration tables (CoA, IFRS, Roles, Numbering, Shortcuts) and re-seeds them fresh. Vouchers, invoices, stock and payroll are NOT touched.
+              </p>
 
               {(importingDemo || demoProgress > 0) && (
                 <div className="space-y-2 pt-2">
@@ -790,6 +804,23 @@ const BackupPage = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDemo(false)}>Cancel</Button>
             <Button onClick={() => handleImportDemoConfig(false)}><Sparkles className="w-4 h-4 mr-2" />Yes, import</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmResetDemo} onOpenChange={setConfirmResetDemo}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="w-5 h-5" />Reset &amp; Re-import?</DialogTitle>
+            <DialogDescription>
+              This will <strong>delete all rows</strong> from Chart of Accounts, IFRS Mapping, Roles &amp; Permissions, Document Numbering and Page Shortcuts, then re-seed them from the demo configuration. Users will be unassigned from their custom roles. Vouchers, invoices, stock and payroll are NOT touched.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmResetDemo(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => handleImportDemoConfig(true)}>
+              <RefreshCw className="w-4 h-4 mr-2" />Yes, reset &amp; re-import
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
