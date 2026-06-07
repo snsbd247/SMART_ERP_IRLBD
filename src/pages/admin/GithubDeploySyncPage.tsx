@@ -431,24 +431,6 @@ export default function GithubDeploySyncPage() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => downloadDryRun("json")}
-                disabled={!lastDryRun}
-                title="Download last Dry-Run as JSON"
-              >
-                <Download className="h-4 w-4 mr-1.5" />
-                JSON
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => downloadDryRun("csv")}
-                disabled={!lastDryRun}
-                title="Download last Dry-Run as CSV"
-              >
-                <Download className="h-4 w-4 mr-1.5" />
-                CSV
-              </Button>
-              <Button
-                variant="outline"
                 onClick={openRollback}
                 disabled={busy !== null}
                 className="text-rose-600 hover:text-rose-700 border-rose-200 hover:bg-rose-50 dark:border-rose-900/40 dark:hover:bg-rose-950/40"
