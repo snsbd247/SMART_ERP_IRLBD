@@ -36,6 +36,15 @@ if [[ -f package.json ]]; then
   npm run build
 fi
 
+# Deploy React build into Laravel public/ (SPA served as index.html)
+if [[ -d "${APP_DIR}/dist" && -d "${APP_DIR}/erp-backend/public" ]]; then
+  log "Copying dist/ -> erp-backend/public/ ..."
+  # Preserve Laravel's index.php, .htaccess, storage symlink
+  rsync -a --exclude='index.php' --exclude='.htaccess' --exclude='storage' \
+    "${APP_DIR}/dist/" "${APP_DIR}/erp-backend/public/"
+fi
+
+
 log "Installing backend (Laravel) deps..."
 if [[ -d "${APP_DIR}/erp-backend" ]]; then
   cd "${APP_DIR}/erp-backend"
