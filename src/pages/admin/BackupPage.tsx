@@ -78,6 +78,7 @@ const BackupPage = () => {
   const [demoResults, setDemoResults] = useState<Array<{ section: string; label: string; attempted: number; inserted: number; skipped: number; status: string; error?: string }> | null>(null);
   const [demoOverall, setDemoOverall] = useState<"success" | "partial" | null>(null);
   const [confirmDemo, setConfirmDemo] = useState(false);
+  const [confirmResetDemo, setConfirmResetDemo] = useState(false);
 
   const DEMO_STEPS = [
     "Chart of Accounts",
@@ -87,17 +88,18 @@ const BackupPage = () => {
     "Page Shortcuts",
   ];
 
-  const handleImportDemoConfig = async () => {
+  const handleImportDemoConfig = async (reset = false) => {
     if (!isSuperAdmin) {
       toast({ title: "Access Denied", description: "Only Super Admins can run demo import.", variant: "destructive" });
       return;
     }
     setConfirmDemo(false);
+    setConfirmResetDemo(false);
     setImportingDemo(true);
     setDemoResults(null);
     setDemoOverall(null);
     setDemoProgress(5);
-    setDemoStatus("Validating Super Admin access...");
+    setDemoStatus(reset ? "Resetting configuration tables..." : "Validating Super Admin access...");
 
     // Simulated step progress (the server runs the full import in one call).
     let step = 0;
@@ -113,11 +115,12 @@ const BackupPage = () => {
         const res = await fetch(`${API_BASE}/v1/admin/demo/import-config`, {
           method: "POST",
           headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ reset }),
         });
         payload = await res.json().catch(() => ({ message: `Failed (HTTP ${res.status})` }));
         if (!res.ok) throw new Error(payload.message || payload.error || `HTTP ${res.status}`);
       } else {
-        const { data, error } = await supabase.functions.invoke("import-demo-config", { body: {} });
+        const { data, error } = await supabase.functions.invoke("import-demo-config", { body: { reset } });
         if (error) throw error;
         payload = data;
         if (payload && payload.success === false && !payload.results) throw new Error(payload.error || "Import failed");
@@ -494,14 +497,28 @@ const BackupPage = () => {
                 <p className="font-medium">✔ Safe to run</p>
                 <p>Idempotent — existing records are kept untouched. Only missing rows are inserted. No transactional data (vouchers, invoices, stock) is touched.</p>
               </div>
-              <Button
-                onClick={() => setConfirmDemo(true)}
-                disabled={importingDemo || !isSuperAdmin}
-                className="w-full"
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
-                {importingDemo ? "Importing..." : "Import demo configuration"}
-              </Button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button
+                  onClick={() => setConfirmDemo(true)}
+                  disabled={importingDemo || !isSuperAdmin}
+                  className="w-full"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  {importingDemo ? "Working..." : "Import (keep existing)"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setConfirmResetDemo(true)}
+                  disabled={importingDemo || !isSuperAdmin}
+                  className="w-full"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Reset &amp; Re-import
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground -mt-2">
+                <strong>Reset &amp; Re-import</strong> wipes only the 5 configuration tables (CoA, IFRS, Roles, Numbering, Shortcuts) and re-seeds them fresh. Vouchers, invoices, stock and payroll are NOT touched.
+              </p>
 
               {(importingDemo || demoProgress > 0) && (
                 <div className="space-y-2 pt-2">
@@ -786,7 +803,24 @@ const BackupPage = () => {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDemo(false)}>Cancel</Button>
-            <Button onClick={handleImportDemoConfig}><Sparkles className="w-4 h-4 mr-2" />Yes, import</Button>
+            <Button onClick={() => handleImportDemoConfig(false)}><Sparkles className="w-4 h-4 mr-2" />Yes, import</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmResetDemo} onOpenChange={setConfirmResetDemo}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="w-5 h-5" />Reset &amp; Re-import?</DialogTitle>
+            <DialogDescription>
+              This will <strong>delete all rows</strong> from Chart of Accounts, IFRS Mapping, Roles &amp; Permissions, Document Numbering and Page Shortcuts, then re-seed them from the demo configuration. Users will be unassigned from their custom roles. Vouchers, invoices, stock and payroll are NOT touched.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmResetDemo(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => handleImportDemoConfig(true)}>
+              <RefreshCw className="w-4 h-4 mr-2" />Yes, reset &amp; re-import
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
