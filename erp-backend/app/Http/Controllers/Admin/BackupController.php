@@ -84,8 +84,12 @@ class BackupController extends BaseController
         }
 
         $request->validate([
-            'sql_file' => 'required|file|max:102400', // 100MB max
+            'sql_file' => 'required|file|max:512000', // 500MB max
         ]);
+
+        // Give the restore room to run on big SQL files
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(0);
 
         $file = $request->file('sql_file');
         $originalName = $file->getClientOriginalName();
@@ -119,13 +123,10 @@ class BackupController extends BaseController
                 throw new \RuntimeException('Uploaded SQL file not found at ' . $fullPath);
             }
 
-            // Try mysql command first
-            $restored = $this->tryMysqlRestore($fullPath);
-
-            if (!$restored) {
-                // Fallback: execute SQL line by line
-                $this->phpSqlRestore($fullPath);
-            }
+            // Always use the PHP-based restore. The `mysql` CLI is often missing
+            // on shared/VPS PHP-FPM environments, and even when present it
+            // silently swallows errors with --force which makes diagnosis hard.
+            [$ok, $skipped, $firstError] = $this->phpSqlRestore($fullPath);
 
             // Record restore in history
             DB::table('backup_history')->insert([
@@ -133,16 +134,25 @@ class BackupController extends BaseController
                 'file_name' => $originalName,
                 'backup_type' => 'restore',
                 'format' => 'sql',
-                'status' => 'completed',
+                'status' => $ok > 0 ? 'completed' : 'failed',
                 'file_size' => $file->getSize(),
                 'storage_path' => $path,
+                'records_count' => $ok,
+                'error_message' => $skipped > 0 ? "Skipped {$skipped} statements. First: " . substr((string) $firstError, 0, 300) : null,
                 'created_at' => now(),
             ]);
 
             // Clean up restore file
             @unlink($fullPath);
 
-            return $this->success(null, 'Database restored successfully');
+            if ($ok === 0) {
+                return $this->error('Restore failed: no statements executed. ' . ($firstError ?? 'Check storage/logs/laravel.log for details.'), 500);
+            }
+
+            $msg = "Database restored. {$ok} statements applied";
+            if ($skipped > 0) $msg .= ", {$skipped} skipped";
+            return $this->success(['executed' => $ok, 'skipped' => $skipped], $msg);
+
         } catch (\Exception $e) {
             Log::error("Restore failed: " . $e->getMessage());
 
@@ -263,20 +273,26 @@ class BackupController extends BaseController
         return null;
     }
 
-    private function phpSqlRestore(string $path): void
+    /**
+     * Execute a .sql backup in pure PHP. Returns [ok, skipped, firstError].
+     */
+    private function phpSqlRestore(string $path): array
     {
         $sql = file_get_contents($path);
-        if (!$sql) throw new \RuntimeException("Cannot read SQL file");
+        if ($sql === false || $sql === '') throw new \RuntimeException("Cannot read SQL file or file is empty");
 
-        // Strip single-line and multi-line comments
+        // Strip single-line (--) and multi-line (/* */) comments
         $sql = preg_replace('/^\s*--.*$/m', '', $sql);
         $sql = preg_replace('/\/\*.*?\*\//s', '', $sql);
 
-        // Split into individual statements. We split on ";\n" to tolerate
-        // semicolons inside quoted JSON values reasonably well.
-        $statements = preg_split('/;\s*\n/', $sql);
+        // Split into statements. The generated backup ends every statement
+        // with ";\n" OR ";" at EOF, so we split on ";" followed by a newline
+        // or end of string. This tolerates ";" inside quoted JSON values
+        // (rows are emitted one per line in our SQL exporter).
+        $statements = preg_split('/;[ \t\r]*(?:\n|$)/', $sql);
 
         $errors = [];
+        $firstError = null;
         $ok = 0;
 
         try {
@@ -290,10 +306,11 @@ class BackupController extends BaseController
                     DB::unprepared($stmt . ';');
                     $ok++;
                 } catch (\Throwable $e) {
-                    // Skip rows whose columns don't exist on this MySQL schema, etc.
-                    $errors[] = substr($e->getMessage(), 0, 200);
+                    $msg = $e->getMessage();
+                    if ($firstError === null) $firstError = $msg;
+                    $errors[] = substr($msg, 0, 200);
                     if (count($errors) <= 20) {
-                        Log::warning("Restore stmt failed: " . $e->getMessage());
+                        Log::warning("Restore stmt failed: " . $msg);
                     }
                 }
             }
@@ -303,8 +320,7 @@ class BackupController extends BaseController
 
         Log::info("Restore: {$ok} statements ok, " . count($errors) . " skipped");
 
-        if ($ok === 0 && count($errors) > 0) {
-            throw new \RuntimeException('Restore failed: ' . ($errors[0] ?? 'unknown'));
-        }
+        return [$ok, count($errors), $firstError];
     }
 }
+
