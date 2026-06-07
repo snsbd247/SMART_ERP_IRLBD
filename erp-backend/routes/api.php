@@ -297,6 +297,25 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::put('admin/branding', [\App\Http\Controllers\Admin\BrandingController::class, 'update']);
         Route::post('admin/branding/logo', [\App\Http\Controllers\Admin\BrandingController::class, 'uploadLogo']);
 
+        // ─── Generic CRUD bridge (used by frontend Supabase-compat layer) ────
+        // Keeps every page that calls supabase.from(...) functional on VPS
+        // without needing per-table controllers. Auth is enforced by the
+        // outer auth:sanctum middleware; per-table security lives in the
+        // denylist inside GenericTableController.
+        Route::get('db/{table}',          [\App\Http\Controllers\GenericTableController::class, 'index']);
+        Route::get('db/{table}/{id}',     [\App\Http\Controllers\GenericTableController::class, 'show']);
+        Route::post('db/{table}',         [\App\Http\Controllers\GenericTableController::class, 'store']);
+        Route::patch('db/{table}',        [\App\Http\Controllers\GenericTableController::class, 'update']);
+        Route::put('db/{table}',          [\App\Http\Controllers\GenericTableController::class, 'upsert']);
+        Route::delete('db/{table}',       [\App\Http\Controllers\GenericTableController::class, 'destroy']);
+
+        // ─── Generic storage bridge ──────────────────────────────────────────
+        Route::post('storage/{bucket}',          [\App\Http\Controllers\GenericStorageController::class, 'upload']);
+        Route::delete('storage/{bucket}/{path}', [\App\Http\Controllers\GenericStorageController::class, 'destroy'])->where('path', '.*');
+        Route::get('storage/{bucket}/{path}',    [\App\Http\Controllers\GenericStorageController::class, 'publicUrl'])->where('path', '.*');
+
+
+
 
 
         // ─── Audit Log (read-only) ──────────────────────────────
