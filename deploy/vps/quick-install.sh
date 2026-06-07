@@ -110,7 +110,7 @@ else
   log "Fresh database -> running migrate --seed"
   php artisan migrate --seed --force
 fi
-php artisan storage:link || true
+php artisan storage:link --force >/dev/null 2>&1 || true
 php artisan config:cache
 php artisan route:cache || true
 chown -R www-data:www-data "${APP_DIR}/erp-backend/storage" \
