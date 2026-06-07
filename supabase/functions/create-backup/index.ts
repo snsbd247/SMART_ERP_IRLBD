@@ -61,6 +61,13 @@ const TABLES = [
   "page_shortcuts",
 ];
 
+// Convert Postgres ISO timestamps (2024-01-01T12:34:56.789Z or +00:00) → MySQL DATETIME
+const ISO_TS_RE = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$/;
+function toMysqlDateTime(s: string): string {
+  const m = s.match(ISO_TS_RE);
+  return m ? `${m[1]} ${m[2]}` : s;
+}
+
 function escapeMySQL(val: unknown): string {
   if (val === null || val === undefined) return "NULL";
   if (typeof val === "number") return String(val);
@@ -69,7 +76,7 @@ function escapeMySQL(val: unknown): string {
     const str = JSON.stringify(val).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     return `'${str}'`;
   }
-  const str = String(val).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+  const str = toMysqlDateTime(String(val)).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
   return `'${str}'`;
 }
 
