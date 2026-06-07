@@ -58,7 +58,8 @@ if [[ -d "${APP_DIR}/erp-backend" ]]; then
   [[ -f .env ]] || cp .env.example .env
   php artisan key:generate --force || true
   php artisan storage:link || true
-  mkdir -p storage bootstrap/cache
+  mkdir -p storage/app/public storage/app/backups storage/framework/cache/data \
+           storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
   chown -R www-data:www-data storage bootstrap/cache public
   chmod -R 775 storage bootstrap/cache
 fi
