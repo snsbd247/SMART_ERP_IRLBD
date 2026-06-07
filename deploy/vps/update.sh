@@ -36,6 +36,11 @@ install_deploy_runner() {
     return 0
   fi
 
+  if [[ "${SMARTERP_DEPLOY_RUNNER:-0}" == "1" ]]; then
+    log "Pull & Deploy runner is active; skipping self-overwrite during web deploy."
+    return 0
+  fi
+
   log "Refreshing Pull & Deploy runner (/usr/local/bin/smarterp-deploy)..."
   install -m 0755 -o root -g root "${APP_DIR}/deploy/vps/deploy-runner.sh" /usr/local/bin/smarterp-deploy
   sed -i "s|^APP_DIR=.*|APP_DIR=\"${APP_DIR}\"|" /usr/local/bin/smarterp-deploy
