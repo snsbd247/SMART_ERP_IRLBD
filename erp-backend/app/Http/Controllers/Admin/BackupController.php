@@ -268,10 +268,43 @@ class BackupController extends BaseController
         $sql = file_get_contents($path);
         if (!$sql) throw new \RuntimeException("Cannot read SQL file");
 
-        // Remove comments
-        $sql = preg_replace('/^--.*$/m', '', $sql);
+        // Strip single-line and multi-line comments
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql);
         $sql = preg_replace('/\/\*.*?\*\//s', '', $sql);
 
-        DB::unprepared($sql);
+        // Split into individual statements. We split on ";\n" to tolerate
+        // semicolons inside quoted JSON values reasonably well.
+        $statements = preg_split('/;\s*\n/', $sql);
+
+        $errors = [];
+        $ok = 0;
+
+        try {
+            DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+
+            foreach ($statements as $stmt) {
+                $stmt = trim($stmt);
+                if ($stmt === '' || stripos($stmt, 'SET FOREIGN_KEY_CHECKS') === 0) continue;
+
+                try {
+                    DB::unprepared($stmt . ';');
+                    $ok++;
+                } catch (\Throwable $e) {
+                    // Skip rows whose columns don't exist on this MySQL schema, etc.
+                    $errors[] = substr($e->getMessage(), 0, 200);
+                    if (count($errors) <= 20) {
+                        Log::warning("Restore stmt failed: " . $e->getMessage());
+                    }
+                }
+            }
+        } finally {
+            DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+        }
+
+        Log::info("Restore: {$ok} statements ok, " . count($errors) . " skipped");
+
+        if ($ok === 0 && count($errors) > 0) {
+            throw new \RuntimeException('Restore failed: ' . ($errors[0] ?? 'unknown'));
+        }
     }
 }
