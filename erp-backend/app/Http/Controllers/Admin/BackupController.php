@@ -95,6 +95,8 @@ class BackupController extends BaseController
 
         $file = $request->file('sql_file');
         $originalName = $file->getClientOriginalName();
+        // Capture size BEFORE moving the uploaded file (getSize() fails after move)
+        $uploadedSize = (int) @filesize($file->getRealPath());
 
         if (!Str::endsWith($originalName, '.sql')) {
             return $this->error('Only .sql files are allowed.', 422);
@@ -137,7 +139,7 @@ class BackupController extends BaseController
                 'backup_type' => 'restore',
                 'format' => 'sql',
                 'status' => $ok > 0 ? 'completed' : 'failed',
-                'file_size' => $file->getSize(),
+                'file_size' => $uploadedSize ?: @filesize($fullPath) ?: 0,
                 'storage_path' => $path,
                 'records_count' => $ok,
                 'error_message' => $skipped > 0 ? "Skipped {$skipped} statements. First: " . substr((string) $firstError, 0, 300) : null,
