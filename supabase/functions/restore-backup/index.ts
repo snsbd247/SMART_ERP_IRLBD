@@ -236,7 +236,8 @@ Deno.serve(async (req) => {
     if (profile?.employee_id) throw new Error("Super Admin access required for restore");
 
     const body = await req.json();
-    const { content, file_name } = body;
+    const content = body.content || body.sql_content;
+    const file_name = body.file_name;
 
     if (!content) throw new Error("No backup content provided");
 
