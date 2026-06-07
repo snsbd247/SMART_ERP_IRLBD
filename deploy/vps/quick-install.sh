@@ -167,6 +167,22 @@ ln -sf /etc/nginx/sites-available/smarterp /etc/nginx/sites-enabled/smarterp
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 
+# ---------------- 5b. Deploy runner (Pull & Deploy button) -------
+log "Installing /usr/local/bin/smarterp-deploy and sudoers entry..."
+install -m 0755 -o root -g root "${APP_DIR}/deploy/vps/deploy-runner.sh" /usr/local/bin/smarterp-deploy
+# Ensure APP_DIR is baked in so sudo (which strips env) still works.
+sed -i "s|^APP_DIR=.*|APP_DIR=\"${APP_DIR}\"|" /usr/local/bin/smarterp-deploy
+touch /var/log/smarterp-deploy.log
+chown www-data:www-data /var/log/smarterp-deploy.log
+chmod 0664 /var/log/smarterp-deploy.log
+cat > /etc/sudoers.d/smarterp-deploy <<SUDO
+www-data ALL=(root) NOPASSWD: /usr/local/bin/smarterp-deploy
+Defaults!/usr/local/bin/smarterp-deploy !requiretty
+SUDO
+chmod 0440 /etc/sudoers.d/smarterp-deploy
+visudo -cf /etc/sudoers.d/smarterp-deploy >/dev/null
+
+
 # ---------------- 6. SSL -----------------------
 if [[ "${SKIP_SSL}" == "1" ]]; then
   warn "Step 6/6  SSL skipped (SKIP_SSL=1). Run later: certbot --nginx -d ${DOMAIN}"
