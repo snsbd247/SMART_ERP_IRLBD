@@ -73,7 +73,7 @@ git reset --hard "origin/${REPO_BRANCH}"
 LATEST_UPDATE_SHA="$(sha256sum "${APP_DIR}/deploy/vps/update.sh" 2>/dev/null | awk '{print $1}' || true)"
 if [[ "${SMARTERP_UPDATE_REEXECED:-0}" != "1" && -n "${STARTED_UPDATE_SHA}" && -n "${LATEST_UPDATE_SHA}" && "${STARTED_UPDATE_SHA}" != "${LATEST_UPDATE_SHA}" ]]; then
   log "update.sh changed during pull; restarting once with the latest script..."
-  export SMARTERP_UPDATE_REEXECED=1
+  export SMARTERP_UPDATE_REEXECED=1 APP_DIR REPO_BRANCH PHP_VERSION BACKUP_DIR
   exec bash "${APP_DIR}/deploy/vps/update.sh"
 fi
 
