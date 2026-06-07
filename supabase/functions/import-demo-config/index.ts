@@ -238,8 +238,8 @@ Deno.serve(async (req) => {
       module: "backup",
       action: "demo_config_import",
       record_id: null,
-      details: `Demo import (${overall}). ${totalInserted} rows inserted across ${results.length} sections.`,
-      new_data: { started_at: startedAt, results },
+      details: `Demo import (${overall})${doReset ? " [RESET]" : ""}. ${totalInserted} rows inserted across ${results.length} sections.`,
+      new_data: { started_at: startedAt, reset: doReset, reset_log: resetLog, results },
     });
 
     return new Response(JSON.stringify({
