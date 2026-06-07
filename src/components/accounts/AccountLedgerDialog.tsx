@@ -34,12 +34,14 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
     if (!accountId || !open) return;
     const fetchLedger = async () => {
       setLoading(true);
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("voucher_entries")
         .select("id, debit, credit, narration, acc_vouchers!inner(voucher_number, voucher_date, description, status)")
         .eq("account_id", accountId)
         .eq("acc_vouchers.status", "approved")
-        .order("acc_vouchers(voucher_date)");
+        .order("voucher_date", { foreignTable: "acc_vouchers", ascending: true });
+
+      if (error) console.error("Ledger fetch error:", error);
 
       let runBal = openingBalanceType === "debit" ? openingBalance : -openingBalance;
 
