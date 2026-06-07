@@ -7,7 +7,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -281,15 +283,12 @@ class BackupController extends BaseController
         $sql = file_get_contents($path);
         if ($sql === false || $sql === '') throw new \RuntimeException("Cannot read SQL file or file is empty");
 
-        // Strip single-line (--) and multi-line (/* */) comments
+        // Strip dump comments. The statement splitter below still protects
+        // semicolons inside quoted values, so JSON/text fields are safe.
         $sql = preg_replace('/^\s*--.*$/m', '', $sql);
         $sql = preg_replace('/\/\*.*?\*\//s', '', $sql);
 
-        // Split into statements. The generated backup ends every statement
-        // with ";\n" OR ";" at EOF, so we split on ";" followed by a newline
-        // or end of string. This tolerates ";" inside quoted JSON values
-        // (rows are emitted one per line in our SQL exporter).
-        $statements = preg_split('/;[ \t\r]*(?:\n|$)/', $sql);
+        $statements = $this->splitSqlStatements($sql);
 
         $errors = [];
         $firstError = null;
@@ -298,13 +297,24 @@ class BackupController extends BaseController
         try {
             DB::statement('SET FOREIGN_KEY_CHECKS = 0');
 
+            if ($this->isInsertOnlyBackup($sql)) {
+                $this->resetTablesForInsertRestore();
+            }
+
             foreach ($statements as $stmt) {
                 $stmt = trim($stmt);
                 if ($stmt === '' || stripos($stmt, 'SET FOREIGN_KEY_CHECKS') === 0) continue;
 
                 try {
-                    DB::unprepared($stmt . ';');
-                    $ok++;
+                    if (preg_match('/^\s*(INSERT|REPLACE)\s+INTO\s+/i', $stmt)) {
+                        $ok += $this->restoreInsertStatement($stmt);
+                    } else {
+                        // Same-app Laravel backups contain DROP/CREATE statements.
+                        // Execute those normally; imported Supabase/Lovable backups
+                        // are handled through the column-filtered INSERT path above.
+                        DB::unprepared(rtrim($stmt, ';') . ';');
+                        $ok++;
+                    }
                 } catch (\Throwable $e) {
                     $msg = $e->getMessage();
                     if ($firstError === null) $firstError = $msg;
@@ -321,6 +331,276 @@ class BackupController extends BaseController
         Log::info("Restore: {$ok} statements ok, " . count($errors) . " skipped");
 
         return [$ok, count($errors), $firstError];
+    }
+
+    private function isInsertOnlyBackup(string $sql): bool
+    {
+        return stripos($sql, 'CREATE TABLE') === false
+            && preg_match('/\bINSERT\s+INTO\s+`?(profiles|branches|company_settings|chart_of_accounts|custom_roles)`?/i', $sql);
+    }
+
+    private function resetTablesForInsertRestore(): void
+    {
+        $tables = [
+            'backup_history', 'messages', 'conversation_participants', 'conversations',
+            'login_logs', 'user_activities', 'audit_log', 'page_shortcuts', 'module_settings', 'system_settings', 'backup_settings',
+            'tds_entries', 'invoice_payments', 'invoice_challans', 'sales_invoice_items_v2', 'sales_invoices_v2',
+            'ho_receives', 'customer_receives', 'delivery_challans', 'vat_challan_items', 'vat_challans',
+            'dispatch_status_logs', 'dispatch_po_allocations', 'dispatch_items', 'dispatches', 'invoice_status_logs',
+            'po_amendments', 'purchase_order_items', 'purchase_orders',
+            'payment_allocations', 'party_payments', 'party_notes',
+            'fund_transactions', 'employee_fund_settings', 'payroll', 'overtime_records', 'leave_requests', 'attendance',
+            'face_data', 'employee_documents', 'employee_bank_info', 'employee_education', 'employee_experience', 'employee_emergency_contacts', 'salary_structures',
+            'production_materials', 'production_entries', 'bom_items', 'bill_of_materials', 'raw_materials',
+            'purchase_return_items', 'purchase_returns', 'purchase_items', 'purchases',
+            'sales_return_items', 'sales_returns', 'sales_invoice_items', 'sales_invoices',
+            'stock_transfers', 'stock_ledger', 'stock_movements', 'warehouse_stock', 'products', 'product_categories', 'warehouses', 'item_master', 'item_categories', 'units',
+            'voucher_entries', 'acc_vouchers', 'chart_of_accounts',
+            'employees', 'users', 'user_custom_roles', 'role_permissions', 'custom_roles',
+            'number_sequences', 'financial_years', 'company_settings', 'branches',
+        ];
+
+        foreach ($tables as $table) {
+            if (Schema::hasTable($table)) {
+                DB::table($table)->truncate();
+            }
+        }
+    }
+
+    private function splitSqlStatements(string $sql): array
+    {
+        $statements = [];
+        $buffer = '';
+        $quote = null;
+        $escaped = false;
+        $len = strlen($sql);
+
+        for ($i = 0; $i < $len; $i++) {
+            $ch = $sql[$i];
+            $buffer .= $ch;
+
+            if ($escaped) {
+                $escaped = false;
+                continue;
+            }
+            if ($quote !== null && $ch === '\\') {
+                $escaped = true;
+                continue;
+            }
+            if ($ch === "'" || $ch === '"' || $ch === '`') {
+                if ($quote === null) {
+                    $quote = $ch;
+                } elseif ($quote === $ch) {
+                    if ($ch === "'" && $i + 1 < $len && $sql[$i + 1] === "'") {
+                        $buffer .= $sql[++$i];
+                        continue;
+                    }
+                    $quote = null;
+                }
+                continue;
+            }
+            if ($ch === ';' && $quote === null) {
+                $statements[] = trim(substr($buffer, 0, -1));
+                $buffer = '';
+            }
+        }
+
+        $tail = trim($buffer);
+        if ($tail !== '') $statements[] = $tail;
+        return $statements;
+    }
+
+    private function restoreInsertStatement(string $stmt): int
+    {
+        if (!preg_match('/^\s*(?:INSERT|REPLACE)\s+INTO\s+`?([A-Za-z0-9_]+)`?\s*(?:\((.*?)\))?\s+VALUES\s*(.+?)(?:\s+ON\s+DUPLICATE\s+KEY\s+UPDATE\s+.*)?\s*$/is', $stmt, $m)) {
+            throw new \RuntimeException('Unsupported SQL INSERT format');
+        }
+
+        $sourceTable = $m[1];
+        $columns = isset($m[2]) && trim($m[2]) !== ''
+            ? $this->parseSqlIdentifiers($m[2])
+            : (Schema::hasTable($sourceTable) ? Schema::getColumnListing($sourceTable) : []);
+        $rows = $this->parseSqlValueRows($m[3]);
+        $applied = 0;
+
+        foreach ($rows as $values) {
+            if (count($columns) !== count($values)) {
+                throw new \RuntimeException("Column/value count mismatch for {$sourceTable}");
+            }
+
+            $row = array_combine($columns, $values);
+            [$targetTable, $mapped] = $this->mapRestoreRow($sourceTable, $row);
+            if (!$targetTable || !$mapped || !Schema::hasTable($targetTable)) continue;
+
+            $targetCols = Schema::getColumnListing($targetTable);
+            $clean = array_intersect_key($mapped, array_flip($targetCols));
+            if (!$clean) continue;
+
+            if ($targetTable === 'users' && empty($clean['password']) && in_array('password', $targetCols, true)) {
+                $clean['password'] = Hash::make('Admin@123');
+            }
+
+            $key = array_key_exists('id', $clean) ? ['id' => $clean['id']] : null;
+            if (!$key && $targetTable === 'number_sequences' && array_key_exists('id', $clean)) {
+                $key = ['id' => $clean['id']];
+            }
+
+            if ($key) {
+                DB::table($targetTable)->updateOrInsert($key, $clean);
+            } else {
+                DB::table($targetTable)->insertOrIgnore($clean);
+            }
+            $applied++;
+        }
+
+        return $applied;
+    }
+
+    private function mapRestoreRow(string $table, array $row): array
+    {
+        // Lovable/Supabase backups export auth-facing users as `profiles`,
+        // while the VPS app stores them in Laravel's `users` table.
+        if ($table === 'profiles' && Schema::hasTable('users')) {
+            $existingPassword = !empty($row['id']) ? DB::table('users')->where('id', $row['id'])->value('password') : null;
+            return ['users', [
+                'id' => $row['id'] ?? (string) Str::uuid(),
+                'username' => $row['username'] ?? $row['email'] ?? ('user_' . Str::random(8)),
+                'name' => $row['name'] ?? $row['username'] ?? $row['email'] ?? 'Restored User',
+                'email' => $row['email'] ?? null,
+                'phone' => $row['phone'] ?? null,
+                'branch_id' => $row['branch_id'] ?? null,
+                'employee_id' => $row['employee_id'] ?? null,
+                'status' => $row['status'] ?? 'active',
+                'is_online' => 0,
+                'last_seen_at' => $row['last_seen_at'] ?? null,
+                'password' => $existingPassword ?: Hash::make('Admin@123'),
+                'created_at' => $row['created_at'] ?? now(),
+                'updated_at' => $row['updated_at'] ?? now(),
+                'deleted_at' => $row['deleted_at'] ?? null,
+            ]];
+        }
+
+        if ($table === 'user_roles' && !Schema::hasTable('user_roles')) {
+            return [null, []];
+        }
+
+        foreach ($row as $key => $value) {
+            if (is_array($value) || is_object($value)) $row[$key] = json_encode($value);
+        }
+
+        return [$table, $row];
+    }
+
+    private function parseSqlIdentifiers(string $csv): array
+    {
+        return array_map(fn ($c) => trim(trim($c), " `\"'"), explode(',', $csv));
+    }
+
+    private function parseSqlValueRows(string $valuesPart): array
+    {
+        $rows = [];
+        $buffer = '';
+        $depth = 0;
+        $quote = null;
+        $escaped = false;
+        $len = strlen($valuesPart);
+
+        for ($i = 0; $i < $len; $i++) {
+            $ch = $valuesPart[$i];
+
+            if ($escaped) {
+                $buffer .= $ch;
+                $escaped = false;
+                continue;
+            }
+            if ($quote !== null && $ch === '\\') {
+                $buffer .= $ch;
+                $escaped = true;
+                continue;
+            }
+            if ($ch === "'" || $ch === '"') {
+                $buffer .= $ch;
+                if ($quote === null) $quote = $ch;
+                elseif ($quote === $ch) $quote = null;
+                continue;
+            }
+            if ($quote === null && $ch === '(') {
+                if ($depth++ > 0) $buffer .= $ch;
+                continue;
+            }
+            if ($quote === null && $ch === ')') {
+                if (--$depth === 0) {
+                    $rows[] = $this->parseSqlRowValues($buffer);
+                    $buffer = '';
+                    continue;
+                }
+            }
+            if ($depth > 0) $buffer .= $ch;
+        }
+
+        return $rows;
+    }
+
+    private function parseSqlRowValues(string $row): array
+    {
+        $values = [];
+        $buffer = '';
+        $quote = null;
+        $escaped = false;
+        $quoted = false;
+        $len = strlen($row);
+
+        for ($i = 0; $i < $len; $i++) {
+            $ch = $row[$i];
+            if ($escaped) {
+                $buffer .= match ($ch) {
+                    'n' => "\n", 'r' => "\r", 't' => "\t", '0' => "\0",
+                    default => $ch,
+                };
+                $escaped = false;
+                continue;
+            }
+            if ($quote !== null && $ch === '\\') {
+                $escaped = true;
+                continue;
+            }
+            if ($ch === "'" || $ch === '"') {
+                if ($quote === null) {
+                    $quote = $ch;
+                    $quoted = true;
+                    continue;
+                }
+                if ($quote === $ch) {
+                    if ($ch === "'" && $i + 1 < $len && $row[$i + 1] === "'") {
+                        $buffer .= "'";
+                        $i++;
+                        continue;
+                    }
+                    $quote = null;
+                    continue;
+                }
+            }
+            if ($ch === ',' && $quote === null) {
+                $values[] = $this->convertSqlValue($buffer, $quoted);
+                $buffer = '';
+                $quoted = false;
+                continue;
+            }
+            $buffer .= $ch;
+        }
+
+        $values[] = $this->convertSqlValue($buffer, $quoted);
+        return $values;
+    }
+
+    private function convertSqlValue(string $value, bool $quoted): mixed
+    {
+        $value = trim($value);
+        if (!$quoted) {
+            if (strcasecmp($value, 'NULL') === 0 || $value === '\\N') return null;
+            if (is_numeric($value)) return str_contains($value, '.') ? (float) $value : (int) $value;
+        }
+        return $value;
     }
 }
 

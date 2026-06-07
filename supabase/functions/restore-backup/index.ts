@@ -68,20 +68,18 @@ const TABLES_ORDER = [
  */
 function parseSQLInserts(sql: string): Record<string, Record<string, unknown>[]> {
   const result: Record<string, Record<string, unknown>[]> = {};
-  
-  // Match INSERT INTO statements - handle multiline
-  const insertRegex = /INSERT\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+(?:\([^)]*\)[^)]*)*)\)/gi;
-  
-  let match;
-  while ((match = insertRegex.exec(sql)) !== null) {
+  const statements = splitSqlStatements(sql.replace(/^\s*--.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, ""));
+
+  for (const stmt of statements) {
+    const match = stmt.match(/^\s*(?:INSERT|REPLACE)\s+INTO\s+`?([A-Za-z0-9_]+)`?\s*\((.*?)\)\s*VALUES\s*([\s\S]*?)(?:\s+ON\s+DUPLICATE\s+KEY\s+UPDATE\s+[\s\S]*)?\s*$/i);
+    if (!match) continue;
+
     const table = match[1];
-    const columns = match[2].split(",").map(c => c.trim());
-    const valuesStr = match[3];
-    
-    // Parse values respecting quoted strings
-    const values = parseValues(valuesStr);
-    
-    if (columns.length === values.length) {
+    const columns = match[2].split(",").map(c => c.trim().replace(/^[`"']|[`"']$/g, ""));
+    const rows = parseValueRows(match[3]);
+
+    for (const values of rows) {
+      if (columns.length !== values.length) continue;
       if (!result[table]) result[table] = [];
       const row: Record<string, unknown> = {};
       columns.forEach((col, i) => {
@@ -90,8 +88,59 @@ function parseSQLInserts(sql: string): Record<string, Record<string, unknown>[]>
       result[table].push(row);
     }
   }
-  
+
   return result;
+}
+
+function splitSqlStatements(sql: string): string[] {
+  const statements: string[] = [];
+  let current = "";
+  let quote: string | null = null;
+  let escaped = false;
+
+  for (let i = 0; i < sql.length; i++) {
+    const ch = sql[i];
+    current += ch;
+    if (escaped) { escaped = false; continue; }
+    if (quote && ch === "\\") { escaped = true; continue; }
+    if (ch === "'" || ch === '"' || ch === "`") {
+      if (!quote) quote = ch;
+      else if (quote === ch) quote = null;
+      continue;
+    }
+    if (ch === ";" && !quote) {
+      statements.push(current.slice(0, -1).trim());
+      current = "";
+    }
+  }
+  if (current.trim()) statements.push(current.trim());
+  return statements;
+}
+
+function parseValueRows(valuesPart: string): unknown[][] {
+  const rows: unknown[][] = [];
+  let current = "";
+  let depth = 0;
+  let quote: string | null = null;
+  let escaped = false;
+
+  for (let i = 0; i < valuesPart.length; i++) {
+    const ch = valuesPart[i];
+    if (escaped) { current += ch; escaped = false; continue; }
+    if (quote && ch === "\\") { current += ch; escaped = true; continue; }
+    if (ch === "'" || ch === '"') {
+      current += ch;
+      if (!quote) quote = ch;
+      else if (quote === ch) quote = null;
+      continue;
+    }
+    if (!quote && ch === "(") { if (depth++ > 0) current += ch; continue; }
+    if (!quote && ch === ")") {
+      if (--depth === 0) { rows.push(parseValues(current)); current = ""; continue; }
+    }
+    if (depth > 0) current += ch;
+  }
+  return rows;
 }
 
 function parseValues(valuesStr: string): unknown[] {
@@ -187,7 +236,8 @@ Deno.serve(async (req) => {
     if (profile?.employee_id) throw new Error("Super Admin access required for restore");
 
     const body = await req.json();
-    const { content, file_name } = body;
+    const content = body.content || body.sql_content;
+    const file_name = body.file_name;
 
     if (!content) throw new Error("No backup content provided");
 
