@@ -103,23 +103,38 @@ Deno.serve(async (req) => {
     // ── 2) IFRS Account Mapping ──
     const ifrsRes: SectionResult = { section: "ifrs_account_mapping", label: "IFRS Account Mapping", attempted: s.ifrs.length, inserted: 0, skipped: 0, status: "ok" };
     try {
-      const { data: existing } = await admin.from("ifrs_account_mapping").select("account_id");
-      const have = new Set((existing ?? []).map((r: any) => r.account_id));
+      const { data: existing } = await admin.from("ifrs_account_mapping").select("account_id, ifrs_line, notes");
+      const existingMap = new Map(
+        (existing ?? []).map((r: any) => [r.account_id, { ifrs_line: r.ifrs_line, notes: r.notes }]),
+      );
+      const rows: { account_id: string; ifrs_line: string; notes: string | null }[] = [];
       for (const m of s.ifrs) {
         const accId = codeToId.get(m.account_code);
         if (!accId) { ifrsRes.skipped++; continue; }
-        if (have.has(accId)) { ifrsRes.skipped++; continue; }
-        const { error } = await admin.from("ifrs_account_mapping").insert({
-          account_id: accId, ifrs_line: m.ifrs_line, notes: m.notes,
-        });
-        if (error) { ifrsRes.status = "partial"; ifrsRes.error = error.message; continue; }
-        ifrsRes.inserted++;
+        const prev = existingMap.get(accId);
+        if (prev && prev.ifrs_line === m.ifrs_line && (prev.notes ?? null) === (m.notes ?? null)) {
+          ifrsRes.skipped++;
+          continue;
+        }
+        rows.push({ account_id: accId, ifrs_line: m.ifrs_line, notes: m.notes });
+      }
+      if (rows.length > 0) {
+        const { error } = await admin
+          .from("ifrs_account_mapping")
+          .upsert(rows, { onConflict: "account_id" });
+        if (error) {
+          ifrsRes.status = "partial";
+          ifrsRes.error = error.message;
+        } else {
+          ifrsRes.inserted = rows.length;
+        }
       }
     } catch (e) {
       ifrsRes.status = "failed";
       ifrsRes.error = e instanceof Error ? e.message : String(e);
     }
     results.push(ifrsRes);
+
 
     // ── 3) Roles & Permissions ──
     const rolesRes: SectionResult = { section: "roles_permissions", label: "Roles & Permissions", attempted: s.roles.length, inserted: 0, skipped: 0, status: "ok" };
