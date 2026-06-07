@@ -127,6 +127,24 @@ SQL
   chmod -R 775 storage bootstrap/cache
 fi
 
+# Refresh the Pull & Deploy runner + sudoers (idempotent).
+if [[ -f "${APP_DIR}/deploy/vps/deploy-runner.sh" ]]; then
+  log "Refreshing /usr/local/bin/smarterp-deploy ..."
+  install -m 0755 -o root -g root "${APP_DIR}/deploy/vps/deploy-runner.sh" /usr/local/bin/smarterp-deploy
+  sed -i "s|^APP_DIR=.*|APP_DIR=\"${APP_DIR}\"|" /usr/local/bin/smarterp-deploy
+  touch /var/log/smarterp-deploy.log
+  chown www-data:www-data /var/log/smarterp-deploy.log
+  chmod 0664 /var/log/smarterp-deploy.log
+  if [[ ! -f /etc/sudoers.d/smarterp-deploy ]]; then
+    cat > /etc/sudoers.d/smarterp-deploy <<SUDO
+www-data ALL=(root) NOPASSWD: /usr/local/bin/smarterp-deploy
+Defaults!/usr/local/bin/smarterp-deploy !requiretty
+SUDO
+    chmod 0440 /etc/sudoers.d/smarterp-deploy
+    visudo -cf /etc/sudoers.d/smarterp-deploy >/dev/null || rm -f /etc/sudoers.d/smarterp-deploy
+  fi
+fi
+
 log "Reloading services..."
 systemctl reload "php${PHP_VERSION}-fpm" || true
 systemctl reload nginx || true
