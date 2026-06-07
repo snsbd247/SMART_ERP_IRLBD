@@ -297,6 +297,10 @@ class BackupController extends BaseController
         try {
             DB::statement('SET FOREIGN_KEY_CHECKS = 0');
 
+            if ($this->isInsertOnlyBackup($sql)) {
+                $this->resetTablesForInsertRestore();
+            }
+
             foreach ($statements as $stmt) {
                 $stmt = trim($stmt);
                 if ($stmt === '' || stripos($stmt, 'SET FOREIGN_KEY_CHECKS') === 0) continue;
@@ -327,6 +331,40 @@ class BackupController extends BaseController
         Log::info("Restore: {$ok} statements ok, " . count($errors) . " skipped");
 
         return [$ok, count($errors), $firstError];
+    }
+
+    private function isInsertOnlyBackup(string $sql): bool
+    {
+        return stripos($sql, 'CREATE TABLE') === false
+            && preg_match('/\bINSERT\s+INTO\s+`?(profiles|branches|company_settings|chart_of_accounts|custom_roles)`?/i', $sql);
+    }
+
+    private function resetTablesForInsertRestore(): void
+    {
+        $tables = [
+            'backup_history', 'messages', 'conversation_participants', 'conversations',
+            'login_logs', 'user_activities', 'audit_log', 'page_shortcuts', 'module_settings', 'system_settings', 'backup_settings',
+            'tds_entries', 'invoice_payments', 'invoice_challans', 'sales_invoice_items_v2', 'sales_invoices_v2',
+            'ho_receives', 'customer_receives', 'delivery_challans', 'vat_challan_items', 'vat_challans',
+            'dispatch_status_logs', 'dispatch_po_allocations', 'dispatch_items', 'dispatches', 'invoice_status_logs',
+            'po_amendments', 'purchase_order_items', 'purchase_orders',
+            'payment_allocations', 'party_payments', 'party_notes',
+            'fund_transactions', 'employee_fund_settings', 'payroll', 'overtime_records', 'leave_requests', 'attendance',
+            'face_data', 'employee_documents', 'employee_bank_info', 'employee_education', 'employee_experience', 'employee_emergency_contacts', 'salary_structures',
+            'production_materials', 'production_entries', 'bom_items', 'bill_of_materials', 'raw_materials',
+            'purchase_return_items', 'purchase_returns', 'purchase_items', 'purchases',
+            'sales_return_items', 'sales_returns', 'sales_invoice_items', 'sales_invoices',
+            'stock_transfers', 'stock_ledger', 'stock_movements', 'warehouse_stock', 'products', 'product_categories', 'warehouses', 'item_master', 'item_categories', 'units',
+            'voucher_entries', 'acc_vouchers', 'chart_of_accounts',
+            'employees', 'users', 'user_custom_roles', 'role_permissions', 'custom_roles',
+            'number_sequences', 'financial_years', 'company_settings', 'branches',
+        ];
+
+        foreach ($tables as $table) {
+            if (Schema::hasTable($table)) {
+                DB::table($table)->truncate();
+            }
+        }
     }
 
     private function splitSqlStatements(string $sql): array
