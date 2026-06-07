@@ -84,8 +84,12 @@ class BackupController extends BaseController
         }
 
         $request->validate([
-            'sql_file' => 'required|file|max:102400', // 100MB max
+            'sql_file' => 'required|file|max:512000', // 500MB max
         ]);
+
+        // Give the restore room to run on big SQL files
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(0);
 
         $file = $request->file('sql_file');
         $originalName = $file->getClientOriginalName();
@@ -119,13 +123,10 @@ class BackupController extends BaseController
                 throw new \RuntimeException('Uploaded SQL file not found at ' . $fullPath);
             }
 
-            // Try mysql command first
-            $restored = $this->tryMysqlRestore($fullPath);
-
-            if (!$restored) {
-                // Fallback: execute SQL line by line
-                $this->phpSqlRestore($fullPath);
-            }
+            // Always use the PHP-based restore. The `mysql` CLI is often missing
+            // on shared/VPS PHP-FPM environments, and even when present it
+            // silently swallows errors with --force which makes diagnosis hard.
+            [$ok, $skipped, $firstError] = $this->phpSqlRestore($fullPath);
 
             // Record restore in history
             DB::table('backup_history')->insert([
@@ -133,16 +134,25 @@ class BackupController extends BaseController
                 'file_name' => $originalName,
                 'backup_type' => 'restore',
                 'format' => 'sql',
-                'status' => 'completed',
+                'status' => $ok > 0 ? 'completed' : 'failed',
                 'file_size' => $file->getSize(),
                 'storage_path' => $path,
+                'records_count' => $ok,
+                'error_message' => $skipped > 0 ? "Skipped {$skipped} statements. First: " . substr((string) $firstError, 0, 300) : null,
                 'created_at' => now(),
             ]);
 
             // Clean up restore file
             @unlink($fullPath);
 
-            return $this->success(null, 'Database restored successfully');
+            if ($ok === 0) {
+                return $this->error('Restore failed: no statements executed. ' . ($firstError ?? 'Check storage/logs/laravel.log for details.'), 500);
+            }
+
+            $msg = "Database restored. {$ok} statements applied";
+            if ($skipped > 0) $msg .= ", {$skipped} skipped";
+            return $this->success(['executed' => $ok, 'skipped' => $skipped], $msg);
+
         } catch (\Exception $e) {
             Log::error("Restore failed: " . $e->getMessage());
 
