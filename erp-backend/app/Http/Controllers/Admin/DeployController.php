@@ -45,12 +45,26 @@ class DeployController extends Controller
             ], 409);
         }
 
+        $preflight = $this->preflightRunner();
+        if ($preflight !== null) {
+            return response()->json([
+                'success' => false,
+                'running' => false,
+                'message' => $preflight,
+            ], 503);
+        }
+
         @file_put_contents(self::STATE_FILE, 'running');
         @file_put_contents(self::LOG_FILE, "[" . date('H:i:s') . "] ▶ Pull & Deploy requested by {$request->user()->name}\n");
 
         // Run the wrapper detached so the HTTP request returns immediately.
         // sudo -n = non-interactive; nohup + & = background; output -> log file.
-        $cmd = 'sudo -n /usr/local/bin/smarterp-deploy >> ' . escapeshellarg(self::LOG_FILE) . ' 2>&1 &';
+        $cmd = 'sh -c ' . escapeshellarg(
+            'sudo -n /usr/local/bin/smarterp-deploy >> ' . escapeshellarg(self::LOG_FILE) . ' 2>&1; ' .
+            'rc=$?; if [ $rc -ne 0 ]; then ' .
+            'echo "[' . date('H:i:s') . '] DEPLOY FAILED: sudo runner exited with code $rc" >> ' . escapeshellarg(self::LOG_FILE) . '; ' .
+            'echo failed > ' . escapeshellarg(self::STATE_FILE) . '; fi'
+        ) . ' >/dev/null 2>&1 &';
         @exec($cmd);
 
         return response()->json([
@@ -58,6 +72,23 @@ class DeployController extends Controller
             'running' => true,
             'message' => 'Deploy started.',
         ]);
+    }
+
+    private function preflightRunner(): ?string
+    {
+        if (!is_executable('/usr/local/bin/smarterp-deploy')) {
+            return 'Deploy runner is not installed. Run: sudo APP_DIR=/opt/smarterp /opt/smarterp/deploy/vps/update.sh';
+        }
+
+        $output = [];
+        $code = 0;
+        @exec('sudo -n /usr/local/bin/smarterp-deploy --check 2>&1', $output, $code);
+        if ($code !== 0) {
+            $detail = trim(implode("\n", array_slice($output, -4)));
+            return 'Deploy runner sudo permission check failed.' . ($detail ? " {$detail}" : ' Re-run update.sh as root.');
+        }
+
+        return null;
     }
 
     /** GET /api/v1/admin/deploy/status — running flag + last 200 log lines. */
