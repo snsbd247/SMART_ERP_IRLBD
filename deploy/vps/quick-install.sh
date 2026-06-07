@@ -173,14 +173,16 @@ install -m 0755 -o root -g root "${APP_DIR}/deploy/vps/deploy-runner.sh" /usr/lo
 # Ensure APP_DIR is baked in so sudo (which strips env) still works.
 sed -i "s|^APP_DIR=.*|APP_DIR=\"${APP_DIR}\"|" /usr/local/bin/smarterp-deploy
 touch /var/log/smarterp-deploy.log
-chown www-data:www-data /var/log/smarterp-deploy.log
-chmod 0664 /var/log/smarterp-deploy.log
+touch /var/log/smarterp-deploy.state
+chown www-data:www-data /var/log/smarterp-deploy.log /var/log/smarterp-deploy.state
+chmod 0664 /var/log/smarterp-deploy.log /var/log/smarterp-deploy.state
 cat > /etc/sudoers.d/smarterp-deploy <<SUDO
 www-data ALL=(root) NOPASSWD: /usr/local/bin/smarterp-deploy
 Defaults!/usr/local/bin/smarterp-deploy !requiretty
 SUDO
 chmod 0440 /etc/sudoers.d/smarterp-deploy
 visudo -cf /etc/sudoers.d/smarterp-deploy >/dev/null
+sudo -u www-data sudo -n /usr/local/bin/smarterp-deploy --check >/dev/null
 
 
 # ---------------- 6. SSL -----------------------
