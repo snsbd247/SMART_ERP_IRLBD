@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\BaseController;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -17,7 +17,7 @@ use Throwable;
  * Security: Super Admin only (employee_id IS NULL). The wrapper is the
  * only thing www-data can sudo — see deploy/vps/quick-install.sh.
  */
-class DeployController extends Controller
+class DeployController extends BaseController
 {
     private const LOG_FILE   = '/var/log/smarterp-deploy.log';
     private const PID_FILE   = '/var/run/smarterp-deploy.pid';
