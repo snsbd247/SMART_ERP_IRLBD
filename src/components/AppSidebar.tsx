@@ -389,7 +389,7 @@ export const AppSidebar = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="fixed top-2 left-2 z-50 h-8 w-8 lg:hidden bg-card/80 backdrop-blur-sm shadow-sm border border-border"
+            className="fixed top-2 left-2 z-50 h-8 w-8 md:hidden bg-card/80 backdrop-blur-sm shadow-sm border border-border"
             onClick={() => setMobileOpen(true)}
           >
             <Menu className="w-4 h-4" />
@@ -408,7 +408,7 @@ export const AppSidebar = () => {
   }
 
   return (
-    <aside className="w-60 border-r border-border bg-sidebar flex flex-col h-full shrink-0 hidden lg:flex">
+    <aside className="w-60 border-r border-border bg-sidebar flex-col h-full shrink-0 hidden md:flex">
       {sidebarContent}
     </aside>
   );
