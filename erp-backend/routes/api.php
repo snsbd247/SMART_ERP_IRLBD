@@ -290,6 +290,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
 
         // ─── Demo Data Seeder (Super Admin only) ─────────────────
         Route::post('admin/demo/seed', [\App\Http\Controllers\Admin\DemoSeedController::class, 'run']);
+        Route::post('admin/demo/import-config', [\App\Http\Controllers\Admin\DemoConfigImportController::class, 'import']);
 
 
 
