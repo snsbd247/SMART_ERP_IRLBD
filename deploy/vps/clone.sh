@@ -57,7 +57,7 @@ if [[ -d "${APP_DIR}/erp-backend" ]]; then
     || composer install --no-dev --optimize-autoloader --no-interaction --no-plugins --no-audit
   [[ -f .env ]] || cp .env.example .env
   php artisan key:generate --force || true
-  php artisan storage:link || true
+  php artisan storage:link --force >/dev/null 2>&1 || true
   mkdir -p storage/app/public storage/app/backups storage/framework/cache/data \
            storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
   chown -R www-data:www-data storage bootstrap/cache public
