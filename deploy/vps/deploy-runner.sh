@@ -31,7 +31,7 @@ if ! [ -x "${APP_DIR}/deploy/vps/update.sh" ]; then
   exit 1
 fi
 
-if APP_DIR="${APP_DIR}" "${APP_DIR}/deploy/vps/update.sh"; then
+if SMARTERP_DEPLOY_RUNNER=1 APP_DIR="${APP_DIR}" "${APP_DIR}/deploy/vps/update.sh"; then
   echo "[$(date +%H:%M:%S)] DEPLOY OK"
   echo "success" > "$STATE" 2>/dev/null || true
   exit 0
