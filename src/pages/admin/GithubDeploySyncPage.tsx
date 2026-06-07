@@ -196,7 +196,82 @@ export default function GithubDeploySyncPage() {
     toast({ title: "Refreshed", description: "GitHub sync status updated." });
   };
 
+  // ─── Real backend (Laravel/VPS) Pull & Deploy ──────────────────────
+  const laravelMode = isLaravelMode();
+  const apiBase = getApiBaseUrl();
+
+  const pollDeployStatus = useCallback(async () => {
+    if (!apiBase) return;
+    try {
+      const res = await fetch(`${apiBase}/v1/admin/deploy/status`, {
+        headers: getLaravelAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        appendLog(`[status] ${data?.message || `HTTP ${res.status}`}`);
+        return { running: false, state: "failed" as const };
+      }
+      // Replace log buffer with server-side tail so we don't duplicate lines.
+      if (typeof data.log === "string") {
+        setLogs(data.log.split("\n").filter(Boolean));
+      }
+      return { running: !!data.running, state: (data.state || "idle") as string };
+    } catch (e: any) {
+      appendLog(`[status] ${e?.message || "network error"}`);
+      return { running: false, state: "failed" as const };
+    }
+  }, [apiBase]);
+
+  const runRealPullDeploy = useCallback(async () => {
+    if (!apiBase) return;
+    setBusy("pull");
+    setLogOpen(true);
+    appendLog("▶ Pull & Deploy requested (VPS)…");
+    try {
+      const res = await fetch(`${apiBase}/v1/admin/deploy/pull`, {
+        method: "POST",
+        headers: getLaravelAuthHeaders(true),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && res.status !== 409) {
+        appendLog(`✗ ${data?.message || `HTTP ${res.status}`}`);
+        toast({ title: "Pull & Deploy failed", description: data?.message || `HTTP ${res.status}`, variant: "destructive" });
+        setBusy(null);
+        return;
+      }
+      // Poll every 2s until the runner finishes.
+      const startedAt = Date.now();
+      while (true) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const s = await pollDeployStatus();
+        if (!s) break;
+        if (!s.running) {
+          if (s.state === "success") {
+            toast({ title: "Pull & Deploy", description: "Deploy completed successfully." });
+          } else if (s.state === "failed") {
+            toast({ title: "Pull & Deploy failed", description: "See log for details.", variant: "destructive" });
+          } else {
+            toast({ title: "Pull & Deploy", description: "Runner finished." });
+          }
+          break;
+        }
+        // Safety: stop polling after 15 minutes — runner keeps going server-side.
+        if (Date.now() - startedAt > 15 * 60 * 1000) {
+          appendLog("[client] stopped polling after 15 min; server-side runner may still be working.");
+          break;
+        }
+      }
+      await refresh();
+    } finally {
+      setBusy(null);
+    }
+  }, [apiBase, pollDeployStatus, refresh]);
+
   const runAction = async (kind: "pull" | "dry") => {
+    if (kind === "pull" && laravelMode) {
+      await runRealPullDeploy();
+      return;
+    }
     setBusy(kind);
     setLogOpen(true);
     const titles = { pull: "Pull & Deploy", dry: "Dry-Run" } as const;
@@ -218,11 +293,30 @@ export default function GithubDeploySyncPage() {
       push("✓ Dry-run complete. No files were changed.");
       setLastDryRun({ at: new Date().toISOString(), logs: runLogs, planned });
     } else {
-      push("✓ Pull & Deploy queued. Server-side runner will execute the tracked scripts in order.");
+      push("✓ Pull & Deploy queued. (Preview/Cloud mode — no VPS backend connected.)");
     }
     toast({ title: titles[kind], description: `${titles[kind]} completed.` });
     setBusy(null);
   };
+
+  // Resume polling if a deploy is already running server-side when the page mounts.
+  useEffect(() => {
+    if (!laravelMode) return;
+    let cancelled = false;
+    (async () => {
+      const s = await pollDeployStatus();
+      if (cancelled || !s?.running) return;
+      setBusy("pull");
+      setLogOpen(true);
+      while (!cancelled) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const next = await pollDeployStatus();
+        if (cancelled || !next || !next.running) break;
+      }
+      if (!cancelled) setBusy(null);
+    })();
+    return () => { cancelled = true; };
+  }, [laravelMode, pollDeployStatus]);
 
   const openRollback = async () => {
     if (!repo) {
