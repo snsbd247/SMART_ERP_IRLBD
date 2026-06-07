@@ -496,20 +496,74 @@ const BackupPage = () => {
               </div>
               <Button
                 onClick={() => setConfirmDemo(true)}
-                disabled={importingDemo}
+                disabled={importingDemo || !isSuperAdmin}
                 className="w-full"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
                 {importingDemo ? "Importing..." : "Import demo configuration"}
               </Button>
-              {demoStats && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-2">
-                  {Object.entries(demoStats).map(([k, v]) => (
-                    <div key={k} className="rounded border border-border bg-muted/30 p-2 text-xs">
-                      <div className="text-muted-foreground capitalize">{k.split("_").join(" ")}</div>
-                      <div className="text-foreground font-semibold">{v} inserted</div>
+
+              {(importingDemo || demoProgress > 0) && (
+                <div className="space-y-2 pt-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{demoStatus || "Preparing..."}</span>
+                    <span className="font-mono text-foreground">{demoProgress}%</span>
+                  </div>
+                  <Progress value={demoProgress} className="h-2" />
+                </div>
+              )}
+
+              {demoResults && (
+                <div className="space-y-2 pt-2">
+                  <div className={`p-2 rounded border text-xs font-medium ${
+                    demoOverall === "success"
+                      ? "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400"
+                      : "bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400"
+                  }`}>
+                    {demoOverall === "success" ? "✔ Import complete" : "⚠ Import finished with warnings"}
+                    {" — "}
+                    {demoResults.reduce((n, r) => n + r.inserted, 0)} new rows added.
+                  </div>
+                  <div className="rounded border border-border overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/50 text-muted-foreground">
+                        <tr>
+                          <th className="text-left px-2 py-1.5">Section</th>
+                          <th className="text-right px-2 py-1.5">Inserted</th>
+                          <th className="text-right px-2 py-1.5">Skipped</th>
+                          <th className="text-right px-2 py-1.5">Attempted</th>
+                          <th className="text-center px-2 py-1.5">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {demoResults.map((r) => (
+                          <tr key={r.section} className="border-t border-border">
+                            <td className="px-2 py-1.5 text-foreground">{r.label}</td>
+                            <td className="px-2 py-1.5 text-right font-semibold text-foreground">{r.inserted}</td>
+                            <td className="px-2 py-1.5 text-right text-muted-foreground">{r.skipped}</td>
+                            <td className="px-2 py-1.5 text-right text-muted-foreground">{r.attempted}</td>
+                            <td className="px-2 py-1.5 text-center">
+                              {r.status === "ok" || r.status === "success" ? (
+                                <Badge variant="default" className="bg-green-600 text-white">OK</Badge>
+                              ) : r.status === "partial" ? (
+                                <Badge variant="outline" className="border-yellow-500 text-yellow-700 dark:text-yellow-400" title={r.error || ""}>Partial</Badge>
+                              ) : (
+                                <Badge variant="destructive" title={r.error || ""}>Failed</Badge>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {demoResults.some((r) => r.error) && (
+                    <div className="text-xs text-destructive space-y-0.5">
+                      {demoResults.filter((r) => r.error).map((r) => (
+                        <div key={r.section}>• <strong>{r.label}:</strong> {r.error}</div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+                  <p className="text-[10px] text-muted-foreground pt-1">Audit log entry recorded under <code>module=backup</code>, <code>action=demo_config_import</code>.</p>
                 </div>
               )}
             </CardContent>
