@@ -239,7 +239,7 @@ export default function BrandingPage() {
           <Button variant="outline" onClick={() => setPreviewMode(!previewMode)}>
             <Eye className="w-4 h-4 mr-2" />{previewMode ? "Close Preview" : "Preview"}
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={() => handleSave()} disabled={saving}>
             <Save className="w-4 h-4 mr-2" />{saving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
