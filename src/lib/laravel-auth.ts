@@ -26,7 +26,36 @@ export function getApiBaseUrl(): string | null {
 }
 
 export function isLaravelMode(): boolean {
+  if (typeof window !== "undefined" && (window as any).__FORCE_LARAVEL_FALLBACK__) return true;
   return !!getApiBaseUrl();
+}
+
+/**
+ * Mark Supabase as unreachable (e.g. 503 from LARAVEL_ONLY_MODE) so subsequent
+ * calls automatically prefer the Laravel API. Persisted for the session only.
+ */
+export function markSupabaseUnavailable(reason?: string): void {
+  if (typeof window === "undefined") return;
+  (window as any).__FORCE_LARAVEL_FALLBACK__ = true;
+  try { sessionStorage.setItem("force_laravel_fallback", reason || "1"); } catch { /* ignore */ }
+  // eslint-disable-next-line no-console
+  console.warn("[laravel-auth] Supabase unavailable — falling back to Laravel API.", reason);
+}
+
+// Restore fallback flag on module load (survives HMR / page reload within session).
+if (typeof window !== "undefined") {
+  try {
+    if (sessionStorage.getItem("force_laravel_fallback")) {
+      (window as any).__FORCE_LARAVEL_FALLBACK__ = true;
+    }
+  } catch { /* ignore */ }
+}
+
+/** True when any Supabase error indicates the project is in Laravel-only mode. */
+export function isSupabaseDisabledError(err: unknown): boolean {
+  const msg = (err as any)?.message || String(err || "");
+  const code = (err as any)?.status || (err as any)?.code;
+  return code === 503 || /supabase is disabled|laravel[_ ]only/i.test(msg);
 }
 
 export function getLaravelToken(): string | null {

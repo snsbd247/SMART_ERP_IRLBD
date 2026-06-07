@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranding } from "@/contexts/BrandingContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
+import {
+  getApiBaseUrl,
+  getLaravelAuthHeaders,
+  isLaravelMode,
+  isSupabaseDisabledError,
+  markSupabaseUnavailable,
+} from "@/lib/laravel-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,8 +18,19 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Palette, Upload, Eye, Save, Building2, Globe, Type, Image as ImageIcon } from "lucide-react";
 
-const USE_LARAVEL = isLaravelMode();
-const API_BASE = getApiBaseUrl() || "";
+// Compute on each call so the auto-fallback flag (set after a 503) is honored.
+const useLaravel = () => isLaravelMode();
+const apiBase = () => getApiBaseUrl() || "";
+
+/** Format a validation-error object into a single readable line. */
+function formatErrors(payload: any): string {
+  if (!payload) return "";
+  if (typeof payload === "string") return payload;
+  if (payload.errors && typeof payload.errors === "object") {
+    return Object.values(payload.errors).flat().join(" • ");
+  }
+  return payload.message || payload.error || "";
+}
 
 const BRANDING_FIELDS = [
   { key: "software_name", label: "Software Name", icon: Type, placeholder: "SmartERP" },
@@ -38,7 +55,7 @@ export default function BrandingPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSave = async () => {
+  const handleSave = async (attempt = 1) => {
     setSaving(true);
     try {
       const rows = Object.entries(form).map(([key, value]) => ({
@@ -47,8 +64,8 @@ export default function BrandingPage() {
         updated_at: new Date().toISOString(),
       }));
 
-      if (USE_LARAVEL) {
-        const res = await fetch(`${API_BASE}/v1/admin/branding`, {
+      if (useLaravel()) {
+        const res = await fetch(`${apiBase()}/v1/admin/branding`, {
           method: "PUT",
           headers: { ...getLaravelAuthHeaders(), "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -56,42 +73,79 @@ export default function BrandingPage() {
           }),
         });
         const payload = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
-        if (!res.ok) throw new Error(payload.message || payload.error || `HTTP ${res.status}`);
+        if (!res.ok) {
+          const detail = formatErrors(payload) || `HTTP ${res.status}`;
+          throw new Error(`Laravel API: ${detail}`);
+        }
       } else {
         const { error } = await supabase
           .from("system_settings")
           .upsert(rows, { onConflict: "setting_key" });
-        if (error) throw error;
+        if (error) {
+          // Auto-fallback: Supabase returned 503 / LARAVEL_ONLY_MODE.
+          if (isSupabaseDisabledError(error) && getApiBaseUrl() && attempt === 1) {
+            markSupabaseUnavailable(error.message);
+            toast({
+              title: "Switching to Laravel API",
+              description: "Supabase is disabled on this server. Retrying via Laravel…",
+            });
+            setSaving(false);
+            return handleSave(2);
+          }
+          throw error;
+        }
       }
 
       await refetch();
       toast({ title: "Branding Updated", description: "All branding settings have been saved successfully." });
     } catch (err: any) {
-      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+      toast({
+        title: "Save failed",
+        description: `${err?.message || "Unknown error"} — Check your network and try again. If this persists, verify VITE_API_BASE_URL or run scripts/test-branding-api.sh.`,
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, settingKey: string) => {
+  const handleLogoUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    settingKey: string,
+    attempt = 1,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Client-side validation mirrors the controller (2 MB, image only).
+    const ALLOWED = /^image\/(png|jpe?g|gif|webp|svg\+xml|x-icon|vnd\.microsoft\.icon)$/i;
+    if (!ALLOWED.test(file.type)) {
+      toast({ title: "Unsupported file", description: `${file.type || "unknown"} — use PNG / JPG / SVG / ICO.`, variant: "destructive" });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Logo must be 2 MB or smaller.", variant: "destructive" });
+      return;
+    }
 
     setUploading(settingKey);
     try {
       let publicUrl = "";
 
-      if (USE_LARAVEL) {
+      if (useLaravel()) {
         const fd = new FormData();
         fd.append("file", file);
         fd.append("setting_key", settingKey);
-        const res = await fetch(`${API_BASE}/v1/admin/branding/logo`, {
+        const res = await fetch(`${apiBase()}/v1/admin/branding/logo`, {
           method: "POST",
-          headers: { ...getLaravelAuthHeaders() }, // no Content-Type — browser sets multipart boundary
+          headers: { ...getLaravelAuthHeaders() }, // browser sets multipart boundary
           body: fd,
         });
         const payload = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
-        if (!res.ok) throw new Error(payload.message || payload.error || `HTTP ${res.status}`);
+        if (!res.ok) {
+          const detail = formatErrors(payload) || `HTTP ${res.status}`;
+          throw new Error(`Laravel API: ${detail}`);
+        }
         publicUrl = payload?.data?.url || payload?.url || "";
         if (!publicUrl) throw new Error("Upload succeeded but no URL returned");
       } else {
@@ -102,7 +156,15 @@ export default function BrandingPage() {
         const { error: uploadError } = await supabase.storage
           .from("branding")
           .upload(filePath, file, { upsert: true });
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          if (isSupabaseDisabledError(uploadError) && getApiBaseUrl() && attempt === 1) {
+            markSupabaseUnavailable(uploadError.message);
+            toast({ title: "Switching to Laravel API", description: "Retrying upload via Laravel…" });
+            setUploading(null);
+            return handleLogoUpload(e, settingKey, 2);
+          }
+          throw uploadError;
+        }
 
         const { data: urlData } = supabase.storage.from("branding").getPublicUrl(filePath);
         publicUrl = urlData.publicUrl;
@@ -111,7 +173,11 @@ export default function BrandingPage() {
       updateField(settingKey, publicUrl);
       toast({ title: "Logo Uploaded", description: `${settingKey.replace(/_/g, " ")} uploaded successfully.` });
     } catch (err: any) {
-      toast({ title: "Upload Failed", description: err.message, variant: "destructive" });
+      toast({
+        title: "Upload Failed",
+        description: `${err?.message || "Unknown error"} — Try a smaller PNG/SVG, or re-upload after checking your connection.`,
+        variant: "destructive",
+      });
     } finally {
       setUploading(null);
     }
@@ -173,7 +239,7 @@ export default function BrandingPage() {
           <Button variant="outline" onClick={() => setPreviewMode(!previewMode)}>
             <Eye className="w-4 h-4 mr-2" />{previewMode ? "Close Preview" : "Preview"}
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={() => handleSave()} disabled={saving}>
             <Save className="w-4 h-4 mr-2" />{saving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
