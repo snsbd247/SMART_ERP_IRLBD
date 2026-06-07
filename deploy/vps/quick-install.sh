@@ -62,7 +62,12 @@ SQL
 log "Step 3/6  Cloning repo and building frontend/backend..."
 curl -fsSL "${BASE_RAW}/clone.sh" -o /tmp/clone.sh
 chmod +x /tmp/clone.sh
-REPO_URL="${REPO_URL}" REPO_BRANCH="${REPO_BRANCH}" APP_DIR="${APP_DIR}" /tmp/clone.sh
+REPO_URL="${REPO_URL}" REPO_BRANCH="${REPO_BRANCH}" APP_DIR="${APP_DIR}" \
+  VITE_API_BASE_URL="https://${DOMAIN}/api" \
+  VITE_SUPABASE_URL="https://${DOMAIN}/supabase-disabled" \
+  VITE_SUPABASE_PUBLISHABLE_KEY="vps-laravel-mode-no-supabase" \
+  VITE_SUPABASE_PROJECT_ID="vps-laravel" \
+  /tmp/clone.sh
 
 # ---------------- 4. .env + migrate ------------
 log "Step 4/6  Writing .env, key:generate, migrate --seed..."
