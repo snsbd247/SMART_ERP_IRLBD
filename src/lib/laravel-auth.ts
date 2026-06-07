@@ -13,18 +13,15 @@ export function getApiBaseUrl(): string | null {
     null;
   if (!url && typeof window !== "undefined") {
     const host = window.location.hostname;
-    // Same-origin Laravel (VPS serving the SPA from public/)
+    // VPS serving the SPA from Laravel public/ — same-origin API
     if (host === "erp.irlbd.com") {
       return `${window.location.origin}/api`;
     }
-    // Lovable-hosted frontend → call the VPS Laravel API directly
-    if (
-      host === "accounting.syncsolutionbd.com" ||
-      host.endsWith(".lovable.app") ||
-      host.endsWith(".lovable.dev")
-    ) {
+    // Custom production domain pointing at the VPS Laravel API
+    if (host === "accounting.syncsolutionbd.com") {
       return "https://erp.irlbd.com/api";
     }
+    // Lovable preview/published (*.lovable.app / *.lovable.dev) → stay in Supabase mode
   }
   if (!url) return null;
   const clean = url.replace(/\/+$/, "");
