@@ -123,6 +123,8 @@ const navGroups: NavGroup[] = [
       { to: "/customers", label: "Customers", icon: UserCheck, permission: "customers.view,sales.view" },
       { to: "/reports/accounts-receivable", label: "Accounts Receivable", icon: UserCheck, permission: "sales.view" },
       { to: "/reports/ar-aging", label: "AR Aging", icon: Clock, permission: "sales.view" },
+      { to: "/reports/customer-statement", label: "Customer Statement", icon: ScrollText, permission: "sales.view" },
+      { to: "/reports/sales", label: "Sales Report", icon: TrendingUp, permission: "sales.view" },
       { to: "/reports/income-analysis", label: "Income Analysis", icon: TrendingUp, permission: "sales.view" },
     ],
   },
