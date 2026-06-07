@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranding } from "@/contexts/BrandingContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,9 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Palette, Upload, Eye, Save, Building2, Globe, Type, Image as ImageIcon } from "lucide-react";
+
+const USE_LARAVEL = isLaravelMode();
+const API_BASE = getApiBaseUrl() || "";
 
 const BRANDING_FIELDS = [
   { key: "software_name", label: "Software Name", icon: Type, placeholder: "SmartERP" },
@@ -43,12 +47,22 @@ export default function BrandingPage() {
         updated_at: new Date().toISOString(),
       }));
 
-      // Upsert by unique key — works for both new and existing settings.
-      const { error } = await supabase
-        .from("system_settings")
-        .upsert(rows, { onConflict: "setting_key" });
-
-      if (error) throw error;
+      if (USE_LARAVEL) {
+        const res = await fetch(`${API_BASE}/v1/admin/branding`, {
+          method: "PUT",
+          headers: { ...getLaravelAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({
+            settings: rows.map(({ setting_key, setting_value }) => ({ setting_key, setting_value })),
+          }),
+        });
+        const payload = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+        if (!res.ok) throw new Error(payload.message || payload.error || `HTTP ${res.status}`);
+      } else {
+        const { error } = await supabase
+          .from("system_settings")
+          .upsert(rows, { onConflict: "setting_key" });
+        if (error) throw error;
+      }
 
       await refetch();
       toast({ title: "Branding Updated", description: "All branding settings have been saved successfully." });
@@ -65,23 +79,36 @@ export default function BrandingPage() {
 
     setUploading(settingKey);
     try {
-      const ext = file.name.split(".").pop();
-      const fileName = `${settingKey}_${Date.now()}.${ext}`;
-      const filePath = `logos/${fileName}`;
+      let publicUrl = "";
 
-      const { error: uploadError } = await supabase.storage
-        .from("branding")
-        .upload(filePath, file, { upsert: true });
+      if (USE_LARAVEL) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("setting_key", settingKey);
+        const res = await fetch(`${API_BASE}/v1/admin/branding/logo`, {
+          method: "POST",
+          headers: { ...getLaravelAuthHeaders() }, // no Content-Type — browser sets multipart boundary
+          body: fd,
+        });
+        const payload = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+        if (!res.ok) throw new Error(payload.message || payload.error || `HTTP ${res.status}`);
+        publicUrl = payload?.data?.url || payload?.url || "";
+        if (!publicUrl) throw new Error("Upload succeeded but no URL returned");
+      } else {
+        const ext = file.name.split(".").pop();
+        const fileName = `${settingKey}_${Date.now()}.${ext}`;
+        const filePath = `logos/${fileName}`;
 
-      if (uploadError) throw uploadError;
+        const { error: uploadError } = await supabase.storage
+          .from("branding")
+          .upload(filePath, file, { upsert: true });
+        if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from("branding")
-        .getPublicUrl(filePath);
+        const { data: urlData } = supabase.storage.from("branding").getPublicUrl(filePath);
+        publicUrl = urlData.publicUrl;
+      }
 
-      const publicUrl = urlData.publicUrl;
       updateField(settingKey, publicUrl);
-
       toast({ title: "Logo Uploaded", description: `${settingKey.replace(/_/g, " ")} uploaded successfully.` });
     } catch (err: any) {
       toast({ title: "Upload Failed", description: err.message, variant: "destructive" });
