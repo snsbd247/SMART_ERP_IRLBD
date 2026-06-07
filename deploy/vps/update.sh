@@ -36,9 +36,23 @@ install_deploy_runner() {
     return 0
   fi
 
+  local runner_pid=""
+  [[ -f /var/run/smarterp-deploy.pid ]] && runner_pid="$(cat /var/run/smarterp-deploy.pid 2>/dev/null || true)"
+  if [[ "${SMARTERP_DEPLOY_RUNNER:-0}" == "1" ]] \
+     || [[ -n "${runner_pid}" && -d "/proc/${runner_pid}" ]]; then
+    log "Pull & Deploy runner is active; skipping self-overwrite during web deploy."
+    return 0
+  fi
+
   log "Refreshing Pull & Deploy runner (/usr/local/bin/smarterp-deploy)..."
-  install -m 0755 -o root -g root "${APP_DIR}/deploy/vps/deploy-runner.sh" /usr/local/bin/smarterp-deploy
-  sed -i "s|^APP_DIR=.*|APP_DIR=\"${APP_DIR}\"|" /usr/local/bin/smarterp-deploy
+  if install -m 0755 -o root -g root "${APP_DIR}/deploy/vps/deploy-runner.sh" /usr/local/bin/smarterp-deploy; then
+    sed -i "s|^APP_DIR=.*|APP_DIR=\"${APP_DIR}\"|" /usr/local/bin/smarterp-deploy
+  elif [[ -x /usr/local/bin/smarterp-deploy ]]; then
+    warn "Could not overwrite /usr/local/bin/smarterp-deploy; existing executable runner will be used."
+  else
+    err "Could not install /usr/local/bin/smarterp-deploy and no existing runner is executable."
+    exit 1
+  fi
 
   touch /var/log/smarterp-deploy.log /var/log/smarterp-deploy.state
   chown www-data:www-data /var/log/smarterp-deploy.log /var/log/smarterp-deploy.state
