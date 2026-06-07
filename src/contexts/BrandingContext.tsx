@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { isLaravelMode } from "@/lib/laravel-auth";
+import { isLaravelMode, getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 
 export interface BrandingSettings {
   software_name: string;
@@ -49,20 +49,34 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchBranding = useCallback(async () => {
-    if (isLaravelMode()) {
-      setLoading(false);
-      return;
+    let rows: { setting_key: string; setting_value: string | null }[] = [];
+
+    try {
+      if (isLaravelMode()) {
+        const base = getApiBaseUrl() || "";
+        const res = await fetch(`${base}/v1/admin/branding`, {
+          headers: { ...getLaravelAuthHeaders() },
+        });
+        if (res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          rows = payload?.data || [];
+        }
+      } else {
+        const { data } = await supabase
+          .from("system_settings")
+          .select("setting_key, setting_value")
+          .in("setting_key", BRANDING_KEYS);
+        rows = (data as any) || [];
+      }
+    } catch {
+      // ignore — fall back to defaults
     }
 
-    const { data } = await supabase
-      .from("system_settings")
-      .select("setting_key, setting_value")
-      .in("setting_key", BRANDING_KEYS);
-
-    if (data && data.length > 0) {
+    if (rows.length > 0) {
       const merged = { ...DEFAULTS };
-      data.forEach((row: any) => {
+      rows.forEach((row) => {
         const key = row.setting_key as keyof BrandingSettings;
+        if (!(key in DEFAULTS)) return;
         if (key === "white_label_mode") {
           (merged as any)[key] = row.setting_value === "true";
         } else {
