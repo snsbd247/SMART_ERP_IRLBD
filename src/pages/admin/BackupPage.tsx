@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Upload, Database, Clock, FileText, Trash2, AlertTriangle, CheckCircle, XCircle, Settings, RefreshCw, Shield, Cloud, HardDrive } from "lucide-react";
+import { Download, Upload, Database, Clock, FileText, Trash2, AlertTriangle, CheckCircle, XCircle, Settings, RefreshCw, Shield, Cloud, HardDrive, Sparkles } from "lucide-react";
 
 const API_BASE = getApiBaseUrl() || "";
 const USE_LARAVEL = isLaravelMode();
@@ -72,6 +72,36 @@ const BackupPage = () => {
   const [confirmRestore, setConfirmRestore] = useState(false);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [importingDemo, setImportingDemo] = useState(false);
+  const [demoStats, setDemoStats] = useState<Record<string, number> | null>(null);
+  const [confirmDemo, setConfirmDemo] = useState(false);
+
+  const handleImportDemoConfig = async () => {
+    setConfirmDemo(false);
+    setImportingDemo(true);
+    setDemoStats(null);
+    try {
+      if (USE_LARAVEL) {
+        const res = await fetch(`${API_BASE}/v1/admin/demo/import-config`, {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        });
+        const result = await res.json().catch(() => ({ message: `Failed (HTTP ${res.status})` }));
+        if (!res.ok || result.success === false) throw new Error(result.message || result.error || "Import failed");
+        setDemoStats(result?.data?.stats || result?.stats || null);
+      } else {
+        const { data, error } = await supabase.functions.invoke("import-demo-config", { body: {} });
+        if (error) throw error;
+        if (data && data.success === false) throw new Error(data.error || "Import failed");
+        setDemoStats(data?.stats || null);
+      }
+      toast({ title: "Demo configuration imported", description: "Chart of Accounts, IFRS, Roles, Numbering, Shortcuts loaded." });
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    } finally {
+      setImportingDemo(false);
+    }
+  };
 
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -319,6 +349,7 @@ const BackupPage = () => {
         <TabsList>
           <TabsTrigger value="local"><HardDrive className="w-3.5 h-3.5 mr-1.5" />Local Backup</TabsTrigger>
           <TabsTrigger value="gdrive"><Cloud className="w-3.5 h-3.5 mr-1.5" />Google Drive</TabsTrigger>
+          <TabsTrigger value="demo"><Sparkles className="w-3.5 h-3.5 mr-1.5" />Demo import</TabsTrigger>
           <TabsTrigger value="settings"><Settings className="w-3.5 h-3.5 mr-1.5" />Settings</TabsTrigger>
           <TabsTrigger value="history"><Clock className="w-3.5 h-3.5 mr-1.5" />History</TabsTrigger>
           <TabsTrigger value="schedule"><RefreshCw className="w-3.5 h-3.5 mr-1.5" />Schedule</TabsTrigger>
@@ -395,7 +426,53 @@ const BackupPage = () => {
           </Card>
         </TabsContent>
 
-        {/* Settings Tab */}
+        {/* Demo Import Tab */}
+        <TabsContent value="demo">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />Demo configuration import</CardTitle>
+              <CardDescription>
+                One-click setup of baseline configuration so you can start using the ERP immediately.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs text-muted-foreground space-y-1">
+                <p className="font-medium text-foreground">This will import:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  <li>Chart of Accounts (Bangladesh standard, 59 accounts)</li>
+                  <li>IFRS Account Mapping (standard IFRS lines)</li>
+                  <li>Roles &amp; Permissions (Super Admin, Admin, Accountant, Sales Manager, Inventory Clerk, Viewer)</li>
+                  <li>Document Numbering (INV, PUR, JV, PV, RV, CV, PRD, INC, EXP)</li>
+                  <li>Page Shortcuts (118 quick-jump codes)</li>
+                </ul>
+              </div>
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-700 dark:text-green-400">
+                <p className="font-medium">✔ Safe to run</p>
+                <p>Idempotent — existing records are kept untouched. Only missing rows are inserted. No transactional data (vouchers, invoices, stock) is touched.</p>
+              </div>
+              <Button
+                onClick={() => setConfirmDemo(true)}
+                disabled={importingDemo}
+                className="w-full"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                {importingDemo ? "Importing..." : "Import demo configuration"}
+              </Button>
+              {demoStats && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-2">
+                  {Object.entries(demoStats).map(([k, v]) => (
+                    <div key={k} className="rounded border border-border bg-muted/30 p-2 text-xs">
+                      <div className="text-muted-foreground capitalize">{k.split("_").join(" ")}</div>
+                      <div className="text-foreground font-semibold">{v} inserted</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+
         <TabsContent value="settings">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
@@ -596,6 +673,22 @@ const BackupPage = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
             <Button variant="destructive" onClick={() => confirmDelete && handleDeleteBackup(confirmDelete)}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Demo Import Confirmation */}
+      <Dialog open={confirmDemo} onOpenChange={setConfirmDemo}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" />Import demo configuration?</DialogTitle>
+            <DialogDescription>
+              This will insert missing Chart of Accounts, IFRS Mapping, Roles &amp; Permissions, Document Numbering and Page Shortcuts. Existing rows are kept as-is. No transactional data is touched.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDemo(false)}>Cancel</Button>
+            <Button onClick={handleImportDemoConfig}><Sparkles className="w-4 h-4 mr-2" />Yes, import</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
