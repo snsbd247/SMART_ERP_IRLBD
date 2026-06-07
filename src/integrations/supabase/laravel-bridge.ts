@@ -18,6 +18,31 @@ type Result<T> = { data: T | null; error: { message: string; code?: string } | n
 
 interface FilterEntry { col: string; op: string; val: any }
 
+/**
+ * Strip PostgREST relation embedding from a select string and return a clean
+ * comma-list of plain columns.
+ *
+ *  "id, name, rel!inner(a, b), c"  →  "id,name,c"
+ *  "*, rel(a, b)"                  →  "*"
+ *  "rel!inner(a, b)"               →  "" (caller treats as select-all)
+ */
+function stripRelationCols(cols: string): string {
+  // 1. Remove balanced "(...)" segments entirely (handles nested commas).
+  let stripped = "";
+  let depth = 0;
+  for (const ch of cols) {
+    if (ch === "(") { depth++; continue; }
+    if (ch === ")") { depth = Math.max(0, depth - 1); continue; }
+    if (depth === 0) stripped += ch;
+  }
+  // 2. Split, trim, drop relation tokens (anything with ':' or '!' or empty).
+  return stripped
+    .split(",")
+    .map((s) => s.trim())
+    .filter((c) => c && !c.includes(":") && !c.includes("!"))
+    .join(",");
+}
+
 function buildQS(params: {
   select?: string;
   filters: FilterEntry[];
@@ -88,11 +113,10 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
   select(cols = "*"): this {
     if (this._mode === "insert" || this._mode === "update" || this._mode === "upsert") {
       this._returning = true;
-      // strip relation hints: "rel(*)" -> drop
     } else {
       this._mode = "select";
     }
-    this._select = cols === "*" ? undefined : cols.split(",").map(s => s.trim()).filter(c => !c.includes("(")).join(",") || undefined;
+    this._select = cols === "*" ? undefined : stripRelationCols(cols) || undefined;
     return this;
   }
 
