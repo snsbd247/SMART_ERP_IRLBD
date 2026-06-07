@@ -63,7 +63,16 @@ async function request<T = any>(path: string, init: RequestInit = {}): Promise<T
     ...((init.headers as Record<string, string>) || {}),
   };
   const res = await fetch(`${base}${path}`, { ...init, headers });
-  const json = await res.json().catch(() => ({}));
+  const contentType = res.headers.get("content-type") || "";
+  const json = contentType.includes("application/json") ? await res.json().catch(() => ({})) : null;
+  if (!json) {
+    const text = await res.text().catch(() => "");
+    const isHtml = contentType.includes("text/html") || /^\s*<!doctype html/i.test(text) || /^\s*<html/i.test(text);
+    if (isHtml) {
+      throw new Error("API route is serving the frontend instead of Laravel. Point the domain/DNS to the VPS or configure VITE_API_BASE_URL to the Laravel backend URL.");
+    }
+    throw new Error(`Unexpected API response${res.status ? ` (HTTP ${res.status})` : ""}`);
+  }
   if (!res.ok) {
     const msg = (json as any)?.message || (json as any)?.error || `HTTP ${res.status}`;
     throw new Error(msg);
