@@ -85,10 +85,16 @@ class PullFromSupabase extends Command
 
     public function handle(): int
     {
-        $url = env('SUPABASE_URL');
-        $key = env('SUPABASE_SERVICE_KEY');
+        $url = $this->option('url') ?: (env('SUPABASE_URL') ?: ($_ENV['SUPABASE_URL'] ?? getenv('SUPABASE_URL') ?: null));
+        $key = $this->option('key') ?: (env('SUPABASE_SERVICE_KEY')
+            ?: env('SUPABASE_SERVICE_ROLE_KEY')
+            ?: ($_ENV['SUPABASE_SERVICE_KEY'] ?? getenv('SUPABASE_SERVICE_KEY')
+            ?: ($_ENV['SUPABASE_SERVICE_ROLE_KEY'] ?? getenv('SUPABASE_SERVICE_ROLE_KEY'))));
         if (!$url || !$key) {
-            $this->error('Set SUPABASE_URL and SUPABASE_SERVICE_KEY in .env first.');
+            $this->error('Missing Supabase credentials. Provide them via:');
+            $this->line('  1) Inline: php artisan data:pull-from-supabase --url=https://xxx.supabase.co --key=eyJ...');
+            $this->line('  2) Env on the fly: SUPABASE_URL=... SUPABASE_SERVICE_KEY=... php artisan data:pull-from-supabase');
+            $this->line('  3) Add to .env then run: php artisan config:clear && php artisan data:pull-from-supabase');
             return 1;
         }
 
