@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * GitHub Deploy Sync — runs the VPS update.sh script in the background via a
@@ -35,43 +36,53 @@ class DeployController extends Controller
     /** POST /api/v1/admin/deploy/pull — start update.sh in background. */
     public function pull(Request $request)
     {
-        $this->guard($request);
+        try {
+            $this->guard($request);
 
-        if ($this->isRunning()) {
+            if ($this->isRunning()) {
+                return response()->json([
+                    'success' => false,
+                    'running' => true,
+                    'message' => 'A deploy is already in progress.',
+                ], 409);
+            }
+
+            $preflight = $this->preflightRunner();
+            if ($preflight !== null) {
+                return response()->json([
+                    'success' => false,
+                    'running' => false,
+                    'message' => $preflight,
+                ], 503);
+            }
+
+            $this->safeWrite(self::STATE_FILE, 'running');
+            $this->safeAppend(self::LOG_FILE, "[" . date('H:i:s') . "] ▶ Pull & Deploy requested by {$request->user()->name}\n");
+
+            // Run the wrapper detached so the HTTP request returns immediately.
+            // sudo -n = non-interactive; nohup + & = background; output -> log file.
+            $script = sprintf(
+                'sudo -n /usr/local/bin/smarterp-deploy >> %s 2>&1; rc=$?; if [ $rc -ne 0 ]; then echo "[%s] DEPLOY FAILED: sudo runner exited with code $rc" >> %s; echo failed > %s; fi',
+                escapeshellarg(self::LOG_FILE),
+                date('H:i:s'),
+                escapeshellarg(self::LOG_FILE),
+                escapeshellarg(self::STATE_FILE)
+            );
+            @exec('sh -c ' . escapeshellarg($script) . ' >/dev/null 2>&1 &');
+
             return response()->json([
-                'success' => false,
+                'success' => true,
                 'running' => true,
-                'message' => 'A deploy is already in progress.',
-            ], 409);
-        }
-
-        $preflight = $this->preflightRunner();
-        if ($preflight !== null) {
+                'message' => 'Deploy started.',
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Deploy pull failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
                 'running' => false,
-                'message' => $preflight,
-            ], 503);
+                'message' => 'Deploy request failed: ' . $e->getMessage(),
+            ], 500);
         }
-
-        @file_put_contents(self::STATE_FILE, 'running');
-        @file_put_contents(self::LOG_FILE, "[" . date('H:i:s') . "] ▶ Pull & Deploy requested by {$request->user()->name}\n");
-
-        // Run the wrapper detached so the HTTP request returns immediately.
-        // sudo -n = non-interactive; nohup + & = background; output -> log file.
-        $cmd = 'sh -c ' . escapeshellarg(
-            'sudo -n /usr/local/bin/smarterp-deploy >> ' . escapeshellarg(self::LOG_FILE) . ' 2>&1; ' .
-            'rc=$?; if [ $rc -ne 0 ]; then ' .
-            'echo "[' . date('H:i:s') . '] DEPLOY FAILED: sudo runner exited with code $rc" >> ' . escapeshellarg(self::LOG_FILE) . '; ' .
-            'echo failed > ' . escapeshellarg(self::STATE_FILE) . '; fi'
-        ) . ' >/dev/null 2>&1 &';
-        @exec($cmd);
-
-        return response()->json([
-            'success' => true,
-            'running' => true,
-            'message' => 'Deploy started.',
-        ]);
     }
 
     private function preflightRunner(): ?string
