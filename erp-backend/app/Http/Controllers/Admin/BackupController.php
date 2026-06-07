@@ -7,7 +7,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -281,15 +283,12 @@ class BackupController extends BaseController
         $sql = file_get_contents($path);
         if ($sql === false || $sql === '') throw new \RuntimeException("Cannot read SQL file or file is empty");
 
-        // Strip single-line (--) and multi-line (/* */) comments
+        // Strip dump comments. The statement splitter below still protects
+        // semicolons inside quoted values, so JSON/text fields are safe.
         $sql = preg_replace('/^\s*--.*$/m', '', $sql);
         $sql = preg_replace('/\/\*.*?\*\//s', '', $sql);
 
-        // Split into statements. The generated backup ends every statement
-        // with ";\n" OR ";" at EOF, so we split on ";" followed by a newline
-        // or end of string. This tolerates ";" inside quoted JSON values
-        // (rows are emitted one per line in our SQL exporter).
-        $statements = preg_split('/;[ \t\r]*(?:\n|$)/', $sql);
+        $statements = $this->splitSqlStatements($sql);
 
         $errors = [];
         $firstError = null;
@@ -303,8 +302,15 @@ class BackupController extends BaseController
                 if ($stmt === '' || stripos($stmt, 'SET FOREIGN_KEY_CHECKS') === 0) continue;
 
                 try {
-                    DB::unprepared($stmt . ';');
-                    $ok++;
+                    if (preg_match('/^\s*(INSERT|REPLACE)\s+INTO\s+/i', $stmt)) {
+                        $ok += $this->restoreInsertStatement($stmt);
+                    } else {
+                        // Same-app Laravel backups contain DROP/CREATE statements.
+                        // Execute those normally; imported Supabase/Lovable backups
+                        // are handled through the column-filtered INSERT path above.
+                        DB::unprepared(rtrim($stmt, ';') . ';');
+                        $ok++;
+                    }
                 } catch (\Throwable $e) {
                     $msg = $e->getMessage();
                     if ($firstError === null) $firstError = $msg;
@@ -321,6 +327,49 @@ class BackupController extends BaseController
         Log::info("Restore: {$ok} statements ok, " . count($errors) . " skipped");
 
         return [$ok, count($errors), $firstError];
+    }
+
+    private function splitSqlStatements(string $sql): array
+    {
+        $statements = [];
+        $buffer = '';
+        $quote = null;
+        $escaped = false;
+        $len = strlen($sql);
+
+        for ($i = 0; $i < $len; $i++) {
+            $ch = $sql[$i];
+            $buffer .= $ch;
+
+            if ($escaped) {
+                $escaped = false;
+                continue;
+            }
+            if ($quote !== null && $ch === '\\') {
+                $escaped = true;
+                continue;
+            }
+            if ($ch === "'" || $ch === '"' || $ch === '`') {
+                if ($quote === null) {
+                    $quote = $ch;
+                } elseif ($quote === $ch) {
+                    if ($ch === "'" && $i + 1 < $len && $sql[$i + 1] === "'") {
+                        $buffer .= $sql[++$i];
+                        continue;
+                    }
+                    $quote = null;
+                }
+                continue;
+            }
+            if ($ch === ';' && $quote === null) {
+                $statements[] = trim(substr($buffer, 0, -1));
+                $buffer = '';
+            }
+        }
+
+        $tail = trim($buffer);
+        if ($tail !== '') $statements[] = $tail;
+        return $statements;
     }
 }
 
