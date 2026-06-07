@@ -789,7 +789,7 @@ const BackupPage = () => {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDemo(false)}>Cancel</Button>
-            <Button onClick={handleImportDemoConfig}><Sparkles className="w-4 h-4 mr-2" />Yes, import</Button>
+            <Button onClick={() => handleImportDemoConfig(false)}><Sparkles className="w-4 h-4 mr-2" />Yes, import</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
