@@ -462,7 +462,7 @@ const BackupPage = () => {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-2">
                   {Object.entries(demoStats).map(([k, v]) => (
                     <div key={k} className="rounded border border-border bg-muted/30 p-2 text-xs">
-                      <div className="text-muted-foreground capitalize">{k.replaceAll("_", " ")}</div>
+                      <div className="text-muted-foreground capitalize">{k.split("_").join(" ")}</div>
                       <div className="text-foreground font-semibold">{v} inserted</div>
                     </div>
                   ))}
