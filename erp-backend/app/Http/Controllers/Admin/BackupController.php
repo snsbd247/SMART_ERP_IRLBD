@@ -95,8 +95,29 @@ class BackupController extends BaseController
         }
 
         try {
-            $path = $file->storeAs('backups', 'restore_' . date('Y_m_d_H_i_s') . '.sql', 'local');
-            $fullPath = Storage::disk('local')->path($path);
+            // Ensure backups dir exists
+            $backupsDir = storage_path('app/backups');
+            if (!is_dir($backupsDir)) {
+                @mkdir($backupsDir, 0775, true);
+            }
+
+            $fileName = 'restore_' . date('Y_m_d_H_i_s') . '.sql';
+            $fullPath = $backupsDir . '/' . $fileName;
+            $path = 'backups/' . $fileName;
+
+            if (!@move_uploaded_file($file->getRealPath(), $fullPath)) {
+                // Fallback to Storage facade
+                $stored = $file->storeAs('backups', $fileName, 'local');
+                if (!$stored) {
+                    throw new \RuntimeException('Failed to save uploaded SQL file to ' . $fullPath);
+                }
+                $fullPath = Storage::disk('local')->path($stored);
+                $path = $stored;
+            }
+
+            if (!file_exists($fullPath)) {
+                throw new \RuntimeException('Uploaded SQL file not found at ' . $fullPath);
+            }
 
             // Try mysql command first
             $restored = $this->tryMysqlRestore($fullPath);
