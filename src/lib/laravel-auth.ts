@@ -11,12 +11,20 @@ export function getApiBaseUrl(): string | null {
     (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
     (import.meta.env.VITE_API_URL as string | undefined) ||
     null;
-  if (
-    !url &&
-    typeof window !== "undefined" &&
-    ["erp.irlbd.com", "accounting.syncsolutionbd.com"].includes(window.location.hostname)
-  ) {
-    return `${window.location.origin}/api`;
+  if (!url && typeof window !== "undefined") {
+    const host = window.location.hostname;
+    // Same-origin Laravel (VPS serving the SPA from public/)
+    if (host === "erp.irlbd.com") {
+      return `${window.location.origin}/api`;
+    }
+    // Lovable-hosted frontend → call the VPS Laravel API directly
+    if (
+      host === "accounting.syncsolutionbd.com" ||
+      host.endsWith(".lovable.app") ||
+      host.endsWith(".lovable.dev")
+    ) {
+      return "https://erp.irlbd.com/api";
+    }
   }
   if (!url) return null;
   const clean = url.replace(/\/+$/, "");
