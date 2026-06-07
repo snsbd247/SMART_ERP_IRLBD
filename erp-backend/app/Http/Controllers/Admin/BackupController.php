@@ -273,20 +273,26 @@ class BackupController extends BaseController
         return null;
     }
 
-    private function phpSqlRestore(string $path): void
+    /**
+     * Execute a .sql backup in pure PHP. Returns [ok, skipped, firstError].
+     */
+    private function phpSqlRestore(string $path): array
     {
         $sql = file_get_contents($path);
-        if (!$sql) throw new \RuntimeException("Cannot read SQL file");
+        if ($sql === false || $sql === '') throw new \RuntimeException("Cannot read SQL file or file is empty");
 
-        // Strip single-line and multi-line comments
+        // Strip single-line (--) and multi-line (/* */) comments
         $sql = preg_replace('/^\s*--.*$/m', '', $sql);
         $sql = preg_replace('/\/\*.*?\*\//s', '', $sql);
 
-        // Split into individual statements. We split on ";\n" to tolerate
-        // semicolons inside quoted JSON values reasonably well.
-        $statements = preg_split('/;\s*\n/', $sql);
+        // Split into statements. The generated backup ends every statement
+        // with ";\n" OR ";" at EOF, so we split on ";" followed by a newline
+        // or end of string. This tolerates ";" inside quoted JSON values
+        // (rows are emitted one per line in our SQL exporter).
+        $statements = preg_split('/;[ \t\r]*(?:\n|$)/', $sql);
 
         $errors = [];
+        $firstError = null;
         $ok = 0;
 
         try {
@@ -300,10 +306,11 @@ class BackupController extends BaseController
                     DB::unprepared($stmt . ';');
                     $ok++;
                 } catch (\Throwable $e) {
-                    // Skip rows whose columns don't exist on this MySQL schema, etc.
-                    $errors[] = substr($e->getMessage(), 0, 200);
+                    $msg = $e->getMessage();
+                    if ($firstError === null) $firstError = $msg;
+                    $errors[] = substr($msg, 0, 200);
                     if (count($errors) <= 20) {
-                        Log::warning("Restore stmt failed: " . $e->getMessage());
+                        Log::warning("Restore stmt failed: " . $msg);
                     }
                 }
             }
@@ -313,8 +320,7 @@ class BackupController extends BaseController
 
         Log::info("Restore: {$ok} statements ok, " . count($errors) . " skipped");
 
-        if ($ok === 0 && count($errors) > 0) {
-            throw new \RuntimeException('Restore failed: ' . ($errors[0] ?? 'unknown'));
-        }
+        return [$ok, count($errors), $firstError];
     }
 }
+
