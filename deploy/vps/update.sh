@@ -80,6 +80,24 @@ if [[ -d "${APP_DIR}/erp-backend" ]]; then
   log "Running additive migrations (no seeders, no data reset)..."
   php artisan migrate --force --no-interaction
 
+  log "Repairing VPS token-only auth/install flags..."
+  if [[ -f .env ]]; then
+    grep -q '^SANCTUM_STATEFUL_DOMAINS=' .env \
+      && sed -i 's|^SANCTUM_STATEFUL_DOMAINS=.*|SANCTUM_STATEFUL_DOMAINS=|' .env \
+      || printf '\nSANCTUM_STATEFUL_DOMAINS=\n' >> .env
+    grep -q '^SESSION_DOMAIN=' .env \
+      && sed -i 's|^SESSION_DOMAIN=.*|SESSION_DOMAIN=|' .env \
+      || printf 'SESSION_DOMAIN=\n' >> .env
+  fi
+  if [[ "${DB_CONN:-mysql}" == "mysql" && -n "${DB_NAME:-}" ]]; then
+    MYSQL_PWD="${DB_PASS}" mysql -h "${DB_HOST:-127.0.0.1}" -P "${DB_PORT:-3306}" -u "${DB_USER}" "${DB_NAME}" <<SQL || warn "Could not update installed flag"
+INSERT INTO system_settings (setting_key, setting_value, is_encrypted, created_at, updated_at)
+VALUES ('setup_completed', 'true', 0, NOW(), NOW())
+ON DUPLICATE KEY UPDATE setting_value = 'true', updated_at = NOW();
+SQL
+  fi
+  touch storage/installed
+
   log "Clearing & re-caching..."
   php artisan config:clear
   php artisan route:clear
