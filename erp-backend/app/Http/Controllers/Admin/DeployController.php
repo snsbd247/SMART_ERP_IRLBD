@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -76,6 +77,7 @@ class DeployController extends Controller
                 'message' => 'Deploy started.',
             ]);
         } catch (Throwable $e) {
+            if ($e instanceof HttpResponseException) throw $e;
             Log::error('Deploy pull failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
@@ -126,6 +128,7 @@ class DeployController extends Controller
                 'log_size' => is_file(self::LOG_FILE) ? @filesize(self::LOG_FILE) : 0,
             ]);
         } catch (Throwable $e) {
+            if ($e instanceof HttpResponseException) throw $e;
             Log::error('Deploy status failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success'  => false,
