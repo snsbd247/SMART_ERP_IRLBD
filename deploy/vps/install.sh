@@ -412,6 +412,21 @@ ln -sf /etc/nginx/sites-available/studio   /etc/nginx/sites-enabled/studio
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 
+# Pull & Deploy button runner (idempotent sudo wrapper for update.sh)
+log "Installing /usr/local/bin/smarterp-deploy and sudoers entry..."
+install -m 0755 -o root -g root "${APP_DIR}/deploy/vps/deploy-runner.sh" /usr/local/bin/smarterp-deploy
+sed -i "s|^APP_DIR=.*|APP_DIR=\"${APP_DIR}\"|" /usr/local/bin/smarterp-deploy
+touch /var/log/smarterp-deploy.log /var/log/smarterp-deploy.state
+chown www-data:www-data /var/log/smarterp-deploy.log /var/log/smarterp-deploy.state
+chmod 0664 /var/log/smarterp-deploy.log /var/log/smarterp-deploy.state
+cat > /etc/sudoers.d/smarterp-deploy <<SUDO
+www-data ALL=(root) NOPASSWD: /usr/local/bin/smarterp-deploy
+Defaults!/usr/local/bin/smarterp-deploy !requiretty
+SUDO
+chmod 0440 /etc/sudoers.d/smarterp-deploy
+visudo -cf /etc/sudoers.d/smarterp-deploy >/dev/null
+sudo -u www-data sudo -n /usr/local/bin/smarterp-deploy --check >/dev/null
+
 # SSL — needs domains pointing to this VPS first.
 # Try each hostname separately so one bad DNS record (e.g. missing www
 # subdomain) doesn't block certs for the others.
