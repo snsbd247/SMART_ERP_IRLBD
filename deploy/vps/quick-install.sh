@@ -127,8 +127,13 @@ server {
     add_header X-Content-Type-Options "nosniff";
 
     location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    location /api {
         try_files \$uri \$uri/ /index.php?\$query_string;
     }
+
 
     location ~ \.php\$ {
         fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
