@@ -97,6 +97,7 @@ const navGroups: NavGroup[] = [
       { to: "/suppliers", label: "Suppliers", icon: Truck, permission: "suppliers.view,purchase.view" },
       { to: "/reports/accounts-payable", label: "Accounts Payable", icon: Truck, permission: "purchase.view" },
       { to: "/reports/ap-aging", label: "AP Aging", icon: Clock, permission: "purchase.view" },
+      { to: "/reports/purchase", label: "Purchase Report", icon: ShoppingCart, permission: "purchase.view" },
       { to: "/reports/expense-analysis", label: "Expense Analysis", icon: FileText, permission: "purchase.view" },
     ],
   },
