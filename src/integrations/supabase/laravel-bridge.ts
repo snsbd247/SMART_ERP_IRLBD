@@ -43,6 +43,29 @@ function stripRelationCols(cols: string): string {
     .join(",");
 }
 
+/**
+ * Conventional foreign-key column on the child table for a given parent table.
+ * Used to translate PostgREST relation filters (e.g. `acc_vouchers.status`) into
+ * a local `<fk> IN (...)` filter, since the Laravel endpoint has no join support.
+ */
+function relationForeignKey(parent: string): string | null {
+  const map: Record<string, string> = {
+    acc_vouchers: "voucher_id",
+    sales_invoices: "invoice_id",
+    purchases: "purchase_id",
+    party_payments: "payment_id",
+    employees: "employee_id",
+    chart_of_accounts: "account_id",
+    item_master: "item_id",
+    warehouses: "warehouse_id",
+    branches: "branch_id",
+  };
+  if (map[parent]) return map[parent];
+  // Fallback: strip trailing "s" → "<singular>_id"
+  if (parent.endsWith("s")) return `${parent.slice(0, -1)}_id`;
+  return `${parent}_id`;
+}
+
 function buildQS(params: {
   select?: string;
   filters: FilterEntry[];
