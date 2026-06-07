@@ -426,7 +426,53 @@ const BackupPage = () => {
           </Card>
         </TabsContent>
 
-        {/* Settings Tab */}
+        {/* Demo Import Tab */}
+        <TabsContent value="demo">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />Demo configuration import</CardTitle>
+              <CardDescription>
+                One-click setup of baseline configuration so you can start using the ERP immediately.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs text-muted-foreground space-y-1">
+                <p className="font-medium text-foreground">This will import:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  <li>Chart of Accounts (Bangladesh standard, 59 accounts)</li>
+                  <li>IFRS Account Mapping (standard IFRS lines)</li>
+                  <li>Roles &amp; Permissions (Super Admin, Admin, Accountant, Sales Manager, Inventory Clerk, Viewer)</li>
+                  <li>Document Numbering (INV, PUR, JV, PV, RV, CV, PRD, INC, EXP)</li>
+                  <li>Page Shortcuts (118 quick-jump codes)</li>
+                </ul>
+              </div>
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-700 dark:text-green-400">
+                <p className="font-medium">✔ Safe to run</p>
+                <p>Idempotent — existing records are kept untouched. Only missing rows are inserted. No transactional data (vouchers, invoices, stock) is touched.</p>
+              </div>
+              <Button
+                onClick={() => setConfirmDemo(true)}
+                disabled={importingDemo}
+                className="w-full"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                {importingDemo ? "Importing..." : "Import demo configuration"}
+              </Button>
+              {demoStats && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-2">
+                  {Object.entries(demoStats).map(([k, v]) => (
+                    <div key={k} className="rounded border border-border bg-muted/30 p-2 text-xs">
+                      <div className="text-muted-foreground capitalize">{k.replaceAll("_", " ")}</div>
+                      <div className="text-foreground font-semibold">{v} inserted</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+
         <TabsContent value="settings">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
