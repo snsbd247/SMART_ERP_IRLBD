@@ -143,7 +143,24 @@ class DeployController extends Controller
         if (!is_file(self::PID_FILE)) return false;
         $pid = (int) trim((string) @file_get_contents(self::PID_FILE));
         if ($pid <= 0) return false;
-        return file_exists("/proc/{$pid}");
+        if (function_exists('posix_kill')) {
+            return @posix_kill($pid, 0);
+        }
+        return trim((string) @shell_exec('ps -p ' . (int) $pid . ' -o pid=')) !== '';
+    }
+
+    private function safeWrite(string $path, string $contents): void
+    {
+        if (@file_put_contents($path, $contents) === false) {
+            throw new \RuntimeException("Cannot write {$path}. Run update.sh once as root to repair log/state permissions.");
+        }
+    }
+
+    private function safeAppend(string $path, string $contents): void
+    {
+        if (@file_put_contents($path, $contents, FILE_APPEND) === false) {
+            throw new \RuntimeException("Cannot write {$path}. Run update.sh once as root to repair log permissions.");
+        }
     }
 
     private function detectFinalState(): string
