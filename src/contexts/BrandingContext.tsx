@@ -54,8 +54,9 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
     try {
       if (isLaravelMode()) {
         const base = getApiBaseUrl() || "";
-        const res = await fetch(`${base}/v1/admin/branding`, {
-          headers: { ...getLaravelAuthHeaders() },
+        // Public endpoint — works before login (no auth header required)
+        const res = await fetch(`${base}/v1/public/branding`, {
+          headers: { Accept: "application/json" },
         });
         if (res.ok) {
           const payload = await res.json().catch(() => ({}));

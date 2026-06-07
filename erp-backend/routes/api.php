@@ -17,6 +17,9 @@ Route::prefix('auth')->group(function () {
     Route::post('login', [\App\Http\Controllers\Auth\AuthController::class, 'login']);
 });
 
+// Public branding (read-only) — login page needs it before auth
+Route::get('v1/public/branding', [\App\Http\Controllers\Admin\BrandingController::class, 'show']);
+
 // Protected routes
 Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App\Http\Middleware\UpdateLastSeen::class])->group(function () {
 
