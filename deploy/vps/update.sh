@@ -36,7 +36,10 @@ install_deploy_runner() {
     return 0
   fi
 
-  if [[ "${SMARTERP_DEPLOY_RUNNER:-0}" == "1" ]]; then
+  local runner_pid=""
+  [[ -f /var/run/smarterp-deploy.pid ]] && runner_pid="$(cat /var/run/smarterp-deploy.pid 2>/dev/null || true)"
+  if [[ "${SMARTERP_DEPLOY_RUNNER:-0}" == "1" ]] \
+     || [[ -n "${runner_pid}" && -d "/proc/${runner_pid}" ]]; then
     log "Pull & Deploy runner is active; skipping self-overwrite during web deploy."
     return 0
   fi
