@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Upload, Database, Clock, FileText, Trash2, AlertTriangle, CheckCircle, XCircle, Settings, RefreshCw, Shield, Cloud, HardDrive } from "lucide-react";
+import { Download, Upload, Database, Clock, FileText, Trash2, AlertTriangle, CheckCircle, XCircle, Settings, RefreshCw, Shield, Cloud, HardDrive, Sparkles } from "lucide-react";
 
 const API_BASE = getApiBaseUrl() || "";
 const USE_LARAVEL = isLaravelMode();
@@ -72,6 +72,36 @@ const BackupPage = () => {
   const [confirmRestore, setConfirmRestore] = useState(false);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [importingDemo, setImportingDemo] = useState(false);
+  const [demoStats, setDemoStats] = useState<Record<string, number> | null>(null);
+  const [confirmDemo, setConfirmDemo] = useState(false);
+
+  const handleImportDemoConfig = async () => {
+    setConfirmDemo(false);
+    setImportingDemo(true);
+    setDemoStats(null);
+    try {
+      if (USE_LARAVEL) {
+        const res = await fetch(`${API_BASE}/v1/admin/demo/import-config`, {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        });
+        const result = await res.json().catch(() => ({ message: `Failed (HTTP ${res.status})` }));
+        if (!res.ok || result.success === false) throw new Error(result.message || result.error || "Import failed");
+        setDemoStats(result?.data?.stats || result?.stats || null);
+      } else {
+        const { data, error } = await supabase.functions.invoke("import-demo-config", { body: {} });
+        if (error) throw error;
+        if (data && data.success === false) throw new Error(data.error || "Import failed");
+        setDemoStats(data?.stats || null);
+      }
+      toast({ title: "Demo configuration imported", description: "Chart of Accounts, IFRS, Roles, Numbering, Shortcuts loaded." });
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    } finally {
+      setImportingDemo(false);
+    }
+  };
 
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -319,6 +349,7 @@ const BackupPage = () => {
         <TabsList>
           <TabsTrigger value="local"><HardDrive className="w-3.5 h-3.5 mr-1.5" />Local Backup</TabsTrigger>
           <TabsTrigger value="gdrive"><Cloud className="w-3.5 h-3.5 mr-1.5" />Google Drive</TabsTrigger>
+          <TabsTrigger value="demo"><Sparkles className="w-3.5 h-3.5 mr-1.5" />Demo import</TabsTrigger>
           <TabsTrigger value="settings"><Settings className="w-3.5 h-3.5 mr-1.5" />Settings</TabsTrigger>
           <TabsTrigger value="history"><Clock className="w-3.5 h-3.5 mr-1.5" />History</TabsTrigger>
           <TabsTrigger value="schedule"><RefreshCw className="w-3.5 h-3.5 mr-1.5" />Schedule</TabsTrigger>
