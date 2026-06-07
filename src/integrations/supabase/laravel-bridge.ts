@@ -43,6 +43,29 @@ function stripRelationCols(cols: string): string {
     .join(",");
 }
 
+/**
+ * Conventional foreign-key column on the child table for a given parent table.
+ * Used to translate PostgREST relation filters (e.g. `acc_vouchers.status`) into
+ * a local `<fk> IN (...)` filter, since the Laravel endpoint has no join support.
+ */
+function relationForeignKey(parent: string): string | null {
+  const map: Record<string, string> = {
+    acc_vouchers: "voucher_id",
+    sales_invoices: "invoice_id",
+    purchases: "purchase_id",
+    party_payments: "payment_id",
+    employees: "employee_id",
+    chart_of_accounts: "account_id",
+    item_master: "item_id",
+    warehouses: "warehouse_id",
+    branches: "branch_id",
+  };
+  if (map[parent]) return map[parent];
+  // Fallback: strip trailing "s" → "<singular>_id"
+  if (parent.endsWith("s")) return `${parent.slice(0, -1)}_id`;
+  return `${parent}_id`;
+}
+
 function buildQS(params: {
   select?: string;
   filters: FilterEntry[];
@@ -187,6 +210,36 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
 
   // -- execute
   private async run(): Promise<Result<T>> {
+    // Resolve PostgREST-style relation filters (e.g. "acc_vouchers.status")
+    // into a concrete `<fk> IN (...)` filter on the main table. The Laravel
+    // generic endpoint does not support joins, so we emulate inner-join +
+    // relation eq/gte/lte filters with a 2-step query.
+    if (this._mode === "select") {
+      const relFilters = this._filters.filter((f) => f.col.includes("."));
+      if (relFilters.length > 0) {
+        const byParent: Record<string, FilterEntry[]> = {};
+        for (const f of relFilters) {
+          const [parent, col] = f.col.split(".", 2);
+          (byParent[parent] ||= []).push({ col, op: f.op, val: f.val });
+        }
+        for (const [parent, pfilters] of Object.entries(byParent)) {
+          const fk = relationForeignKey(parent);
+          if (!fk) continue;
+          // Fetch parent IDs that match the relation filters.
+          const parentQs = buildQS({ select: "id", filters: pfilters, orders: [], limit: 10000 });
+          const parentRes = await call<any[]>("GET", `/v1/db/${parent}${parentQs}`);
+          const ids = Array.isArray(parentRes.data) ? parentRes.data.map((r: any) => r.id) : [];
+          // Replace relation filters with a local IN-filter.
+          this._filters = this._filters.filter((f) => !f.col.startsWith(`${parent}.`));
+          if (ids.length === 0) {
+            // No parent matches → main query returns empty.
+            return { data: ([] as unknown) as T, error: null };
+          }
+          this._filters.push({ col: fk, op: "in", val: ids });
+        }
+      }
+    }
+
     const qs = buildQS({
       select: this._select,
       filters: this._filters,
