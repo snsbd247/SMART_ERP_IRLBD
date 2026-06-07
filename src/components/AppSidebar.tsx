@@ -408,7 +408,7 @@ export const AppSidebar = () => {
   }
 
   return (
-    <aside className="w-60 border-r border-border bg-sidebar flex flex-col h-full shrink-0 hidden lg:flex">
+    <aside className="w-60 border-r border-border bg-sidebar flex-col h-full shrink-0 hidden md:flex">
       {sidebarContent}
     </aside>
   );
