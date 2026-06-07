@@ -292,6 +292,11 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::post('admin/demo/seed', [\App\Http\Controllers\Admin\DemoSeedController::class, 'run']);
         Route::post('admin/demo/import-config', [\App\Http\Controllers\Admin\DemoConfigImportController::class, 'import']);
 
+        // ─── Branding & White-Label (Super Admin only) ───────────
+        Route::get('admin/branding', [\App\Http\Controllers\Admin\BrandingController::class, 'show']);
+        Route::put('admin/branding', [\App\Http\Controllers\Admin\BrandingController::class, 'update']);
+        Route::post('admin/branding/logo', [\App\Http\Controllers\Admin\BrandingController::class, 'uploadLogo']);
+
 
 
         // ─── Audit Log (read-only) ──────────────────────────────
