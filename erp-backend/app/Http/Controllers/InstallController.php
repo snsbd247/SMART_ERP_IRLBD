@@ -286,7 +286,7 @@ APP_KEY={$appKey}
 APP_DEBUG=false
 APP_URL={$appUrl}
 
-LOG_CHANNEL=daily
+LOG_CHANNEL=single
 LOG_LEVEL=warning
 
 DB_CONNECTION=mysql
