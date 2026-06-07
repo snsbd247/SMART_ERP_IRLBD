@@ -10,9 +10,16 @@ set -u
 APP_DIR="${APP_DIR:-/opt/smarterp}"
 LOG=/var/log/smarterp-deploy.log
 PID=/var/run/smarterp-deploy.pid
+STATE=/var/log/smarterp-deploy.state
+
+if [[ "${1:-}" == "--check" ]]; then
+  test -x "${APP_DIR}/deploy/vps/update.sh"
+  exit $?
+fi
 
 echo "$$" > "$PID"
 trap 'rm -f "$PID"' EXIT
+echo "running" > "$STATE" 2>/dev/null || true
 
 echo "[$(date +%H:%M:%S)] ── smarterp-deploy started (pid $$) ──"
 echo "[$(date +%H:%M:%S)] APP_DIR=${APP_DIR}"
@@ -20,15 +27,18 @@ echo "[$(date +%H:%M:%S)] APP_DIR=${APP_DIR}"
 if ! [ -x "${APP_DIR}/deploy/vps/update.sh" ]; then
   echo "[$(date +%H:%M:%S)] ERROR: ${APP_DIR}/deploy/vps/update.sh not found / not executable"
   echo "[$(date +%H:%M:%S)] DEPLOY FAILED"
+  echo "failed" > "$STATE" 2>/dev/null || true
   exit 1
 fi
 
 if APP_DIR="${APP_DIR}" "${APP_DIR}/deploy/vps/update.sh"; then
   echo "[$(date +%H:%M:%S)] DEPLOY OK"
+  echo "success" > "$STATE" 2>/dev/null || true
   exit 0
 else
   rc=$?
   echo "[$(date +%H:%M:%S)] update.sh exited with code ${rc}"
   echo "[$(date +%H:%M:%S)] DEPLOY FAILED"
+  echo "failed" > "$STATE" 2>/dev/null || true
   exit "$rc"
 fi
