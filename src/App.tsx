@@ -12,6 +12,7 @@ import { BrandingProvider } from "@/contexts/BrandingContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
 import Login from "./pages/Login";
+import PublicEmployeeRegistration from "./pages/PublicEmployeeRegistration";
 import InstallPage from "./pages/InstallPage";
 import Dashboard from "./pages/Dashboard";
 import VouchersPage from "./pages/VouchersPage";
@@ -173,6 +174,7 @@ const App = () => (
             <Routes>
               <Route path="/install" element={<InstallPage />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/register-employee" element={<PublicEmployeeRegistration />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/employee/verify" element={<EmployeeVerifyPage />} />
               <Route path="/employee/verify/:code" element={<EmployeeVerifyPage />} />
