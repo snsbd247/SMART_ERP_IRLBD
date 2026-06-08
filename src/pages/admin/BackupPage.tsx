@@ -13,7 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Upload, Database, Clock, FileText, Trash2, AlertTriangle, CheckCircle, XCircle, Settings, RefreshCw, Shield, Cloud, HardDrive, Sparkles } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Download, Upload, Database, Clock, FileText, Trash2, AlertTriangle, CheckCircle, XCircle, Settings, RefreshCw, Shield, Cloud, HardDrive, Sparkles, FileJson } from "lucide-react";
 
 const API_BASE = getApiBaseUrl() || "";
 const USE_LARAVEL = isLaravelMode();
@@ -27,6 +28,14 @@ interface BackupRecord {
 interface BackupSettings {
   auto_backup_enabled: boolean; schedule_interval: string; retention_days: number;
   last_auto_backup_at: string | null;
+  gdrive_enabled?: boolean;
+  gdrive_client_id?: string | null;
+  gdrive_client_secret_set?: boolean;
+  gdrive_refresh_token_set?: boolean;
+  gdrive_folder_id?: string | null;
+  gdrive_format?: string | null;
+  last_gdrive_backup_at?: string | null;
+  last_gdrive_error?: string | null;
 }
 
 function formatFileSize(bytes: number): string {
@@ -79,6 +88,12 @@ const BackupPage = () => {
   const [demoOverall, setDemoOverall] = useState<"success" | "partial" | null>(null);
   const [confirmDemo, setConfirmDemo] = useState(false);
   const [confirmResetDemo, setConfirmResetDemo] = useState(false);
+  const [backupFormat, setBackupFormat] = useState<"sql" | "json">("sql");
+  const [uploadToDrive, setUploadToDrive] = useState(false);
+  const [gdriveForm, setGdriveForm] = useState({ client_id: "", client_secret: "", refresh_token: "", folder_id: "" });
+  const [gdriveTesting, setGdriveTesting] = useState(false);
+  const [gdriveTestResult, setGdriveTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
 
   const DEMO_STEPS = [
     "Chart of Accounts",
@@ -208,14 +223,18 @@ const BackupPage = () => {
     try {
       setProgress(50);
       if (USE_LARAVEL) {
-        const res = await laravelApiCall("/v1/backups/create", { method: "POST", headers: { "Content-Type": "application/json" } });
+        const res = await laravelApiCall("/v1/backups/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ format: backupFormat, upload_to_drive: uploadToDrive }),
+        });
         const result = await res.json();
         toast({ title: "Backup created", description: `${result.data?.file_name || "Backup"} created successfully.` });
       } else {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("Not authenticated");
         const { data, error } = await supabase.functions.invoke("create-backup", {
-          body: { format: "sql", backup_type: "manual" },
+          body: { format: backupFormat, backup_type: "manual" },
         });
         if (error) throw error;
         if (data && !data.success) throw new Error(data.error || "Backup failed");
@@ -267,8 +286,9 @@ const BackupPage = () => {
   const handleRestoreFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.name.endsWith(".sql")) {
-      toast({ title: "Invalid file", description: "Only .sql backup files are allowed.", variant: "destructive" });
+    const lower = file.name.toLowerCase();
+    if (!lower.endsWith(".sql") && !lower.endsWith(".json")) {
+      toast({ title: "Invalid file", description: "Only .sql or .json backup files are allowed.", variant: "destructive" });
       e.target.value = ""; return;
     }
     setRestoreFile(file);
@@ -358,6 +378,75 @@ const BackupPage = () => {
     setSavingSettings(false);
   };
 
+  const saveGdriveSettings = async () => {
+    if (!USE_LARAVEL) {
+      toast({ title: "Google Drive settings require the Laravel backend.", variant: "destructive" });
+      return;
+    }
+    setSavingSettings(true);
+    try {
+      // Only send fields the admin actually filled in so we don't wipe existing secrets
+      const body: Record<string, any> = {
+        gdrive_enabled: !!settings?.gdrive_enabled,
+        gdrive_format: settings?.gdrive_format || "sql",
+      };
+      if (gdriveForm.client_id) body.gdrive_client_id = gdriveForm.client_id;
+      if (gdriveForm.client_secret) body.gdrive_client_secret = gdriveForm.client_secret;
+      if (gdriveForm.refresh_token) body.gdrive_refresh_token = gdriveForm.refresh_token;
+      if (gdriveForm.folder_id) body.gdrive_folder_id = gdriveForm.folder_id;
+      await laravelApiCall("/v1/backups/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      toast({ title: "Google Drive settings saved" });
+      setGdriveForm({ client_id: "", client_secret: "", refresh_token: "", folder_id: "" });
+      fetchSettings();
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    }
+    setSavingSettings(false);
+  };
+
+  const testGdrive = async () => {
+    if (!USE_LARAVEL) return;
+    setGdriveTesting(true);
+    setGdriveTestResult(null);
+    try {
+      const res = await fetch(`${API_BASE}/v1/backups/gdrive/test`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(gdriveForm),
+      });
+      const result = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+      if (!res.ok || !result.success) throw new Error(result.message || result.error || "Test failed");
+      const email = result.data?.user?.emailAddress || "";
+      setGdriveTestResult({ ok: true, message: `Connected${email ? ` as ${email}` : ""}.` });
+    } catch (err: any) {
+      setGdriveTestResult({ ok: false, message: err.message });
+    }
+    setGdriveTesting(false);
+  };
+
+  const uploadBackupToDrive = async (id: string) => {
+    if (!USE_LARAVEL) return;
+    setUploadingId(id);
+    try {
+      const res = await fetch(`${API_BASE}/v1/backups/${id}/gdrive-upload`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      const result = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+      if (!res.ok || !result.success) throw new Error(result.message || result.error || "Upload failed");
+      toast({ title: "Uploaded to Google Drive" });
+      fetchSettings();
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    }
+    setUploadingId(null);
+  };
+
+
   const statusBadge = (status: string) => {
     switch (status) {
       case "completed": return <Badge variant="default" className="bg-green-600 text-white"><CheckCircle className="w-3 h-3 mr-1" />Completed</Badge>;
@@ -382,7 +471,7 @@ const BackupPage = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-2">
         <Database className="w-5 h-5 text-primary" />
-        <h1 className="text-xl font-semibold text-foreground">Backup & Restore (SQL)</h1>
+        <h1 className="text-xl font-semibold text-foreground">Backup & Restore (SQL · JSON · Google Drive)</h1>
       </div>
 
       {(exporting || restoring) && (
@@ -407,18 +496,36 @@ const BackupPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2"><Download className="w-4 h-4" />Create SQL Backup</CardTitle>
-                <CardDescription>Export database as SQL (.sql) backup file</CardDescription>
+                <CardTitle className="text-base flex items-center gap-2"><Download className="w-4 h-4" />Create Database Backup</CardTitle>
+                <CardDescription>Export the full database as SQL or JSON</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs text-muted-foreground space-y-1">
-                  <p>• Full database dump with DROP TABLE + CREATE TABLE + INSERT</p>
-                  <p>• Includes all tables, triggers, and routines</p>
-                  <p>• File saved to <code>storage/app/backups/</code></p>
-                  <p>• Format: <strong>erp_backup_YYYY_MM_DD_HH_MM.sql</strong></p>
+                  <p>• SQL: full DROP/CREATE/INSERT dump (mysqldump if available, PHP fallback otherwise)</p>
+                  <p>• JSON: structured per-table dump, ideal for cross-environment imports</p>
+                  <p>• File saved to <code>storage/app/backups/</code> as <strong>erp_backup_YYYY_MM_DD_HH_MM.&lt;ext&gt;</strong></p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Format</Label>
+                    <Select value={backupFormat} onValueChange={(v) => setBackupFormat(v as "sql" | "json")}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sql">SQL (.sql)</SelectItem>
+                        <SelectItem value="json">JSON (.json)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <Switch id="upload-drive" checked={uploadToDrive} onCheckedChange={setUploadToDrive} disabled={!settings?.gdrive_enabled} />
+                    <Label htmlFor="upload-drive" className="text-xs text-muted-foreground">
+                      Also upload to Google Drive{!settings?.gdrive_enabled && " (configure first)"}
+                    </Label>
+                  </div>
                 </div>
                 <Button onClick={handleCreateBackup} disabled={exporting || restoring} className="w-full">
-                  <Download className="w-4 h-4 mr-2" />{exporting ? "Creating Backup..." : "Create SQL Backup"}
+                  {backupFormat === "json" ? <FileJson className="w-4 h-4 mr-2" /> : <Download className="w-4 h-4 mr-2" />}
+                  {exporting ? "Creating Backup..." : `Create ${backupFormat.toUpperCase()} Backup`}
                 </Button>
               </CardContent>
             </Card>
@@ -426,18 +533,18 @@ const BackupPage = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2"><Upload className="w-4 h-4" />Restore Database</CardTitle>
-                <CardDescription>Upload a .sql backup file to restore</CardDescription>
+                <CardDescription>Upload a .sql or .json backup file to restore</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 text-xs text-destructive space-y-1">
                   <p className="font-medium">⚠ Warning: Restore will overwrite existing data!</p>
                   <p>Always create a backup before restoring.</p>
-                  <p>Only <strong>.sql</strong> files are accepted.</p>
+                  <p>Accepted: <strong>.sql</strong> or <strong>.json</strong> exports produced by this app.</p>
                 </div>
                 <label>
-                  <input type="file" accept=".sql" onChange={handleRestoreFile} className="hidden" disabled={exporting || restoring} />
+                  <input type="file" accept=".sql,.json" onChange={handleRestoreFile} className="hidden" disabled={exporting || restoring} />
                   <Button asChild variant="outline" className={`w-full ${restoring ? "pointer-events-none opacity-50" : ""}`}>
-                    <span><Upload className="w-4 h-4 mr-2" />{restoring ? "Restoring..." : "Upload .sql File & Restore"}</span>
+                    <span><Upload className="w-4 h-4 mr-2" />{restoring ? "Restoring..." : "Upload .sql / .json File & Restore"}</span>
                   </Button>
                 </label>
               </CardContent>
@@ -450,28 +557,84 @@ const BackupPage = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2"><Cloud className="w-4 h-4" />Google Drive Backup</CardTitle>
-              <CardDescription>Upload SQL backup files to Google Drive for cloud storage</CardDescription>
+              <CardDescription>Daily auto-upload of backups to your Google Drive folder</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground space-y-3">
-                <p className="font-medium text-foreground">How it works:</p>
-                <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>SQL backup is created locally first</li>
-                  <li>The <code>.sql</code> file is then uploaded to your connected Google Drive</li>
-                  <li>File naming: <strong>erp_backup_YYYY_MM_DD_HH_MM.sql</strong></li>
-                  <li>Configure Google Drive API credentials in Settings tab</li>
-                </ul>
+              <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs text-muted-foreground space-y-1">
+                <p className="font-medium text-foreground">Setup steps:</p>
+                <ol className="list-decimal list-inside space-y-0.5">
+                  <li>Create an OAuth 2.0 Client (Desktop / Web) in Google Cloud Console with the <code>drive.file</code> scope.</li>
+                  <li>Generate a refresh token (e.g. via OAuth Playground) for that client.</li>
+                  <li>Create (or pick) a Drive folder, copy its ID from the URL, share it with the OAuth user.</li>
+                  <li>Paste credentials below, press <strong>Test</strong>, then <strong>Save</strong>.</li>
+                </ol>
               </div>
-              <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-700 dark:text-yellow-400">
-                <p className="font-medium">⚙ Setup Required</p>
-                <p>Google Drive integration requires API credentials. Configure them in the Settings tab.</p>
+
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="gdrive-enabled"
+                  checked={!!settings?.gdrive_enabled}
+                  onCheckedChange={(v) => setSettings((p) => p ? { ...p, gdrive_enabled: v } : p)}
+                />
+                <Label htmlFor="gdrive-enabled" className="text-sm">Enable Google Drive auto-backup (daily)</Label>
               </div>
-              <Button variant="outline" disabled className="w-full">
-                <Cloud className="w-4 h-4 mr-2" />Upload Latest Backup to Google Drive
-              </Button>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Client ID {settings?.gdrive_client_id && <span className="text-green-600">• saved</span>}</Label>
+                  <Input value={gdriveForm.client_id} onChange={(e) => setGdriveForm((f) => ({ ...f, client_id: e.target.value }))} placeholder={settings?.gdrive_client_id || "xxxx.apps.googleusercontent.com"} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Client Secret {settings?.gdrive_client_secret_set && <span className="text-green-600">• saved</span>}</Label>
+                  <Input type="password" value={gdriveForm.client_secret} onChange={(e) => setGdriveForm((f) => ({ ...f, client_secret: e.target.value }))} placeholder={settings?.gdrive_client_secret_set ? "(unchanged)" : "GOCSPX-..."} />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <Label className="text-xs text-muted-foreground">Refresh Token {settings?.gdrive_refresh_token_set && <span className="text-green-600">• saved</span>}</Label>
+                  <Input type="password" value={gdriveForm.refresh_token} onChange={(e) => setGdriveForm((f) => ({ ...f, refresh_token: e.target.value }))} placeholder={settings?.gdrive_refresh_token_set ? "(unchanged)" : "1//0..."} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Folder ID</Label>
+                  <Input value={gdriveForm.folder_id} onChange={(e) => setGdriveForm((f) => ({ ...f, folder_id: e.target.value }))} placeholder={settings?.gdrive_folder_id || "Drive folder ID"} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Default upload format</Label>
+                  <Select value={settings?.gdrive_format || "sql"} onValueChange={(v) => setSettings((p) => p ? { ...p, gdrive_format: v } : p)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sql">SQL</SelectItem>
+                      <SelectItem value="json">JSON</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {gdriveTestResult && (
+                <div className={`p-2 rounded border text-xs ${gdriveTestResult.ok ? "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400" : "bg-destructive/10 border-destructive/30 text-destructive"}`}>
+                  {gdriveTestResult.ok ? "✔ " : "✖ "}{gdriveTestResult.message}
+                </div>
+              )}
+
+              {settings?.last_gdrive_error && (
+                <div className="p-2 rounded border text-xs bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400">
+                  Last upload error: {settings.last_gdrive_error}
+                </div>
+              )}
+              {settings?.last_gdrive_backup_at && (
+                <p className="text-xs text-muted-foreground">Last successful Drive upload: {formatDate(settings.last_gdrive_backup_at)}</p>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={testGdrive} disabled={gdriveTesting}>
+                  {gdriveTesting ? "Testing..." : "Test connection"}
+                </Button>
+                <Button onClick={saveGdriveSettings} disabled={savingSettings}>
+                  {savingSettings ? "Saving..." : "Save settings"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
+
 
         {/* Demo Import Tab */}
         <TabsContent value="demo">
@@ -658,7 +821,7 @@ const BackupPage = () => {
                         <TableRow key={r.id}>
                           <TableCell className="font-mono text-xs max-w-[200px] truncate">{r.file_name}</TableCell>
                           <TableCell><Badge variant="outline" className="text-xs capitalize">{r.backup_type}</Badge></TableCell>
-                          <TableCell><Badge variant="secondary" className="text-xs uppercase">SQL</Badge></TableCell>
+                          <TableCell><Badge variant="secondary" className="text-xs uppercase">{(r.format || "sql")}</Badge></TableCell>
                           <TableCell className="text-xs">{formatFileSize(r.file_size)}</TableCell>
                           <TableCell className="text-xs">{r.tables_count}</TableCell>
                           <TableCell className="text-xs">{r.records_count}</TableCell>
@@ -669,6 +832,11 @@ const BackupPage = () => {
                               {r.storage_path && r.status === "completed" && r.backup_type !== "restore" && (
                                 <Button variant="ghost" size="sm" onClick={() => handleDownload(r)} title="Download">
                                   <Download className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
+                              {r.storage_path && r.status === "completed" && r.backup_type !== "restore" && settings?.gdrive_enabled && USE_LARAVEL && (
+                                <Button variant="ghost" size="sm" onClick={() => uploadBackupToDrive(r.id)} disabled={uploadingId === r.id} title="Upload to Google Drive">
+                                  <Cloud className={`w-3.5 h-3.5 ${uploadingId === r.id ? "animate-pulse" : ""}`} />
                                 </Button>
                               )}
                               <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(r.id)} title="Delete">

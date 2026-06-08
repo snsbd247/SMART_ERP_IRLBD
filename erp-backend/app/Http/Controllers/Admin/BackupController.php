@@ -29,7 +29,7 @@ class BackupController extends BaseController
     }
 
     /**
-     * Create a new SQL backup.
+     * Create a new SQL or JSON backup.
      */
     public function create(Request $request): JsonResponse
     {
@@ -37,18 +37,22 @@ class BackupController extends BaseController
             return $this->error('Only Super Admins can create backups.', 403);
         }
 
+        $format = strtolower((string) $request->input('format', 'sql'));
+        if (!in_array($format, ['sql', 'json'], true)) $format = 'sql';
+        $uploadDrive = (bool) $request->input('upload_to_drive', false);
+
         try {
-            $exitCode = Artisan::call('backup:database', ['--type' => 'manual']);
+            $exitCode = Artisan::call('backup:database', [
+                '--type' => 'manual',
+                '--format' => $format,
+                '--gdrive' => $uploadDrive ? 'yes' : 'no',
+            ]);
 
             if ($exitCode !== 0) {
                 return $this->error('Backup command failed.', 500);
             }
 
-            // Get the latest backup record
-            $latest = DB::table('backup_history')
-                ->orderByDesc('created_at')
-                ->first();
-
+            $latest = DB::table('backup_history')->orderByDesc('created_at')->first();
             return $this->success($latest, 'Backup created successfully');
         } catch (\Exception $e) {
             Log::error("Backup creation failed: " . $e->getMessage());
@@ -71,9 +75,8 @@ class BackupController extends BaseController
             return $this->error('Backup file not found on disk.', 404);
         }
 
-        return response()->download($fullPath, $record->file_name, [
-            'Content-Type' => 'application/sql',
-        ]);
+        $mime = ($record->format ?? 'sql') === 'json' ? 'application/json' : 'application/sql';
+        return response()->download($fullPath, $record->file_name, ['Content-Type' => $mime]);
     }
 
     /**
@@ -89,55 +92,50 @@ class BackupController extends BaseController
             'sql_file' => 'required|file|max:512000', // 500MB max
         ]);
 
-        // Give the restore room to run on big SQL files
         @ini_set('memory_limit', '1024M');
         @set_time_limit(0);
 
         $file = $request->file('sql_file');
         $originalName = $file->getClientOriginalName();
-        // Capture size BEFORE moving the uploaded file (getSize() fails after move)
         $uploadedSize = (int) @filesize($file->getRealPath());
 
-        if (!Str::endsWith($originalName, '.sql')) {
-            return $this->error('Only .sql files are allowed.', 422);
+        $isJson = Str::endsWith(strtolower($originalName), '.json');
+        $isSql  = Str::endsWith(strtolower($originalName), '.sql');
+        if (!$isJson && !$isSql) {
+            return $this->error('Only .sql or .json backup files are allowed.', 422);
         }
+        $format = $isJson ? 'json' : 'sql';
 
         try {
-            // Ensure backups dir exists
             $backupsDir = storage_path('app/backups');
-            if (!is_dir($backupsDir)) {
-                @mkdir($backupsDir, 0775, true);
-            }
+            if (!is_dir($backupsDir)) @mkdir($backupsDir, 0775, true);
 
-            $fileName = 'restore_' . date('Y_m_d_H_i_s') . '.sql';
+            $fileName = 'restore_' . date('Y_m_d_H_i_s') . '.' . $format;
             $fullPath = $backupsDir . '/' . $fileName;
             $path = 'backups/' . $fileName;
 
             if (!@move_uploaded_file($file->getRealPath(), $fullPath)) {
-                // Fallback to Storage facade
                 $stored = $file->storeAs('backups', $fileName, 'local');
-                if (!$stored) {
-                    throw new \RuntimeException('Failed to save uploaded SQL file to ' . $fullPath);
-                }
+                if (!$stored) throw new \RuntimeException('Failed to save uploaded file to ' . $fullPath);
                 $fullPath = Storage::disk('local')->path($stored);
                 $path = $stored;
             }
 
             if (!file_exists($fullPath)) {
-                throw new \RuntimeException('Uploaded SQL file not found at ' . $fullPath);
+                throw new \RuntimeException('Uploaded file not found at ' . $fullPath);
             }
 
-            // Always use the PHP-based restore. The `mysql` CLI is often missing
-            // on shared/VPS PHP-FPM environments, and even when present it
-            // silently swallows errors with --force which makes diagnosis hard.
-            [$ok, $skipped, $firstError] = $this->phpSqlRestore($fullPath);
+            if ($isJson) {
+                [$ok, $skipped, $firstError] = $this->phpJsonRestore($fullPath);
+            } else {
+                [$ok, $skipped, $firstError] = $this->phpSqlRestore($fullPath);
+            }
 
-            // Record restore in history
             DB::table('backup_history')->insert([
                 'id' => Str::uuid(),
                 'file_name' => $originalName,
                 'backup_type' => 'restore',
-                'format' => 'sql',
+                'format' => $format,
                 'status' => $ok > 0 ? 'completed' : 'failed',
                 'file_size' => $uploadedSize ?: @filesize($fullPath) ?: 0,
                 'storage_path' => $path,
@@ -146,16 +144,15 @@ class BackupController extends BaseController
                 'created_at' => now(),
             ]);
 
-            // Clean up restore file
             @unlink($fullPath);
 
             if ($ok === 0) {
-                return $this->error('Restore failed: no statements executed. ' . ($firstError ?? 'Check storage/logs/laravel.log for details.'), 500);
+                return $this->error('Restore failed: no rows applied. ' . ($firstError ?? 'Check storage/logs/laravel.log for details.'), 500);
             }
 
-            $msg = "Database restored. {$ok} statements applied";
+            $msg = "Database restored. {$ok} rows applied";
             if ($skipped > 0) $msg .= ", {$skipped} skipped";
-            return $this->success(['executed' => $ok, 'skipped' => $skipped], $msg);
+            return $this->success(['executed' => $ok, 'skipped' => $skipped, 'format' => $format], $msg);
 
         } catch (\Exception $e) {
             Log::error("Restore failed: " . $e->getMessage());
@@ -164,7 +161,7 @@ class BackupController extends BaseController
                 'id' => Str::uuid(),
                 'file_name' => $originalName,
                 'backup_type' => 'restore',
-                'format' => 'sql',
+                'format' => $format,
                 'status' => 'failed',
                 'error_message' => $e->getMessage(),
                 'created_at' => now(),
@@ -172,6 +169,50 @@ class BackupController extends BaseController
 
             return $this->error('Restore failed: ' . $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Restore from a JSON dump produced by `backup:database --format=json`.
+     * Returns [ok, skipped, firstError].
+     */
+    private function phpJsonRestore(string $path): array
+    {
+        $raw = file_get_contents($path);
+        if ($raw === false || $raw === '') throw new \RuntimeException('Cannot read JSON file or it is empty');
+        $data = json_decode($raw, true);
+        if (!is_array($data) || !isset($data['tables']) || !is_array($data['tables'])) {
+            throw new \RuntimeException('Invalid JSON backup format (missing "tables")');
+        }
+
+        $ok = 0; $skipped = 0; $firstError = null;
+        try {
+            DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+            foreach ($data['tables'] as $table => $rows) {
+                if (!is_string($table) || !is_array($rows) || !Schema::hasTable($table)) continue;
+                $cols = Schema::getColumnListing($table);
+                foreach ($rows as $row) {
+                    if (!is_array($row)) { $skipped++; continue; }
+                    $clean = array_intersect_key($row, array_flip($cols));
+                    if (!$clean) { $skipped++; continue; }
+                    try {
+                        if (array_key_exists('id', $clean)) {
+                            DB::table($table)->updateOrInsert(['id' => $clean['id']], $clean);
+                        } else {
+                            DB::table($table)->insert($clean);
+                        }
+                        $ok++;
+                    } catch (\Throwable $e) {
+                        $skipped++;
+                        if ($firstError === null) $firstError = $e->getMessage();
+                    }
+                }
+            }
+        } finally {
+            DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+        }
+
+        Log::info("JSON restore: {$ok} rows ok, {$skipped} skipped");
+        return [$ok, $skipped, $firstError];
     }
 
     /**
@@ -207,7 +248,6 @@ class BackupController extends BaseController
         if ($request->isMethod('get')) {
             $settings = DB::table('backup_settings')->where('id', 'default')->first();
             if (!$settings) {
-                // Create default settings
                 DB::table('backup_settings')->insert([
                     'id' => 'default',
                     'auto_backup_enabled' => false,
@@ -218,10 +258,14 @@ class BackupController extends BaseController
                 ]);
                 $settings = DB::table('backup_settings')->where('id', 'default')->first();
             }
-            return $this->success($settings);
+            // Mask secrets but indicate whether they are configured
+            $payload = (array) $settings;
+            $payload['gdrive_client_secret_set'] = !empty($payload['gdrive_client_secret'] ?? null);
+            $payload['gdrive_refresh_token_set'] = !empty($payload['gdrive_refresh_token'] ?? null);
+            unset($payload['gdrive_client_secret'], $payload['gdrive_refresh_token']);
+            return $this->success($payload);
         }
 
-        // Update settings
         if (!$request->user()->isSuperAdmin()) {
             return $this->error('Only Super Admins can update settings.', 403);
         }
@@ -230,14 +274,92 @@ class BackupController extends BaseController
             'auto_backup_enabled' => 'nullable|boolean',
             'schedule_interval' => 'nullable|in:hourly,daily,weekly',
             'retention_days' => 'nullable|integer|min:1|max:365',
+            'gdrive_enabled' => 'nullable|boolean',
+            'gdrive_client_id' => 'nullable|string|max:500',
+            'gdrive_client_secret' => 'nullable|string|max:500',
+            'gdrive_refresh_token' => 'nullable|string|max:2000',
+            'gdrive_folder_id' => 'nullable|string|max:200',
+            'gdrive_format' => 'nullable|in:sql,json',
         ]);
 
-        DB::table('backup_settings')->where('id', 'default')->update(array_merge(
-            array_filter($data, fn($v) => !is_null($v)),
-            ['updated_by' => $request->user()->id, 'updated_at' => now()]
-        ));
+        // Only update fields that were actually provided so blank inputs don't wipe secrets
+        $update = [];
+        foreach ($data as $k => $v) {
+            if ($request->exists($k) && $v !== null && $v !== '') {
+                $update[$k] = $v;
+            } elseif ($request->exists($k) && in_array($k, ['auto_backup_enabled', 'gdrive_enabled'], true)) {
+                $update[$k] = (bool) $v ? 1 : 0;
+            }
+        }
+        $update['updated_by'] = $request->user()->id;
+        $update['updated_at'] = now();
 
+        DB::table('backup_settings')->where('id', 'default')->update($update);
         return $this->success(null, 'Settings updated');
+    }
+
+    /**
+     * Test Google Drive credentials without persisting them.
+     */
+    public function gdriveTest(Request $request): JsonResponse
+    {
+        if (!$request->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admins can test Google Drive.', 403);
+        }
+        $data = $request->validate([
+            'client_id' => 'nullable|string',
+            'client_secret' => 'nullable|string',
+            'refresh_token' => 'nullable|string',
+            'folder_id' => 'nullable|string',
+        ]);
+        // Fall back to saved values for fields the form left blank
+        $saved = DB::table('backup_settings')->where('id', 'default')->first();
+        try {
+            $svc = new \App\Services\GoogleDriveService(
+                $data['client_id'] ?: ($saved->gdrive_client_id ?? ''),
+                $data['client_secret'] ?: ($saved->gdrive_client_secret ?? ''),
+                $data['refresh_token'] ?: ($saved->gdrive_refresh_token ?? ''),
+                $data['folder_id'] ?? ($saved->gdrive_folder_id ?? null),
+            );
+            $info = $svc->test();
+            return $this->success([
+                'user' => $info['user'] ?? null,
+                'storageQuota' => $info['storageQuota'] ?? null,
+            ], 'Google Drive credentials are valid');
+        } catch (\Throwable $e) {
+            return $this->error('Google Drive test failed: ' . $e->getMessage(), 422);
+        }
+    }
+
+    /**
+     * Upload an existing backup file (by history id) to Google Drive on demand.
+     */
+    public function gdriveUpload(string $id, Request $request): JsonResponse
+    {
+        if (!$request->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admins can upload to Google Drive.', 403);
+        }
+        $record = DB::table('backup_history')->where('id', $id)->first();
+        if (!$record || !$record->storage_path) return $this->error('Backup not found.', 404);
+        $full = storage_path('app/' . $record->storage_path);
+        if (!file_exists($full)) return $this->error('Backup file missing on disk.', 404);
+
+        $settings = DB::table('backup_settings')->where('id', 'default')->first();
+        try {
+            $svc = \App\Services\GoogleDriveService::fromSettings($settings);
+            $mime = ($record->format ?? 'sql') === 'json' ? 'application/json' : 'application/sql';
+            $meta = $svc->upload($full, $record->file_name, $mime);
+            DB::table('backup_settings')->where('id', 'default')->update([
+                'last_gdrive_backup_at' => now(),
+                'last_gdrive_error' => null,
+            ]);
+            return $this->success($meta, 'Uploaded to Google Drive');
+        } catch (\Throwable $e) {
+            DB::table('backup_settings')->where('id', 'default')->update([
+                'last_gdrive_error' => substr($e->getMessage(), 0, 500),
+            ]);
+            return $this->error('Upload failed: ' . $e->getMessage(), 500);
+        }
     }
 
     private function tryMysqlRestore(string $path): bool
