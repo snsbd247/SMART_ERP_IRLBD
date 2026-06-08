@@ -54,7 +54,6 @@ export default function VatChallansPage() {
                   <RowActions
                     printSlot={<PrintVatChallan v={r} />}
                     viewTo={`/sales-workflow/vat-challan/${r.id}`}
-                    editTo={`/sales-workflow/vat-challan/${r.id}/edit`}
                     onDelete={() => remove(r.id)}
                     deleteLabel={`Delete ${r.challan_number}? Linked DCs will also be removed.`}
                   />
