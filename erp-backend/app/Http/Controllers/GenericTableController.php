@@ -257,14 +257,18 @@ class GenericTableController extends BaseController
         $conflictCols = $onConflict
             ? array_filter(array_map('trim', explode(',', $onConflict)))
             : [$this->primaryKey($table)];
+        // resolve aliases on conflict columns too
+        $conflictCols = array_map(fn ($c) => $this->resolveCol($table, $c), $conflictCols);
 
         $cols = Schema::getColumnListing($table);
         $clean = array_map(
-            fn ($r) => array_intersect_key($this->stampTimestamps($table, $r, true), array_flip($cols)),
+            fn ($r) => array_intersect_key(
+                $this->stampTimestamps($table, $this->rewriteBody($table, $r), true),
+                array_flip($cols)
+            ),
             $rows
         );
 
-        // updateOrInsert per row (DB-agnostic)
         $out = [];
         DB::transaction(function () use ($table, $clean, $conflictCols, &$out) {
             foreach ($clean as $r) {
@@ -282,7 +286,7 @@ class GenericTableController extends BaseController
                 $out[] = $q->first();
             }
         });
-        return response()->json($out);
+        return response()->json($this->applyAliasesToRows($table, $out));
     }
 
     public function destroy(Request $request, string $table)
@@ -293,14 +297,16 @@ class GenericTableController extends BaseController
 
         $q = DB::table($table);
         foreach ($filters as $col => $ops) {
+            $realCol = $this->resolveCol($table, (string) $col);
             foreach ($ops as $op => $val) {
-                if ($op === 'eq') $q->where($col, $val);
-                elseif ($op === 'in') $q->whereIn($col, is_array($val) ? $val : explode(',', (string) $val));
+                if ($op === 'eq') $q->where($realCol, $val);
+                elseif ($op === 'in') $q->whereIn($realCol, is_array($val) ? $val : explode(',', (string) $val));
             }
         }
         $deleted = $q->delete();
         return response()->json(['deleted' => $deleted]);
     }
+
 
     private function primaryKey(string $table): string
     {
