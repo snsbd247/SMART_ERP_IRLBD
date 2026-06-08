@@ -77,7 +77,7 @@ class UserController extends BaseController
             $ids = $request->input('branch_ids') ?: [];
             $user->branches()->sync($ids);
             // Keep primary branch_id consistent: if current branch_id not in list, switch to first
-            if (!empty($ids) && !in_array((int) $user->branch_id, array_map('intval', $ids), true)) {
+            if (!empty($ids) && !in_array((string) $user->branch_id, array_map('strval', $ids), true)) {
                 $user->update(['branch_id' => $ids[0]]);
             }
         }
