@@ -124,7 +124,7 @@ import CustomerStatementPage from "./pages/reports/CustomerStatementPage";
 import SalesReport from "./pages/reports/SalesReport";
 import PurchaseReport from "./pages/reports/PurchaseReport";
 
-// Sales Workflow (BD VAT)
+// Sales (BD VAT)
 import PurchaseOrdersPage from "./pages/sales-workflow/PurchaseOrdersPage";
 import PurchaseOrderFormPage from "./pages/sales-workflow/PurchaseOrderFormPage";
 import PurchaseOrderDetailPage from "./pages/sales-workflow/PurchaseOrderDetailPage";
@@ -309,7 +309,7 @@ const App = () => (
                 <Route path="/admin/github-deploy" element={<P perm="settings.view"><GithubDeploySyncPage /></P>} />
                 
 
-                {/* ─── Sales Workflow (BD VAT) ─────────────────── */}
+                {/* ─── Sales (BD VAT) ─────────────────── */}
                 <Route path="/sales-workflow/po" element={<P perm="sales.view"><PurchaseOrdersPage /></P>} />
                 <Route path="/sales-workflow/po/new" element={<P perm="sales.add"><PurchaseOrderFormPage /></P>} />
                 <Route path="/sales-workflow/po/:id/edit" element={<P perm="sales.edit"><PurchaseOrderFormPage /></P>} />
