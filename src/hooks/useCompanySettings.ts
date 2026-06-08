@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
+import { getApiBaseUrl, getLaravelAuthHeaders, setLaravelToken } from "@/lib/laravel-auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface CompanySettings {
   id: string;
@@ -19,6 +20,7 @@ export interface CompanySettings {
 }
 
 export function useCompanySettings() {
+  const { profile, loading: authLoading } = useAuth();
   const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,7 +29,8 @@ export function useCompanySettings() {
       const base = getApiBaseUrl();
       const hasToken = typeof window !== "undefined" && !!(localStorage.getItem("laravel_auth_token") || localStorage.getItem("auth_token"));
       if (base) {
-        if (!hasToken) { setLoading(false); return; }
+        // Only call the authenticated endpoint when we actually have a session.
+        if (!hasToken || !profile) { setLoading(false); return; }
         const res = await fetch(`${base}/v1/settings/company`, { headers: getLaravelAuthHeaders() });
         if (res.ok) {
           const payload = await res.json().catch(() => ({}));
@@ -36,6 +39,8 @@ export function useCompanySettings() {
           setLoading(false);
           return;
         }
+        // Token rejected — clear it so we don't keep hitting 401s.
+        if (res.status === 401) setLaravelToken(null);
         setLoading(false);
         return;
       }
@@ -51,7 +56,11 @@ export function useCompanySettings() {
     }
   };
 
-  useEffect(() => { fetchSettings(); }, []);
+  useEffect(() => {
+    if (authLoading) return;
+    fetchSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, profile?.id]);
 
   return { settings, loading, refetch: fetchSettings };
 }
