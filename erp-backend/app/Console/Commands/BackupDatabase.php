@@ -9,20 +9,22 @@ use Illuminate\Support\Str;
 
 class BackupDatabase extends Command
 {
-    protected $signature = 'backup:database {--type=auto : Backup type (manual|auto)}';
-    protected $description = 'Create a SQL dump backup of the database';
+    protected $signature = 'backup:database {--type=auto : Backup type (manual|auto)} {--format=sql : Format (sql|json)} {--gdrive=auto : Upload to Google Drive (auto|yes|no)}';
+    protected $description = 'Create a SQL or JSON dump backup of the database';
 
     public function handle(): int
     {
-        $filename = 'erp_backup_' . date('Y_m_d_H_i') . '.sql';
+        $format = strtolower((string) $this->option('format'));
+        if (!in_array($format, ['sql', 'json'], true)) $format = 'sql';
+
+        $ext = $format === 'json' ? 'json' : 'sql';
+        $filename = 'erp_backup_' . date('Y_m_d_H_i') . '.' . $ext;
         $dir = storage_path('app/backups');
-        if (!is_dir($dir)) {
-            mkdir($dir, 0775, true);
-        }
+        if (!is_dir($dir)) mkdir($dir, 0775, true);
         $path = $dir . '/' . $filename;
         $type = $this->option('type');
 
-        $this->info("Creating backup: {$filename}");
+        $this->info("Creating {$format} backup: {$filename}");
 
         try {
             $host = config('database.connections.mysql.host');
@@ -31,39 +33,101 @@ class BackupDatabase extends Command
             $username = config('database.connections.mysql.username');
             $password = config('database.connections.mysql.password');
 
-            // Try mysqldump first
-            if ($this->tryMysqldump($host, $port, $database, $username, $password, $path)) {
-                $this->recordBackup($filename, $path, $type, 'mysqldump');
-                $this->info("✅ Backup created via mysqldump: {$filename}");
-                return 0;
+            $method = 'php';
+            if ($format === 'sql') {
+                if ($this->tryMysqldump($host, $port, $database, $username, $password, $path)) {
+                    $method = 'mysqldump';
+                } else {
+                    $this->info("mysqldump not available, using PHP fallback...");
+                    $this->phpSqlExport($database, $path);
+                }
+            } else {
+                $this->phpJsonExport($database, $path);
             }
 
-            // Fallback: PHP-based SQL export
-            $this->info("mysqldump not available, using PHP fallback...");
-            $this->phpSqlExport($database, $path);
-            $this->recordBackup($filename, $path, $type, 'php');
-            $this->info("✅ Backup created via PHP export: {$filename}");
+            $this->recordBackup($filename, $path, $type, $method, $format);
+            $this->info("✅ Backup created via {$method}: {$filename}");
 
-            // Cleanup old backups
             $this->cleanupOldBackups();
+            $this->maybeUploadToDrive($path, $filename);
 
             return 0;
         } catch (\Exception $e) {
             Log::error("Backup failed: " . $e->getMessage());
             $this->error("❌ Backup failed: " . $e->getMessage());
 
-            // Record failure
             DB::table('backup_history')->insert([
                 'id' => Str::uuid(),
                 'file_name' => $filename,
                 'backup_type' => $type,
-                'format' => 'sql',
+                'format' => $format,
                 'status' => 'failed',
                 'error_message' => $e->getMessage(),
                 'created_at' => now(),
             ]);
 
             return 1;
+        }
+    }
+
+    private function phpJsonExport(string $database, string $path): void
+    {
+        $tables = DB::select('SHOW TABLES');
+        $key = "Tables_in_{$database}";
+        $payload = [
+            'meta' => [
+                'database' => $database,
+                'generated_at' => date('c'),
+                'version' => 1,
+                'app' => 'SmartERP',
+            ],
+            'tables' => [],
+        ];
+        foreach ($tables as $row) {
+            $table = $row->$key;
+            if ($table === 'migrations') continue;
+            $rows = [];
+            $count = DB::table($table)->count();
+            $offset = 0; $chunk = 500;
+            while ($offset < $count) {
+                foreach (DB::table($table)->offset($offset)->limit($chunk)->get() as $r) {
+                    $rows[] = (array) $r;
+                }
+                $offset += $chunk;
+            }
+            $payload['tables'][$table] = $rows;
+        }
+        $ok = file_put_contents($path, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        if ($ok === false) throw new \RuntimeException("Cannot write JSON backup to {$path}");
+    }
+
+    private function maybeUploadToDrive(string $path, string $filename): void
+    {
+        $gdriveOpt = strtolower((string) $this->option('gdrive'));
+        if ($gdriveOpt === 'no') return;
+
+        $settings = DB::table('backup_settings')->where('id', 'default')->first();
+        if (!$settings) return;
+
+        // 'auto' uploads only when gdrive is enabled (for any backup type).
+        if ($gdriveOpt === 'auto' && empty($settings->gdrive_enabled)) return;
+        if (empty($settings->gdrive_enabled) && $gdriveOpt !== 'yes') return;
+
+        try {
+            $svc = \App\Services\GoogleDriveService::fromSettings($settings);
+            $mime = str_ends_with($filename, '.json') ? 'application/json' : 'application/sql';
+            $svc->upload($path, $filename, $mime);
+            DB::table('backup_settings')->where('id', 'default')->update([
+                'last_gdrive_backup_at' => now(),
+                'last_gdrive_error' => null,
+            ]);
+            $this->info("☁ Uploaded to Google Drive");
+        } catch (\Throwable $e) {
+            Log::warning('GDrive upload skipped: ' . $e->getMessage());
+            DB::table('backup_settings')->where('id', 'default')->update([
+                'last_gdrive_error' => substr($e->getMessage(), 0, 500),
+            ]);
+            $this->warn('Google Drive upload failed: ' . $e->getMessage());
         }
     }
 
