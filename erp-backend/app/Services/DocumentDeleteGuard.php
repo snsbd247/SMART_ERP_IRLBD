@@ -17,21 +17,11 @@ class DocumentDeleteGuard
 
     public function purchaseOrder(string $poId): void
     {
-        $allocCount = DB::table('dispatch_po_allocations')->where('po_id', $poId)->count();
-        if ($allocCount > 0 && ! $this->allowSuperAdmin) {
+        $challanCount = DB::table('vat_challans')->where('purchase_order_id', $poId)->whereNull('deleted_at')->count();
+        if ($challanCount > 0 && ! $this->allowSuperAdmin) {
             throw new RuntimeException(
-                "Cannot delete Purchase Order: {$allocCount} dispatch allocation(s) reference it. " .
-                "Reverse the dispatch first."
-            );
-        }
-    }
-
-    public function dispatch(string $dispatchId): void
-    {
-        $vc = DB::table('vat_challans')->where('dispatch_id', $dispatchId)->count();
-        if ($vc > 0 && ! $this->allowSuperAdmin) {
-            throw new RuntimeException(
-                "Cannot delete Dispatch: a VAT Challan was issued from it. Cancel the challan first."
+                "Cannot delete Purchase Order: {$challanCount} VAT challan(s) reference it. " .
+                "Delete the challan first."
             );
         }
     }
