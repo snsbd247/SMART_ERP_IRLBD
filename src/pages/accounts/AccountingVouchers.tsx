@@ -43,7 +43,7 @@ interface Voucher {
 type SuperAdminAction = "delete" | "reopen" | "reverse" | null;
 
 const AccountingVouchers = () => {
-  const { user, profile, isSuperAdmin, hasPermission } = useAuth();
+  const { isSuperAdmin, hasPermission } = useAuth();
   const { toast } = useToast();
   const { fc } = useCurrency();
 
