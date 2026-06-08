@@ -99,7 +99,7 @@ class DatabaseSeeder extends Seeder
             'is_active'  => 1,
         ]);
 
-        CompanySetting::create([
+        CompanySetting::updateOrCreate(['id' => 'default'], [
             'company_name' => 'My Company',
             'currency_code' => 'BDT',
             'currency_symbol' => '৳',
