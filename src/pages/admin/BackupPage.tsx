@@ -166,6 +166,8 @@ const BackupPage = () => {
 
   const [seedingFull, setSeedingFull] = useState(false);
   const [fullSeedLog, setFullSeedLog] = useState<string | null>(null);
+  const [resettingDemo, setResettingDemo] = useState(false);
+
   const handleFullDemoSeed = async () => {
     if (!isSuperAdmin) {
       toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
@@ -187,6 +189,32 @@ const BackupPage = () => {
       setSeedingFull(false);
     }
   };
+
+  const handleResetDemoOnly = async () => {
+    if (!isSuperAdmin) {
+      toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
+      return;
+    }
+    if (!confirm(
+      "This will WIPE all demo transactions and master data (vouchers, invoices, POs, stock, payroll, parties, items, employees, etc.).\n\n" +
+      "PROTECTED (not touched): Chart of Accounts, IFRS Mapping, Document Numbering, Page Shortcuts, General Settings, SMS Integration, Branding, GitHub Deploy Sync.\n\nContinue?"
+    )) return;
+    setResettingDemo(true);
+    setFullSeedLog(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "reset" } });
+      if (error) throw error;
+      if (data?.success === false) throw new Error(data.error || "Reset failed");
+      setFullSeedLog(JSON.stringify(data, null, 2));
+      toast({ title: "Demo data reset", description: `Completed in ${data?.elapsedMs ?? "?"}ms.` });
+    } catch (err: any) {
+      toast({ title: "Reset failed", description: err.message, variant: "destructive" });
+      setFullSeedLog(String(err.message || err));
+    } finally {
+      setResettingDemo(false);
+    }
+  };
+
 
 
   const fetchHistory = useCallback(async () => {
