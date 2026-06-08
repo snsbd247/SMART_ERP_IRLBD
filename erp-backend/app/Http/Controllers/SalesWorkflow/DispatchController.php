@@ -16,7 +16,7 @@ class DispatchController extends BaseController
         $q = Dispatch::with('customer', 'items.allocations')->latest('dispatch_date');
         if ($r->customer_id) $q->where('customer_id', $r->customer_id);
         if ($r->status) $q->where('status', $r->status);
-        if ($r->branch_id) $q->where('branch_id', $r->branch_id);
+        if ($r->branch_id) { $q->where('branch_id', $r->branch_id); } elseif (is_array($r->input('allowed_branch_ids')) && count($r->input('allowed_branch_ids'))) { $q->whereIn('branch_id', $r->input('allowed_branch_ids')); }
         if ($r->q) $q->where('dispatch_number', 'like', "%{$r->q}%");
         return $this->paginated($q->paginate($r->per_page ?? 25));
     }

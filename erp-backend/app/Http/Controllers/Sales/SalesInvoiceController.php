@@ -13,7 +13,7 @@ class SalesInvoiceController extends BaseController
     public function index(Request $request)
     {
         $query = SalesInvoice::with('customer', 'branch');
-        if ($request->branch_id) $query->where('branch_id', $request->branch_id);
+        if ($request->branch_id) { $query->where('branch_id', $request->branch_id); } elseif (is_array($request->input('allowed_branch_ids')) && count($request->input('allowed_branch_ids'))) { $query->whereIn('branch_id', $request->input('allowed_branch_ids')); }
         if ($request->from) $query->where('invoice_date', '>=', $request->from);
         if ($request->to) $query->where('invoice_date', '<=', $request->to);
         return $this->paginated($query->orderByDesc('invoice_date')->paginate($request->per_page ?? 25));
