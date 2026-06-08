@@ -953,197 +953,6 @@ export type Database = {
         }
         Relationships: []
       }
-      dispatch_items: {
-        Row: {
-          dispatch_id: string
-          id: string
-          product_id: string
-          qty: number
-          sort_order: number
-        }
-        Insert: {
-          dispatch_id: string
-          id?: string
-          product_id: string
-          qty?: number
-          sort_order?: number
-        }
-        Update: {
-          dispatch_id?: string
-          id?: string
-          product_id?: string
-          qty?: number
-          sort_order?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dispatch_items_dispatch_id_fkey"
-            columns: ["dispatch_id"]
-            isOneToOne: false
-            referencedRelation: "dispatches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "dispatch_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "item_master"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dispatch_po_allocations: {
-        Row: {
-          allocated_qty: number
-          created_at: string
-          dispatch_item_id: string
-          id: string
-          po_id: string
-          po_item_id: string
-        }
-        Insert: {
-          allocated_qty?: number
-          created_at?: string
-          dispatch_item_id: string
-          id?: string
-          po_id: string
-          po_item_id: string
-        }
-        Update: {
-          allocated_qty?: number
-          created_at?: string
-          dispatch_item_id?: string
-          id?: string
-          po_id?: string
-          po_item_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dispatch_po_allocations_dispatch_item_id_fkey"
-            columns: ["dispatch_item_id"]
-            isOneToOne: false
-            referencedRelation: "dispatch_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "dispatch_po_allocations_po_id_fkey"
-            columns: ["po_id"]
-            isOneToOne: false
-            referencedRelation: "purchase_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "dispatch_po_allocations_po_item_id_fkey"
-            columns: ["po_item_id"]
-            isOneToOne: false
-            referencedRelation: "purchase_order_items"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dispatch_status_logs: {
-        Row: {
-          changed_by: string | null
-          created_at: string
-          dispatch_id: string
-          id: string
-          new_status: string
-          notes: string | null
-          old_status: string | null
-        }
-        Insert: {
-          changed_by?: string | null
-          created_at?: string
-          dispatch_id: string
-          id?: string
-          new_status: string
-          notes?: string | null
-          old_status?: string | null
-        }
-        Update: {
-          changed_by?: string | null
-          created_at?: string
-          dispatch_id?: string
-          id?: string
-          new_status?: string
-          notes?: string | null
-          old_status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dispatch_status_logs_dispatch_id_fkey"
-            columns: ["dispatch_id"]
-            isOneToOne: false
-            referencedRelation: "dispatches"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dispatches: {
-        Row: {
-          branch_id: string | null
-          created_at: string
-          created_by: string | null
-          customer_id: string
-          deleted_at: string | null
-          dispatch_date: string
-          dispatch_number: string
-          driver_name: string | null
-          driver_phone: string | null
-          financial_year_id: string | null
-          id: string
-          notes: string | null
-          status: string
-          total_qty: number
-          updated_at: string
-          vehicle_no: string | null
-        }
-        Insert: {
-          branch_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          customer_id: string
-          deleted_at?: string | null
-          dispatch_date?: string
-          dispatch_number: string
-          driver_name?: string | null
-          driver_phone?: string | null
-          financial_year_id?: string | null
-          id?: string
-          notes?: string | null
-          status?: string
-          total_qty?: number
-          updated_at?: string
-          vehicle_no?: string | null
-        }
-        Update: {
-          branch_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string
-          deleted_at?: string | null
-          dispatch_date?: string
-          dispatch_number?: string
-          driver_name?: string | null
-          driver_phone?: string | null
-          financial_year_id?: string | null
-          id?: string
-          notes?: string | null
-          status?: string
-          total_qty?: number
-          updated_at?: string
-          vehicle_no?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dispatches_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       employee_bank_info: {
         Row: {
           account_name: string
@@ -4448,7 +4257,6 @@ export type Database = {
           created_by: string | null
           customer_id: string
           deleted_at: string | null
-          dispatch_id: string | null
           driver_name: string | null
           financial_year_id: string | null
           grand_total: number
@@ -4471,7 +4279,6 @@ export type Database = {
           created_by?: string | null
           customer_id: string
           deleted_at?: string | null
-          dispatch_id?: string | null
           driver_name?: string | null
           financial_year_id?: string | null
           grand_total?: number
@@ -4494,7 +4301,6 @@ export type Database = {
           created_by?: string | null
           customer_id?: string
           deleted_at?: string | null
-          dispatch_id?: string | null
           driver_name?: string | null
           financial_year_id?: string | null
           grand_total?: number
@@ -4514,13 +4320,6 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vat_challans_dispatch_id_fkey"
-            columns: ["dispatch_id"]
-            isOneToOne: false
-            referencedRelation: "dispatches"
             referencedColumns: ["id"]
           },
           {
