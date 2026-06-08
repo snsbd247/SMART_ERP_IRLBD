@@ -120,53 +120,65 @@ class GenericTableController extends BaseController
 
         $query = DB::table($table);
         $tableCols = Schema::getColumnListing($table);
+        $aliasMap = $this->aliasMap($table); // virtual => real
 
         // SELECT projection — drop relation embeds and unknown columns silently
         if ($sel = $request->query('select')) {
             $cols = array_filter(array_map('trim', explode(',', $sel)));
             $cols = array_filter($cols, fn ($c) => !str_contains($c, '(') && !str_contains($c, '.'));
-            $cols = array_values(array_filter($cols, fn ($c) => in_array($c, $tableCols, true)));
-            if ($cols) $query->select($cols);
+            $selectExprs = [];
+            foreach ($cols as $c) {
+                if (isset($aliasMap[$c]) && in_array($aliasMap[$c], $tableCols, true)) {
+                    $selectExprs[] = DB::raw("`{$aliasMap[$c]}` AS `{$c}`");
+                } elseif (in_array($c, $tableCols, true)) {
+                    $selectExprs[] = $c;
+                }
+            }
+            if ($selectExprs) $query->select($selectExprs);
         }
 
         // Filters: ?f[col][op]=value  (skip unknown columns to avoid 500s)
         $filters = (array) $request->query('f', []);
         foreach ($filters as $col => $ops) {
             if (!is_array($ops) || !preg_match('/^[a-z_][a-z0-9_]*$/i', $col)) continue;
-            if (!in_array($col, $tableCols, true)) continue; // ignore relation/foreign cols
+            $realCol = $this->resolveCol($table, $col);
+            if (!in_array($realCol, $tableCols, true)) continue;
             foreach ($ops as $op => $val) {
                 if ($op === 'in') {
                     $vals = is_array($val) ? $val : explode(',', (string) $val);
-                    $query->whereIn($col, $vals);
+                    $query->whereIn($realCol, $vals);
                 } elseif ($op === 'is') {
-                    if ($val === 'null' || $val === null) $query->whereNull($col);
-                    elseif ($val === 'notnull') $query->whereNotNull($col);
-                    else $query->where($col, '=', $val);
+                    if ($val === 'null' || $val === null) $query->whereNull($realCol);
+                    elseif ($val === 'notnull') $query->whereNotNull($realCol);
+                    else $query->where($realCol, '=', $val);
                 } elseif (isset(self::ALLOWED_OPS[$op])) {
                     $sql = self::ALLOWED_OPS[$op];
                     if ($sql === 'ILIKE') {
-                        $query->whereRaw("LOWER($col) LIKE ?", [strtolower((string) $val)]);
+                        $query->whereRaw("LOWER($realCol) LIKE ?", [strtolower((string) $val)]);
                     } else {
-                        $query->where($col, $sql, $val);
+                        $query->where($realCol, $sql, $val);
                     }
                 }
             }
         }
 
-        // ORDER BY
+        // ORDER BY — skip unknown columns to avoid 500
         $orders = (array) $request->query('order', []);
         foreach ($orders as $col => $dir) {
             if (!preg_match('/^[a-z_][a-z0-9_]*$/i', (string) $col)) continue;
-            $query->orderBy($col, strtolower((string) $dir) === 'desc' ? 'desc' : 'asc');
+            $realCol = $this->resolveCol($table, (string) $col);
+            if (!in_array($realCol, $tableCols, true)) continue;
+            $query->orderBy($realCol, strtolower((string) $dir) === 'desc' ? 'desc' : 'asc');
         }
 
         if ($limit = (int) $request->query('limit')) $query->limit($limit);
         if ($offset = (int) $request->query('offset')) $query->offset($offset);
 
         $rows = $query->get();
+        $rows = $this->applyAliasesToRows($table, $rows);
 
         if ($request->boolean('single')) {
-            return response()->json($rows->first());
+            return response()->json(is_object($rows) ? $rows : ($rows->first() ?? null));
         }
         return response()->json($rows);
     }
@@ -177,7 +189,7 @@ class GenericTableController extends BaseController
         $pk = $this->primaryKey($table);
         $row = DB::table($table)->where($pk, $id)->first();
         if (!$row) abort(404);
-        return response()->json($row);
+        return response()->json($this->applyAliasesToRows($table, $row));
     }
 
     public function store(Request $request, string $table)
@@ -187,7 +199,7 @@ class GenericTableController extends BaseController
         if (!is_array($payload)) abort(400, 'Body must be JSON object or array');
 
         $rows = $this->isAssoc($payload) ? [$payload] : $payload;
-        $rows = array_map(fn ($r) => $this->stampTimestamps($table, $r, true), $rows);
+        $rows = array_map(fn ($r) => $this->stampTimestamps($table, $this->rewriteBody($table, $r), true), $rows);
 
         $inserted = [];
         $pk = $this->primaryKey($table);
@@ -195,14 +207,13 @@ class GenericTableController extends BaseController
 
         DB::transaction(function () use ($table, $rows, $pk, $cols, &$inserted) {
             foreach ($rows as $r) {
-                // drop unknown columns silently (forward-compat with Supabase types)
                 $clean = array_intersect_key($r, array_flip($cols));
                 $id = DB::table($table)->insertGetId($clean, $pk);
                 $inserted[] = DB::table($table)->where($pk, $id)->first();
             }
         });
 
-        return response()->json($inserted, 201);
+        return response()->json($this->applyAliasesToRows($table, $inserted), 201);
     }
 
     public function update(Request $request, string $table)
@@ -212,27 +223,30 @@ class GenericTableController extends BaseController
         $filters = (array) $request->query('f', []);
         if (empty($filters)) abort(400, 'UPDATE requires at least one filter (f[col][eq]=...)');
 
-        $q = DB::table($table);
-        foreach ($filters as $col => $ops) {
-            foreach ($ops as $op => $val) {
-                if ($op === 'eq') $q->where($col, $val);
-                elseif ($op === 'in') $q->whereIn($col, is_array($val) ? $val : explode(',', (string) $val));
+        $applyFilters = function ($q) use ($table, $filters) {
+            foreach ($filters as $col => $ops) {
+                $realCol = $this->resolveCol($table, (string) $col);
+                foreach ($ops as $op => $val) {
+                    if ($op === 'eq') $q->where($realCol, $val);
+                    elseif ($op === 'in') $q->whereIn($realCol, is_array($val) ? $val : explode(',', (string) $val));
+                }
             }
-        }
+        };
+
+        $q = DB::table($table);
+        $applyFilters($q);
         $cols = Schema::getColumnListing($table);
-        $clean = array_intersect_key($this->stampTimestamps($table, $payload, false), array_flip($cols));
+        $clean = array_intersect_key(
+            $this->stampTimestamps($table, $this->rewriteBody($table, $payload), false),
+            array_flip($cols)
+        );
         $q->update($clean);
 
-        // return updated rows
         $q2 = DB::table($table);
-        foreach ($filters as $col => $ops) {
-            foreach ($ops as $op => $val) {
-                if ($op === 'eq') $q2->where($col, $val);
-                elseif ($op === 'in') $q2->whereIn($col, is_array($val) ? $val : explode(',', (string) $val));
-            }
-        }
-        return response()->json($q2->get());
+        $applyFilters($q2);
+        return response()->json($this->applyAliasesToRows($table, $q2->get()));
     }
+
 
     public function upsert(Request $request, string $table)
     {
