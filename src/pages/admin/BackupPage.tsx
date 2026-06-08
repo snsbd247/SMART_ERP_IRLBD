@@ -821,7 +821,7 @@ const BackupPage = () => {
                         <TableRow key={r.id}>
                           <TableCell className="font-mono text-xs max-w-[200px] truncate">{r.file_name}</TableCell>
                           <TableCell><Badge variant="outline" className="text-xs capitalize">{r.backup_type}</Badge></TableCell>
-                          <TableCell><Badge variant="secondary" className="text-xs uppercase">SQL</Badge></TableCell>
+                          <TableCell><Badge variant="secondary" className="text-xs uppercase">{(r.format || "sql")}</Badge></TableCell>
                           <TableCell className="text-xs">{formatFileSize(r.file_size)}</TableCell>
                           <TableCell className="text-xs">{r.tables_count}</TableCell>
                           <TableCell className="text-xs">{r.records_count}</TableCell>
@@ -832,6 +832,11 @@ const BackupPage = () => {
                               {r.storage_path && r.status === "completed" && r.backup_type !== "restore" && (
                                 <Button variant="ghost" size="sm" onClick={() => handleDownload(r)} title="Download">
                                   <Download className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
+                              {r.storage_path && r.status === "completed" && r.backup_type !== "restore" && settings?.gdrive_enabled && USE_LARAVEL && (
+                                <Button variant="ghost" size="sm" onClick={() => uploadBackupToDrive(r.id)} disabled={uploadingId === r.id} title="Upload to Google Drive">
+                                  <Cloud className={`w-3.5 h-3.5 ${uploadingId === r.id ? "animate-pulse" : ""}`} />
                                 </Button>
                               )}
                               <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(r.id)} title="Delete">
