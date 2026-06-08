@@ -152,18 +152,32 @@ SUDO
 cd "${APP_DIR}"
 log "Pulling latest from origin/${REPO_BRANCH}..."
 git fetch --all --prune
+CURRENT_STEP="git-pull"
+log "Pulling latest from origin/${REPO_BRANCH}..."
+git fetch --all --prune
 git checkout "${REPO_BRANCH}"
 git reset --hard "origin/${REPO_BRANCH}"
+NEW_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
+step "git-pull" ok "${PREV_SHA:0:8} → ${NEW_SHA:0:8}"
 
 LATEST_UPDATE_SHA="$(sha256sum "${APP_DIR}/deploy/vps/update.sh" 2>/dev/null | awk '{print $1}' || true)"
 if [[ "${SMARTERP_UPDATE_REEXECED:-0}" != "1" && -n "${STARTED_UPDATE_SHA}" && -n "${LATEST_UPDATE_SHA}" && "${STARTED_UPDATE_SHA}" != "${LATEST_UPDATE_SHA}" ]]; then
   log "update.sh changed during pull; restarting once with the latest script..."
-  export SMARTERP_UPDATE_REEXECED=1 APP_DIR REPO_BRANCH PHP_VERSION BACKUP_DIR
+  export SMARTERP_UPDATE_REEXECED=1 APP_DIR REPO_BRANCH PHP_VERSION BACKUP_DIR STATUS_FILE
   exec bash "${APP_DIR}/deploy/vps/update.sh"
 fi
 
 install_deploy_runner
+install_rollback_runner
 
+# ---------- PRE-CHECK: pending migrations (no side-effects) ----------
+if [[ -d "${APP_DIR}/erp-backend" ]]; then
+  CURRENT_STEP="migrations-check"
+  PENDING=$(cd "${APP_DIR}/erp-backend" && php artisan migrate:status --pending 2>&1 | grep -cE '^\s*\|\s+[NY]\s+\|' || true)
+  step "migrations-check" ok "${PENDING} pending migration(s)"
+fi
+
+CURRENT_STEP="frontend-build"
 log "Rebuilding frontend..."
 if [[ -f package.json ]]; then
   APP_URL="https://erp.irlbd.com"
@@ -177,18 +191,22 @@ if [[ -f package.json ]]; then
   export VITE_SUPABASE_PROJECT_ID="vps-laravel"
   npm install --no-audit --no-fund --legacy-peer-deps
   npm run build
+  step "frontend-build" ok "dist/ rebuilt"
 fi
 
 if [[ -d "${APP_DIR}/erp-backend" ]]; then
   cd "${APP_DIR}/erp-backend"
+  CURRENT_STEP="composer-install"
   log "Updating backend deps..."
   composer install --no-dev --optimize-autoloader --no-interaction
   mkdir -p storage/app/public storage/app/backups storage/framework/cache/data \
            storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
   chown -R www-data:www-data storage bootstrap/cache
   chmod -R 775 storage bootstrap/cache
+  step "composer-install" ok
 
   # ---------- SAFETY: backup DB before any schema change ----------
+  CURRENT_STEP="db-backup"
   if [[ -f .env ]]; then
     DB_CONN=$(grep -E '^DB_CONNECTION=' .env | cut -d= -f2- | tr -d '"' || true)
     DB_HOST=$(grep -E '^DB_HOST='       .env | cut -d= -f2- | tr -d '"' || true)
@@ -204,20 +222,24 @@ if [[ -d "${APP_DIR}/erp-backend" ]]; then
             --single-transaction --quick --routines --triggers --no-tablespaces \
             -h "${DB_HOST:-127.0.0.1}" -P "${DB_PORT:-3306}" \
             -u "${DB_USER}" "${DB_NAME}" 2>/dev/null | gzip > "${BKP}"; then
-        log "Backup OK ($(du -h "${BKP}" | cut -f1))"
+        DB_BACKUP_PATH="${BKP}"
+        echo "${BKP}|${PREV_SHA}" > "${BACKUP_DIR}/.last-deploy"
+        step "db-backup" ok "$(du -h "${BKP}" | cut -f1) → ${BKP}"
       else
         warn "mysqldump failed — continuing without DB backup. Roll back manually if needed."
         rm -f "${BKP}"
+        step "db-backup" warn "mysqldump failed"
       fi
     fi
   fi
 
   # ---------- PRODUCTION-SAFE migrations (additive ONLY) ----------
-  # NEVER run: migrate:fresh / migrate:reset / migrate:refresh / db:wipe / db:seed.
-  # `migrate --force` only applies new "up()" migrations and preserves existing rows.
+  CURRENT_STEP="migrate"
   log "Running additive migrations (no seeders, no data reset)..."
   php artisan migrate --force --no-interaction
+  step "migrate" ok
 
+  CURRENT_STEP="env-fixups"
   log "Repairing VPS token-only auth/install flags..."
   if [[ -f .env ]]; then
     grep -q '^SANCTUM_STATEFUL_DOMAINS=' .env \
@@ -235,7 +257,9 @@ ON DUPLICATE KEY UPDATE setting_value = 'true', updated_at = NOW();
 SQL
   fi
   touch storage/installed
+  step "env-fixups" ok
 
+  CURRENT_STEP="cache-refresh"
   log "Clearing & re-caching..."
   php artisan config:clear
   php artisan route:clear
@@ -244,20 +268,26 @@ SQL
   php artisan config:cache
   php artisan route:cache
   php artisan view:cache
+  step "cache-refresh" ok
 
   if [[ -d "${APP_DIR}/dist" ]]; then
+    CURRENT_STEP="publish-assets"
     log "Copying built frontend into Laravel public/ ..."
     rm -rf "${APP_DIR}/erp-backend/public/assets" 2>/dev/null || true
     rsync -a --exclude='index.php' --exclude='.htaccess' --exclude='storage' \
       "${APP_DIR}/dist/" "${APP_DIR}/erp-backend/public/"
+    step "publish-assets" ok
   fi
 
   chown -R www-data:www-data storage bootstrap/cache public
   chmod -R 775 storage bootstrap/cache
 fi
 
+CURRENT_STEP="reload-services"
 log "Reloading services..."
 systemctl reload "php${PHP_VERSION}-fpm" || true
 systemctl reload nginx || true
+step "reload-services" ok
 
+status_write success "Deploy complete (${PREV_SHA:0:8} → ${NEW_SHA:0:8})"
 log "Deploy update complete. Existing data preserved; no seeders executed."
