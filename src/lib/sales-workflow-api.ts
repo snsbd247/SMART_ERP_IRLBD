@@ -32,6 +32,109 @@ async function nextNumber(prefix: string) {
   return `${prefix}-${year}-${String(serial).padStart(5, "0")}`;
 }
 
+async function getCurrentUserId() {
+  const { data } = await supabase.auth.getUser();
+  return data?.user?.id ?? null;
+}
+
+async function resolveAccount(name: string, fallbackNames: string[] = []) {
+  const names = [name, ...fallbackNames];
+  for (const accountName of names) {
+    const { data } = await supabase
+      .from("chart_of_accounts")
+      .select("id,account_name")
+      .ilike("account_name", accountName)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (data) return data as any;
+  }
+  return null;
+}
+
+async function createApprovedVoucher(params: {
+  voucherPrefix: "JV" | "RV";
+  voucherType: "journal" | "receipt";
+  voucherDate: string;
+  description: string;
+  branchId?: string | null;
+  financialYearId?: string | null;
+  entries: Array<{ account_id: string; debit: number; credit: number; narration: string }>;
+}) {
+  const debit = params.entries.reduce((s, e) => s + Number(e.debit || 0), 0);
+  const credit = params.entries.reduce((s, e) => s + Number(e.credit || 0), 0);
+  if (Math.abs(debit - credit) > 0.01 || debit <= 0) return null;
+  const uid = await getCurrentUserId();
+  const { data: voucher, error } = await supabase.from("acc_vouchers").insert({
+    voucher_number: await nextNumber(params.voucherPrefix),
+    voucher_type: params.voucherType,
+    voucher_date: params.voucherDate,
+    description: params.description,
+    total_amount: debit,
+    status: "approved",
+    branch_id: params.branchId ?? null,
+    financial_year_id: params.financialYearId ?? null,
+    created_by: uid,
+    approved_by: uid,
+    approved_at: new Date().toISOString(),
+  } as any).select().single();
+  if (error || !voucher) return null;
+  const { error: entryError } = await supabase.from("voucher_entries").insert(
+    params.entries.map((entry, index) => ({ ...entry, voucher_id: (voucher as any).id, sort_order: index }))
+  );
+  if (entryError) {
+    await supabase.from("acc_vouchers").delete().eq("id", (voucher as any).id);
+    return null;
+  }
+  return voucher as any;
+}
+
+async function postSalesInvoiceVoucher(invoice: any) {
+  const ar = await resolveAccount("Accounts Receivable");
+  const sales = await resolveAccount("Sales Revenue", ["Sales"]);
+  const vat = await resolveAccount("VAT Payable", ["VAT Payable (Output VAT)"]);
+  if (!ar || !sales || !vat) return null;
+  const entries = [
+    { account_id: ar.id, debit: Number(invoice.grand_total || 0), credit: 0, narration: `Invoice ${invoice.invoice_number}` },
+    { account_id: sales.id, debit: 0, credit: Number(invoice.subtotal || 0), narration: `Sales ${invoice.invoice_number}` },
+  ];
+  if (Number(invoice.vat_total || 0) > 0) {
+    entries.push({ account_id: vat.id, debit: 0, credit: Number(invoice.vat_total || 0), narration: `VAT on ${invoice.invoice_number}` });
+  }
+  return createApprovedVoucher({
+    voucherPrefix: "JV",
+    voucherType: "journal",
+    voucherDate: invoice.invoice_date,
+    description: `Sales Invoice ${invoice.invoice_number}`,
+    branchId: invoice.branch_id,
+    financialYearId: invoice.financial_year_id,
+    entries,
+  });
+}
+
+async function postInvoicePaymentVoucher(payment: any, invoice: any) {
+  const bank = await resolveAccount(payment.mode === "cash" ? "Cash in Hand" : "Bank Account", payment.mode === "cash" ? ["Cash"] : ["Bank"]);
+  const ar = await resolveAccount("Accounts Receivable");
+  const tds = await resolveAccount("TDS Receivable");
+  if (!bank || !ar) return null;
+  const entries: Array<{ account_id: string; debit: number; credit: number; narration: string }> = [];
+  if (Number(payment.amount_received || 0) > 0) {
+    entries.push({ account_id: bank.id, debit: Number(payment.amount_received || 0), credit: 0, narration: `Receipt ${payment.payment_number}` });
+  }
+  if (Number(payment.tds_amount || 0) > 0 && tds) {
+    entries.push({ account_id: tds.id, debit: Number(payment.tds_amount || 0), credit: 0, narration: `TDS on ${invoice.invoice_number}` });
+  }
+  entries.push({ account_id: ar.id, debit: 0, credit: Number(payment.total_settled || 0), narration: `Settle ${invoice.invoice_number}` });
+  return createApprovedVoucher({
+    voucherPrefix: "RV",
+    voucherType: "receipt",
+    voucherDate: payment.payment_date,
+    description: `Payment ${payment.payment_number} for ${invoice.invoice_number}`,
+    branchId: payment.branch_id ?? invoice.branch_id,
+    financialYearId: payment.financial_year_id ?? invoice.financial_year_id,
+    entries,
+  });
+}
+
 export const swApi = {
   nextNumber,
 
