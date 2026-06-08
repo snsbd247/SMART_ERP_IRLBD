@@ -71,7 +71,6 @@ class GenericTableController extends BaseController
 
         // Filters: ?f[col][op]=value  (skip unknown columns to avoid 500s)
         $filters = (array) $request->query('f', []);
-        $tableCols = Schema::getColumnListing($table);
         foreach ($filters as $col => $ops) {
             if (!is_array($ops) || !preg_match('/^[a-z_][a-z0-9_]*$/i', $col)) continue;
             if (!in_array($col, $tableCols, true)) continue; // ignore relation/foreign cols
