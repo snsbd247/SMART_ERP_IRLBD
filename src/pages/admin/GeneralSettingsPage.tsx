@@ -62,7 +62,6 @@ const GeneralSettingsPage = () => {
     const { data, error } = await supabase
       .from("company_settings" as any)
       .select("*")
-      .eq("id", "default")
       .maybeSingle();
     if (error) {
       if (isSupabaseDisabledError(error) && getApiBaseUrl()) {
@@ -74,17 +73,44 @@ const GeneralSettingsPage = () => {
     return ((data as any) || fallbackSettings) as CompanySettings;
   };
 
+  // Prefer Laravel API whenever an API base is configured (VPS deploy). The
+  // Supabase path is only used on Lovable Cloud preview. We never silently mix
+  // sources: save and load always use the same backend.
+  const useLaravel = () => !!getApiBaseUrl();
+
+  const loadBranchesAndYears = async (): Promise<[Branch[], FinancialYear[]]> => {
+    if (useLaravel()) {
+      const base = apiBase();
+      const headers = getLaravelAuthHeaders();
+      const [bRes, yRes] = await Promise.all([
+        fetch(`${base}/v1/db/branches?select=id,name&f[status][eq]=active&limit=1000`, { headers }).then(r => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
+        fetch(`${base}/v1/db/financial_years?select=id,name,is_active&order[start_date]=desc&limit=1000`, { headers }).then(r => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
+      ]);
+      return [(bRes?.data || bRes || []) as Branch[], (yRes?.data || yRes || []) as FinancialYear[]];
+    }
+    const [bRes, yRes] = await Promise.all([
+      supabase.from("branches").select("id, name").eq("status", "active"),
+      supabase.from("financial_years").select("id, name, is_active").order("start_date", { ascending: false }),
+    ]);
+    return [(bRes.data || []) as Branch[], (yRes.data || []) as FinancialYear[]];
+  };
+
   useEffect(() => {
     const init = async () => {
       try {
-        const [settingsRow, bRes, yRes] = await Promise.all([
-          isLaravelMode() ? loadLaravelSettings() : loadSupabaseSettings(),
-          supabase.from("branches").select("id, name").eq("status", "active"),
-          supabase.from("financial_years").select("id, name, is_active").order("start_date", { ascending: false }),
-        ]);
+        const settingsRow = useLaravel() ? await loadLaravelSettings() : await loadSupabaseSettings();
         setSettings(settingsRow);
-        setBranches((bRes.data || []) as Branch[]);
-        setYears((yRes.data || []) as FinancialYear[]);
+        try {
+          const [b, y] = await loadBranchesAndYears();
+          setBranches(b);
+          setYears(y);
+        } catch (e) {
+          console.warn("[GeneralSettings] branches/years load failed", e);
+        }
+      } catch (e: any) {
+        console.error("[GeneralSettings] load failed", e);
+        toast.error("Failed to load settings: " + (e?.message || "Unknown error"));
+        setSettings(fallbackSettings);
       } finally {
         setLoading(false);
       }
