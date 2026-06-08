@@ -66,12 +66,32 @@ return new class extends Migration
             return;
         }
 
-        // Clean orphan rows so the FK can be added without failure
-        DB::statement("UPDATE `{$table}` t LEFT JOIN `{$refTable}` r ON r.id = t.`{$column}`
-                       SET t.`{$column}` = NULL WHERE t.`{$column}` IS NOT NULL AND r.id IS NULL");
+        // Detect nullability of the column — SET NULL FKs require a nullable column.
+        $col = DB::selectOne(
+            "SELECT IS_NULLABLE FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+            [$table, $column]
+        );
+        $isNullable = $col && strtoupper($col->IS_NULLABLE) === 'YES';
 
-        Schema::table($table, function (Blueprint $t) use ($column, $refTable, $name) {
-            $t->foreign($column, $name)->references('id')->on($refTable)->nullOnDelete();
+        if ($isNullable) {
+            // Clean orphan rows so SET NULL FK can be added without failure
+            DB::statement("UPDATE `{$table}` t LEFT JOIN `{$refTable}` r ON r.id = t.`{$column}`
+                           SET t.`{$column}` = NULL WHERE t.`{$column}` IS NOT NULL AND r.id IS NULL");
+        } else {
+            // NOT NULL column — orphans would break a RESTRICT FK; abort silently to avoid data loss.
+            $orphans = DB::selectOne(
+                "SELECT COUNT(*) AS c FROM `{$table}` t LEFT JOIN `{$refTable}` r ON r.id = t.`{$column}`
+                 WHERE t.`{$column}` IS NOT NULL AND r.id IS NULL"
+            );
+            if ($orphans && (int) $orphans->c > 0) {
+                return; // surfaced via sw:verify-fks
+            }
+        }
+
+        Schema::table($table, function (Blueprint $t) use ($column, $refTable, $name, $isNullable) {
+            $fk = $t->foreign($column, $name)->references('id')->on($refTable);
+            $isNullable ? $fk->nullOnDelete() : $fk->restrictOnDelete();
         });
     }
 };
