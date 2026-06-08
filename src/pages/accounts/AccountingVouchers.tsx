@@ -18,7 +18,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Check, X, FileText, Trash2, RotateCcw, Pencil, ArrowLeftRight, Lock, Printer, Eye, PlusCircle } from "lucide-react";
+import { Plus, Check, X, FileText, Trash2, RotateCcw, Pencil, ArrowLeftRight, Lock, Printer, Eye, PlusCircle, History } from "lucide-react";
+import { AuditLogViewer } from "@/components/AuditLogViewer";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { PrintLayout } from "@/components/PrintLayout";
 
@@ -118,6 +119,8 @@ const AccountingVouchers = () => {
 
   const [voucherAccountsMap, setVoucherAccountsMap] = useState<Record<string, string[]>>({});
   const [showDeleted, setShowDeleted] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditRecordId, setAuditRecordId] = useState<string | undefined>(undefined);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -478,6 +481,15 @@ const AccountingVouchers = () => {
           <h1 className="text-xl font-semibold text-foreground">Accounting Vouchers</h1>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setAuditRecordId(undefined); setAuditOpen(true); }}
+            title="View voucher audit log"
+          >
+            <History className="w-4 h-4 mr-1" />
+            Audit Log
+          </Button>
           {isSuperAdmin && (
             <Button
               variant={showDeleted ? "default" : "outline"}
@@ -577,6 +589,10 @@ const AccountingVouchers = () => {
                                 <ArrowLeftRight className="w-3.5 h-3.5 text-primary" />
                               </Button>
                             )}
+                            {/* History */}
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAuditRecordId(v.id); setAuditOpen(true); }} title="View history">
+                              <History className="w-3.5 h-3.5 text-muted-foreground" />
+                            </Button>
                             {/* Restore - super admin only, deleted vouchers */}
                             {isSuperAdmin && (v as any).deleted_at && (
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSuperAdminAction("restore", v)} title="Restore">
@@ -938,6 +954,13 @@ const AccountingVouchers = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AuditLogViewer
+        open={auditOpen}
+        onOpenChange={setAuditOpen}
+        module="vouchers"
+        recordId={auditRecordId}
+        title={auditRecordId ? "Voucher History" : "Vouchers Audit Log"}
+      />
     </div>
   );
 };
