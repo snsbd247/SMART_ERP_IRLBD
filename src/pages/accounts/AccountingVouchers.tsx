@@ -670,18 +670,14 @@ const AccountingVouchers = () => {
                                 const val = evalFormula(txt);
                                 if (!isFinite(val) || isNaN(val) || val <= 0) return;
                                 if (e.key === "Enter") e.preventDefault();
-                                const field: "debit" | "credit" = entry.dr_cr === "dr" ? "debit" : "credit";
-                                setRawAmounts((p) => ({ ...p, [`${entry.id}-${field}`]: String(val) }));
-                                setEntries((prev) => prev.map((r) => r.id === entry.id ? { ...r, [field]: val } : r));
+                                applyFormulaToEntry(entry, val);
                               }}
                               onBlur={(e) => {
                                 const txt = e.target.value.trim();
                                 if (!txt.startsWith("=")) return;
                                 const val = evalFormula(txt);
                                 if (!isFinite(val) || isNaN(val) || val <= 0) return;
-                                const field: "debit" | "credit" = entry.dr_cr === "dr" ? "debit" : "credit";
-                                setRawAmounts((p) => ({ ...p, [`${entry.id}-${field}`]: String(val) }));
-                                setEntries((prev) => prev.map((r) => r.id === entry.id ? { ...r, [field]: val } : r));
+                                applyFormulaToEntry(entry, val);
                               }} />
                           </TableCell>
                           <TableCell className="pt-3">
