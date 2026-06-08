@@ -20,6 +20,8 @@ APP_DIR="${APP_DIR:-/opt/smarterp}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
 PHP_VERSION="${PHP_VERSION:-8.2}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/smarterp}"
+STATUS_FILE="${STATUS_FILE:-/var/log/smarterp-deploy.status.json}"
+MIN_FREE_MB="${MIN_FREE_MB:-500}"
 STARTED_UPDATE_SHA="$(sha256sum "$0" 2>/dev/null | awk '{print $1}' || true)"
 
 C_GREEN='\033[0;32m'; C_YELLOW='\033[1;33m'; C_RED='\033[0;31m'; C_NC='\033[0m'
@@ -27,8 +29,77 @@ log()  { echo -e "${C_GREEN}[$(date +%H:%M:%S)]${C_NC} $*"; }
 warn() { echo -e "${C_YELLOW}[WARN]${C_NC} $*"; }
 err()  { echo -e "${C_RED}[ERR ]${C_NC} $*" >&2; }
 
+# ---------- Structured status JSON (consumed by DeployController) ----------
+STEPS_JSON='[]'
+DEPLOY_STARTED_AT="$(date -Iseconds)"
+PREV_SHA=""; NEW_SHA=""; DB_BACKUP_PATH=""
+status_write() {
+  local state="$1" msg="${2:-}"
+  cat > "${STATUS_FILE}" <<JSON 2>/dev/null || true
+{
+  "state": "${state}",
+  "message": $(printf '%s' "${msg}" | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))' 2>/dev/null || echo "\"${msg//\"/\\\"}\""),
+  "started_at": "${DEPLOY_STARTED_AT}",
+  "finished_at": "$(date -Iseconds)",
+  "prev_sha": "${PREV_SHA}",
+  "new_sha": "${NEW_SHA}",
+  "db_backup": "${DB_BACKUP_PATH}",
+  "steps": ${STEPS_JSON}
+}
+JSON
+  chmod 0664 "${STATUS_FILE}" 2>/dev/null || true
+}
+step() {
+  local name="$1" status="$2" detail="${3:-}"
+  log "[${status}] ${name}${detail:+ — ${detail}}"
+  STEPS_JSON=$(python3 -c "
+import json,sys
+arr=json.loads('''${STEPS_JSON}''')
+arr.append({'name':'${name}','status':'${status}','detail':'''${detail//\'/\\\'}''','at':'$(date -Iseconds)'})
+print(json.dumps(arr))
+" 2>/dev/null || echo "${STEPS_JSON}")
+  status_write running "${name}"
+}
+on_failure() {
+  local rc=$?
+  err "Update failed (exit ${rc}). Rollback available via: sudo /usr/local/bin/smarterp-rollback"
+  status_write failed "Update failed at step '${CURRENT_STEP:-unknown}' (exit ${rc}). Run rollback to restore previous deploy."
+  exit "${rc}"
+}
+trap on_failure ERR
+
 if [[ $EUID -ne 0 ]]; then err "Run as root (sudo ./update.sh)"; exit 1; fi
 if [[ ! -d "${APP_DIR}/.git" ]]; then err "${APP_DIR} is not a git checkout. Run clone.sh first."; exit 1; fi
+
+# ============================================================
+#  PRE-DEPLOYMENT CHECKS
+# ============================================================
+CURRENT_STEP="preflight"; status_write running "preflight"
+log "Running pre-deployment checks..."
+
+# Disk space
+APP_FREE_MB=$(df -Pm "${APP_DIR}"   | awk 'NR==2 {print $4}')
+VAR_FREE_MB=$(df -Pm /var           | awk 'NR==2 {print $4}')
+if (( APP_FREE_MB < MIN_FREE_MB )); then
+  step "disk-space" failed "Only ${APP_FREE_MB}MB free in ${APP_DIR} (need ${MIN_FREE_MB}MB)"
+  err  "Insufficient disk space in ${APP_DIR}"; exit 1
+fi
+if (( VAR_FREE_MB < MIN_FREE_MB )); then
+  step "disk-space" failed "Only ${VAR_FREE_MB}MB free in /var (need ${MIN_FREE_MB}MB)"
+  err  "Insufficient disk space in /var"; exit 1
+fi
+step "disk-space" ok "app=${APP_FREE_MB}MB var=${VAR_FREE_MB}MB free"
+
+# Required tools
+for bin in git php composer node npm rsync mysqldump; do
+  command -v "$bin" >/dev/null 2>&1 || { step "tooling" failed "missing: $bin"; err "Required tool not found: $bin"; exit 1; }
+done
+step "tooling" ok "git/php/composer/node/npm/rsync/mysqldump present"
+
+# Record current SHA (used for rollback)
+cd "${APP_DIR}"
+PREV_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
+[[ -n "${PREV_SHA}" ]] && step "git-snapshot" ok "previous SHA=${PREV_SHA:0:8}"
 
 install_deploy_runner() {
   if [[ ! -f "${APP_DIR}/deploy/vps/deploy-runner.sh" ]]; then
