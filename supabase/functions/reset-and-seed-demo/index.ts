@@ -635,7 +635,7 @@ Deno.serve(async (req) => {
     await bulk("production_entries", prodEntries);
     await bulk("production_materials", prodMats);
 
-    // ===== Sales Workflow (BD VAT): PO → VAT Challan → DC → Receive → Invoice v2 → Payment + TDS =====
+    // ===== Sales (BD VAT): PO → VAT Challan → DC → Receive → Invoice v2 → Payment + TDS =====
     const POs: any[] = [], POitems: any[] = [];
     const VCHs: any[] = [], VCHitems: any[] = [];
     const DCs: any[] = [], CRs: any[] = [], HRs: any[] = [];
