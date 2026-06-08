@@ -41,6 +41,61 @@ class GenericTableController extends BaseController
         'lt' => '<', 'lte' => '<=', 'like' => 'LIKE', 'ilike' => 'ILIKE',
     ];
 
+    /**
+     * Per-table virtual column aliases. Lets frontend code written against the
+     * Supabase schema (e.g. item_master.name / item_master.sku) keep working
+     * against the Laravel/MySQL schema (item_name / item_code). Applied to
+     * select projection, filters, order, insert and update bodies.
+     */
+    private const ALIASES = [
+        'item_master' => [
+            'name' => 'item_name',
+            'sku'  => 'item_code',
+        ],
+    ];
+
+    private function aliasMap(string $table): array
+    {
+        return self::ALIASES[$table] ?? [];
+    }
+
+    private function resolveCol(string $table, string $col): string
+    {
+        $map = $this->aliasMap($table);
+        return $map[$col] ?? $col;
+    }
+
+    private function applyAliasesToRows(string $table, $rows)
+    {
+        $map = $this->aliasMap($table);
+        if (!$map) return $rows;
+        $flip = array_flip($map); // real => virtual
+        $mapRow = function ($row) use ($flip) {
+            if ($row === null) return $row;
+            $arr = is_object($row) ? (array) $row : $row;
+            foreach ($flip as $real => $virtual) {
+                if (array_key_exists($real, $arr) && !array_key_exists($virtual, $arr)) {
+                    $arr[$virtual] = $arr[$real];
+                }
+            }
+            return is_object($row) ? (object) $arr : $arr;
+        };
+        if (is_array($rows)) return array_map($mapRow, $rows);
+        if ($rows instanceof \Illuminate\Support\Collection) return $rows->map($mapRow);
+        return $mapRow($rows);
+    }
+
+    private function rewriteBody(string $table, array $row): array
+    {
+        $map = $this->aliasMap($table);
+        if (!$map) return $row;
+        $out = [];
+        foreach ($row as $k => $v) {
+            $out[$map[$k] ?? $k] = $v;
+        }
+        return $out;
+    }
+
     private function assertTable(string $table): void
     {
         if (!preg_match('/^[a-z_][a-z0-9_]*$/', $table)) {
