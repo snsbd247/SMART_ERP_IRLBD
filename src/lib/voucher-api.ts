@@ -69,7 +69,7 @@ export const voucherApi = {
 
   listAccounts: async () => {
     if (isLaravelMode()) {
-      const json = await laravelFetch<any>("accounts?per_page=10000&sort=account_code&order=asc");
+      const json = await laravelFetch<any>("db/chart_of_accounts?select=id,account_name,account_code,account_type,parent_id,opening_balance,opening_balance_type,is_active&order[account_code]=asc");
       return { data: unwrapList(json) } as { data: any[] };
     }
     return supabase.from("chart_of_accounts").select("id, account_name, account_code, account_type, parent_id, opening_balance, opening_balance_type, is_active").order("account_code");
