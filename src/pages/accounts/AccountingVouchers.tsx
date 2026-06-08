@@ -146,7 +146,7 @@ const AccountingVouchers = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, toast]);
+  }, [activeTab, showDeleted, toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
