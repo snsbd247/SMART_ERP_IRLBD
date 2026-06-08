@@ -433,20 +433,11 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:purchase_orders.edit')->put('purchase-orders/{id}', [\App\Http\Controllers\SalesWorkflow\PurchaseOrderController::class, 'update']);
         Route::middleware('permission:purchase_orders.delete')->delete('purchase-orders/{id}', [\App\Http\Controllers\SalesWorkflow\PurchaseOrderController::class, 'destroy']);
 
-        // Dispatch
-        Route::middleware('permission:dispatch.view')->group(function () {
-            Route::get('dispatches', [\App\Http\Controllers\SalesWorkflow\DispatchController::class, 'index']);
-            Route::get('dispatches/{id}', [\App\Http\Controllers\SalesWorkflow\DispatchController::class, 'show']);
-        });
-        Route::middleware('permission:dispatch.create')->post('dispatches', [\App\Http\Controllers\SalesWorkflow\DispatchController::class, 'store']);
-        Route::middleware('permission:dispatch.edit')->post('dispatches/{id}/transition', [\App\Http\Controllers\SalesWorkflow\DispatchController::class, 'transition']);
-        Route::middleware('permission:dispatch.delete')->delete('dispatches/{id}', [\App\Http\Controllers\SalesWorkflow\DispatchController::class, 'destroy']);
-
         // VAT Challan
         Route::middleware('permission:vat_challans.view')->group(function () {
             Route::get('vat-challans', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'index']);
-            Route::get('vat-challans/{id}', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'show']);
             Route::get('vat-challans/po-availability/{poId}', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'poAvailability']);
+            Route::get('vat-challans/{id}', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'show']);
         });
         Route::middleware('permission:vat_challans.create')->post('vat-challans', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'store']);
         Route::middleware('permission:vat_challans.delete')->delete('vat-challans/{id}', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'destroy']);

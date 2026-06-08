@@ -4,11 +4,11 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ReportShell, FilterBar, useCustomers } from "./_shared";
 
-export default function PoVsDispatchReport() {
+export default function PoVsVatChallanReport() {
   const customers = useCustomers();
   const [filters, setFilters] = useState({ from: "", to: "", customer_id: "", status: "" });
   const [rows, setRows] = useState<any[]>([]);
-  useEffect(() => { swReports.poVsDispatch(filters).then(({ data }) => setRows(data || [])); }, [filters]);
+  useEffect(() => { swReports.poVsVatChallan(filters).then(({ data }) => setRows(data || [])); }, [filters]);
 
   const flat = rows.map((r) => ({
     po_number: r.po?.po_number, po_date: r.po?.po_date, customer: r.po?.customer?.name,
@@ -16,7 +16,7 @@ export default function PoVsDispatchReport() {
   }));
 
   return (
-    <ReportShell title="PO vs Dispatch" filters={filters} onExport={() => exportCsv("po-vs-dispatch.csv", flat, ["po_number","po_date","customer","product","ordered","delivered","remaining"])}>
+    <ReportShell title="PO vs VAT Challan" filters={filters} onExport={() => exportCsv("po-vs-vat-challan.csv", flat, ["po_number","po_date","customer","product","ordered","delivered","remaining"])}>
       <FilterBar filters={filters} setFilters={setFilters} customers={customers} />
       <Card>
         <Table>

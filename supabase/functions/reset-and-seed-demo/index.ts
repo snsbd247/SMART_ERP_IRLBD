@@ -41,12 +41,12 @@ Deno.serve(async (req) => {
     // ===== RESET =====
     const resetGroups: string[][] = [
       ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","purchase_items","purchase_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","bom_items","fund_transactions","employee_fund_settings","overtime_records","leave_requests","attendance","employee_documents","employee_bank_info","employee_education","employee_experience","employee_emergency_contacts","salary_structures","face_data","biometric_logs","payroll","party_notes","audit_log","login_logs","backup_history","messages","conversation_participants",
-        "tds_entries","invoice_payments","invoice_challans","sales_invoice_items_v2","customer_receives","ho_receives","dispatch_po_allocations","vat_challan_items","dispatch_items","purchase_order_items",
+        "tds_entries","invoice_payments","invoice_challans","sales_invoice_items_v2","customer_receives","ho_receives","vat_challan_items","purchase_order_items",
         // Status logs / amendments — defensive (cascade would also handle these)
-        "dispatch_status_logs","invoice_status_logs","po_amendments"],
+        "invoice_status_logs","po_amendments"],
       // Returns must be deleted BEFORE their parent invoices/purchases
       ["sales_returns","purchase_returns"],
-      ["sales_invoices_v2","delivery_challans","vat_challans","dispatches","purchase_orders"],
+      ["sales_invoices_v2","delivery_challans","vat_challans","purchase_orders"],
       ["acc_vouchers","party_payments","sales_invoices","purchases","production_entries","bill_of_materials","employees","conversations"],
       ["customers","suppliers","item_master","products","raw_materials"],
       ["item_categories","units","warehouses","product_categories"],
@@ -635,14 +635,13 @@ Deno.serve(async (req) => {
     await bulk("production_entries", prodEntries);
     await bulk("production_materials", prodMats);
 
-    // ===== Sales Workflow (BD VAT): PO → Dispatch → VAT Challan → DC → Receive → Invoice v2 → Payment + TDS =====
+    // ===== Sales Workflow (BD VAT): PO → VAT Challan → DC → Receive → Invoice v2 → Payment + TDS =====
     const POs: any[] = [], POitems: any[] = [];
-    const DSPs: any[] = [], DSPitems: any[] = [], DSPallocs: any[] = [];
     const VCHs: any[] = [], VCHitems: any[] = [];
     const DCs: any[] = [], CRs: any[] = [], HRs: any[] = [];
     const INV2: any[] = [], INV2items: any[] = [], INVCHs: any[] = [];
     const IPAYs: any[] = [], TDSs: any[] = [];
-    let poc=0, dspc=0, vchc=0, dcc=0, inv2c=0, ipayc=0, tdsc=0;
+    let poc=0, vchc=0, dcc=0, inv2c=0, ipayc=0, tdsc=0;
 
     const vehicles = ["DHK-METRO-1234","DHK-METRO-5678","CTG-METRO-9012","DHK-METRO-3456","CTG-METRO-7890"];
     const drivers  = ["Karim Mia","Rahim Uddin","Salam Hossain","Jamal Khan","Nasir Ahmed"];
@@ -670,20 +669,6 @@ Deno.serve(async (req) => {
         notes:"Demo PO", branch_id:BR, financial_year_id:FY, created_by:UID });
       POitems.push(...poiData);
 
-      // Dispatch
-      const dspId = U(); dspc++;
-      const dspNum = `DSP-${fyTag}-${String(dspc).padStart(5,"0")}`;
-      const dspDate = ymd(new Date(new Date(poDate).getTime() + RI(1,3)*86400000));
-      const totalQty = poiData.reduce((s,r)=>s+r.qty_ordered,0);
-      DSPs.push({ id:dspId, dispatch_number:dspNum, dispatch_date:dspDate, customer_id:cust.id,
-        vehicle_no:pick(vehicles), driver_name:pick(drivers), status:"delivered", total_qty:totalQty,
-        branch_id:BR, financial_year_id:FY, created_by:UID });
-      poiData.forEach((r,idx) => {
-        const diId = U();
-        DSPitems.push({ id:diId, dispatch_id:dspId, product_id:r.product_id, qty:r.qty_ordered, sort_order:idx });
-        DSPallocs.push({ id:U(), dispatch_item_id:diId, po_item_id:r.id, po_id:poId, allocated_qty:r.qty_ordered });
-      });
-
       // Stage controls the terminal workflow state so every queue page has visible demo data.
       // 0: Customer Receive queue (DC=delivered)
       // 1: HO Receive queue       (DC=sent_to_ho, CR done)
@@ -700,16 +685,16 @@ Deno.serve(async (req) => {
       // VAT Challan
       const vchId = U(); vchc++;
       const vchNum = `VCH-${fyTag}-${String(vchc).padStart(5,"0")}`;
-      const vchDate = dspDate;
-      VCHs.push({ id:vchId, challan_number:vchNum, challan_date:vchDate, customer_id:cust.id, dispatch_id:dspId,
+      const vchDate = ymd(new Date(new Date(poDate).getTime() + RI(1,3)*86400000));
+      VCHs.push({ id:vchId, challan_number:vchNum, challan_date:vchDate, customer_id:cust.id, purchase_order_id:poId,
         vehicle_no:pick(vehicles), driver_name:pick(drivers), subtotal:round2(poSub), vat_amount:round2(poVat),
-        grand_total:poGrand, source:"dispatch", status:vchStatus,
+        grand_total:poGrand, source:"purchase_order", status:vchStatus,
         branch_id:BR, financial_year_id:FY, created_by:UID });
       const vciByProduct: Record<string,string> = {};
       poiData.forEach((r,idx) => {
         const vciId = U();
         vciByProduct[r.product_id] = vciId;
-        VCHitems.push({ id:vciId, vat_challan_id:vchId, product_id:r.product_id, qty:r.qty_ordered,
+        VCHitems.push({ id:vciId, vat_challan_id:vchId, product_id:r.product_id, purchase_order_item_id:r.id, po_qty_consumed:r.qty_ordered, qty:r.qty_ordered,
           rate:r.rate, vat_pct:15, line_subtotal:r.line_subtotal, vat_amount:r.line_vat,
           line_total:r.line_total, sort_order:idx });
         // Delivery Challan (one per product)
@@ -788,9 +773,6 @@ Deno.serve(async (req) => {
 
     await bulk("purchase_orders", POs);
     await bulk("purchase_order_items", POitems);
-    await bulk("dispatches", DSPs);
-    await bulk("dispatch_items", DSPitems);
-    await bulk("dispatch_po_allocations", DSPallocs);
     await bulk("vat_challans", VCHs);
     await bulk("vat_challan_items", VCHitems);
     await bulk("delivery_challans", DCs);
@@ -816,7 +798,6 @@ Deno.serve(async (req) => {
         { id:"receipt_voucher", prefix:"RV", current_number:vc.RV, year: Number(fyTag), description:"Receipt Voucher" },
         { id:"contra_voucher", prefix:"CV", current_number:vc.CV, year: Number(fyTag), description:"Contra Voucher" },
         { id:"purchase_order", prefix:"PO", current_number:poc, year: Number(fyTag), description:"Customer Purchase Order" },
-        { id:"dispatch", prefix:"DSP", current_number:dspc, year: Number(fyTag), description:"Dispatch / Gate Pass" },
         { id:"vat_challan", prefix:"VCH", current_number:vchc, year: Number(fyTag), description:"VAT Challan (Mushak 6.3)" },
         { id:"delivery_challan", prefix:"DC", current_number:dcc, year: Number(fyTag), description:"Delivery Challan" },
         { id:"sales_invoice_v2", prefix:"INV2", current_number:inv2c, year: Number(fyTag), description:"Consolidated Sales Invoice" },
@@ -861,7 +842,7 @@ Deno.serve(async (req) => {
         attendance: att.length, leave_requests: leaves.length,
         stock_transfers: tc, boms: boms.length, production: prdc,
         products: products.length, customers: customers.length, suppliers: suppliers.length, employees: employees.length,
-        purchase_orders: poc, dispatches: dspc, vat_challans: vchc, delivery_challans: dcc,
+        purchase_orders: poc, vat_challans: vchc, delivery_challans: dcc,
         invoices_v2: inv2c, invoice_payments: ipayc, tds_entries: tdsc,
         party_notes: partyNotes.length,
       },
