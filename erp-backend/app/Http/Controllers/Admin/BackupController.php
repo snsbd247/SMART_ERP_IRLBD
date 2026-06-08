@@ -89,10 +89,14 @@ class BackupController extends BaseController
         }
 
         $request->validate([
-            'sql_file' => 'required|file|max:512000', // 500MB max
+            'sql_file' => 'required|file|max:5242880', // 5GB max (in KB)
         ]);
 
-        @ini_set('memory_limit', '1024M');
+        @ini_set('memory_limit', '-1');
+        @ini_set('upload_max_filesize', '5120M');
+        @ini_set('post_max_size', '5120M');
+        @ini_set('max_input_time', '-1');
+        @ini_set('max_execution_time', '0');
         @set_time_limit(0);
 
         $file = $request->file('sql_file');
