@@ -707,6 +707,25 @@ const BackupPage = () => {
                 <strong>Reset &amp; Re-import</strong> wipes only the 5 configuration tables (CoA, IFRS, Roles, Numbering, Shortcuts) and re-seeds them fresh. Vouchers, invoices, stock and payroll are NOT touched.
               </p>
 
+              <div className="pt-4 mt-2 border-t border-border space-y-2">
+                <p className="text-sm font-medium text-foreground">Full demo data (all modules, 2 branches)</p>
+                <p className="text-xs text-muted-foreground">
+                  Seeds a full year of operational data across Accounts, Bank &amp; Cash, Inventory, Purchase, Manufacturing, Sales Workflow (BD VAT) and HRM for two branches: <strong>Head Office</strong> and <strong>Factory</strong>. Wipes all existing transactional + master data first.
+                </p>
+                <Button
+                  variant="destructive"
+                  onClick={handleFullDemoSeed}
+                  disabled={seedingFull || !isSuperAdmin}
+                  className="w-full"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  {seedingFull ? "Seeding full demo data..." : "Wipe & Seed Full Demo Data (2 branches)"}
+                </Button>
+                {fullSeedLog && (
+                  <pre className="text-[10px] p-2 bg-muted rounded max-h-48 overflow-auto">{fullSeedLog}</pre>
+                )}
+              </div>
+
               {(importingDemo || demoProgress > 0) && (
                 <div className="space-y-2 pt-2">
                   <div className="flex items-center justify-between text-xs">
