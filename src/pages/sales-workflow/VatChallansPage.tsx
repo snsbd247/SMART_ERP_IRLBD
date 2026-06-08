@@ -7,11 +7,30 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { RowActions } from "@/components/sales-workflow/RowActions";
+import { PrintVatChallan } from "@/components/sales-workflow/SalesWorkflowPrints";
 
 export default function VatChallansPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [q, setQ] = useState("");
-  useEffect(() => { swApi.listVatChallans({ q }).then(({ data }) => setRows(data || [])); }, [q]);
+  const load = async () => {
+    const { data } = await swApi.listVatChallans({ q });
+    const withItems = await Promise.all((data || []).map(async (r: any) => {
+      const { data: full } = await swApi.getVatChallan(r.id);
+      return full || r;
+    }));
+    setRows(withItems);
+  };
+  useEffect(() => { load(); }, [q]);
+
+  const remove = async (id: string) => {
+    const { error } = await swApi.deleteVatChallan(id);
+    if (error) return toast({ title: "Failed", description: (error as any).message, variant: "destructive" });
+    toast({ title: "VAT Challan deleted" });
+    load();
+  };
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex justify-between"><h1 className="text-2xl font-bold">VAT Challans (Mushak 6.3)</h1>
@@ -20,7 +39,7 @@ export default function VatChallansPage() {
       <Card className="p-4"><Input placeholder="Search..." value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" /></Card>
       <Card>
         <Table>
-          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead className="text-right">Subtotal</TableHead><TableHead className="text-right">VAT</TableHead><TableHead className="text-right">Total</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead className="text-right">Subtotal</TableHead><TableHead className="text-right">VAT</TableHead><TableHead className="text-right">Total</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
           <TableBody>
             {rows.map((r) => (
               <TableRow key={r.id}>
@@ -31,7 +50,15 @@ export default function VatChallansPage() {
                 <TableCell className="text-right">{Number(r.vat_amount).toFixed(2)}</TableCell>
                 <TableCell className="text-right">{Number(r.grand_total).toFixed(2)}</TableCell>
                 <TableCell><Badge variant="secondary">{r.status}</Badge></TableCell>
-                <TableCell><Link to={`/sales-workflow/vat-challan/${r.id}`}><Button size="sm" variant="ghost">View</Button></Link></TableCell>
+                <TableCell>
+                  <RowActions
+                    printSlot={<PrintVatChallan v={r} />}
+                    viewTo={`/sales-workflow/vat-challan/${r.id}`}
+                    editTo={`/sales-workflow/vat-challan/${r.id}/edit`}
+                    onDelete={() => remove(r.id)}
+                    deleteLabel={`Delete ${r.challan_number}? Linked DCs will also be removed.`}
+                  />
+                </TableCell>
               </TableRow>
             ))}
             {rows.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No VAT challans</TableCell></TableRow>}

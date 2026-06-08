@@ -7,11 +7,30 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { RowActions } from "@/components/sales-workflow/RowActions";
+import { PrintTaxInvoice } from "@/components/sales-workflow/SalesWorkflowPrints";
 
 export default function InvoicesPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [q, setQ] = useState("");
-  useEffect(() => { swApi.listInvoices({ q }).then(({ data }) => setRows(data || [])); }, [q]);
+  const load = async () => {
+    const { data } = await swApi.listInvoices({ q });
+    const withItems = await Promise.all((data || []).map(async (r: any) => {
+      const { data: full } = await swApi.getInvoice(r.id);
+      return full || r;
+    }));
+    setRows(withItems);
+  };
+  useEffect(() => { load(); }, [q]);
+
+  const remove = async (id: string) => {
+    const { error } = await swApi.deleteInvoice(id);
+    if (error) return toast({ title: "Failed", description: (error as any).message, variant: "destructive" });
+    toast({ title: "Invoice deleted" });
+    load();
+  };
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex justify-between"><h1 className="text-2xl font-bold">Invoices (V2)</h1>
@@ -20,7 +39,7 @@ export default function InvoicesPage() {
       <Card className="p-4"><Input placeholder="Search invoice no..." value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" /></Card>
       <Card>
         <Table>
-          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Total</TableHead><TableHead className="text-right">Paid</TableHead><TableHead className="text-right">Due</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Total</TableHead><TableHead className="text-right">Paid</TableHead><TableHead className="text-right">Due</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
           <TableBody>
             {rows.map((r) => (
               <TableRow key={r.id}>
@@ -32,7 +51,15 @@ export default function InvoicesPage() {
                 <TableCell className="text-right">{Number(r.paid_amount).toFixed(2)}</TableCell>
                 <TableCell className="text-right">{Number(r.due_amount).toFixed(2)}</TableCell>
                 <TableCell><Badge variant="secondary">{r.status}</Badge></TableCell>
-                <TableCell><Link to={`/sales-workflow/invoice/${r.id}`}><Button size="sm" variant="ghost">View</Button></Link></TableCell>
+                <TableCell>
+                  <RowActions
+                    printSlot={<PrintTaxInvoice inv={r} />}
+                    viewTo={`/sales-workflow/invoice/${r.id}`}
+                    editTo={`/sales-workflow/invoice/${r.id}`}
+                    onDelete={() => remove(r.id)}
+                    deleteLabel={`Delete invoice ${r.invoice_number}? Linked VAT challans will be unlocked.`}
+                  />
+                </TableCell>
               </TableRow>
             ))}
             {rows.length === 0 && <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No invoices</TableCell></TableRow>}

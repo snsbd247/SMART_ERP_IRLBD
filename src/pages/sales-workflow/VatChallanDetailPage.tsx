@@ -42,7 +42,10 @@ export default function VatChallanDetailPage() {
           </TableBody>
         </Table>
       </Card>
-      <Link to="/sales-workflow/vat-challan"><Button variant="outline">Back</Button></Link>
+      <div className="flex gap-2">
+        <Link to="/sales-workflow/vat-challan"><Button variant="outline">Back</Button></Link>
+        <Link to={`/sales-workflow/vat-challan/${v.id}/edit`}><Button variant="outline">Edit Header</Button></Link>
+      </div>
     </div>
   );
 }
