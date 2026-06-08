@@ -63,7 +63,7 @@ class VatChallanController extends BaseController
 
     public function show(string $id)
     {
-        return $this->success(VatChallan::with('items.product','customer','deliveryChallans','dispatch')->findOrFail($id));
+        return $this->success(VatChallan::with('items.product','items.purchaseOrderItem','customer','purchaseOrder','deliveryChallans')->findOrFail($id));
     }
 
     public function destroy(Request $r, string $id)
