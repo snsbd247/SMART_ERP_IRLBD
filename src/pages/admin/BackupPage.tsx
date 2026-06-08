@@ -27,6 +27,14 @@ interface BackupRecord {
 interface BackupSettings {
   auto_backup_enabled: boolean; schedule_interval: string; retention_days: number;
   last_auto_backup_at: string | null;
+  gdrive_enabled?: boolean;
+  gdrive_client_id?: string | null;
+  gdrive_client_secret_set?: boolean;
+  gdrive_refresh_token_set?: boolean;
+  gdrive_folder_id?: string | null;
+  gdrive_format?: string | null;
+  last_gdrive_backup_at?: string | null;
+  last_gdrive_error?: string | null;
 }
 
 function formatFileSize(bytes: number): string {
