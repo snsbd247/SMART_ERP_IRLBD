@@ -59,12 +59,13 @@ class GenericTableController extends BaseController
         $this->assertTable($table);
 
         $query = DB::table($table);
+        $tableCols = Schema::getColumnListing($table);
 
-        // SELECT projection
+        // SELECT projection — drop relation embeds and unknown columns silently
         if ($sel = $request->query('select')) {
             $cols = array_filter(array_map('trim', explode(',', $sel)));
-            // strip PostgREST relation syntax: "rel(*)" -> skip
-            $cols = array_filter($cols, fn ($c) => !str_contains($c, '('));
+            $cols = array_filter($cols, fn ($c) => !str_contains($c, '(') && !str_contains($c, '.'));
+            $cols = array_values(array_filter($cols, fn ($c) => in_array($c, $tableCols, true)));
             if ($cols) $query->select($cols);
         }
 
