@@ -9,7 +9,7 @@ import {
 interface Props {
   viewTo?: string;
   editTo?: string;
-  onDelete?: () => void | Promise<void>;
+  onDelete?: () => unknown | Promise<unknown>;
   deleteLabel?: string;
   printSlot?: React.ReactNode;
 }
