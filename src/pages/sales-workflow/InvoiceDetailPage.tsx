@@ -18,7 +18,15 @@ export default function InvoiceDetailPage() {
     mode: "bank", amount_received: 0, tds_amount: 0, tds_pct: 0,
     tds_certificate_no: "", tds_certificate_date: "", reference: "",
   });
-  const load = () => swApi.getInvoice(id!).then(({ data }) => setInv(data));
+  const [bill, setBill] = useState<any>({
+    bill_submitted_at: new Date().toISOString().slice(0, 10),
+    payment_terms_days: 30,
+    bill_submission_ref: "",
+  });
+  const load = () => swApi.getInvoice(id!).then(({ data }) => {
+    setInv(data);
+    if (data?.payment_terms_days) setBill((b: any) => ({ ...b, payment_terms_days: data.payment_terms_days }));
+  });
   useEffect(() => { load(); }, [id]);
 
   const submitPayment = async () => {
@@ -27,6 +35,14 @@ export default function InvoiceDetailPage() {
     if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
     toast({ title: "Payment recorded" });
     setPay({ ...pay, amount_received: 0, tds_amount: 0 });
+    load();
+  };
+
+  const submitBill = async () => {
+    if (!bill.bill_submitted_at) return toast({ title: "Enter submission date", variant: "destructive" });
+    const { error } = await swApi.submitBill(id!, bill);
+    if (error) return toast({ title: "Failed", description: (error as any).message, variant: "destructive" });
+    toast({ title: "Bill marked submitted", description: `Due date calculated.` });
     load();
   };
 
