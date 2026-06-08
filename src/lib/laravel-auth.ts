@@ -13,10 +13,12 @@ export function getApiBaseUrl(): string | null {
     null;
   if (!url && typeof window !== "undefined") {
     const host = window.location.hostname;
-    // VPS only — Laravel API same-origin. Everything else (Lovable preview,
-    // accounting.syncsolutionbd.com, *.lovable.app, *.lovable.dev) stays in
-    // Cloud Supabase mode.
-    if (host === "erp.irlbd.com") {
+    // VPS / custom production domains use the same-origin Laravel API.
+    // Lovable preview/published domains stay in Cloud Supabase mode unless an
+    // explicit VITE_API_BASE_URL is provided at build time.
+    const laravelHosts = new Set(["erp.irlbd.com", "accounting.syncsolutionbd.com"]);
+    const isLovableHost = /(^|\.)lovable(project)?\.(app|dev)$/.test(host) || host.endsWith(".lovable.app") || host.endsWith(".lovable.dev");
+    if (laravelHosts.has(host) || (!isLovableHost && host !== "localhost" && host !== "127.0.0.1")) {
       return `${window.location.origin}/api`;
     }
   }
