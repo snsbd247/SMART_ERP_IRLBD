@@ -467,8 +467,9 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
 
         // GitHub Deploy Sync — Super Admin only (enforced inside controller).
         Route::prefix('admin/deploy')->group(function () {
-            Route::post('pull',   [\App\Http\Controllers\Admin\DeployController::class, 'pull']);
-            Route::get ('status', [\App\Http\Controllers\Admin\DeployController::class, 'status']);
+            Route::post('pull',     [\App\Http\Controllers\Admin\DeployController::class, 'pull']);
+            Route::get ('status',   [\App\Http\Controllers\Admin\DeployController::class, 'status']);
+            Route::post('rollback', [\App\Http\Controllers\Admin\DeployController::class, 'rollback']);
         });
     });
 });

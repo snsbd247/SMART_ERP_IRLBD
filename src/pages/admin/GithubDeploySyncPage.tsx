@@ -347,6 +347,50 @@ export default function GithubDeploySyncPage() {
     setRollbackOpen(false);
     setLogOpen(true);
     appendLog(`↩ Rollback requested → ${rollbackTarget.short} "${rollbackTarget.message}"`);
+
+    // Laravel/VPS mode: actually call the server-side rollback runner.
+    if (laravelMode && apiBase) {
+      try {
+        const res = await fetch(`${apiBase}/v1/admin/deploy/rollback`, {
+          method: "POST",
+          headers: getLaravelAuthHeaders(true),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok && res.status !== 409) {
+          const msg = data?.message || `HTTP ${res.status}`;
+          appendLog(`✗ Rollback failed: ${msg}`);
+          toast({ title: "Rollback failed", description: msg, variant: "destructive" });
+          setBusy(null);
+          return;
+        }
+        const startedAt = Date.now();
+        while (true) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const s = await pollDeployStatus();
+          if (!s) break;
+          if (!s.running) {
+            if (s.state === "rolled_back") {
+              toast({ title: "Rolled back", description: "Previous deploy restored." });
+            } else if (s.state === "failed") {
+              toast({ title: "Rollback failed", description: "See log for details.", variant: "destructive" });
+            }
+            break;
+          }
+          if (Date.now() - startedAt > 15 * 60 * 1000) {
+            appendLog("[client] stopped polling after 15 min");
+            break;
+          }
+        }
+      } catch (e: any) {
+        appendLog(`✗ ${e?.message || "network error"}`);
+        toast({ title: "Rollback failed", description: e?.message || "Network error", variant: "destructive" });
+      } finally {
+        setBusy(null);
+      }
+      return;
+    }
+
+    // Non-VPS / preview mode — keep informational marker behavior.
     await new Promise((r) => setTimeout(r, 400));
     appendLog("  rollback marker recorded; server-side runner will restore the previous deploy on next sync.");
     toast({ title: "Rollback queued", description: `Target: ${rollbackTarget.short}` });
