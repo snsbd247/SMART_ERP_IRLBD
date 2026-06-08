@@ -34,7 +34,7 @@ class BranchScope
             $request->merge(['branch_id' => $allowed[0]]);
         } else {
             $requested = $request->input('branch_id');
-            if ($requested !== null && $requested !== '' && !in_array((int) $requested, $allowed, true)) {
+            if ($requested !== null && $requested !== '' && !in_array((string) $requested, $allowed, true)) {
                 // Strip disallowed branch filter so controllers fall back to allowed list
                 $request->request->remove('branch_id');
                 $request->query->remove('branch_id');
