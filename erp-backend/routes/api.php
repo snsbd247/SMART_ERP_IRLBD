@@ -56,6 +56,8 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:contra.view')->get('admin/vouchers/contra', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::get('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show']);
         Route::get('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show']);
+        Route::put('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update']);
+        Route::put('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update']);
 
         Route::middleware('permission:journal.create')->post('vouchers/journal', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
         Route::middleware('permission:payment.create')->post('vouchers/payment', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
@@ -71,6 +73,10 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::post('vouchers/{id}/reject', [\App\Http\Controllers\Accounting\VoucherController::class, 'reject']);
             Route::post('admin/vouchers/{id}/approve', [\App\Http\Controllers\Accounting\VoucherController::class, 'approve']);
             Route::post('admin/vouchers/{id}/reject', [\App\Http\Controllers\Accounting\VoucherController::class, 'reject']);
+            Route::post('vouchers/{id}/edit-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'editApproved']);
+            Route::post('vouchers/{id}/delete-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'deleteApproved']);
+            Route::post('vouchers/{id}/reopen', [\App\Http\Controllers\Accounting\VoucherController::class, 'reopen']);
+            Route::post('vouchers/{id}/reverse', [\App\Http\Controllers\Accounting\VoucherController::class, 'reverse']);
         });
 
         // ─── Reports ────────────────────────────────────────────
