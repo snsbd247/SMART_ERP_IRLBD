@@ -632,7 +632,9 @@ Deno.serve(async (req) => {
     const vehicles = ["DHK-METRO-1234","DHK-METRO-5678","CTG-METRO-9012","DHK-METRO-3456","CTG-METRO-7890"];
     const drivers  = ["Karim Mia","Rahim Uddin","Salam Hossain","Jamal Khan","Nasir Ahmed"];
 
+    let _swIdx = 0;
     for (let d = new Date(fyStart); d <= end; d.setDate(d.getDate()+7)) {
+      const BR = (_swIdx++ % 2 === 0) ? BR_DHK : BR_CTG;
       const cust = pick(customers);
       const its  = pickN(products, RI(2,4));
       const poDate = ymd(d);
