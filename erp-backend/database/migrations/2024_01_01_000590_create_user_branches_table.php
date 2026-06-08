@@ -11,8 +11,8 @@ return new class extends Migration {
         if (!Schema::hasTable('user_branches')) {
             Schema::create('user_branches', function (Blueprint $table) {
                 $table->id();
-                $table->uuid('user_id');
-                $table->unsignedBigInteger('branch_id');
+                $table->char('user_id', 36);
+                $table->char('branch_id', 36);
                 $table->timestamps();
                 $table->unique(['user_id', 'branch_id']);
                 $table->index('user_id');
