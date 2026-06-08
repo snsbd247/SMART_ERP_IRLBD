@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { PrintDeliveryChallan } from "@/components/sales-workflow/SalesWorkflowPrints";
+import { Trash2 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   issued: "secondary", delivered: "outline", customer_received: "default",
