@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\CompanySetting;
 use App\Models\Employee;
+use App\Support\PasswordPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class PublicEmployeeRegistrationController extends BaseController
 {
@@ -54,8 +56,16 @@ class PublicEmployeeRegistrationController extends BaseController
             'designation_id' => 'nullable|exists:designations,id',
             'branch_id' => 'nullable|exists:branches,id',
             'joining_date' => 'required|date',
-            'password' => 'nullable|string|min:6|max:100',
+            'password' => 'nullable|string|max:100|confirmed',
+            'password_confirmation' => 'nullable|string|max:100',
         ]);
+
+        // Enforce strength policy when a password is provided.
+        if (!empty($data['password'])) {
+            if ($err = PasswordPolicy::validate($data['password'])) {
+                throw ValidationException::withMessages(['password' => [$err]]);
+            }
+        }
 
         $plainPassword = $data['password'] ?? null;
         unset($data['password']);
