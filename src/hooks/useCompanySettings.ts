@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 
 export interface CompanySettings {
   id: string;
@@ -21,19 +22,34 @@ export function useCompanySettings() {
   const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetch = async () => {
-    const { data } = await supabase
-      .from("company_settings" as any)
-      .select("*")
-      .eq("id", "default")
-      .maybeSingle();
-    setSettings(data as any);
-    setLoading(false);
+  const fetchSettings = async () => {
+    try {
+      const base = getApiBaseUrl();
+      if (base) {
+        const res = await fetch(`${base}/v1/settings/company`, { headers: getLaravelAuthHeaders() });
+        if (res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          const row = (payload?.data ?? payload) as CompanySettings | null;
+          setSettings(row || null);
+          setLoading(false);
+          return;
+        }
+      }
+      const { data } = await supabase
+        .from("company_settings" as any)
+        .select("*")
+        .maybeSingle();
+      setSettings(data as any);
+    } catch (e) {
+      console.warn("[useCompanySettings] load failed", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { fetchSettings(); }, []);
 
-  return { settings, loading, refetch: fetch };
+  return { settings, loading, refetch: fetchSettings };
 }
 
 export function formatCurrency(amount: number, settings: CompanySettings | null): string {
