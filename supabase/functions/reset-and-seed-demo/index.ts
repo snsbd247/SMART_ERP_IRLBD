@@ -773,9 +773,6 @@ Deno.serve(async (req) => {
 
     await bulk("purchase_orders", POs);
     await bulk("purchase_order_items", POitems);
-    await bulk("dispatches", DSPs);
-    await bulk("dispatch_items", DSPitems);
-    await bulk("dispatch_po_allocations", DSPallocs);
     await bulk("vat_challans", VCHs);
     await bulk("vat_challan_items", VCHitems);
     await bulk("delivery_challans", DCs);
@@ -801,7 +798,6 @@ Deno.serve(async (req) => {
         { id:"receipt_voucher", prefix:"RV", current_number:vc.RV, year: Number(fyTag), description:"Receipt Voucher" },
         { id:"contra_voucher", prefix:"CV", current_number:vc.CV, year: Number(fyTag), description:"Contra Voucher" },
         { id:"purchase_order", prefix:"PO", current_number:poc, year: Number(fyTag), description:"Customer Purchase Order" },
-        { id:"dispatch", prefix:"DSP", current_number:dspc, year: Number(fyTag), description:"Dispatch / Gate Pass" },
         { id:"vat_challan", prefix:"VCH", current_number:vchc, year: Number(fyTag), description:"VAT Challan (Mushak 6.3)" },
         { id:"delivery_challan", prefix:"DC", current_number:dcc, year: Number(fyTag), description:"Delivery Challan" },
         { id:"sales_invoice_v2", prefix:"INV2", current_number:inv2c, year: Number(fyTag), description:"Consolidated Sales Invoice" },
@@ -846,7 +842,7 @@ Deno.serve(async (req) => {
         attendance: att.length, leave_requests: leaves.length,
         stock_transfers: tc, boms: boms.length, production: prdc,
         products: products.length, customers: customers.length, suppliers: suppliers.length, employees: employees.length,
-        purchase_orders: poc, dispatches: dspc, vat_challans: vchc, delivery_challans: dcc,
+        purchase_orders: poc, vat_challans: vchc, delivery_challans: dcc,
         invoices_v2: inv2c, invoice_payments: ipayc, tds_entries: tdsc,
         party_notes: partyNotes.length,
       },
