@@ -128,7 +128,7 @@ const GeneralSettingsPage = () => {
     setSaving(true);
     const { id, ...rest } = settings;
     try {
-      if (isLaravelMode()) {
+      if (useLaravel()) {
         const res = await fetch(`${apiBase()}/v1/settings/company`, {
           method: "PUT",
           headers: { ...getLaravelAuthHeaders(), "Content-Type": "application/json" },
@@ -136,7 +136,8 @@ const GeneralSettingsPage = () => {
         });
         const payload = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(payload?.message || `HTTP ${res.status}`);
-        setSettings(payload?.data || settings);
+        const fresh = unwrapLaravelRow(payload);
+        if (fresh) setSettings(fresh);
       } else {
         const { data, error } = await supabase
           .from("company_settings" as any)
