@@ -134,7 +134,7 @@ class InvoiceProcessingService
     private function postSalesVoucher(SalesInvoiceV2 $invoice)
     {
         $ar = $this->resolveAccount('Accounts Receivable');
-        $sales = $this->resolveAccount('Sales');
+        $sales = $this->resolveAccount('Sales Revenue') ?: $this->resolveAccount('Sales');
         $vat = $this->resolveAccount('VAT Payable');
         if (!$ar || !$sales || !$vat) return null;
 

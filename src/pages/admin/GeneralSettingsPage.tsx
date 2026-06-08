@@ -418,7 +418,7 @@ const GeneralSettingsPage = () => {
                         : ("sales_basic" as ModuleKey);
                       return [
                         { key: "sales_basic" as ModuleKey, name: "Basic Sales", desc: "Direct flow: Invoice → Payment. Best for counter sales, simple B2C." },
-                        { key: "sales_vat" as ModuleKey, name: "Bangladesh VAT Sales Workflow", desc: "Full flow: PO → Dispatch → VAT Challan (Mushak 6.3) → Delivery → Invoice → Payment + TDS → Mushak 9.1. Required for NBR-compliant B2B sales." },
+                        { key: "sales_vat" as ModuleKey, name: "Bangladesh VAT Sales Workflow", desc: "Full flow: PO → VAT Challan (Mushak 6.3) → Delivery → Invoice → Bill Submit → Payment + TDS → Mushak 9.1. Required for NBR-compliant B2B sales." },
                       ].map((mod) => {
                         const active = selectedKey === mod.key;
                         return (
