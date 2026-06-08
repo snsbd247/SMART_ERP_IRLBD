@@ -163,7 +163,7 @@ const AccountingVouchers = () => {
   const resetNewVoucherEntries = () => {
     const idBase = Date.now();
     setEditingVoucher(null);
-    setFormDesc("");
+    setFormDesc(""); setDescAuto(true);
     setRawAmounts({});
     // NOTE: intentionally keep formDate, formBranch, formFinYear so the user
     // can quickly enter the next voucher without re-selecting them.
