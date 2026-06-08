@@ -27,8 +27,8 @@ class User extends Authenticatable
     public function allowedBranchIds(): array
     {
         if ($this->isSuperAdmin()) return [];
-        $ids = $this->branches()->pluck('branches.id')->map(fn($v) => (int) $v)->all();
-        if (empty($ids) && $this->branch_id) $ids = [(int) $this->branch_id];
+        $ids = $this->branches()->pluck('branches.id')->map(fn($v) => (string) $v)->all();
+        if (empty($ids) && $this->branch_id) $ids = [(string) $this->branch_id];
         return array_values(array_unique($ids));
     }
 
