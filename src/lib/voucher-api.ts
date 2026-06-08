@@ -169,6 +169,11 @@ export const voucherApi = {
     return invokeEdge({ action: "delete_approved", id, reason });
   },
 
+  restore: async (id: string, reason?: string) => {
+    if (isLaravelMode()) return laravelFetch(`vouchers/${id}/restore`, { method: "POST", body: JSON.stringify({ reason }) });
+    return invokeEdge({ action: "restore", id, reason });
+  },
+
   reopen: async (id: string, reason: string) => {
     if (isLaravelMode()) return laravelFetch(`vouchers/${id}/reopen`, { method: "POST", body: JSON.stringify({ reason }) });
     return invokeEdge({ action: "reopen", id, reason });
