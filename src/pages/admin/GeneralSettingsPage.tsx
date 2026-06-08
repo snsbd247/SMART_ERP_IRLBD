@@ -191,7 +191,7 @@ const GeneralSettingsPage = () => {
           <Settings className="w-5 h-5 text-primary" />
           <h1 className="text-xl font-semibold text-foreground">General Settings</h1>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={() => handleSave()} disabled={saving}>
           {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
           Save Settings
         </Button>
