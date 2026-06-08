@@ -4187,7 +4187,7 @@ export type Database = {
           line_total: number
           po_qty_consumed: number
           product_id: string
-          purchase_order_item_id: string | null
+          purchase_order_item_id: string
           qty: number
           rate: number
           sort_order: number
@@ -4201,7 +4201,7 @@ export type Database = {
           line_total?: number
           po_qty_consumed?: number
           product_id: string
-          purchase_order_item_id?: string | null
+          purchase_order_item_id: string
           qty?: number
           rate?: number
           sort_order?: number
@@ -4215,7 +4215,7 @@ export type Database = {
           line_total?: number
           po_qty_consumed?: number
           product_id?: string
-          purchase_order_item_id?: string | null
+          purchase_order_item_id?: string
           qty?: number
           rate?: number
           sort_order?: number
@@ -4262,7 +4262,7 @@ export type Database = {
           grand_total: number
           id: string
           notes: string | null
-          purchase_order_id: string | null
+          purchase_order_id: string
           source: string
           status: string
           subtotal: number
@@ -4284,7 +4284,7 @@ export type Database = {
           grand_total?: number
           id?: string
           notes?: string | null
-          purchase_order_id?: string | null
+          purchase_order_id: string
           source?: string
           status?: string
           subtotal?: number
@@ -4306,7 +4306,7 @@ export type Database = {
           grand_total?: number
           id?: string
           notes?: string | null
-          purchase_order_id?: string | null
+          purchase_order_id?: string
           source?: string
           status?: string
           subtotal?: number
