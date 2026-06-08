@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
       // Returns must be deleted BEFORE their parent invoices/purchases
       ["sales_returns","purchase_returns"],
       ["sales_invoices_v2","delivery_challans","vat_challans","dispatches","purchase_orders"],
-      ["acc_vouchers","party_payments","sales_invoices","purchases","production_entries","bill_of_materials","employees","conversations","number_sequences"],
+      ["acc_vouchers","party_payments","sales_invoices","purchases","production_entries","bill_of_materials","employees","conversations"],
       ["customers","suppliers","item_master","products","raw_materials"],
       ["item_categories","units","warehouses","product_categories"],
     ];
