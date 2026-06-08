@@ -92,55 +92,50 @@ class BackupController extends BaseController
             'sql_file' => 'required|file|max:512000', // 500MB max
         ]);
 
-        // Give the restore room to run on big SQL files
         @ini_set('memory_limit', '1024M');
         @set_time_limit(0);
 
         $file = $request->file('sql_file');
         $originalName = $file->getClientOriginalName();
-        // Capture size BEFORE moving the uploaded file (getSize() fails after move)
         $uploadedSize = (int) @filesize($file->getRealPath());
 
-        if (!Str::endsWith($originalName, '.sql')) {
-            return $this->error('Only .sql files are allowed.', 422);
+        $isJson = Str::endsWith(strtolower($originalName), '.json');
+        $isSql  = Str::endsWith(strtolower($originalName), '.sql');
+        if (!$isJson && !$isSql) {
+            return $this->error('Only .sql or .json backup files are allowed.', 422);
         }
+        $format = $isJson ? 'json' : 'sql';
 
         try {
-            // Ensure backups dir exists
             $backupsDir = storage_path('app/backups');
-            if (!is_dir($backupsDir)) {
-                @mkdir($backupsDir, 0775, true);
-            }
+            if (!is_dir($backupsDir)) @mkdir($backupsDir, 0775, true);
 
-            $fileName = 'restore_' . date('Y_m_d_H_i_s') . '.sql';
+            $fileName = 'restore_' . date('Y_m_d_H_i_s') . '.' . $format;
             $fullPath = $backupsDir . '/' . $fileName;
             $path = 'backups/' . $fileName;
 
             if (!@move_uploaded_file($file->getRealPath(), $fullPath)) {
-                // Fallback to Storage facade
                 $stored = $file->storeAs('backups', $fileName, 'local');
-                if (!$stored) {
-                    throw new \RuntimeException('Failed to save uploaded SQL file to ' . $fullPath);
-                }
+                if (!$stored) throw new \RuntimeException('Failed to save uploaded file to ' . $fullPath);
                 $fullPath = Storage::disk('local')->path($stored);
                 $path = $stored;
             }
 
             if (!file_exists($fullPath)) {
-                throw new \RuntimeException('Uploaded SQL file not found at ' . $fullPath);
+                throw new \RuntimeException('Uploaded file not found at ' . $fullPath);
             }
 
-            // Always use the PHP-based restore. The `mysql` CLI is often missing
-            // on shared/VPS PHP-FPM environments, and even when present it
-            // silently swallows errors with --force which makes diagnosis hard.
-            [$ok, $skipped, $firstError] = $this->phpSqlRestore($fullPath);
+            if ($isJson) {
+                [$ok, $skipped, $firstError] = $this->phpJsonRestore($fullPath);
+            } else {
+                [$ok, $skipped, $firstError] = $this->phpSqlRestore($fullPath);
+            }
 
-            // Record restore in history
             DB::table('backup_history')->insert([
                 'id' => Str::uuid(),
                 'file_name' => $originalName,
                 'backup_type' => 'restore',
-                'format' => 'sql',
+                'format' => $format,
                 'status' => $ok > 0 ? 'completed' : 'failed',
                 'file_size' => $uploadedSize ?: @filesize($fullPath) ?: 0,
                 'storage_path' => $path,
@@ -149,16 +144,15 @@ class BackupController extends BaseController
                 'created_at' => now(),
             ]);
 
-            // Clean up restore file
             @unlink($fullPath);
 
             if ($ok === 0) {
-                return $this->error('Restore failed: no statements executed. ' . ($firstError ?? 'Check storage/logs/laravel.log for details.'), 500);
+                return $this->error('Restore failed: no rows applied. ' . ($firstError ?? 'Check storage/logs/laravel.log for details.'), 500);
             }
 
-            $msg = "Database restored. {$ok} statements applied";
+            $msg = "Database restored. {$ok} rows applied";
             if ($skipped > 0) $msg .= ", {$skipped} skipped";
-            return $this->success(['executed' => $ok, 'skipped' => $skipped], $msg);
+            return $this->success(['executed' => $ok, 'skipped' => $skipped, 'format' => $format], $msg);
 
         } catch (\Exception $e) {
             Log::error("Restore failed: " . $e->getMessage());
@@ -167,7 +161,7 @@ class BackupController extends BaseController
                 'id' => Str::uuid(),
                 'file_name' => $originalName,
                 'backup_type' => 'restore',
-                'format' => 'sql',
+                'format' => $format,
                 'status' => 'failed',
                 'error_message' => $e->getMessage(),
                 'created_at' => now(),
@@ -175,6 +169,50 @@ class BackupController extends BaseController
 
             return $this->error('Restore failed: ' . $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Restore from a JSON dump produced by `backup:database --format=json`.
+     * Returns [ok, skipped, firstError].
+     */
+    private function phpJsonRestore(string $path): array
+    {
+        $raw = file_get_contents($path);
+        if ($raw === false || $raw === '') throw new \RuntimeException('Cannot read JSON file or it is empty');
+        $data = json_decode($raw, true);
+        if (!is_array($data) || !isset($data['tables']) || !is_array($data['tables'])) {
+            throw new \RuntimeException('Invalid JSON backup format (missing "tables")');
+        }
+
+        $ok = 0; $skipped = 0; $firstError = null;
+        try {
+            DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+            foreach ($data['tables'] as $table => $rows) {
+                if (!is_string($table) || !is_array($rows) || !Schema::hasTable($table)) continue;
+                $cols = Schema::getColumnListing($table);
+                foreach ($rows as $row) {
+                    if (!is_array($row)) { $skipped++; continue; }
+                    $clean = array_intersect_key($row, array_flip($cols));
+                    if (!$clean) { $skipped++; continue; }
+                    try {
+                        if (array_key_exists('id', $clean)) {
+                            DB::table($table)->updateOrInsert(['id' => $clean['id']], $clean);
+                        } else {
+                            DB::table($table)->insert($clean);
+                        }
+                        $ok++;
+                    } catch (\Throwable $e) {
+                        $skipped++;
+                        if ($firstError === null) $firstError = $e->getMessage();
+                    }
+                }
+            }
+        } finally {
+            DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+        }
+
+        Log::info("JSON restore: {$ok} rows ok, {$skipped} skipped");
+        return [$ok, $skipped, $firstError];
     }
 
     /**
