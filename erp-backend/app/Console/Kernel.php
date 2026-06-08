@@ -12,8 +12,10 @@ class Kernel extends ConsoleKernel
         // Mark users offline if inactive for >2 minutes
         $schedule->command('users:mark-offline')->everyTwoMinutes();
 
-        // Automated SQL backup (daily at 2 AM)
-        $schedule->command('backup:database --type=auto')->dailyAt('02:00');
+        // Automated daily SQL backup at 2 AM (uploads to Google Drive if enabled)
+        $schedule->command('backup:database --type=auto --format=sql --gdrive=auto')->dailyAt('02:00');
+        // Companion daily JSON backup at 2:15 AM
+        $schedule->command('backup:database --type=auto --format=json --gdrive=auto')->dailyAt('02:15');
     }
 
     protected function commands(): void
