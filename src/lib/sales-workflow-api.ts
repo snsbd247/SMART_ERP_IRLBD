@@ -45,6 +45,8 @@ async function resolveAccount(name: string, fallbackNames: string[] = []) {
       .select("id,account_name")
       .ilike("account_name", accountName)
       .eq("is_active", true)
+      .order("account_code", { ascending: true })
+      .limit(1)
       .maybeSingle();
     if (data) return data as any;
   }
