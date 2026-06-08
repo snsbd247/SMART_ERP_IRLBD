@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Services\DispatchService;
 use App\Services\VatChallanService;
 use App\Services\InvoiceProcessingService;
 use App\Services\InvoicePaymentService;
@@ -20,11 +19,10 @@ use Carbon\Carbon;
  */
 class SmokeTestSalesWorkflow extends Command
 {
-    protected $signature = 'sales-workflow:smoke {--cleanup : Delete the generated dispatch/challan/invoice afterwards}';
-    protected $description = 'Smoke-test PO → Dispatch → VAT Challan → DC → Receive → Invoice → Payment loop';
+    protected $signature = 'sales-workflow:smoke {--cleanup : Delete the generated challan/invoice afterwards}';
+    protected $description = 'Smoke-test PO → VAT Challan → DC → Receive → Invoice → Payment loop';
 
     public function handle(
-        DispatchService $dispatchSvc,
         VatChallanService $vatSvc,
         InvoiceProcessingService $invSvc,
         InvoicePaymentService $paySvc,
@@ -40,35 +38,28 @@ class SmokeTestSalesWorkflow extends Command
 
         $today = Carbon::now()->toDateString();
 
-        // 1. Dispatch (full remaining qty)
-        $this->line('→ Creating dispatch...');
-        $dispatch = $dispatchSvc->create([
-            'dispatch_date' => $today,
-            'customer_id'   => $po->customer_id,
-            'vehicle_no'    => 'DHK-METRO-DEMO-01',
-            'driver_name'   => 'Demo Driver',
-            'items'         => $items->map(fn ($it) => [
-                'product_id'   => $it->product_id,
-                'qty'          => (float) $it->qty_remaining,
-                'allocations'  => [[
-                    'po_id'       => $po->id,
-                    'po_item_id'  => $it->id,
-                    'allocated_qty' => (float) $it->qty_remaining,
-                ]],
-            ])->all(),
-        ]);
-        $this->info("  ✓ Dispatch {$dispatch->dispatch_number}");
-
-        // 2. VAT Challan from dispatch
+        // 1. VAT Challan against PO (full remaining qty)
         $this->line('→ Issuing VAT challan (Mushak 6.3)...');
-        $vat = $vatSvc->createFromDispatch($dispatch->id, ['challan_date' => $today]);
+        $vat = $vatSvc->create([
+            'challan_date' => $today,
+            'customer_id' => $po->customer_id,
+            'purchase_order_id' => $po->id,
+            'vehicle_no' => 'DHK-METRO-DEMO-01',
+            'driver_name' => 'Demo Driver',
+        ], $items->map(fn ($it) => [
+            'product_id' => $it->product_id,
+            'purchase_order_item_id' => $it->id,
+            'qty' => (float) $it->qty_remaining,
+            'rate' => (float) $it->rate,
+            'vat_pct' => (float) $it->vat_pct,
+        ])->all());
         $this->info("  ✓ VAT Challan {$vat->challan_number} (grand_total={$vat->grand_total})");
 
-        // 3. Delivery challans auto-created by VAT challan service — verify
+        // 2. Delivery challans auto-created by VAT challan service — verify
         $dcs = DB::table('delivery_challans')->where('vat_challan_id', $vat->id)->get();
         $this->info("  ✓ {$dcs->count()} delivery challan rows generated");
 
-        // 4. Customer receive + HO receive on each DC
+        // 3. Customer receive + HO receive on each DC
         foreach ($dcs as $dc) {
             DB::table('customer_receives')->insert([
                 'id' => (string) \Illuminate\Support\Str::uuid(),
@@ -88,23 +79,21 @@ class SmokeTestSalesWorkflow extends Command
         }
         $this->info('  ✓ All DCs marked HO-received');
 
-        // 5. Generate invoice from ready DCs
+        // 4. Generate invoice from ready VAT challan
         $this->line('→ Generating invoice...');
-        $invoice = $invSvc->createFromDeliveryChallans(
-            $dcs->pluck('id')->all(),
-            ['invoice_date' => $today, 'mode' => 'same_day']
-        );
+        $invoice = $invSvc->create(['invoice_date' => $today], [$vat->id], 'single');
         $this->info("  ✓ Invoice {$invoice->invoice_number} (grand_total={$invoice->grand_total})");
 
-        // 6. Record payment with 5% TDS
+        // 5. Record payment with 5% TDS
         $tds = round($invoice->grand_total * 0.05, 2);
         $cash = round($invoice->grand_total - $tds, 2);
         $this->line("→ Recording payment (cash={$cash}, TDS={$tds})...");
-        $paySvc->recordPayment($invoice->id, [
+        $paySvc->recordPayment([
+            'invoice_id' => $invoice->id,
             'payment_date' => $today,
             'mode'         => 'bank',
             'reference'    => 'SMOKE-TXN-001',
-            'amount'       => $cash,
+            'amount_received' => $cash,
             'tds_amount'   => $tds,
         ]);
 
@@ -116,7 +105,6 @@ class SmokeTestSalesWorkflow extends Command
             ['Stage', 'Reference', 'Amount'],
             [
                 ['Purchase Order', $po->po_number, $po->grand_total],
-                ['Dispatch',       $dispatch->dispatch_number, '—'],
                 ['VAT Challan',    $vat->challan_number, $vat->grand_total],
                 ['Delivery',       $dcs->count() . ' DCs', '—'],
                 ['Invoice',        $invoice->invoice_number, $invoice->grand_total],
@@ -133,11 +121,6 @@ class SmokeTestSalesWorkflow extends Command
             DB::table('delivery_challans')->where('vat_challan_id', $vat->id)->delete();
             DB::table('vat_challan_items')->where('vat_challan_id', $vat->id)->delete();
             DB::table('vat_challans')->where('id', $vat->id)->delete();
-            DB::table('dispatch_po_allocations')->whereIn('dispatch_item_id',
-                DB::table('dispatch_items')->where('dispatch_id', $dispatch->id)->pluck('id')
-            )->delete();
-            DB::table('dispatch_items')->where('dispatch_id', $dispatch->id)->delete();
-            DB::table('dispatches')->where('id', $dispatch->id)->delete();
             // Restore PO remaining qty
             foreach ($items as $it) {
                 DB::table('purchase_order_items')->where('id', $it->id)->update([
