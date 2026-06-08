@@ -263,4 +263,114 @@ export const swApi = {
     if (filters.to) q = q.lte("created_at", filters.to);
     return q;
   },
+
+  // -------- Update / Delete helpers --------
+  async updatePO(id: string, payload: any, items: any[]) {
+    const subtotal = items.reduce((s, i) => s + Number(i.qty_ordered) * Number(i.rate), 0);
+    const vat_amount = items.reduce((s, i) => s + Number(i.qty_ordered) * Number(i.rate) * (Number(i.vat_pct || 0) / 100), 0);
+    const { error } = await supabase.from("purchase_orders").update({ ...payload, subtotal, vat_amount, grand_total: subtotal + vat_amount }).eq("id", id);
+    if (error) return { data: null, error };
+    const { data: existing } = await supabase.from("purchase_order_items").select("id,qty_delivered").eq("po_id", id);
+    if ((existing || []).some((it: any) => Number(it.qty_delivered) > 0)) {
+      return { data: null, error: { message: "Cannot edit items after dispatch started." } as any };
+    }
+    await supabase.from("purchase_order_items").delete().eq("po_id", id);
+    const rows = items.map((i) => ({
+      po_id: id, product_id: i.product_id, qty_ordered: i.qty_ordered, qty_remaining: i.qty_ordered,
+      rate: i.rate, vat_pct: i.vat_pct || 0, line_total: Number(i.qty_ordered) * Number(i.rate),
+    }));
+    await supabase.from("purchase_order_items").insert(rows);
+    await audit("purchase_orders", "update", { id }, "edit");
+    return { data: { id }, error: null };
+  },
+  async deletePO(id: string) {
+    const { error } = await supabase.from("purchase_orders").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
+    await audit("purchase_orders", "update", { id }, "delete");
+    return { error };
+  },
+
+  async updateDispatchHeader(id: string, payload: any) {
+    const { error } = await supabase.from("dispatches").update(payload).eq("id", id);
+    await audit("dispatch", "update", { id }, "edit");
+    return { error };
+  },
+  async deleteDispatch(id: string) {
+    const { data: items } = await supabase.from("dispatch_items").select("id, allocations:dispatch_po_allocations(po_item_id, allocated_qty)").eq("dispatch_id", id);
+    for (const it of items || []) {
+      for (const a of (it as any).allocations || []) {
+        const { data: poi } = await supabase.from("purchase_order_items").select("qty_remaining,qty_delivered").eq("id", a.po_item_id).maybeSingle();
+        if (poi) {
+          await supabase.from("purchase_order_items").update({
+            qty_remaining: Number(poi.qty_remaining) + Number(a.allocated_qty),
+            qty_delivered: Math.max(0, Number(poi.qty_delivered) - Number(a.allocated_qty)),
+          }).eq("id", a.po_item_id);
+        }
+      }
+    }
+    const { error } = await supabase.from("dispatches").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
+    await audit("dispatch", "update", { id }, "delete");
+    return { error };
+  },
+
+  async updateVatChallanHeader(id: string, payload: any) {
+    const { error } = await supabase.from("vat_challans").update(payload).eq("id", id);
+    await audit("vat_challan", "update", { id }, "edit");
+    return { error };
+  },
+  async deleteVatChallan(id: string) {
+    const { data: dcs } = await supabase.from("delivery_challans").select("id,status").eq("vat_challan_id", id);
+    if ((dcs || []).some((d: any) => ["customer_received", "ho_received", "invoiced"].includes(d.status))) {
+      return { error: { message: "Cannot delete: DC already received/invoiced" } as any };
+    }
+    await supabase.from("delivery_challans").delete().eq("vat_challan_id", id);
+    const { error } = await supabase.from("vat_challans").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
+    await audit("vat_challan", "update", { id }, "delete");
+    return { error };
+  },
+
+  async deleteDeliveryChallan(id: string) {
+    const { data: dc } = await supabase.from("delivery_challans").select("status").eq("id", id).maybeSingle();
+    if (dc && ["invoiced"].includes((dc as any).status)) return { error: { message: "Cannot delete invoiced DC" } as any };
+    const { error } = await supabase.from("delivery_challans").delete().eq("id", id);
+    return { error };
+  },
+
+  async deleteInvoice(id: string) {
+    const { data: inv } = await supabase.from("sales_invoices_v2").select("paid_amount,tds_amount").eq("id", id).maybeSingle();
+    if (inv && (Number((inv as any).paid_amount) > 0 || Number((inv as any).tds_amount) > 0)) {
+      return { error: { message: "Cannot delete invoice with payments/TDS recorded" } as any };
+    }
+    const { data: links } = await supabase.from("invoice_challans").select("vat_challan_id").eq("invoice_id", id);
+    const vcIds = (links || []).map((l: any) => l.vat_challan_id);
+    if (vcIds.length) {
+      await supabase.from("vat_challans").update({ status: "issued" }).in("id", vcIds);
+      await supabase.from("delivery_challans").update({ status: "ho_received" }).in("vat_challan_id", vcIds);
+    }
+    await supabase.from("invoice_challans").delete().eq("invoice_id", id);
+    const { error } = await supabase.from("sales_invoices_v2").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
+    await audit("invoice_processing", "update", { id }, "delete");
+    return { error };
+  },
+
+  async listCustomerReceives() {
+    return supabase.from("customer_receives").select("*, dc:delivery_challans(id,dc_number, customer:customers(name))").order("created_at", { ascending: false });
+  },
+  async listHoReceives() {
+    return supabase.from("ho_receives").select("*, dc:delivery_challans(id,dc_number, customer:customers(name))").order("created_at", { ascending: false });
+  },
+  async deleteCustomerReceive(id: string, dcId: string) {
+    await supabase.from("customer_receives").delete().eq("id", id);
+    await supabase.from("delivery_challans").update({ status: "delivered" }).eq("id", dcId);
+    return { error: null };
+  },
+  async deleteHoReceive(id: string, dcId: string) {
+    await supabase.from("ho_receives").delete().eq("id", id);
+    await supabase.from("delivery_challans").update({ status: "sent_to_ho" }).eq("id", dcId);
+    return { error: null };
+  },
+
+  async deleteTds(id: string) {
+    const { error } = await supabase.from("tds_entries").delete().eq("id", id);
+    return { error };
+  },
 };
