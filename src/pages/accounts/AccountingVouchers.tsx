@@ -253,13 +253,17 @@ const AccountingVouchers = () => {
   };
 
   const openView = async (v: Voucher) => {
-    const { data } = await supabase.from("voucher_entries").select("*, chart_of_accounts:account_id(account_name, account_code)").eq("voucher_id", v.id).order("sort_order");
-    setViewEntries((data || []).map((e: any) => ({ ...e, account_name: e.chart_of_accounts?.account_name || "—", account_code: e.chart_of_accounts?.account_code || "" })));
+    const { entries: data } = await voucherApi.get(v.id);
+    const accountMap = new Map(accounts.map((a) => [a.id, a]));
+    setViewEntries((data || []).map((e: any) => {
+      const account = e.account || e.chart_of_accounts || accountMap.get(e.account_id);
+      return { ...e, account_name: account?.account_name || "—", account_code: account?.account_code || "" };
+    }));
     setViewVoucher(v);
   };
 
   const openEdit = async (v: Voucher) => {
-    const { data } = await supabase.from("voucher_entries").select("*").eq("voucher_id", v.id).order("sort_order");
+    const { entries: data } = await voucherApi.get(v.id);
     setEditingVoucher(v);
     setFormDate(v.voucher_date);
     setFormBranch(v.branch_id || "");
@@ -422,8 +426,12 @@ const AccountingVouchers = () => {
   };
 
   const openPrintVoucher = async (v: Voucher) => {
-    const { data } = await supabase.from("voucher_entries").select("*, chart_of_accounts:account_id(account_name, account_code)").eq("voucher_id", v.id).order("sort_order");
-    setPrintEntries((data || []).map((e: any) => ({ ...e, account_name: e.chart_of_accounts?.account_name || "—", account_code: e.chart_of_accounts?.account_code || "" })));
+    const { entries: data } = await voucherApi.get(v.id);
+    const accountMap = new Map(accounts.map((a) => [a.id, a]));
+    setPrintEntries((data || []).map((e: any) => {
+      const account = e.account || e.chart_of_accounts || accountMap.get(e.account_id);
+      return { ...e, account_name: account?.account_name || "—", account_code: account?.account_code || "" };
+    }));
     setPrintVoucher(v);
   };
 
