@@ -168,6 +168,28 @@ const AccountingVouchers = () => {
     setEntries((prev) => prev.filter((e) => e.id !== id));
   };
 
+  const applyFormulaToEntry = (entry: EntryRow, val: number) => {
+    const field: "debit" | "credit" = entry.dr_cr === "dr" ? "debit" : "credit";
+    const oppField: "debit" | "credit" = field === "debit" ? "credit" : "debit";
+    const oppDrCr: "dr" | "cr" = entry.dr_cr === "dr" ? "cr" : "dr";
+    setEntries((prev) => {
+      // find a counter-row to auto-fill (opposite dr/cr with empty amount)
+      const counter = prev.find((r) => r.id !== entry.id && r.dr_cr === oppDrCr && !r[oppField]);
+      const updates: Record<string, number> = {};
+      const next = prev.map((r) => {
+        if (r.id === entry.id) { updates[`${r.id}-${field}`] = val; return { ...r, [field]: val }; }
+        if (counter && r.id === counter.id) { updates[`${r.id}-${oppField}`] = val; return { ...r, [oppField]: val }; }
+        return r;
+      });
+      setRawAmounts((p) => {
+        const np = { ...p };
+        for (const k in updates) np[k] = String(updates[k]);
+        return np;
+      });
+      return next;
+    });
+  };
+
   const updateEntry = (id: string, field: keyof EntryRow, value: any) => {
     setEntries((prev) => prev.map((e) => {
       if (e.id !== id) return e;
