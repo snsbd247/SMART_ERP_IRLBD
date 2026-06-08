@@ -15,8 +15,22 @@ class User extends Authenticatable
     protected $hidden = ['password', 'remember_token'];
 
     public function branch() { return $this->belongsTo(Branch::class); }
+    public function branches() { return $this->belongsToMany(Branch::class, 'user_branches', 'user_id', 'branch_id')->withTimestamps(); }
     public function employee() { return $this->belongsTo(Employee::class); }
     public function roles() { return $this->belongsToMany(CustomRole::class, 'user_custom_roles', 'user_id', 'custom_role_id')->using(UserCustomRole::class); }
+
+    /**
+     * All branch IDs this user is allowed to access.
+     * Super Admins → empty array (means: no scope restriction).
+     * Falls back to the legacy single branch_id when the pivot is empty.
+     */
+    public function allowedBranchIds(): array
+    {
+        if ($this->isSuperAdmin()) return [];
+        $ids = $this->branches()->pluck('branches.id')->map(fn($v) => (int) $v)->all();
+        if (empty($ids) && $this->branch_id) $ids = [(int) $this->branch_id];
+        return array_values(array_unique($ids));
+    }
 
     /**
      * Super Admin = user with NO linked employee (employee_id IS NULL).

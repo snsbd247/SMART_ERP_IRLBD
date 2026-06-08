@@ -25,7 +25,11 @@ class CrudController extends BaseController
                 foreach ($this->searchFields as $f) $q->orWhere($f, 'like', "%{$request->search}%");
             });
         }
-        if ($request->branch_id) $query->where('branch_id', $request->branch_id);
+        if ($request->branch_id) {
+            $query->where('branch_id', $request->branch_id);
+        } elseif (is_array($request->input('allowed_branch_ids')) && count($request->input('allowed_branch_ids'))) {
+            $query->whereIn('branch_id', $request->input('allowed_branch_ids'));
+        }
         if ($request->status) $query->where('status', $request->status);
 
         return $this->paginated($query->orderBy($request->sort ?? 'created_at', $request->order ?? 'desc')->paginate($request->per_page ?? 25));
