@@ -436,8 +436,8 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         // VAT Challan
         Route::middleware('permission:vat_challans.view')->group(function () {
             Route::get('vat-challans', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'index']);
-            Route::get('vat-challans/{id}', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'show']);
             Route::get('vat-challans/po-availability/{poId}', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'poAvailability']);
+            Route::get('vat-challans/{id}', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'show']);
         });
         Route::middleware('permission:vat_challans.create')->post('vat-challans', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'store']);
         Route::middleware('permission:vat_challans.delete')->delete('vat-challans/{id}', [\App\Http\Controllers\SalesWorkflow\VatChallanController::class, 'destroy']);
