@@ -13,6 +13,7 @@ import type { CompanySettings } from "@/hooks/useCompanySettings";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useModules, type ModuleKey } from "@/contexts/ModuleContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 
 interface Branch { id: string; name: string; }
 interface FinancialYear { id: string; name: string; is_active: boolean; }
@@ -30,15 +31,20 @@ const GeneralSettingsPage = () => {
 
   useEffect(() => {
     const init = async () => {
-      const [sRes, bRes, yRes] = await Promise.all([
-        supabase.from("company_settings" as any).select("*").eq("id", "default").single(),
-        supabase.from("branches").select("id, name").eq("status", "active"),
-        supabase.from("financial_years").select("id, name, is_active").order("start_date", { ascending: false }),
-      ]);
-      setSettings(sRes.data as any);
-      setBranches((bRes.data || []) as Branch[]);
-      setYears((yRes.data || []) as FinancialYear[]);
-      setLoading(false);
+      try {
+        const [sRes, bRes, yRes] = await Promise.all([
+          isLaravelMode()
+            ? fetch(`${getApiBaseUrl()}/v1/settings/company`, { headers: getLaravelAuthHeaders() }).then((r) => r.json())
+            : supabase.from("company_settings" as any).select("*").eq("id", "default").single(),
+          supabase.from("branches").select("id, name").eq("status", "active"),
+          supabase.from("financial_years").select("id, name, is_active").order("start_date", { ascending: false }),
+        ]);
+        setSettings(((sRes as any).data || null) as any);
+        setBranches((bRes.data || []) as Branch[]);
+        setYears((yRes.data || []) as FinancialYear[]);
+      } finally {
+        setLoading(false);
+      }
     };
     init();
   }, []);
@@ -52,16 +58,29 @@ const GeneralSettingsPage = () => {
     if (!settings) return;
     setSaving(true);
     const { id, ...rest } = settings;
-    const { error } = await supabase
-      .from("company_settings" as any)
-      .update({ ...rest, updated_at: new Date().toISOString() } as any)
-      .eq("id", "default");
-    setSaving(false);
-    if (error) {
-      toast.error("Failed to save settings: " + error.message);
-    } else {
+    try {
+      if (isLaravelMode()) {
+        const res = await fetch(`${getApiBaseUrl()}/v1/settings/company`, {
+          method: "PUT",
+          headers: { ...getLaravelAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify(rest),
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(payload?.message || `HTTP ${res.status}`);
+        setSettings(payload?.data || settings);
+      } else {
+        const { error } = await supabase
+          .from("company_settings" as any)
+          .update({ ...rest, updated_at: new Date().toISOString() } as any)
+          .eq("id", "default");
+        if (error) throw error;
+      }
       toast.success("Settings saved successfully");
       refetchCurrency();
+    } catch (error: any) {
+      toast.error("Failed to save settings: " + (error?.message || "Unknown error"));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -73,39 +92,35 @@ const GeneralSettingsPage = () => {
       return;
     }
     setUploading(true);
-
-    // Check if bucket exists, create if not
-    const { data: buckets } = await supabase.storage.listBuckets();
-    if (!buckets?.find(b => b.id === "company-assets")) {
-      // Bucket doesn't exist, we'll just store as data URL
-      const reader = new FileReader();
-      reader.onload = () => {
-        update("company_logo_url", reader.result as string);
-        setUploading(false);
-        toast.success("Logo uploaded (will be saved with settings)");
-      };
-      reader.readAsDataURL(file);
-      return;
+    try {
+      if (isLaravelMode()) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("setting_key", "company_logo_url");
+        const res = await fetch(`${getApiBaseUrl()}/v1/admin/branding/logo`, {
+          method: "POST",
+          headers: getLaravelAuthHeaders(),
+          body: fd,
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(payload?.message || `HTTP ${res.status}`);
+        const url = payload?.data?.url || payload?.url;
+        if (!url) throw new Error("Upload succeeded but no logo URL was returned");
+        update("company_logo_url", url);
+      } else {
+        const ext = file.name.split(".").pop();
+        const path = `logo.${ext}`;
+        const { error: upErr } = await supabase.storage.from("branding").upload(path, file, { upsert: true });
+        if (upErr) throw upErr;
+        const { data: urlData } = supabase.storage.from("branding").getPublicUrl(path);
+        update("company_logo_url", urlData.publicUrl);
+      }
+      toast.success("Logo uploaded");
+    } catch (error: any) {
+      toast.error("Logo upload failed: " + (error?.message || "Unknown error"));
+    } finally {
+      setUploading(false);
     }
-
-    const ext = file.name.split(".").pop();
-    const path = `logo.${ext}`;
-    const { error: upErr } = await supabase.storage.from("company-assets").upload(path, file, { upsert: true });
-    if (upErr) {
-      // Fallback to data URL
-      const reader = new FileReader();
-      reader.onload = () => {
-        update("company_logo_url", reader.result as string);
-        setUploading(false);
-        toast.success("Logo uploaded");
-      };
-      reader.readAsDataURL(file);
-      return;
-    }
-    const { data: urlData } = supabase.storage.from("company-assets").getPublicUrl(path);
-    update("company_logo_url", urlData.publicUrl);
-    setUploading(false);
-    toast.success("Logo uploaded");
   };
 
   if (loading) {
