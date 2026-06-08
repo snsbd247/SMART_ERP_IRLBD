@@ -41,7 +41,7 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
       .from("company_settings" as any)
       .select("currency_name, currency_code, currency_symbol, currency_position")
       .eq("id", "default")
-      .single();
+      .maybeSingle();
     if (data) {
       setConfig(data as any);
     }
