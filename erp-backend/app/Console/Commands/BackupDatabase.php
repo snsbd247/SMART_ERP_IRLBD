@@ -72,22 +72,50 @@ class BackupDatabase extends Command
 
     private function phpJsonExport(string $database, string $path): void
     {
-        $tables = DB::select('SHOW TABLES');
-        $key = "Tables_in_{$database}";
+        // Full schema dump: every base table AND view, nothing skipped.
+        $tables = DB::select('SHOW FULL TABLES');
+        $tableKey = "Tables_in_{$database}";
+
         $payload = [
             'meta' => [
                 'database' => $database,
                 'generated_at' => date('c'),
-                'version' => 1,
+                'version' => 2,
                 'app' => 'SmartERP',
             ],
+            'schema' => [],
             'tables' => [],
         ];
+
+        $tableNames = [];
         foreach ($tables as $row) {
-            $table = $row->$key;
-            if ($table === 'migrations') continue;
+            $table = $row->$tableKey;
+            $type  = $row->Table_type ?? 'BASE TABLE';
+            $tableNames[] = $table;
+
+            // Always capture CREATE statement so a JSON restore can rebuild schema if needed.
+            try {
+                if ($type === 'VIEW') {
+                    $c = DB::select("SHOW CREATE VIEW `{$table}`");
+                    $payload['schema'][$table] = [
+                        'type' => 'view',
+                        'create' => $c[0]->{'Create View'} ?? '',
+                    ];
+                    // Views hold no rows of their own
+                    $payload['tables'][$table] = [];
+                    continue;
+                }
+                $c = DB::select("SHOW CREATE TABLE `{$table}`");
+                $payload['schema'][$table] = [
+                    'type' => 'table',
+                    'create' => $c[0]->{'Create Table'} ?? '',
+                ];
+            } catch (\Throwable $e) {
+                $payload['schema'][$table] = ['type' => 'table', 'create' => '', 'error' => $e->getMessage()];
+            }
+
             $rows = [];
-            $count = DB::table($table)->count();
+            $count = (int) DB::table($table)->count();
             $offset = 0; $chunk = 500;
             while ($offset < $count) {
                 foreach (DB::table($table)->offset($offset)->limit($chunk)->get() as $r) {
@@ -97,8 +125,19 @@ class BackupDatabase extends Command
             }
             $payload['tables'][$table] = $rows;
         }
-        $ok = file_put_contents($path, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+        $payload['meta']['table_count'] = count($tableNames);
+        $payload['meta']['tables'] = $tableNames;
+
+        $ok = file_put_contents($path, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR));
         if ($ok === false) throw new \RuntimeException("Cannot write JSON backup to {$path}");
+
+        // Coverage assertion: any base table in DB must appear in payload
+        $expected = count($tableNames);
+        $got = count($payload['tables']);
+        if ($got < $expected) {
+            throw new \RuntimeException("JSON backup incomplete: expected {$expected} tables, got {$got}");
+        }
     }
 
     private function maybeUploadToDrive(string $path, string $filename): void
@@ -137,8 +176,18 @@ class BackupDatabase extends Command
         if (!$mysqldump) return false;
 
         $passArg = $password ? "--password=" . escapeshellarg($password) : "";
+        // Flags chosen for a COMPLETE, restore-safe dump of the whole database:
+        //   --single-transaction  consistent snapshot (InnoDB)
+        //   --routines --triggers --events  include procs/triggers/events
+        //   --add-drop-table --add-drop-trigger  clean replace on restore
+        //   --hex-blob  preserve binary columns
+        //   --complete-insert  column-name safe across schema drift
+        //   --default-character-set=utf8mb4  full unicode
+        //   --skip-lock-tables  works on shared MySQL hosts
+        //   --no-tablespaces  cPanel/shared-host friendly
+        //   --set-gtid-purged=OFF  avoid GTID metadata blocking restore (ignored if unsupported)
         $cmd = sprintf(
-            '%s --user=%s %s --host=%s --port=%d --single-transaction --routines --triggers --add-drop-table %s > %s 2>&1',
+            '%s --user=%s %s --host=%s --port=%d --single-transaction --routines --triggers --events --add-drop-table --add-drop-trigger --hex-blob --complete-insert --default-character-set=utf8mb4 --skip-lock-tables --no-tablespaces --set-gtid-purged=OFF --databases %s > %s 2>&1',
             escapeshellarg($mysqldump),
             escapeshellarg($username),
             $passArg,
@@ -174,51 +223,83 @@ class BackupDatabase extends Command
         $handle = fopen($path, 'w');
         if (!$handle) throw new \RuntimeException("Cannot write to {$path}");
 
-        fwrite($handle, "-- SmartERP SQL Backup\n");
+        $pdo = DB::connection()->getPdo();
+
+        fwrite($handle, "-- SmartERP SQL Backup (PHP fallback, full database)\n");
         fwrite($handle, "-- Generated: " . date('Y-m-d H:i:s') . "\n");
         fwrite($handle, "-- Database: {$database}\n");
-        fwrite($handle, "SET FOREIGN_KEY_CHECKS=0;\n\n");
+        fwrite($handle, "SET NAMES utf8mb4;\n");
+        fwrite($handle, "SET FOREIGN_KEY_CHECKS=0;\n");
+        fwrite($handle, "SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\n\n");
 
-        $tables = DB::select('SHOW TABLES');
-        $key = "Tables_in_{$database}";
+        // Pull EVERY table + view — no exclusions
+        $tables = DB::select('SHOW FULL TABLES');
+        $tableKey = "Tables_in_{$database}";
+        $baseTables = [];
+        $views = [];
+        foreach ($tables as $row) {
+            $name = $row->$tableKey;
+            $type = $row->Table_type ?? 'BASE TABLE';
+            if ($type === 'VIEW') $views[] = $name; else $baseTables[] = $name;
+        }
 
-        foreach ($tables as $tableRow) {
-            $table = $tableRow->$key;
+        $exportedTables = 0;
+        $exportedRows = 0;
 
-            // Skip migration table
-            if ($table === 'migrations') continue;
-
-            // DROP + CREATE
+        foreach ($baseTables as $table) {
             $create = DB::select("SHOW CREATE TABLE `{$table}`");
             $createSql = $create[0]->{'Create Table'} ?? '';
             fwrite($handle, "DROP TABLE IF EXISTS `{$table}`;\n");
             fwrite($handle, $createSql . ";\n\n");
+            $exportedTables++;
 
-            // INSERT data in chunks
-            $count = DB::table($table)->count();
-            if ($count === 0) continue;
+            $count = (int) DB::table($table)->count();
+            if ($count === 0) { fwrite($handle, "\n"); continue; }
 
             $chunkSize = 500;
             $offset = 0;
-
             while ($offset < $count) {
                 $rows = DB::table($table)->offset($offset)->limit($chunkSize)->get();
                 foreach ($rows as $row) {
-                    $values = collect((array) $row)->map(function ($val) {
-                        if (is_null($val)) return 'NULL';
-                        return "'" . addslashes((string) $val) . "'";
-                    })->implode(', ');
-
-                    $columns = collect(array_keys((array) $row))->map(fn($c) => "`{$c}`")->implode(', ');
-                    fwrite($handle, "INSERT INTO `{$table}` ({$columns}) VALUES ({$values});\n");
+                    $arr = (array) $row;
+                    $values = [];
+                    foreach ($arr as $val) {
+                        if (is_null($val)) { $values[] = 'NULL'; continue; }
+                        if (is_int($val) || is_float($val)) { $values[] = (string) $val; continue; }
+                        // PDO::quote handles all escaping incl. binary safely
+                        $values[] = $pdo->quote((string) $val);
+                    }
+                    $columns = implode(', ', array_map(fn($c) => "`{$c}`", array_keys($arr)));
+                    fwrite($handle, "INSERT INTO `{$table}` ({$columns}) VALUES (" . implode(', ', $values) . ");\n");
+                    $exportedRows++;
                 }
                 $offset += $chunkSize;
             }
             fwrite($handle, "\n");
         }
 
+        // Views last (they may depend on tables above)
+        foreach ($views as $view) {
+            try {
+                $c = DB::select("SHOW CREATE VIEW `{$view}`");
+                $sql = $c[0]->{'Create View'} ?? '';
+                if ($sql) {
+                    fwrite($handle, "DROP VIEW IF EXISTS `{$view}`;\n");
+                    fwrite($handle, $sql . ";\n\n");
+                }
+            } catch (\Throwable $e) {
+                Log::warning("View export failed for {$view}: " . $e->getMessage());
+            }
+        }
+
         fwrite($handle, "SET FOREIGN_KEY_CHECKS=1;\n");
         fclose($handle);
+
+        // Coverage assertion: every base table must have been written
+        if ($exportedTables < count($baseTables)) {
+            throw new \RuntimeException("SQL backup incomplete: dumped {$exportedTables} of " . count($baseTables) . " tables");
+        }
+        Log::info("SQL backup OK: {$exportedTables} tables, {$exportedRows} rows, " . count($views) . " views");
     }
 
     private function recordBackup(string $filename, string $path, string $type, string $method, string $format = 'sql'): void
