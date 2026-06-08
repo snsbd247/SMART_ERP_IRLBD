@@ -131,9 +131,11 @@ import PurchaseOrderDetailPage from "./pages/sales-workflow/PurchaseOrderDetailP
 import DispatchPage from "./pages/sales-workflow/DispatchPage";
 import DispatchFormPage from "./pages/sales-workflow/DispatchFormPage";
 import DispatchDetailPage from "./pages/sales-workflow/DispatchDetailPage";
+import DispatchEditPage from "./pages/sales-workflow/DispatchEditPage";
 import VatChallansPage from "./pages/sales-workflow/VatChallansPage";
 import VatChallanFormPage from "./pages/sales-workflow/VatChallanFormPage";
 import VatChallanDetailPage from "./pages/sales-workflow/VatChallanDetailPage";
+import VatChallanEditPage from "./pages/sales-workflow/VatChallanEditPage";
 import DeliveryChallansPage from "./pages/sales-workflow/DeliveryChallansPage";
 import CustomerReceivePage from "./pages/sales-workflow/CustomerReceivePage";
 import HoReceivePage from "./pages/sales-workflow/HoReceivePage";
