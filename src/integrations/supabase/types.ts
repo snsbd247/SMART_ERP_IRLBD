@@ -3420,6 +3420,9 @@ export type Database = {
       }
       sales_invoices_v2: {
         Row: {
+          bill_due_date: string | null
+          bill_submission_ref: string | null
+          bill_submitted_at: string | null
           branch_id: string | null
           created_at: string
           created_by: string | null
@@ -3434,6 +3437,7 @@ export type Database = {
           mode: string
           notes: string | null
           paid_amount: number
+          payment_terms_days: number
           status: string
           subtotal: number
           tds_amount: number
@@ -3442,6 +3446,9 @@ export type Database = {
           voucher_id: string | null
         }
         Insert: {
+          bill_due_date?: string | null
+          bill_submission_ref?: string | null
+          bill_submitted_at?: string | null
           branch_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -3456,6 +3463,7 @@ export type Database = {
           mode?: string
           notes?: string | null
           paid_amount?: number
+          payment_terms_days?: number
           status?: string
           subtotal?: number
           tds_amount?: number
@@ -3464,6 +3472,9 @@ export type Database = {
           voucher_id?: string | null
         }
         Update: {
+          bill_due_date?: string | null
+          bill_submission_ref?: string | null
+          bill_submitted_at?: string | null
           branch_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -3478,6 +3489,7 @@ export type Database = {
           mode?: string
           notes?: string | null
           paid_amount?: number
+          payment_terms_days?: number
           status?: string
           subtotal?: number
           tds_amount?: number

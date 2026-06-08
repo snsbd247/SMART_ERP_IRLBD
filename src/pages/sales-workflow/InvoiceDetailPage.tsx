@@ -18,7 +18,15 @@ export default function InvoiceDetailPage() {
     mode: "bank", amount_received: 0, tds_amount: 0, tds_pct: 0,
     tds_certificate_no: "", tds_certificate_date: "", reference: "",
   });
-  const load = () => swApi.getInvoice(id!).then(({ data }) => setInv(data));
+  const [bill, setBill] = useState<any>({
+    bill_submitted_at: new Date().toISOString().slice(0, 10),
+    payment_terms_days: 30,
+    bill_submission_ref: "",
+  });
+  const load = () => swApi.getInvoice(id!).then(({ data }) => {
+    setInv(data);
+    if (data?.payment_terms_days) setBill((b: any) => ({ ...b, payment_terms_days: data.payment_terms_days }));
+  });
   useEffect(() => { load(); }, [id]);
 
   const submitPayment = async () => {
@@ -27,6 +35,14 @@ export default function InvoiceDetailPage() {
     if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
     toast({ title: "Payment recorded" });
     setPay({ ...pay, amount_received: 0, tds_amount: 0 });
+    load();
+  };
+
+  const submitBill = async () => {
+    if (!bill.bill_submitted_at) return toast({ title: "Enter submission date", variant: "destructive" });
+    const { error } = await swApi.submitBill(id!, bill);
+    if (error) return toast({ title: "Failed", description: (error as any).message, variant: "destructive" });
+    toast({ title: "Bill marked submitted", description: `Due date calculated.` });
     load();
   };
 
@@ -55,7 +71,34 @@ export default function InvoiceDetailPage() {
           <div className="font-bold">Grand Total: {Number(inv.grand_total).toFixed(2)}</div>
           <div>Paid: {Number(inv.paid_amount).toFixed(2)} | TDS: {Number(inv.tds_amount).toFixed(2)}</div>
           <div className="text-lg font-bold text-primary">Due: {Number(inv.due_amount).toFixed(2)}</div>
+          {inv.bill_submitted_at && (
+            <div className="text-sm text-muted-foreground">
+              Bill submitted: <span className="font-medium text-foreground">{inv.bill_submitted_at}</span>
+              {inv.bill_due_date && <> • Payment due: <span className="font-medium text-foreground">{inv.bill_due_date}</span></>}
+              {inv.bill_submission_ref && <> • Ref: <span className="font-medium text-foreground">{inv.bill_submission_ref}</span></>}
+            </div>
+          )}
         </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="font-semibold mb-3">Submit Bill to Customer HO</h3>
+        {inv.bill_submitted_at ? (
+          <p className="text-sm text-muted-foreground">
+            Already submitted on <b>{inv.bill_submitted_at}</b>. Payment due on <b>{inv.bill_due_date}</b> ({inv.payment_terms_days} days).
+            You can re-submit below to update.
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground mb-2">
+            Mark this invoice as submitted to the customer's HO / Accounts. Due date will be calculated automatically.
+          </p>
+        )}
+        <div className="grid md:grid-cols-4 gap-3 mt-2">
+          <div><Label>Submission Date</Label><Input type="date" value={bill.bill_submitted_at} onChange={(e) => setBill({ ...bill, bill_submitted_at: e.target.value })} /></div>
+          <div><Label>Credit Days</Label><Input type="number" min={0} max={365} value={bill.payment_terms_days} onChange={(e) => setBill({ ...bill, payment_terms_days: Number(e.target.value) })} /></div>
+          <div className="md:col-span-2"><Label>Customer Receipt / Ref</Label><Input placeholder="e.g. Bill register no." value={bill.bill_submission_ref} onChange={(e) => setBill({ ...bill, bill_submission_ref: e.target.value })} /></div>
+        </div>
+        <div className="flex justify-end mt-3"><Button onClick={submitBill}>{inv.bill_submitted_at ? "Update Submission" : "Mark Bill Submitted"}</Button></div>
       </Card>
 
       <Card className="p-4">

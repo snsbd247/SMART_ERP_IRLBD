@@ -468,6 +468,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         });
         Route::middleware('permission:invoice_processing.create')->post('invoices-v2', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'store']);
         Route::middleware('permission:invoice_payment.create')->post('invoices-v2/{id}/payments', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'payment']);
+        Route::middleware('permission:invoice_processing.update')->post('invoices-v2/{id}/submit-bill', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'submitBill']);
         Route::middleware('permission:invoice_processing.delete')->delete('invoices-v2/{id}', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'destroy']);
 
         // GitHub Deploy Sync — Super Admin only (enforced inside controller).
