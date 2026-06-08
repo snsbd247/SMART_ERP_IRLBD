@@ -139,7 +139,7 @@ import InvoicesPage from "./pages/sales-workflow/InvoicesPage";
 import InvoiceDetailPage from "./pages/sales-workflow/InvoiceDetailPage";
 import TdsRegisterPage from "./pages/sales-workflow/TdsRegisterPage";
 import SalesWorkflowReportsIndex from "./pages/sales-workflow/reports/SalesWorkflowReportsIndex";
-import PoVsDispatchReport from "./pages/sales-workflow/reports/PoVsDispatchReport";
+import PoVsVatChallanReport from "./pages/sales-workflow/reports/PoVsVatChallanReport";
 import PendingPoReport from "./pages/sales-workflow/reports/PendingPoReport";
 import ChallanStatusReport from "./pages/sales-workflow/reports/ChallanStatusReport";
 import VatRegisterReport from "./pages/sales-workflow/reports/VatRegisterReport";
@@ -325,7 +325,7 @@ const App = () => (
                 <Route path="/sales-workflow/invoice/:id" element={<P perm="sales.view"><InvoiceDetailPage /></P>} />
                 <Route path="/sales-workflow/tds" element={<P perm="sales.view"><TdsRegisterPage /></P>} />
                 <Route path="/sales-workflow/reports" element={<P perm="reports.view"><SalesWorkflowReportsIndex /></P>} />
-                <Route path="/sales-workflow/reports/po-vs-vat-challan" element={<P perm="reports.view"><PoVsDispatchReport /></P>} />
+                <Route path="/sales-workflow/reports/po-vs-vat-challan" element={<P perm="reports.view"><PoVsVatChallanReport /></P>} />
                 <Route path="/sales-workflow/reports/pending-po" element={<P perm="reports.view"><PendingPoReport /></P>} />
                 <Route path="/sales-workflow/reports/challan-status" element={<P perm="reports.view"><ChallanStatusReport /></P>} />
                 <Route path="/sales-workflow/reports/vat-register" element={<P perm="reports.view"><VatRegisterReport /></P>} />
