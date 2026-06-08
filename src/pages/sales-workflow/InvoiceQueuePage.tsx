@@ -53,16 +53,21 @@ export default function InvoiceQueuePage() {
       </Card>
       <Card>
         <Table>
-          <TableHeader><TableRow><TableHead></TableHead><TableHead>VAT Challan</TableHead><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead></TableHead><TableHead>VAT Challan</TableHead><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead className="text-right">Total</TableHead><TableHead className="text-right">View</TableHead></TableRow></TableHeader>
           <TableBody>
             {eligible.map((v) => (
               <TableRow key={v.id}>
                 <TableCell><Checkbox checked={selected.has(v.id)} onCheckedChange={() => { const s = new Set(selected); s.has(v.id) ? s.delete(v.id) : s.add(v.id); setSelected(s); }} /></TableCell>
                 <TableCell>{v.challan_number}</TableCell><TableCell>{v.challan_date}</TableCell><TableCell>{v.customer?.name}</TableCell>
                 <TableCell className="text-right">{Number(v.grand_total).toFixed(2)}</TableCell>
+                <TableCell className="text-right">
+                  <a href={`/sales-workflow/vat-challan/${v.id}`} target="_blank" rel="noreferrer">
+                    <Button size="sm" variant="ghost">View</Button>
+                  </a>
+                </TableCell>
               </TableRow>
             ))}
-            {eligible.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No eligible VAT challans (all DCs must be HO-received)</TableCell></TableRow>}
+            {eligible.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No eligible VAT challans (all DCs must be HO-received)</TableCell></TableRow>}
           </TableBody>
         </Table>
       </Card>
