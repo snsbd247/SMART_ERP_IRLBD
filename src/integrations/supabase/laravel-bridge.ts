@@ -224,6 +224,13 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
     // Company settings has a single Laravel controller-backed row whose UUID is
     // not literally "default". Keep existing Supabase-style callers working.
     if (this.table === "company_settings") {
+      // Skip authenticated calls when there is no session (e.g. on /login)
+      // to avoid noisy 401s before the user signs in.
+      const hasToken = typeof window !== "undefined" &&
+        !!(localStorage.getItem("laravel_auth_token") || localStorage.getItem("auth_token"));
+      if (!hasToken) {
+        return { data: (this._single ? null : []) as T, error: null };
+      }
       if (this._mode === "select") {
         const res = await call<any>("GET", "/v1/settings/company");
         if (res.error) return res as Result<T>;
