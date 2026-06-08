@@ -290,12 +290,12 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:financial_years.create')->post('financial-years', [\App\Http\Controllers\Admin\FinancialYearController::class, 'store']);
         Route::middleware('permission:financial_years.edit')->group(function () {
             Route::put('financial-years/{id}', [\App\Http\Controllers\Admin\FinancialYearController::class, 'update']);
-            Route::put('settings/company', [\App\Http\Controllers\Admin\SettingsController::class, 'update']);
         });
         Route::middleware('permission:financial_years.delete')->delete('financial-years/{id}', [\App\Http\Controllers\Admin\FinancialYearController::class, 'destroy']);
 
         // Settings (view uses administration.view for backward compat)
         Route::middleware('permission:settings.view')->get('settings/company', [\App\Http\Controllers\Admin\SettingsController::class, 'show']);
+        Route::middleware('permission:settings.edit')->put('settings/company', [\App\Http\Controllers\Admin\SettingsController::class, 'update']);
 
         // ─── Backup & Restore (Super Admin only) ─────────────────
         Route::prefix('backups')->group(function () {
