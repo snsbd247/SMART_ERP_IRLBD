@@ -164,6 +164,30 @@ const BackupPage = () => {
     }
   };
 
+  const [seedingFull, setSeedingFull] = useState(false);
+  const [fullSeedLog, setFullSeedLog] = useState<string | null>(null);
+  const handleFullDemoSeed = async () => {
+    if (!isSuperAdmin) {
+      toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
+      return;
+    }
+    if (!confirm("This will WIPE all transactions/masters and seed a full year of demo data across Accounts, Bank, Inventory, Purchase, Manufacturing, Sales (BD VAT) and HRM for 2 branches (Head Office, Factory). Continue?")) return;
+    setSeedingFull(true);
+    setFullSeedLog(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-and-seed-demo", { body: {} });
+      if (error) throw error;
+      if (data?.success === false) throw new Error(data.error || "Seed failed");
+      setFullSeedLog(JSON.stringify(data, null, 2));
+      toast({ title: "Demo data seeded", description: `Completed in ${data?.elapsedMs ?? "?"}ms.` });
+    } catch (err: any) {
+      toast({ title: "Seed failed", description: err.message, variant: "destructive" });
+      setFullSeedLog(String(err.message || err));
+    } finally {
+      setSeedingFull(false);
+    }
+  };
+
 
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
