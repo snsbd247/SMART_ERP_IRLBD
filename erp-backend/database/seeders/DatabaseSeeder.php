@@ -231,7 +231,6 @@ class DatabaseSeeder extends Seeder
         // These mirror what the BD VAT migration seeds; insertOrIgnore makes it idempotent.
         $extraSequences = [
             ['id' => 'purchase_order',  'prefix' => 'PO',  'description' => 'Customer Purchase Order'],
-            ['id' => 'dispatch',        'prefix' => 'DSP', 'description' => 'Dispatch / Gate Pass'],
             ['id' => 'vat_challan',     'prefix' => 'VCH', 'description' => 'VAT Challan (Mushak 6.3)'],
             ['id' => 'delivery_challan','prefix' => 'DC',  'description' => 'Delivery Challan'],
             ['id' => 'sales_invoice_v2','prefix' => 'INV', 'description' => 'Consolidated Sales Invoice'],
