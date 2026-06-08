@@ -9,7 +9,7 @@ use Carbon\Carbon;
 use App\Models\{
     AccVoucher, Attendance, BillOfMaterial, BomItem, Branch, ChartOfAccount,
     CompanySetting, Customer, CustomerReceive, DeliveryChallan, Department,
-    Designation, Dispatch, DispatchItem, DispatchPoAllocation, Employee,
+    Designation, Employee,
     EmployeeFundSetting, FinancialYear, FundTransaction, HoReceive,
     InvoicePayment, InvoiceChallan, ItemCategory, ItemMaster, LeaveRequest,
     LeaveType, NumberSequence, PartyNote, PartyPayment, PaymentAllocation,
@@ -91,7 +91,7 @@ class SeedDemoData extends Command
     private array $vouchers = [], $ventries = [];
     private int $vcJV = 0, $vcPV = 0, $vcRV = 0, $vcCV = 0;
     private int $sc = 0, $pc = 0, $src = 0, $prc = 0, $tc = 0, $prdc = 0;
-    private int $poc = 0, $dspc = 0, $vchc = 0, $dcc = 0, $inv2c = 0, $ipayc = 0, $tdsc = 0, $pmc = 0;
+    private int $poc = 0, $vchc = 0, $dcc = 0, $inv2c = 0, $ipayc = 0, $tdsc = 0, $pmc = 0;
     private array $sList = [], $pList = [];
     private Carbon $fyStart, $fyEnd;
 
@@ -150,10 +150,10 @@ class SeedDemoData extends Command
 
         $resetGroups = [
             ['voucher_entries','payment_allocations','sales_invoice_items','sales_return_items','purchase_items','purchase_return_items','stock_movements','stock_ledger','stock_transfers','production_materials','bom_items','fund_transactions','employee_fund_settings','overtime_records','leave_requests','attendance','employee_documents','employee_bank_info','employee_education','employee_experience','employee_emergency_contacts','salary_structures','face_data','biometric_logs','payroll','party_notes','audit_log','login_logs','backup_history','messages','conversation_participants',
-             'tds_entries','invoice_payments','invoice_challans','sales_invoice_items_v2','customer_receives','ho_receives','dispatch_po_allocations','vat_challan_items','dispatch_items','purchase_order_items',
-             'dispatch_status_logs','invoice_status_logs','po_amendments'],
+             'tds_entries','invoice_payments','invoice_challans','sales_invoice_items_v2','customer_receives','ho_receives','vat_challan_items','purchase_order_items',
+             'invoice_status_logs','po_amendments'],
             ['sales_returns','purchase_returns'],
-            ['sales_invoices_v2','delivery_challans','vat_challans','dispatches','purchase_orders'],
+            ['sales_invoices_v2','delivery_challans','vat_challans','purchase_orders'],
             ['acc_vouchers','party_payments','sales_invoices','purchases','production_entries','bill_of_materials','employees','conversations','number_sequences'],
             ['customers','suppliers','item_master','products','raw_materials'],
             ['item_categories','units','warehouses','product_categories'],
@@ -938,7 +938,6 @@ class SeedDemoData extends Command
         $drivers = ['Karim Mia','Rahim Uddin','Salam Hossain','Jamal Khan','Nasir Ahmed'];
 
         $POs = []; $POitems = [];
-        $DSPs = []; $DSPitems = []; $DSPallocs = [];
         $VCHs = []; $VCHitems = [];
         $DCs = []; $CRs = []; $HRs = [];
         $INV2 = []; $INV2items = []; $INVCHs = [];
@@ -970,28 +969,8 @@ class SeedDemoData extends Command
             ];
             $POitems = array_merge($POitems, $poiData);
 
-            // Dispatch
-            $dspId = $this->U(); $this->dspc++;
-            $dspNum = "DSP-{$this->fyTag}-" . str_pad((string)$this->dspc, 5, '0', STR_PAD_LEFT);
-            $dspDate = $this->ymd(Carbon::parse($poDate)->addDays($this->RI(1, 3)));
-            $totalQty = array_reduce($poiData, fn($s,$r) => $s + $r['qty_ordered'], 0);
-            $DSPs[] = [
-                'id'=>$dspId,'dispatch_number'=>$dspNum,'dispatch_date'=>$dspDate,'customer_id'=>$cust['id'],
-                'vehicle_no'=>$this->pick($vehicles),'driver_name'=>$this->pick($drivers),'status'=>'delivered','total_qty'=>$totalQty,
-                'branch_id'=>$this->BR_DHK,'financial_year_id'=>$this->FY,'created_by'=>$this->UID,
-                'created_at'=>now(),'updated_at'=>now(),
-            ];
             $vciByProduct = [];
             foreach ($poiData as $idx => $r) {
-                $diId = $this->U();
-                $DSPitems[] = [
-                    'id'=>$diId,'dispatch_id'=>$dspId,'product_id'=>$r['product_id'],'qty'=>$r['qty_ordered'],'sort_order'=>$idx,
-                ];
-                $DSPallocs[] = [
-                    'id'=>$this->U(),'dispatch_item_id'=>$diId,'po_item_id'=>$r['id'],'po_id'=>$poId,'allocated_qty'=>$r['qty_ordered'],
-                    'created_at'=>now(),
-                ];
-
                 // VAT Challan item (per product)
                 $vciId = $this->U();
                 $vciByProduct[$r['product_id']] = $vciId;
@@ -1000,11 +979,11 @@ class SeedDemoData extends Command
             // VAT Challan
             $vchId = $this->U(); $this->vchc++;
             $vchNum = "VCH-{$this->fyTag}-" . str_pad((string)$this->vchc, 5, '0', STR_PAD_LEFT);
-            $vchDate = $dspDate;
+            $vchDate = $this->ymd(Carbon::parse($poDate)->addDays($this->RI(1, 3)));
             $VCHs[] = [
-                'id'=>$vchId,'challan_number'=>$vchNum,'challan_date'=>$vchDate,'customer_id'=>$cust['id'],'dispatch_id'=>$dspId,
+                'id'=>$vchId,'challan_number'=>$vchNum,'challan_date'=>$vchDate,'customer_id'=>$cust['id'],'purchase_order_id'=>$poId,
                 'vehicle_no'=>$this->pick($vehicles),'driver_name'=>$this->pick($drivers),'subtotal'=>$this->round2($poSub),'vat_amount'=>$this->round2($poVat),
-                'grand_total'=>$poGrand,'source'=>'dispatch','status'=>'issued',
+                'grand_total'=>$poGrand,'source'=>'purchase_order','status'=>'issued',
                 'branch_id'=>$this->BR_DHK,'financial_year_id'=>$this->FY,'created_by'=>$this->UID,
                 'created_at'=>now(),'updated_at'=>now(),
             ];
@@ -1012,7 +991,7 @@ class SeedDemoData extends Command
             foreach ($poiData as $idx => $r) {
                 $vciId = $vciByProduct[$r['product_id']];
                 $VCHitems[] = [
-                    'id'=>$vciId,'vat_challan_id'=>$vchId,'product_id'=>$r['product_id'],'qty'=>$r['qty_ordered'],
+                    'id'=>$vciId,'vat_challan_id'=>$vchId,'product_id'=>$r['product_id'],'purchase_order_item_id'=>$r['id'],'po_qty_consumed'=>$r['qty_ordered'],'qty'=>$r['qty_ordered'],
                     'rate'=>$r['rate'],'vat_pct'=>15,'line_subtotal'=>$r['line_subtotal'],'vat_amount'=>$r['line_vat'],
                     'line_total'=>$r['line_total'],'sort_order'=>$idx,
                 ];
@@ -1103,9 +1082,6 @@ class SeedDemoData extends Command
         $this->flushVouchers();
         $this->bulk('purchase_orders', $POs);
         $this->bulk('purchase_order_items', $POitems);
-        $this->bulk('dispatches', $DSPs);
-        $this->bulk('dispatch_items', $DSPitems);
-        $this->bulk('dispatch_po_allocations', $DSPallocs);
         $this->bulk('vat_challans', $VCHs);
         $this->bulk('vat_challan_items', $VCHitems);
         $this->bulk('delivery_challans', $DCs);
@@ -1133,7 +1109,6 @@ class SeedDemoData extends Command
             ['id'=>'receipt_voucher','prefix'=>'RV','current_number'=>$this->vcRV,'year'=>2026,'description'=>'Receipt Voucher'],
             ['id'=>'contra_voucher','prefix'=>'CV','current_number'=>$this->vcCV,'year'=>2026,'description'=>'Contra Voucher'],
             ['id'=>'purchase_order','prefix'=>'PO','current_number'=>$this->poc,'year'=>2026,'description'=>'Customer Purchase Order'],
-            ['id'=>'dispatch','prefix'=>'DSP','current_number'=>$this->dspc,'year'=>2026,'description'=>'Dispatch / Gate Pass'],
             ['id'=>'vat_challan','prefix'=>'VCH','current_number'=>$this->vchc,'year'=>2026,'description'=>'VAT Challan (Mushak 6.3)'],
             ['id'=>'delivery_challan','prefix'=>'DC','current_number'=>$this->dcc,'year'=>2026,'description'=>'Delivery Challan'],
             ['id'=>'sales_invoice_v2','prefix'=>'INV2','current_number'=>$this->inv2c,'year'=>2026,'description'=>'Consolidated Sales Invoice'],

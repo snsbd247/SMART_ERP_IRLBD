@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
  * Bangladesh-VAT Sales Workflow — VAT Challan service.
  *
  * Rules:
- * - A VAT Challan MAY be linked to a Purchase Order (partial deliveries supported).
+ * - A VAT Challan MUST be linked to a Purchase Order (partial deliveries supported).
  * - Each PO can have multiple VAT Challans until all qty_ordered is delivered.
  * - Each line item consumes from a specific purchase_order_item; qty consumed
  *   may be less than or equal to (qty_ordered - qty_delivered).
@@ -30,29 +30,27 @@ class VatChallanService
 
         return DB::transaction(function () use ($data, $items) {
             $poId = $data['purchase_order_id'] ?? null;
-            $po = null;
-            if ($poId) {
-                $po = PurchaseOrder::with('items')->findOrFail($poId);
-                if ($po->customer_id !== ($data['customer_id'] ?? $po->customer_id)) {
-                    $data['customer_id'] = $po->customer_id;
-                }
+            if (!$poId) {
+                throw new \InvalidArgumentException('VAT Challan must be issued against a Purchase Order.');
+            }
+            $po = PurchaseOrder::with('items')->lockForUpdate()->findOrFail($poId);
+            if ($po->customer_id !== ($data['customer_id'] ?? $po->customer_id)) {
+                $data['customer_id'] = $po->customer_id;
             }
 
             // Validate qty against PO availability
-            if ($po) {
-                foreach ($items as $row) {
-                    $poItemId = $row['purchase_order_item_id'] ?? null;
-                    if (!$poItemId) {
-                        throw new \InvalidArgumentException('Each VAT challan item must reference a purchase_order_item_id when PO is set.');
-                    }
-                    $poi = PurchaseOrderItem::lockForUpdate()->findOrFail($poItemId);
-                    if ($poi->po_id !== $po->id) {
-                        throw new \InvalidArgumentException("PO item {$poItemId} does not belong to PO {$po->po_number}");
-                    }
-                    $remaining = (float) $poi->qty_remaining;
-                    if ((float) $row['qty'] > $remaining + 0.0001) {
-                        throw new \InvalidArgumentException("Qty {$row['qty']} for product exceeds PO remaining {$remaining}.");
-                    }
+            foreach ($items as $row) {
+                $poItemId = $row['purchase_order_item_id'] ?? null;
+                if (!$poItemId) {
+                    throw new \InvalidArgumentException('Each VAT challan item must reference a purchase_order_item_id.');
+                }
+                $poi = PurchaseOrderItem::lockForUpdate()->findOrFail($poItemId);
+                if ($poi->po_id !== $po->id) {
+                    throw new \InvalidArgumentException("PO item {$poItemId} does not belong to PO {$po->po_number}");
+                }
+                $remaining = (float) $poi->qty_remaining;
+                if ((float) $row['qty'] > $remaining + 0.0001) {
+                    throw new \InvalidArgumentException("Qty {$row['qty']} for product exceeds PO remaining {$remaining}.");
                 }
             }
 
@@ -62,7 +60,7 @@ class VatChallanService
                 'challan_number' => $data['challan_number'] ?? $this->seq->next('vat_challan'),
                 'subtotal' => $sub, 'vat_amount' => $vat, 'grand_total' => $grand,
                 'status' => $data['status'] ?? 'issued',
-                'source' => $data['source'] ?? 'manual',
+                'source' => 'purchase_order',
             ]));
 
             foreach ($items as $idx => $row) {
@@ -107,12 +105,13 @@ class VatChallanService
             }
 
             // Update PO status if fully delivered
-            if ($po) {
-                $po->refresh()->load('items');
-                $remainingTotal = $po->items->sum('qty_remaining');
-                if ($remainingTotal <= 0.0001 && $po->status === 'open') {
-                    $po->update(['status' => 'completed']);
-                }
+            $po->refresh()->load('items');
+            $remainingTotal = (float) $po->items->sum('qty_remaining');
+            $deliveredTotal = (float) $po->items->sum('qty_delivered');
+            if ($remainingTotal <= 0.0001) {
+                $po->update(['status' => 'closed']);
+            } elseif ($deliveredTotal > 0) {
+                $po->update(['status' => 'partial']);
             }
 
             return $challan->load('items', 'deliveryChallans');
@@ -132,6 +131,9 @@ class VatChallanService
                         $poi->save();
                     }
                 }
+            }
+            if ($challan->purchase_order_id) {
+                app(PurchaseOrderService::class)->recomputeStatus($challan->purchase_order_id);
             }
             $challan->deliveryChallans()->delete();
             $challan->items()->delete();
