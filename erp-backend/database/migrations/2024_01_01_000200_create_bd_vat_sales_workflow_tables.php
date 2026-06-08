@@ -247,22 +247,9 @@ return new class extends Migration {
             $t->index('invoice_id');
         });
 
-        Schema::create('dispatch_status_logs', function (Blueprint $t) {
-            $t->uuid('id')->primary();
-            $t->uuid('dispatch_id');
-            $t->string('old_status', 20)->nullable();
-            $t->string('new_status', 20);
-            $t->uuid('changed_by')->nullable();
-            $t->text('notes')->nullable();
-            $t->timestamp('created_at')->useCurrent();
-            $t->foreign('dispatch_id')->references('id')->on('dispatches')->cascadeOnDelete();
-            $t->index('dispatch_id');
-        });
-
         // Seed number sequences for the new doc types
         \DB::table('number_sequences')->insertOrIgnore([
             ['id' => 'purchase_order',  'prefix' => 'PO',  'current_number' => 0, 'year' => (int) date('Y'), 'description' => 'Customer Purchase Order'],
-            ['id' => 'dispatch',        'prefix' => 'DSP', 'current_number' => 0, 'year' => (int) date('Y'), 'description' => 'Dispatch / Gate Pass'],
             ['id' => 'vat_challan',     'prefix' => 'VCH', 'current_number' => 0, 'year' => (int) date('Y'), 'description' => 'VAT Challan (Mushak 6.3)'],
             ['id' => 'delivery_challan','prefix' => 'DC',  'current_number' => 0, 'year' => (int) date('Y'), 'description' => 'Delivery Challan'],
             ['id' => 'sales_invoice_v2','prefix' => 'INV', 'current_number' => 0, 'year' => (int) date('Y'), 'description' => 'Consolidated Sales Invoice'],
@@ -274,11 +261,10 @@ return new class extends Migration {
     public function down(): void
     {
         foreach ([
-            'dispatch_status_logs','invoice_status_logs','tds_entries','invoice_payments',
+            'invoice_status_logs','tds_entries','invoice_payments',
             'invoice_challans','sales_invoice_items_v2','sales_invoices_v2',
             'ho_receives','customer_receives','delivery_challans',
             'vat_challan_items','vat_challans',
-            'dispatch_po_allocations','dispatch_items','dispatches',
             'po_amendments','purchase_order_items','purchase_orders',
         ] as $tbl) {
             Schema::dropIfExists($tbl);
