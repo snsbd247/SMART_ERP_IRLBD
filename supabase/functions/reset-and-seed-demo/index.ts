@@ -632,7 +632,9 @@ Deno.serve(async (req) => {
     const vehicles = ["DHK-METRO-1234","DHK-METRO-5678","CTG-METRO-9012","DHK-METRO-3456","CTG-METRO-7890"];
     const drivers  = ["Karim Mia","Rahim Uddin","Salam Hossain","Jamal Khan","Nasir Ahmed"];
 
+    let _swIdx = 0;
     for (let d = new Date(fyStart); d <= end; d.setDate(d.getDate()+7)) {
+      const BR = (_swIdx++ % 2 === 0) ? BR_DHK : BR_CTG;
       const cust = pick(customers);
       const its  = pickN(products, RI(2,4));
       const poDate = ymd(d);
@@ -650,7 +652,7 @@ Deno.serve(async (req) => {
       const poGrand = round2(poSub + poVat);
       POs.push({ id:poId, po_number:poNum, po_date:poDate, customer_id:cust.id, delivery_date:delDate,
         status:"closed", subtotal:round2(poSub), vat_amount:round2(poVat), grand_total:poGrand,
-        notes:"Demo PO", branch_id:BR_DHK, financial_year_id:FY, created_by:UID });
+        notes:"Demo PO", branch_id:BR, financial_year_id:FY, created_by:UID });
       POitems.push(...poiData);
 
       // Dispatch
@@ -660,7 +662,7 @@ Deno.serve(async (req) => {
       const totalQty = poiData.reduce((s,r)=>s+r.qty_ordered,0);
       DSPs.push({ id:dspId, dispatch_number:dspNum, dispatch_date:dspDate, customer_id:cust.id,
         vehicle_no:pick(vehicles), driver_name:pick(drivers), status:"delivered", total_qty:totalQty,
-        branch_id:BR_DHK, financial_year_id:FY, created_by:UID });
+        branch_id:BR, financial_year_id:FY, created_by:UID });
       poiData.forEach((r,idx) => {
         const diId = U();
         DSPitems.push({ id:diId, dispatch_id:dspId, product_id:r.product_id, qty:r.qty_ordered, sort_order:idx });
@@ -674,7 +676,7 @@ Deno.serve(async (req) => {
       VCHs.push({ id:vchId, challan_number:vchNum, challan_date:vchDate, customer_id:cust.id, dispatch_id:dspId,
         vehicle_no:pick(vehicles), driver_name:pick(drivers), subtotal:round2(poSub), vat_amount:round2(poVat),
         grand_total:poGrand, source:"dispatch", status:"issued",
-        branch_id:BR_DHK, financial_year_id:FY, created_by:UID });
+        branch_id:BR, financial_year_id:FY, created_by:UID });
       const vciByProduct: Record<string,string> = {};
       poiData.forEach((r,idx) => {
         const vciId = U();
@@ -687,7 +689,7 @@ Deno.serve(async (req) => {
         const dcId = U();
         DCs.push({ id:dcId, dc_number:`DC-${fyTag}-${String(dcc).padStart(5,"0")}`, dc_date:vchDate,
           vat_challan_id:vchId, vat_challan_item_id:vciId, product_id:r.product_id, qty:r.qty_ordered,
-          customer_id:cust.id, status:"invoiced", branch_id:BR_DHK, created_by:UID });
+          customer_id:cust.id, status:"invoiced", branch_id:BR, created_by:UID });
         CRs.push({ id:U(), delivery_challan_id:dcId,
           receive_date:ymd(new Date(new Date(vchDate).getTime() + RI(1,2)*86400000)),
           received_by_name:cust.name, transport_info:"Truck", created_by:UID });
@@ -713,7 +715,7 @@ Deno.serve(async (req) => {
       INV2.push({ id:invId, invoice_number:invNum, invoice_date:invDate, customer_id:cust.id, mode:"single",
         subtotal:round2(poSub), vat_total:round2(poVat), grand_total:poGrand,
         paid_amount:paidAmt, tds_amount:tdsAmt, due_amount:dueAmt, status:invStatus, voucher_id:invVid,
-        branch_id:BR_DHK, financial_year_id:FY, created_by:UID });
+        branch_id:BR, financial_year_id:FY, created_by:UID });
       poiData.forEach((r,idx) => {
         INV2items.push({ id:U(), invoice_id:invId, product_id:r.product_id, qty:r.qty_ordered, rate:r.rate,
           vat_pct:15, line_subtotal:r.line_subtotal, vat_amount:r.line_vat, line_total:r.line_total,
@@ -735,7 +737,7 @@ Deno.serve(async (req) => {
         const ipVid = addV("receipt", ipDate, `Invoice Payment ${ipNum}`, entries);
         IPAYs.push({ id:ipId, payment_number:ipNum, invoice_id:invId, payment_date:ipDate, mode,
           amount_received:paidAmt, tds_amount:tdsAmt, total_settled:round2(paidAmt+tdsAmt),
-          reference:`TXN-${ipayc}`, voucher_id:ipVid, branch_id:BR_DHK, financial_year_id:FY, created_by:UID });
+          reference:`TXN-${ipayc}`, voucher_id:ipVid, branch_id:BR, financial_year_id:FY, created_by:UID });
         if (tdsAmt > 0) {
           tdsc++;
           TDSs.push({ id:U(), invoice_id:invId, payment_id:ipId, tds_pct:5, tds_amount:tdsAmt,
