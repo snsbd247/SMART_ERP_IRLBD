@@ -12,8 +12,13 @@ class AccVoucher extends Model
         'voucher_number', 'voucher_type', 'voucher_date', 'description',
         'total_amount', 'status', 'branch_id', 'financial_year_id',
         'created_by', 'approved_by', 'approved_at',
+        'deleted_at', 'deleted_by', 'prev_status',
     ];
-    protected $casts = ['voucher_date' => 'date', 'approved_at' => 'datetime'];
+    protected $casts = [
+        'voucher_date' => 'date',
+        'approved_at' => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
 
     public function entries() { return $this->hasMany(VoucherEntry::class, 'voucher_id'); }
     public function branch() { return $this->belongsTo(Branch::class); }

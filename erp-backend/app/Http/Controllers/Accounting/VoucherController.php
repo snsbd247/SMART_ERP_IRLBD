@@ -169,14 +169,41 @@ class VoucherController extends BaseController
     {
         $voucher = AccVoucher::findOrFail($id);
         $user = $request->user();
-        if ($voucher->status === 'approved' && !$user->isSuperAdmin()) return $this->error('Only Super Admin can delete approved vouchers', 403);
-        if ($voucher->status !== 'approved' && !$user->isSuperAdmin() && !$user->hasPermission($voucher->voucher_type . '.delete')) return $this->error('Forbidden', 403);
-        return DB::transaction(function () use ($voucher) {
-            $id = $voucher->id;
-            VoucherEntry::where('voucher_id', $id)->delete();
-            $voucher->delete();
-            return $this->success(['deleted' => true]);
-        });
+        // Soft delete is Super-Admin-only across every status, matching the
+        // Supabase edge function behaviour (see supabase/functions/voucher-api).
+        if (!$user->isSuperAdmin()) {
+            return $this->error('Only Super Admin can delete vouchers', 403);
+        }
+        if ($voucher->deleted_at) {
+            return $this->error('Voucher already deleted', 422);
+        }
+        $voucher->update([
+            'prev_status' => $voucher->status,
+            'status'      => 'deleted',
+            'deleted_at'  => now(),
+            'deleted_by'  => $user->id,
+        ]);
+        return $this->success(['deleted' => true, 'id' => $voucher->id]);
+    }
+
+    public function restore(Request $request, string $id)
+    {
+        $user = $request->user();
+        if (!$user->isSuperAdmin()) {
+            return $this->error('Only Super Admin can restore vouchers', 403);
+        }
+        $voucher = AccVoucher::findOrFail($id);
+        if (!$voucher->deleted_at) {
+            return $this->error('Voucher is not deleted', 422);
+        }
+        $restored = $voucher->prev_status ?: 'draft';
+        $voucher->update([
+            'status'      => $restored,
+            'prev_status' => null,
+            'deleted_at'  => null,
+            'deleted_by'  => null,
+        ]);
+        return $this->success(['restored' => true, 'status' => $restored]);
     }
 
     public function reopen(Request $request, string $id)
