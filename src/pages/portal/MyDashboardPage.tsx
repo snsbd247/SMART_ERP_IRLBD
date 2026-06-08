@@ -90,7 +90,7 @@ export default function MyDashboardPage() {
             <img src={employee.photo_url} alt="" className="w-14 h-14 rounded-full object-cover border-2 border-primary" />
           ) : (
             <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary border-2 border-primary/30">
-              {employee.first_name[0]}{employee.last_name[0]}
+              {(employee.first_name?.[0] || "") + (employee.last_name?.[0] || "") || "?"}
             </div>
           )}
           <div>
