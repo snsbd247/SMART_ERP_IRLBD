@@ -19,9 +19,11 @@ use Throwable;
  */
 class DeployController extends BaseController
 {
-    private const LOG_FILE   = '/var/log/smarterp-deploy.log';
-    private const PID_FILE   = '/var/run/smarterp-deploy.pid';
-    private const STATE_FILE = '/var/log/smarterp-deploy.state';
+    private const LOG_FILE    = '/var/log/smarterp-deploy.log';
+    private const PID_FILE    = '/var/run/smarterp-deploy.pid';
+    private const STATE_FILE  = '/var/log/smarterp-deploy.state';
+    private const STATUS_FILE = '/var/log/smarterp-deploy.status.json';
+    private const MARKER_FILE = '/var/backups/smarterp/.last-deploy';
 
     private function guard(Request $request)
     {
@@ -121,11 +123,13 @@ class DeployController extends BaseController
             $log = $this->tailLog(200);
 
             return response()->json([
-                'success'  => true,
-                'running'  => $running,
-                'state'    => $state,       // idle | running | success | failed
-                'log'      => $log,
-                'log_size' => is_file(self::LOG_FILE) ? @filesize(self::LOG_FILE) : 0,
+                'success'      => true,
+                'running'      => $running,
+                'state'        => $state,       // idle | running | success | failed | rolled_back
+                'log'          => $log,
+                'log_size'     => is_file(self::LOG_FILE) ? @filesize(self::LOG_FILE) : 0,
+                'details'      => $this->readStatusJson(),
+                'rollback_available' => is_file(self::MARKER_FILE),
             ]);
         } catch (Throwable $e) {
             if ($e instanceof HttpResponseException) throw $e;
