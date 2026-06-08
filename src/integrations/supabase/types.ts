@@ -870,6 +870,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "delivery_challans_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_challans_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "item_master"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "delivery_challans_vat_challan_id_fkey"
             columns: ["vat_challan_id"]
             isOneToOne: false
@@ -969,6 +983,13 @@ export type Database = {
             referencedRelation: "dispatches"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "dispatch_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "item_master"
+            referencedColumns: ["id"]
+          },
         ]
       }
       dispatch_po_allocations: {
@@ -1002,6 +1023,13 @@ export type Database = {
             columns: ["dispatch_item_id"]
             isOneToOne: false
             referencedRelation: "dispatch_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_po_allocations_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
           },
           {
@@ -1106,7 +1134,15 @@ export type Database = {
           updated_at?: string
           vehicle_no?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dispatches_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       employee_bank_info: {
         Row: {
@@ -2844,6 +2880,13 @@ export type Database = {
             referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "purchase_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "item_master"
+            referencedColumns: ["id"]
+          },
         ]
       }
       purchase_orders: {
@@ -2904,7 +2947,15 @@ export type Database = {
           updated_at?: string
           vat_amount?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       purchase_return_items: {
         Row: {
@@ -3292,6 +3343,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sales_invoice_items_v2_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "item_master"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sales_invoice_items_v2_source_vat_challan_item_id_fkey"
             columns: ["source_vat_challan_item_id"]
             isOneToOne: false
@@ -3428,6 +3486,13 @@ export type Database = {
           voucher_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sales_invoices_v2_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sales_invoices_v2_voucher_id_fkey"
             columns: ["voucher_id"]
@@ -4333,6 +4398,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "vat_challan_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "item_master"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "vat_challan_items_vat_challan_id_fkey"
             columns: ["vat_challan_id"]
             isOneToOne: false
@@ -4409,6 +4481,13 @@ export type Database = {
           vehicle_no?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "vat_challans_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vat_challans_dispatch_id_fkey"
             columns: ["dispatch_id"]
