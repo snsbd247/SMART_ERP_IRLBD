@@ -669,13 +669,26 @@ Deno.serve(async (req) => {
         DSPallocs.push({ id:U(), dispatch_item_id:diId, po_item_id:r.id, po_id:poId, allocated_qty:r.qty_ordered });
       });
 
+      // Stage controls the terminal workflow state so every queue page has visible demo data.
+      // 0: Customer Receive queue (DC=delivered)
+      // 1: HO Receive queue       (DC=sent_to_ho, CR done)
+      // 2: Invoice Queue          (DC=ho_received, CR+HR done, VAT challan still 'issued')
+      // 3: Fully invoiced + paid  (full flow, payment + TDS)
+      // 4: Invoiced unpaid/partial(invoice created, no/partial payment)
+      const stage = (_swIdx - 1) % 5;
+      const dcStatus = stage === 0 ? "delivered"
+                     : stage === 1 ? "sent_to_ho"
+                     : stage === 2 ? "ho_received"
+                     : "invoiced";
+      const vchStatus = stage >= 3 ? "invoiced" : "issued";
+
       // VAT Challan
       const vchId = U(); vchc++;
       const vchNum = `VCH-${fyTag}-${String(vchc).padStart(5,"0")}`;
       const vchDate = dspDate;
       VCHs.push({ id:vchId, challan_number:vchNum, challan_date:vchDate, customer_id:cust.id, dispatch_id:dspId,
         vehicle_no:pick(vehicles), driver_name:pick(drivers), subtotal:round2(poSub), vat_amount:round2(poVat),
-        grand_total:poGrand, source:"dispatch", status:"issued",
+        grand_total:poGrand, source:"dispatch", status:vchStatus,
         branch_id:BR, financial_year_id:FY, created_by:UID });
       const vciByProduct: Record<string,string> = {};
       poiData.forEach((r,idx) => {
@@ -689,22 +702,29 @@ Deno.serve(async (req) => {
         const dcId = U();
         DCs.push({ id:dcId, dc_number:`DC-${fyTag}-${String(dcc).padStart(5,"0")}`, dc_date:vchDate,
           vat_challan_id:vchId, vat_challan_item_id:vciId, product_id:r.product_id, qty:r.qty_ordered,
-          customer_id:cust.id, status:"invoiced", branch_id:BR, created_by:UID });
-        CRs.push({ id:U(), delivery_challan_id:dcId,
-          receive_date:ymd(new Date(new Date(vchDate).getTime() + RI(1,2)*86400000)),
-          received_by_name:cust.name, transport_info:"Truck", created_by:UID });
-        HRs.push({ id:U(), delivery_challan_id:dcId,
-          ho_receive_date:ymd(new Date(new Date(vchDate).getTime() + RI(3,5)*86400000)),
-          verified_by:UID, missing_flag:false });
+          customer_id:cust.id, status:dcStatus, branch_id:BR, created_by:UID });
+        if (stage >= 1) {
+          CRs.push({ id:U(), delivery_challan_id:dcId,
+            receive_date:ymd(new Date(new Date(vchDate).getTime() + RI(1,2)*86400000)),
+            received_by_name:cust.name, transport_info:"Truck", created_by:UID });
+        }
+        if (stage >= 2) {
+          HRs.push({ id:U(), delivery_challan_id:dcId,
+            ho_receive_date:ymd(new Date(new Date(vchDate).getTime() + RI(3,5)*86400000)),
+            verified_by:UID, missing_flag:false });
+        }
       });
 
-      // Invoice v2
+      // Invoice v2 — only for stages 3 & 4
+      if (stage < 3) continue;
+
       inv2c++;
       const invId = U();
       const invNum = `INV2-${fyTag}-${String(inv2c).padStart(5,"0")}`;
       const invDate = ymd(new Date(new Date(vchDate).getTime() + RI(5,10)*86400000));
-      const tdsAmt = R() < 0.5 ? round2(poSub * 0.05) : 0;
-      const paidAmt = R() < 0.7 ? round2(poGrand - tdsAmt) : 0;
+      const fullyPaid = stage === 3;
+      const tdsAmt = fullyPaid ? round2(poSub * 0.05) : (R() < 0.5 ? round2(poSub * 0.05) : 0);
+      const paidAmt = fullyPaid ? round2(poGrand - tdsAmt) : (R() < 0.5 ? round2((poGrand - tdsAmt) * 0.5) : 0);
       const dueAmt = round2(poGrand - paidAmt - tdsAmt);
       const invStatus = dueAmt <= 0.01 ? "paid" : (paidAmt > 0 ? "partial" : "issued");
       const invVid = addV("journal", invDate, `Tax Invoice ${invNum}`, [
