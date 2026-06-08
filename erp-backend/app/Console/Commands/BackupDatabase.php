@@ -221,7 +221,7 @@ class BackupDatabase extends Command
         fclose($handle);
     }
 
-    private function recordBackup(string $filename, string $path, string $type, string $method): void
+    private function recordBackup(string $filename, string $path, string $type, string $method, string $format = 'sql'): void
     {
         $fileSize = file_exists($path) ? filesize($path) : 0;
         $database = config('database.connections.mysql.database');
@@ -239,7 +239,7 @@ class BackupDatabase extends Command
             'id' => Str::uuid(),
             'file_name' => $filename,
             'backup_type' => $type,
-            'format' => 'sql',
+            'format' => $format,
             'status' => 'completed',
             'file_size' => $fileSize,
             'tables_count' => $tablesCount,
