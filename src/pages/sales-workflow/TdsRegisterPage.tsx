@@ -16,7 +16,7 @@ export default function TdsRegisterPage() {
   useEffect(() => { load(); }, [from, to]);
   const total = rows.reduce((s, r) => s + Number(r.tds_amount || 0), 0);
   const remove = async (r: any) => {
-    if (!confirm(`Delete TDS entry ${r.tds_number}? This does not refund the invoice automatically.`)) return;
+    if (!confirm(`Delete TDS entry for ${r.invoice?.invoice_number || "this invoice"}? This does not refund the invoice automatically.`)) return;
     const { error } = await swApi.deleteTds(r.id);
     if (error) return toast({ title: "Failed", description: (error as any).message, variant: "destructive" });
     toast({ title: "TDS entry deleted" });
@@ -35,11 +35,10 @@ export default function TdsRegisterPage() {
       </Card>
       <Card>
         <Table>
-          <TableHeader><TableRow><TableHead>TDS No</TableHead><TableHead>Invoice</TableHead><TableHead>Customer</TableHead><TableHead>Cert No</TableHead><TableHead>Cert Date</TableHead><TableHead className="text-right">TDS %</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Invoice</TableHead><TableHead>Customer</TableHead><TableHead>Cert No</TableHead><TableHead>Cert Date</TableHead><TableHead className="text-right">TDS %</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
           <TableBody>
             {rows.map((r) => (
               <TableRow key={r.id}>
-                <TableCell>{r.tds_number}</TableCell>
                 <TableCell>{r.invoice?.invoice_number}</TableCell>
                 <TableCell>{r.invoice?.customer?.name}</TableCell>
                 <TableCell>{r.certificate_no}</TableCell>
@@ -54,7 +53,7 @@ export default function TdsRegisterPage() {
                 </TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No TDS entries</TableCell></TableRow>}
+            {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No TDS entries</TableCell></TableRow>}
           </TableBody>
         </Table>
         <div className="p-4 text-right font-bold">Total TDS: {total.toFixed(2)}</div>
