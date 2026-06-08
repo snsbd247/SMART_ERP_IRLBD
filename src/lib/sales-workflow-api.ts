@@ -326,24 +326,6 @@ export const swApi = {
     await audit("dispatch", "update", { id }, "edit");
     return { error };
   },
-  async deleteDispatch(id: string) {
-    const { data: items } = await supabase.from("dispatch_items").select("id, allocations:dispatch_po_allocations(po_item_id, allocated_qty)").eq("dispatch_id", id);
-    for (const it of items || []) {
-      for (const a of (it as any).allocations || []) {
-        const { data: poi } = await supabase.from("purchase_order_items").select("qty_remaining,qty_delivered").eq("id", a.po_item_id).maybeSingle();
-        if (poi) {
-          await supabase.from("purchase_order_items").update({
-            qty_remaining: Number(poi.qty_remaining) + Number(a.allocated_qty),
-            qty_delivered: Math.max(0, Number(poi.qty_delivered) - Number(a.allocated_qty)),
-          }).eq("id", a.po_item_id);
-        }
-      }
-    }
-    const { error } = await supabase.from("dispatches").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
-    await audit("dispatch", "update", { id }, "delete");
-    return { error };
-  },
-
   async deleteVatChallan(id: string) {
     const { data: dcs } = await supabase.from("delivery_challans").select("id,status").eq("vat_challan_id", id);
     if ((dcs || []).some((d: any) => ["customer_received", "ho_received", "invoiced"].includes(d.status))) {
