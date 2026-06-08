@@ -50,16 +50,27 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:payment.view')->get('vouchers/payment', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::middleware('permission:receipt.view')->get('vouchers/receipt', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::middleware('permission:contra.view')->get('vouchers/contra', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
+        Route::middleware('permission:journal.view')->get('admin/vouchers/journal', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
+        Route::middleware('permission:payment.view')->get('admin/vouchers/payment', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
+        Route::middleware('permission:receipt.view')->get('admin/vouchers/receipt', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
+        Route::middleware('permission:contra.view')->get('admin/vouchers/contra', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::get('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show']);
+        Route::get('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show']);
 
         Route::middleware('permission:journal.create')->post('vouchers/journal', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
         Route::middleware('permission:payment.create')->post('vouchers/payment', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
         Route::middleware('permission:receipt.create')->post('vouchers/receipt', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
         Route::middleware('permission:contra.create')->post('vouchers/contra', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
+        Route::middleware('permission:journal.create')->post('admin/vouchers/journal', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
+        Route::middleware('permission:payment.create')->post('admin/vouchers/payment', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
+        Route::middleware('permission:receipt.create')->post('admin/vouchers/receipt', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
+        Route::middleware('permission:contra.create')->post('admin/vouchers/contra', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
 
         Route::middleware('permission:accounts.edit')->group(function () {
             Route::post('vouchers/{id}/approve', [\App\Http\Controllers\Accounting\VoucherController::class, 'approve']);
             Route::post('vouchers/{id}/reject', [\App\Http\Controllers\Accounting\VoucherController::class, 'reject']);
+            Route::post('admin/vouchers/{id}/approve', [\App\Http\Controllers\Accounting\VoucherController::class, 'approve']);
+            Route::post('admin/vouchers/{id}/reject', [\App\Http\Controllers\Accounting\VoucherController::class, 'reject']);
         });
 
         // ─── Reports ────────────────────────────────────────────

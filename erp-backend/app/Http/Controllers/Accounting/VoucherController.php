@@ -16,7 +16,12 @@ class VoucherController extends BaseController
 
     public function index(Request $request)
     {
-        return $this->paginated($this->repo->all($request->all()));
+        $filters = $request->all();
+        $type = collect(explode('/', trim($request->path(), '/')))->last();
+        if (in_array($type, ['journal', 'payment', 'receipt', 'contra'], true)) {
+            $filters['voucher_type'] = $type;
+        }
+        return $this->paginated($this->repo->all($filters));
     }
 
     public function store(Request $request)
