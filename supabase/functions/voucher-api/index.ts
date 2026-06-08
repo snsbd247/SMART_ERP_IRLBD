@@ -139,12 +139,13 @@ Deno.serve(async (req) => {
     switch (action) {
       // ============ LIST VOUCHERS ============
       case "list": {
-        const { voucher_type } = body;
-        const { data, error } = await admin
+        const { voucher_type, include_deleted } = body;
+        let q = admin
           .from("acc_vouchers")
           .select("*")
-          .eq("voucher_type", voucher_type || "journal")
-          .order("created_at", { ascending: false });
+          .eq("voucher_type", voucher_type || "journal");
+        if (!include_deleted) q = q.is("deleted_at", null);
+        const { data, error } = await q.order("created_at", { ascending: false });
         if (error) return err(error.message, 500);
 
         const voucherIds = (data || []).map((v: any) => v.id);
