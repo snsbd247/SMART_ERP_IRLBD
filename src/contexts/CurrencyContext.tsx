@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { isLaravelMode } from "@/lib/laravel-auth";
 
 interface CurrencyConfig {
   currency_name: string;
@@ -38,11 +37,6 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchConfig = async () => {
-    if (isLaravelMode()) {
-      setLoading(false);
-      return;
-    }
-
     const { data } = await supabase
       .from("company_settings" as any)
       .select("currency_name, currency_code, currency_symbol, currency_position")

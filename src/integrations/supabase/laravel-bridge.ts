@@ -117,6 +117,17 @@ async function call<T>(method: string, url: string, body?: any): Promise<Result<
   }
 }
 
+function unwrapSuccessPayload(json: any): any {
+  return json && typeof json === "object" && "success" in json && "data" in json ? json.data : json;
+}
+
+function projectRow(row: any, select?: string): any {
+  if (!row || !select) return row;
+  const out: Record<string, any> = {};
+  select.split(",").map((c) => c.trim()).filter(Boolean).forEach((col) => { out[col] = row[col]; });
+  return out;
+}
+
 /* ──────────────────────────────────────────────────────────────────────── */
 /*  Query builder — chainable, then-able (so `await` works directly).        */
 /* ──────────────────────────────────────────────────────────────────────── */
@@ -210,6 +221,23 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
 
   // -- execute
   private async run(): Promise<Result<T>> {
+    // Company settings has a single Laravel controller-backed row whose UUID is
+    // not literally "default". Keep existing Supabase-style callers working.
+    if (this.table === "company_settings") {
+      if (this._mode === "select") {
+        const res = await call<any>("GET", "/v1/settings/company");
+        if (res.error) return res as Result<T>;
+        const row = projectRow(unwrapSuccessPayload(res.data), this._select);
+        return { data: (this._single ? row : (row ? [row] : [])) as T, error: null };
+      }
+      if (this._mode === "update" || this._mode === "upsert") {
+        const res = await call<any>("PUT", "/v1/settings/company", this._body);
+        if (res.error) return res as Result<T>;
+        const row = unwrapSuccessPayload(res.data);
+        return { data: (this._single ? row : [row]) as T, error: null };
+      }
+    }
+
     // Resolve PostgREST-style relation filters (e.g. "acc_vouchers.status")
     // into a concrete `<fk> IN (...)` filter on the main table. The Laravel
     // generic endpoint does not support joins, so we emulate inner-join +
@@ -300,7 +328,7 @@ class StorageBucket {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) return { data: null, error: { message: json?.message || `HTTP ${res.status}` } };
-      const stored = json?.data?.path || path;
+      const stored = String(json?.data?.path || path).replace(new RegExp(`^${this.bucket}/`), "");
       return { data: { path: stored }, error: null };
     } catch (e: any) {
       return { data: null, error: { message: e?.message || "Upload failed" } };
@@ -311,7 +339,8 @@ class StorageBucket {
     const base = getApiBaseUrl() || "";
     // Public storage symlink: /storage/<bucket>/<path>
     const origin = base.replace(/\/api$/, "");
-    return { data: { publicUrl: `${origin}/storage/${this.bucket}/${path}` } };
+    const cleanPath = path.replace(new RegExp(`^${this.bucket}/`), "").replace(/^\/+/, "");
+    return { data: { publicUrl: `${origin}/storage/${this.bucket}/${cleanPath}` } };
   }
 
   async remove(paths: string[]): Promise<Result<{ deleted: number }>> {
@@ -367,9 +396,12 @@ export const laravelSupabaseBridge = {
   storage: {
     from(bucket: string) { return new StorageBucket(bucket); },
     async listBuckets(): Promise<Result<Array<{ id: string; name: string; public: boolean }>>> {
-      // Laravel mode does not expose a bucket-listing endpoint; return empty so
-      // callers fall back to data-URL / direct-upload paths gracefully.
-      return { data: [], error: null };
+      return { data: [
+        { id: "company-assets", name: "company-assets", public: true },
+        { id: "branding", name: "branding", public: true },
+        { id: "employee-photos", name: "employee-photos", public: true },
+        { id: "backups", name: "backups", public: false },
+      ], error: null };
     },
     async getBucket(id: string): Promise<Result<{ id: string; name: string; public: boolean }>> {
       return { data: { id, name: id, public: true }, error: null };
