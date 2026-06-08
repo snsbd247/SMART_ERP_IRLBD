@@ -384,7 +384,7 @@ export default function GithubDeploySyncPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">GitHub Deploy Sync</h1>
         <p className="text-muted-foreground mt-1">
-          Pull &amp; Deploy, dry-run, rollback এবং deploy ফাইলগুলোর GitHub sync স্ট্যাটাস।
+          Pull &amp; Deploy, dry-run, rollback, and GitHub sync status of deploy files.
         </p>
       </div>
 
