@@ -63,6 +63,7 @@ import SmsSettingsPage from "./pages/admin/SmsSettingsPage";
 import MessagingPage from "./pages/messaging/MessagingPage";
 // HRM Pages
 import EmployeesPage from "./pages/hrm/EmployeesPage";
+import EmployeeApprovalsPage from "./pages/hrm/EmployeeApprovalsPage";
 import DepartmentsPage from "./pages/hrm/DepartmentsPage";
 import DesignationsPage from "./pages/hrm/DesignationsPage";
 import AttendancePage from "./pages/hrm/AttendancePage";
@@ -235,6 +236,7 @@ const App = () => (
                 {/* ─── HRM ──────────────────────────────────────── */}
                 <Route path="/hrm/dashboard" element={<P perm="hrm.view"><HrDashboardPage /></P>} />
                 <Route path="/hrm/employees" element={<P perm="hrm.view"><EmployeesPage /></P>} />
+                <Route path="/hrm/employee-approvals" element={<P perm="hrm.edit"><EmployeeApprovalsPage /></P>} />
                 <Route path="/hrm/employees/:id" element={<P perm="hrm.view"><EmployeeProfilePage /></P>} />
                 <Route path="/hrm/departments" element={<P perm="hrm.view"><DepartmentsPage /></P>} />
                 <Route path="/hrm/sections" element={<P perm="hrm.view"><SectionsPage /></P>} />

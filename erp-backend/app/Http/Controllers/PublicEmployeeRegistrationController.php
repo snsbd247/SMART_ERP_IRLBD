@@ -58,7 +58,8 @@ class PublicEmployeeRegistrationController extends BaseController
             $code = $this->nextEmployeeCode();
             return Employee::create(array_merge($data, [
                 'employee_code' => $code,
-                'status' => 'inactive', // pending admin approval
+                'status' => 'inactive', // not yet active
+                'approval_status' => 'pending', // awaiting admin approval
                 'employment_type' => 'permanent',
                 'salary' => 0,
             ]));
