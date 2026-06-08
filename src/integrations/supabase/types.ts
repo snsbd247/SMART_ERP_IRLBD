@@ -2118,6 +2118,8 @@ export type Database = {
           amount: number
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           notes: string | null
           party_id: string
@@ -2131,6 +2133,8 @@ export type Database = {
           amount?: number
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           notes?: string | null
           party_id: string
@@ -2144,6 +2148,8 @@ export type Database = {
           amount?: number
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           notes?: string | null
           party_id?: string
@@ -2886,9 +2892,12 @@ export type Database = {
           branch_id: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           notes: string | null
           payment_method: string | null
+          prev_status: string | null
           purchase_date: string
           purchase_number: string
           status: string
@@ -2899,9 +2908,12 @@ export type Database = {
           branch_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           notes?: string | null
           payment_method?: string | null
+          prev_status?: string | null
           purchase_date?: string
           purchase_number: string
           status?: string
@@ -2912,9 +2924,12 @@ export type Database = {
           branch_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           notes?: string | null
           payment_method?: string | null
+          prev_status?: string | null
           purchase_date?: string
           purchase_number?: string
           status?: string
@@ -3246,6 +3261,7 @@ export type Database = {
           created_by: string | null
           customer_id: string
           deleted_at: string | null
+          deleted_by: string | null
           due_amount: number
           financial_year_id: string | null
           grand_total: number
@@ -3256,6 +3272,7 @@ export type Database = {
           notes: string | null
           paid_amount: number
           payment_terms_days: number
+          prev_status: string | null
           status: string
           subtotal: number
           tds_amount: number
@@ -3272,6 +3289,7 @@ export type Database = {
           created_by?: string | null
           customer_id: string
           deleted_at?: string | null
+          deleted_by?: string | null
           due_amount?: number
           financial_year_id?: string | null
           grand_total?: number
@@ -3282,6 +3300,7 @@ export type Database = {
           notes?: string | null
           paid_amount?: number
           payment_terms_days?: number
+          prev_status?: string | null
           status?: string
           subtotal?: number
           tds_amount?: number
@@ -3298,6 +3317,7 @@ export type Database = {
           created_by?: string | null
           customer_id?: string
           deleted_at?: string | null
+          deleted_by?: string | null
           due_amount?: number
           financial_year_id?: string | null
           grand_total?: number
@@ -3308,6 +3328,7 @@ export type Database = {
           notes?: string | null
           paid_amount?: number
           payment_terms_days?: number
+          prev_status?: string | null
           status?: string
           subtotal?: number
           tds_amount?: number
