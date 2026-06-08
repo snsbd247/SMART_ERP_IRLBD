@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getApiBaseUrl } from "@/lib/laravel-auth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,13 +36,34 @@ export default function PublicEmployeeRegistration() {
   const [done, setDone] = useState<{ code: string } | null>(null);
 
   useEffect(() => {
+    const loadFromSupabase = async () => {
+      try {
+        const { data: cs } = await supabase
+          .from("company_settings" as any)
+          .select("company_name, company_logo_url, public_employee_registration_enabled")
+          .maybeSingle();
+        const row: any = cs || {};
+        setConfig({
+          enabled: !!row.public_employee_registration_enabled,
+          company_name: row.company_name || "Company",
+          company_logo_url: row.company_logo_url || null,
+          branches: [],
+          departments: [],
+          designations: [],
+        });
+      } catch {
+        setConfig(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     const base = getApiBaseUrl();
-    if (!base) { setLoading(false); return; }
+    if (!base) { loadFromSupabase(); return; }
     fetch(`${base}/v1/public/employee-registration/config`)
-      .then(r => r.json())
-      .then(p => setConfig((p?.data ?? p) as Config))
-      .catch(() => setConfig(null))
-      .finally(() => setLoading(false));
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(p => { setConfig((p?.data ?? p) as Config); setLoading(false); })
+      .catch(() => loadFromSupabase());
   }, []);
 
   const submit = async (e: React.FormEvent) => {
