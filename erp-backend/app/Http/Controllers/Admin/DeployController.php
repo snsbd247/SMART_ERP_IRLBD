@@ -174,8 +174,10 @@ class DeployController extends BaseController
     {
         $tail = $this->tailLog(20);
         foreach (array_reverse(explode("\n", $tail)) as $line) {
-            if (stripos($line, 'DEPLOY OK') !== false)    return 'success';
-            if (stripos($line, 'DEPLOY FAILED') !== false) return 'failed';
+            if (stripos($line, 'ROLLBACK OK') !== false)     return 'rolled_back';
+            if (stripos($line, 'ROLLBACK FAILED') !== false) return 'failed';
+            if (stripos($line, 'DEPLOY OK') !== false)       return 'success';
+            if (stripos($line, 'DEPLOY FAILED') !== false)   return 'failed';
         }
         return 'idle';
     }
