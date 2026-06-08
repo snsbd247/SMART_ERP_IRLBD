@@ -96,7 +96,7 @@ export default function FundsPage() {
 
   // Save setting
   const saveSetting = async () => {
-    if (!form.employee_id) { toast.error("Employee নির্বাচন করুন"); return; }
+    if (!form.employee_id) { toast.error("Select employee"); return; }
 
     const payload = {
       employee_id: form.employee_id,
@@ -112,15 +112,15 @@ export default function FundsPage() {
     if (editId) {
       const { error } = await supabase.from("employee_fund_settings" as any).update(payload as any).eq("id", editId);
       if (error) { toast.error(error.message); return; }
-      toast.success("Fund setting আপডেট হয়েছে");
+      toast.success("Fund setting updated");
     } else {
       const { error } = await supabase.from("employee_fund_settings" as any).insert(payload as any);
       if (error) {
-        if (error.message.includes("unique")) toast.error("এই Employee এর জন্য এই Fund ইতোমধ্যে সেটাপ করা আছে");
+        if (error.message.includes("unique")) toast.error("This fund is already set up for this employee");
         else toast.error(error.message);
         return;
       }
-      toast.success("Fund setting যুক্ত হয়েছে");
+      toast.success("Fund setting added");
     }
 
     setSettingDialog(false);
@@ -130,9 +130,9 @@ export default function FundsPage() {
 
   // Save manual transaction
   const saveTx = async () => {
-    if (!txForm.employee_id) { toast.error("Employee নির্বাচন করুন"); return; }
+    if (!txForm.employee_id) { toast.error("Select employee"); return; }
     const total = Number(txForm.employee_amount) + Number(txForm.employer_amount);
-    if (total <= 0) { toast.error("Amount দিন"); return; }
+    if (total <= 0) { toast.error("Enter amount"); return; }
 
     const { error } = await supabase.from("fund_transactions" as any).insert({
       employee_id: txForm.employee_id,
@@ -146,7 +146,7 @@ export default function FundsPage() {
     } as any);
     if (error) { toast.error(error.message); return; }
 
-    toast.success("Transaction রেকর্ড হয়েছে");
+    toast.success("Transaction recorded");
     setTxDialog(false);
     fetchData();
   };
@@ -180,7 +180,7 @@ export default function FundsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Provident Fund & Savings Fund</h1>
-          <p className="text-muted-foreground">Employee fund management ও contribution tracking</p>
+          <p className="text-muted-foreground">Employee fund management and contribution tracking</p>
         </div>
         {isAdmin && (
           <div className="flex gap-2">
@@ -259,7 +259,7 @@ export default function FundsPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredSettings.length === 0 ? (
-                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">কোনো Fund Setup পাওয়া যায়নি</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No fund setup found</TableCell></TableRow>
                   ) : filteredSettings.map(s => (
                     <TableRow key={s.id}>
                       <TableCell className="font-medium">{getEmpName(s.employee_id)}</TableCell>
@@ -309,7 +309,7 @@ export default function FundsPage() {
                 </TableHeader>
                 <TableBody>
                   {transactions.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">কোনো Transaction নেই</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No transactions</TableCell></TableRow>
                   ) : transactions.map(t => (
                     <TableRow key={t.id}>
                       <TableCell>{new Date(t.created_at).toLocaleDateString()}</TableCell>
@@ -350,7 +350,7 @@ export default function FundsPage() {
                   {(() => {
                     const empIds = [...new Set(settings.map(s => s.employee_id))];
                     if (empIds.length === 0) return (
-                      <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">কোনো Fund Member নেই</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No fund members</TableCell></TableRow>
                     );
                     return empIds.map(empId => {
                       const pf = getBalance(empId, "provident_fund");
@@ -376,14 +376,14 @@ export default function FundsPage() {
       <Dialog open={settingDialog} onOpenChange={setSettingDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editId ? "Fund Setting আপডেট" : "নতুন Fund Setup"}</DialogTitle>
-            <DialogDescription>Employee এর জন্য Provident Fund / Savings Fund কনফিগার করুন</DialogDescription>
+            <DialogTitle>{editId ? "Update fund setting" : "New fund setup"}</DialogTitle>
+            <DialogDescription>Configure Provident Fund / Savings Fund for the employee</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Employee</Label>
               <Select value={form.employee_id} onValueChange={v => setForm(f => ({ ...f, employee_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Employee নির্বাচন করুন" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
                 <SelectContent>
                   {employees.map(e => (
                     <SelectItem key={e.id} value={e.id}>{e.first_name} {e.last_name} ({e.employee_code})</SelectItem>
@@ -406,18 +406,18 @@ export default function FundsPage() {
               <Select value={form.calculation_type} onValueChange={v => setForm(f => ({ ...f, calculation_type: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="percentage">Basic Salary এর %</SelectItem>
+                  <SelectItem value="percentage">% of basic salary</SelectItem>
                   <SelectItem value="fixed">Fixed Amount</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Employee Rate {form.calculation_type === "percentage" ? "(%)" : "(৳)"}</Label>
+                <Label>Employee Rate {form.calculation_type === "percentage" ? "(%)" : "(BDT)"}</Label>
                 <Input type="number" value={form.employee_rate} onChange={e => setForm(f => ({ ...f, employee_rate: Number(e.target.value) }))} />
               </div>
               <div>
-                <Label>Employer Rate {form.calculation_type === "percentage" ? "(%)" : "(৳)"}</Label>
+                <Label>Employer Rate {form.calculation_type === "percentage" ? "(%)" : "(BDT)"}</Label>
                 <Input type="number" value={form.employer_rate} onChange={e => setForm(f => ({ ...f, employer_rate: Number(e.target.value) }))} />
               </div>
             </div>
@@ -446,13 +446,13 @@ export default function FundsPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Manual Fund Transaction</DialogTitle>
-            <DialogDescription>ম্যানুয়াল contribution, withdrawal, বা adjustment রেকর্ড করুন</DialogDescription>
+            <DialogDescription>Record manual contribution, withdrawal, or adjustment</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Employee</Label>
               <Select value={txForm.employee_id} onValueChange={v => setTxForm(f => ({ ...f, employee_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Employee নির্বাচন করুন" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
                 <SelectContent>
                   {employees.map(e => (
                     <SelectItem key={e.id} value={e.id}>{e.first_name} {e.last_name} ({e.employee_code})</SelectItem>

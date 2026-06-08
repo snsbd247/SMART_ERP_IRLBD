@@ -695,7 +695,7 @@ const IFRSFinancialStatements = () => {
 
       {!generated ? (
         <Card><CardContent className="p-8 text-center text-muted-foreground">
-          IFRS comparative format এ Profit & Loss, Balance Sheet, Equity Changes, Cash Flow এবং Notes দেখতে "Generate" চাপুন।
+          Click "Generate Report" to view Profit & Loss, Balance Sheet, Equity Changes, Cash Flow and Notes in IFRS comparative format.
         </CardContent></Card>
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
