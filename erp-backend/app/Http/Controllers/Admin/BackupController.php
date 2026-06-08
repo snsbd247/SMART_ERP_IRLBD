@@ -248,7 +248,6 @@ class BackupController extends BaseController
         if ($request->isMethod('get')) {
             $settings = DB::table('backup_settings')->where('id', 'default')->first();
             if (!$settings) {
-                // Create default settings
                 DB::table('backup_settings')->insert([
                     'id' => 'default',
                     'auto_backup_enabled' => false,
@@ -259,10 +258,14 @@ class BackupController extends BaseController
                 ]);
                 $settings = DB::table('backup_settings')->where('id', 'default')->first();
             }
-            return $this->success($settings);
+            // Mask secrets but indicate whether they are configured
+            $payload = (array) $settings;
+            $payload['gdrive_client_secret_set'] = !empty($payload['gdrive_client_secret'] ?? null);
+            $payload['gdrive_refresh_token_set'] = !empty($payload['gdrive_refresh_token'] ?? null);
+            unset($payload['gdrive_client_secret'], $payload['gdrive_refresh_token']);
+            return $this->success($payload);
         }
 
-        // Update settings
         if (!$request->user()->isSuperAdmin()) {
             return $this->error('Only Super Admins can update settings.', 403);
         }
@@ -271,14 +274,92 @@ class BackupController extends BaseController
             'auto_backup_enabled' => 'nullable|boolean',
             'schedule_interval' => 'nullable|in:hourly,daily,weekly',
             'retention_days' => 'nullable|integer|min:1|max:365',
+            'gdrive_enabled' => 'nullable|boolean',
+            'gdrive_client_id' => 'nullable|string|max:500',
+            'gdrive_client_secret' => 'nullable|string|max:500',
+            'gdrive_refresh_token' => 'nullable|string|max:2000',
+            'gdrive_folder_id' => 'nullable|string|max:200',
+            'gdrive_format' => 'nullable|in:sql,json',
         ]);
 
-        DB::table('backup_settings')->where('id', 'default')->update(array_merge(
-            array_filter($data, fn($v) => !is_null($v)),
-            ['updated_by' => $request->user()->id, 'updated_at' => now()]
-        ));
+        // Only update fields that were actually provided so blank inputs don't wipe secrets
+        $update = [];
+        foreach ($data as $k => $v) {
+            if ($request->exists($k) && $v !== null && $v !== '') {
+                $update[$k] = $v;
+            } elseif ($request->exists($k) && in_array($k, ['auto_backup_enabled', 'gdrive_enabled'], true)) {
+                $update[$k] = (bool) $v ? 1 : 0;
+            }
+        }
+        $update['updated_by'] = $request->user()->id;
+        $update['updated_at'] = now();
 
+        DB::table('backup_settings')->where('id', 'default')->update($update);
         return $this->success(null, 'Settings updated');
+    }
+
+    /**
+     * Test Google Drive credentials without persisting them.
+     */
+    public function gdriveTest(Request $request): JsonResponse
+    {
+        if (!$request->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admins can test Google Drive.', 403);
+        }
+        $data = $request->validate([
+            'client_id' => 'nullable|string',
+            'client_secret' => 'nullable|string',
+            'refresh_token' => 'nullable|string',
+            'folder_id' => 'nullable|string',
+        ]);
+        // Fall back to saved values for fields the form left blank
+        $saved = DB::table('backup_settings')->where('id', 'default')->first();
+        try {
+            $svc = new \App\Services\GoogleDriveService(
+                $data['client_id'] ?: ($saved->gdrive_client_id ?? ''),
+                $data['client_secret'] ?: ($saved->gdrive_client_secret ?? ''),
+                $data['refresh_token'] ?: ($saved->gdrive_refresh_token ?? ''),
+                $data['folder_id'] ?? ($saved->gdrive_folder_id ?? null),
+            );
+            $info = $svc->test();
+            return $this->success([
+                'user' => $info['user'] ?? null,
+                'storageQuota' => $info['storageQuota'] ?? null,
+            ], 'Google Drive credentials are valid');
+        } catch (\Throwable $e) {
+            return $this->error('Google Drive test failed: ' . $e->getMessage(), 422);
+        }
+    }
+
+    /**
+     * Upload an existing backup file (by history id) to Google Drive on demand.
+     */
+    public function gdriveUpload(string $id, Request $request): JsonResponse
+    {
+        if (!$request->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admins can upload to Google Drive.', 403);
+        }
+        $record = DB::table('backup_history')->where('id', $id)->first();
+        if (!$record || !$record->storage_path) return $this->error('Backup not found.', 404);
+        $full = storage_path('app/' . $record->storage_path);
+        if (!file_exists($full)) return $this->error('Backup file missing on disk.', 404);
+
+        $settings = DB::table('backup_settings')->where('id', 'default')->first();
+        try {
+            $svc = \App\Services\GoogleDriveService::fromSettings($settings);
+            $mime = ($record->format ?? 'sql') === 'json' ? 'application/json' : 'application/sql';
+            $meta = $svc->upload($full, $record->file_name, $mime);
+            DB::table('backup_settings')->where('id', 'default')->update([
+                'last_gdrive_backup_at' => now(),
+                'last_gdrive_error' => null,
+            ]);
+            return $this->success($meta, 'Uploaded to Google Drive');
+        } catch (\Throwable $e) {
+            DB::table('backup_settings')->where('id', 'default')->update([
+                'last_gdrive_error' => substr($e->getMessage(), 0, 500),
+            ]);
+            return $this->error('Upload failed: ' . $e->getMessage(), 500);
+        }
     }
 
     private function tryMysqlRestore(string $path): bool
