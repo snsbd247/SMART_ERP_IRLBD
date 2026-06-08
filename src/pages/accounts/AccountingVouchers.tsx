@@ -954,6 +954,13 @@ const AccountingVouchers = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AuditLogViewer
+        open={auditOpen}
+        onOpenChange={setAuditOpen}
+        module="vouchers"
+        recordId={auditRecordId}
+        title={auditRecordId ? "Voucher History" : "Vouchers Audit Log"}
+      />
     </div>
   );
 };
