@@ -21,7 +21,17 @@ class VoucherController extends BaseController
         if (in_array($type, ['journal', 'payment', 'receipt', 'contra'], true)) {
             $filters['voucher_type'] = $type;
         }
-        return $this->paginated($this->repo->all($filters));
+        $paginator = $this->repo->all($filters);
+        $paginator->getCollection()->transform(function ($voucher) {
+            $voucher->ledger_accounts = $voucher->entries
+                ->map(fn ($entry) => optional($entry->account)->account_name)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+            return $voucher;
+        });
+        return $this->paginated($paginator);
     }
 
     public function store(Request $request)
