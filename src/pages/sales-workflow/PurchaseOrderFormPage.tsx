@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { swApi } from "@/lib/sales-workflow-api";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { Plus, Trash2 } from "lucide-react";
 
 export default function PurchaseOrderFormPage() {
   const nav = useNavigate();
+  const { id } = useParams();
+  const isEdit = !!id;
   const [customers, setCustomers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [form, setForm] = useState({
@@ -28,7 +30,21 @@ export default function PurchaseOrderFormPage() {
   useEffect(() => {
     supabase.from("customers").select("id,name").order("name").then(({ data }) => setCustomers(data || []));
     supabase.from("item_master").select("id,name:item_name,sku:item_code").order("item_name").then(({ data }) => setProducts(data || []));
-  }, []);
+    if (isEdit) {
+      swApi.getPO(id!).then(({ data }) => {
+        if (!data) return;
+        setForm({
+          po_date: data.po_date || "",
+          delivery_date: data.delivery_date || "",
+          customer_id: data.customer_id || "",
+          notes: data.notes || "",
+        });
+        setItems((data.items || []).map((it: any) => ({
+          product_id: it.product_id, qty_ordered: it.qty_ordered, rate: it.rate, vat_pct: it.vat_pct,
+        })));
+      });
+    }
+  }, [id]);
 
   const updateItem = (i: number, k: string, v: any) => {
     setItems((arr) => arr.map((row, idx) => (idx === i ? { ...row, [k]: v } : row)));
@@ -38,11 +54,13 @@ export default function PurchaseOrderFormPage() {
     if (!form.customer_id) return toast({ title: "Select customer", variant: "destructive" });
     if (items.some((i) => !i.product_id || !i.qty_ordered)) return toast({ title: "Invalid items", variant: "destructive" });
     setSaving(true);
-    const { data, error } = await swApi.createPO(form, items);
+    const { data, error } = isEdit
+      ? await swApi.updatePO(id!, form, items)
+      : await swApi.createPO(form, items);
     setSaving(false);
-    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
-    toast({ title: `PO ${data?.po_number} created` });
-    nav(`/sales-workflow/po/${data?.id}`);
+    if (error) return toast({ title: "Failed", description: (error as any).message, variant: "destructive" });
+    toast({ title: isEdit ? "PO updated" : `PO ${(data as any)?.po_number} created` });
+    nav(`/sales-workflow/po/${(data as any)?.id || id}`);
   };
 
   const subtotal = items.reduce((s, i) => s + Number(i.qty_ordered || 0) * Number(i.rate || 0), 0);
@@ -50,7 +68,7 @@ export default function PurchaseOrderFormPage() {
 
   return (
     <div className="p-6 space-y-4 max-w-5xl">
-      <h1 className="text-2xl font-bold">New Purchase Order</h1>
+      <h1 className="text-2xl font-bold">{isEdit ? "Edit Purchase Order" : "New Purchase Order"}</h1>
       <Card className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div><Label>PO Date</Label><Input type="date" value={form.po_date} onChange={(e) => setForm({ ...form, po_date: e.target.value })} /></div>
         <div><Label>Delivery Date</Label><Input type="date" value={form.delivery_date} onChange={(e) => setForm({ ...form, delivery_date: e.target.value })} /></div>
@@ -92,7 +110,7 @@ export default function PurchaseOrderFormPage() {
       </Card>
       <div className="flex gap-2 justify-end">
         <Button variant="outline" onClick={() => nav(-1)}>Cancel</Button>
-        <Button onClick={submit} disabled={saving}>{saving ? "Saving..." : "Create PO"}</Button>
+        <Button onClick={submit} disabled={saving}>{saving ? "Saving..." : isEdit ? "Update PO" : "Create PO"}</Button>
       </div>
     </div>
   );
