@@ -13,9 +13,10 @@ class Employee extends Model
         'employee_code', 'first_name', 'last_name', 'email', 'mobile', 'address',
         'national_id', 'photo_url', 'department_id', 'designation_id', 'branch_id',
         'shift_id', 'user_id', 'joining_date', 'employment_type', 'salary', 'status',
+        'approval_status', 'approved_at', 'approved_by', 'rejection_reason',
     ];
 
-    protected $casts = ['joining_date' => 'date'];
+    protected $casts = ['joining_date' => 'date', 'approved_at' => 'datetime'];
 
     public function department() { return $this->belongsTo(Department::class); }
     public function designation() { return $this->belongsTo(Designation::class); }
