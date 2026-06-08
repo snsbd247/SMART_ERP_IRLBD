@@ -20,7 +20,7 @@ export default function InvoiceRegisterReport() {
 
   return (
     <ReportShell title="Invoice Register" filters={filters} onExport={() => exportCsv("invoice-register.csv", flat, Object.keys(flat[0] || { invoice_number: "" }))}>
-      <FilterBar filters={filters} setFilters={setFilters} customers={customers} showStatus statusOptions={["draft","posted","partially_paid","paid","cancelled"]} />
+      <FilterBar filters={filters} setFilters={setFilters} customers={customers} showStatus statusOptions={["draft","posted","bill_submitted","partial_paid","paid","cancelled"]} />
       <Card>
         <Table>
           <TableHeader><TableRow><TableHead>Invoice</TableHead><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead className="text-right">Subtotal</TableHead><TableHead className="text-right">VAT</TableHead><TableHead className="text-right">Total</TableHead><TableHead className="text-right">Paid</TableHead><TableHead className="text-right">Due</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
