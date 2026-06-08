@@ -25,7 +25,9 @@ export function useCompanySettings() {
   const fetchSettings = async () => {
     try {
       const base = getApiBaseUrl();
+      const hasToken = typeof window !== "undefined" && !!(localStorage.getItem("laravel_auth_token") || localStorage.getItem("auth_token"));
       if (base) {
+        if (!hasToken) { setLoading(false); return; }
         const res = await fetch(`${base}/v1/settings/company`, { headers: getLaravelAuthHeaders() });
         if (res.ok) {
           const payload = await res.json().catch(() => ({}));
@@ -34,6 +36,8 @@ export function useCompanySettings() {
           setLoading(false);
           return;
         }
+        setLoading(false);
+        return;
       }
       const { data } = await supabase
         .from("company_settings" as any)
