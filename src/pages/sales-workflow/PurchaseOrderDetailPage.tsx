@@ -53,6 +53,7 @@ export default function PurchaseOrderDetailPage() {
       </Card>
       <div className="flex gap-2">
         <Link to="/sales-workflow/po"><Button variant="outline">Back</Button></Link>
+        <Link to={`/sales-workflow/po/${po.id}/edit`}><Button variant="outline">Edit</Button></Link>
         <Link to={`/sales-workflow/dispatch/new?po=${po.id}`}><Button>Create Dispatch</Button></Link>
       </div>
     </div>
