@@ -14,7 +14,10 @@ class Employee extends Model
         'national_id', 'photo_url', 'department_id', 'designation_id', 'branch_id',
         'shift_id', 'user_id', 'joining_date', 'employment_type', 'salary', 'status',
         'approval_status', 'approved_at', 'approved_by', 'rejection_reason',
+        'proposed_password',
     ];
+
+    protected $hidden = ['proposed_password'];
 
     protected $casts = ['joining_date' => 'date', 'approved_at' => 'datetime'];
 
