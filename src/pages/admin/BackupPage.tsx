@@ -222,14 +222,18 @@ const BackupPage = () => {
     try {
       setProgress(50);
       if (USE_LARAVEL) {
-        const res = await laravelApiCall("/v1/backups/create", { method: "POST", headers: { "Content-Type": "application/json" } });
+        const res = await laravelApiCall("/v1/backups/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ format: backupFormat, upload_to_drive: uploadToDrive }),
+        });
         const result = await res.json();
         toast({ title: "Backup created", description: `${result.data?.file_name || "Backup"} created successfully.` });
       } else {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("Not authenticated");
         const { data, error } = await supabase.functions.invoke("create-backup", {
-          body: { format: "sql", backup_type: "manual" },
+          body: { format: backupFormat, backup_type: "manual" },
         });
         if (error) throw error;
         if (data && !data.success) throw new Error(data.error || "Backup failed");
