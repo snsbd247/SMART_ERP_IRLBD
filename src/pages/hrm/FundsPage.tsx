@@ -112,15 +112,15 @@ export default function FundsPage() {
     if (editId) {
       const { error } = await supabase.from("employee_fund_settings" as any).update(payload as any).eq("id", editId);
       if (error) { toast.error(error.message); return; }
-      toast.success("Fund setting আপডেট হয়েছে");
+      toast.success("Fund setting updated");
     } else {
       const { error } = await supabase.from("employee_fund_settings" as any).insert(payload as any);
       if (error) {
-        if (error.message.includes("unique")) toast.error("এই Employee এর জন্য এই Fund ইতোমধ্যে সেটাপ করা আছে");
+        if (error.message.includes("unique")) toast.error("This fund is already set up for this employee");
         else toast.error(error.message);
         return;
       }
-      toast.success("Fund setting যুক্ত হয়েছে");
+      toast.success("Fund setting added");
     }
 
     setSettingDialog(false);
@@ -146,7 +146,7 @@ export default function FundsPage() {
     } as any);
     if (error) { toast.error(error.message); return; }
 
-    toast.success("Transaction রেকর্ড হয়েছে");
+    toast.success("Transaction recorded");
     setTxDialog(false);
     fetchData();
   };
@@ -180,7 +180,7 @@ export default function FundsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Provident Fund & Savings Fund</h1>
-          <p className="text-muted-foreground">Employee fund management ও contribution tracking</p>
+          <p className="text-muted-foreground">Employee fund management and contribution tracking</p>
         </div>
         {isAdmin && (
           <div className="flex gap-2">
@@ -413,11 +413,11 @@ export default function FundsPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Employee Rate {form.calculation_type === "percentage" ? "(%)" : "(৳)"}</Label>
+                <Label>Employee Rate {form.calculation_type === "percentage" ? "(%)" : "(BDT)"}</Label>
                 <Input type="number" value={form.employee_rate} onChange={e => setForm(f => ({ ...f, employee_rate: Number(e.target.value) }))} />
               </div>
               <div>
-                <Label>Employer Rate {form.calculation_type === "percentage" ? "(%)" : "(৳)"}</Label>
+                <Label>Employer Rate {form.calculation_type === "percentage" ? "(%)" : "(BDT)"}</Label>
                 <Input type="number" value={form.employer_rate} onChange={e => setForm(f => ({ ...f, employer_rate: Number(e.target.value) }))} />
               </div>
             </div>
