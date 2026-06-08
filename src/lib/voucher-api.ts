@@ -5,14 +5,14 @@ const FUNCTION_NAME = "voucher-api";
 
 // Detect Laravel-mode (VPS) vs Supabase-mode (Lovable preview).
 function isLaravelMode(): boolean {
-  return (import.meta as any).env?.VITE_LARAVEL_ONLY_MODE === "true"
-    || typeof window !== "undefined" && window.location.hostname !== "localhost"
-       && !window.location.hostname.includes("lovable");
+  return (import.meta as any).env?.VITE_LARAVEL_ONLY_MODE === "true" || Boolean(getApiBaseUrl());
 }
 
 async function laravelFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
-  const base = getApiBaseUrl().replace(/\/$/, "");
-  const res = await fetch(`${base}/v1/admin/${path.replace(/^\//, "")}`, {
+  const apiBase = getApiBaseUrl();
+  if (!apiBase) throw new Error("Laravel API URL not configured");
+  const base = apiBase.replace(/\/$/, "");
+  const res = await fetch(`${base}/v1/${path.replace(/^\//, "")}`, {
     ...init,
     headers: {
       Accept: "application/json",
