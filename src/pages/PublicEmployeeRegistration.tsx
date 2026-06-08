@@ -15,6 +15,7 @@ interface Config {
   enabled: boolean;
   company_name: string;
   company_logo_url: string | null;
+  next_employee_code?: string | null;
   branches: Option[];
   departments: Option[];
   designations: Option[];
@@ -24,6 +25,7 @@ const empty = {
   first_name: "", last_name: "", email: "", mobile: "", national_id: "",
   address: "", department_id: "", designation_id: "", branch_id: "",
   joining_date: new Date().toISOString().split("T")[0],
+  password: "", password_confirm: "",
 };
 
 export default function PublicEmployeeRegistration() {
@@ -33,7 +35,7 @@ export default function PublicEmployeeRegistration() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(empty);
-  const [done, setDone] = useState<{ code: string } | null>(null);
+  const [done, setDone] = useState<{ code: string; username?: string } | null>(null);
 
   useEffect(() => {
     const loadFromSupabase = async () => {
@@ -72,6 +74,16 @@ export default function PublicEmployeeRegistration() {
       toast({ title: "Missing fields", description: "First name, last name and joining date are required.", variant: "destructive" });
       return;
     }
+    if (form.password || form.password_confirm) {
+      if (form.password.length < 6) {
+        toast({ title: "Weak password", description: "Password must be at least 6 characters.", variant: "destructive" });
+        return;
+      }
+      if (form.password !== form.password_confirm) {
+        toast({ title: "Passwords don't match", description: "Please re-enter the same password.", variant: "destructive" });
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const base = getApiBaseUrl();
@@ -87,11 +99,14 @@ export default function PublicEmployeeRegistration() {
           department_id: form.department_id || null,
           designation_id: form.designation_id || null,
           branch_id: form.branch_id || null,
+          password: form.password || null,
+          password_confirm: undefined,
         }),
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.message || `HTTP ${res.status}`);
-      setDone({ code: payload?.data?.employee_code || "" });
+      const data = payload?.data ?? payload;
+      setDone({ code: data?.employee_code || "", username: data?.username_preview });
     } catch (err: any) {
       toast({ title: "Submission failed", description: err.message, variant: "destructive" });
     } finally {
@@ -131,6 +146,7 @@ export default function PublicEmployeeRegistration() {
             <CardDescription>
               Your registration has been received and is pending administrator approval.
               {done.code && <><br /><span className="font-mono text-foreground">Employee Code: {done.code}</span></>}
+              {done.username && <><br /><span className="font-mono text-foreground">Login Username: {done.username}</span><br /><span className="text-xs">After approval, your login info will be sent to your mobile number.</span></>}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -187,6 +203,20 @@ export default function PublicEmployeeRegistration() {
               </Select>
             </div>
             <div className="md:col-span-2"><Label>Address</Label><Input value={form.address} onChange={e => set("address", e.target.value)} /></div>
+
+            <div className="md:col-span-2 mt-2 p-3 rounded-lg border border-dashed bg-muted/30">
+              <div className="text-sm font-medium mb-2">Employee Login Account (optional)</div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Set a password to request a login account. Your username will be auto-generated from your Employee ID
+                {config.next_employee_code ? <> (e.g. <span className="font-mono">{config.next_employee_code}</span>)</> : null}.
+                You'll receive login info by SMS after admin approval.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><Label>Password</Label><Input type="password" autoComplete="new-password" value={form.password} onChange={e => set("password", e.target.value)} minLength={6} placeholder="Min 6 characters" /></div>
+                <div><Label>Confirm Password</Label><Input type="password" autoComplete="new-password" value={form.password_confirm} onChange={e => set("password_confirm", e.target.value)} minLength={6} /></div>
+              </div>
+            </div>
+
             <div className="md:col-span-2 flex items-center justify-between pt-2">
               <button type="button" className="text-sm text-primary hover:underline" onClick={() => navigate("/login")}>Back to Login</button>
               <Button type="submit" disabled={submitting}>
