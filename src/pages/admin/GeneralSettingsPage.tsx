@@ -13,10 +13,32 @@ import type { CompanySettings } from "@/hooks/useCompanySettings";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useModules, type ModuleKey } from "@/contexts/ModuleContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
+import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode, isSupabaseDisabledError, markSupabaseUnavailable } from "@/lib/laravel-auth";
 
 interface Branch { id: string; name: string; }
 interface FinancialYear { id: string; name: string; is_active: boolean; }
+
+const fallbackSettings: CompanySettings = {
+  id: "default",
+  company_name: "My Company",
+  company_logo_url: null,
+  address: null,
+  phone: null,
+  email: null,
+  website: null,
+  currency_name: "US Dollar",
+  currency_code: "USD",
+  currency_symbol: "$",
+  currency_position: "before",
+  default_branch_id: null,
+  default_financial_year_id: null,
+};
+
+const apiBase = () => getApiBaseUrl() || "";
+
+function unwrapLaravelRow(payload: any): CompanySettings | null {
+  return (payload?.data ?? payload ?? null) as CompanySettings | null;
+}
 
 const GeneralSettingsPage = () => {
   const [settings, setSettings] = useState<CompanySettings | null>(null);
@@ -29,17 +51,38 @@ const GeneralSettingsPage = () => {
   const { modules, isModuleEnabled, toggleModule } = useModules();
   const { isSuperAdmin } = useAuth();
 
+  const loadLaravelSettings = async () => {
+    const res = await fetch(`${apiBase()}/v1/settings/company`, { headers: getLaravelAuthHeaders() });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.message || `HTTP ${res.status}`);
+    return unwrapLaravelRow(payload) || fallbackSettings;
+  };
+
+  const loadSupabaseSettings = async () => {
+    const { data, error } = await supabase
+      .from("company_settings" as any)
+      .select("*")
+      .eq("id", "default")
+      .maybeSingle();
+    if (error) {
+      if (isSupabaseDisabledError(error) && getApiBaseUrl()) {
+        markSupabaseUnavailable(error.message);
+        return loadLaravelSettings();
+      }
+      throw error;
+    }
+    return ((data as any) || fallbackSettings) as CompanySettings;
+  };
+
   useEffect(() => {
     const init = async () => {
       try {
-        const [sRes, bRes, yRes] = await Promise.all([
-          isLaravelMode()
-            ? fetch(`${getApiBaseUrl()}/v1/settings/company`, { headers: getLaravelAuthHeaders() }).then((r) => r.json())
-            : supabase.from("company_settings" as any).select("*").eq("id", "default").single(),
+        const [settingsRow, bRes, yRes] = await Promise.all([
+          isLaravelMode() ? loadLaravelSettings() : loadSupabaseSettings(),
           supabase.from("branches").select("id, name").eq("status", "active"),
           supabase.from("financial_years").select("id, name, is_active").order("start_date", { ascending: false }),
         ]);
-        setSettings(((sRes as any).data || null) as any);
+        setSettings(settingsRow);
         setBranches((bRes.data || []) as Branch[]);
         setYears((yRes.data || []) as FinancialYear[]);
       } finally {
@@ -54,13 +97,13 @@ const GeneralSettingsPage = () => {
     setSettings({ ...settings, [field]: value });
   };
 
-  const handleSave = async () => {
+  const handleSave = async (attempt = 1) => {
     if (!settings) return;
     setSaving(true);
     const { id, ...rest } = settings;
     try {
       if (isLaravelMode()) {
-        const res = await fetch(`${getApiBaseUrl()}/v1/settings/company`, {
+        const res = await fetch(`${apiBase()}/v1/settings/company`, {
           method: "PUT",
           headers: { ...getLaravelAuthHeaders(), "Content-Type": "application/json" },
           body: JSON.stringify(rest),
@@ -69,11 +112,19 @@ const GeneralSettingsPage = () => {
         if (!res.ok) throw new Error(payload?.message || `HTTP ${res.status}`);
         setSettings(payload?.data || settings);
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("company_settings" as any)
-          .update({ ...rest, updated_at: new Date().toISOString() } as any)
-          .eq("id", "default");
-        if (error) throw error;
+          .upsert({ id: "default", ...rest, updated_at: new Date().toISOString() } as any, { onConflict: "id" })
+          .select()
+          .maybeSingle();
+        if (error) {
+          if (isSupabaseDisabledError(error) && getApiBaseUrl() && attempt === 1) {
+            markSupabaseUnavailable(error.message);
+            return handleSave(2);
+          }
+          throw error;
+        }
+        if (data) setSettings(data as any);
       }
       toast.success("Settings saved successfully");
       refetchCurrency();
