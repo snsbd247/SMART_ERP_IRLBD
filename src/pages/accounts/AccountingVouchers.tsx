@@ -464,7 +464,8 @@ const AccountingVouchers = () => {
   const branchMap = new Map(branches.map((b) => [b.id, b.name]));
 
   const actionLabels: Record<string, { title: string; desc: string; confirm: string }> = {
-    delete: { title: "Delete Approved Voucher", desc: "This will permanently delete this approved voucher and all its entries. This action is irreversible and will be logged.", confirm: "Delete Voucher" },
+    delete: { title: "Delete Voucher", desc: "This will move the voucher to the trash. It will no longer appear in reports or ledgers. Only a Super Admin can restore it later. This action is logged.", confirm: "Move to Trash" },
+    restore: { title: "Restore Voucher", desc: "This will restore the voucher to its previous status and make it visible in reports again. This action is logged.", confirm: "Restore Voucher" },
     reopen: { title: "Reopen Voucher", desc: "This will change the voucher status back to draft, allowing it to be edited and re-submitted. This action will be logged.", confirm: "Reopen Voucher" },
     reverse: { title: "Reverse Voucher", desc: "This will create a new reversal voucher with swapped debit/credit entries to offset the original transaction. Both vouchers will remain in the system.", confirm: "Create Reversal" },
   };
