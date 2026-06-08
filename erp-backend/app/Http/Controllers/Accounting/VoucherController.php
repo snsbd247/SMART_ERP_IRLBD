@@ -167,10 +167,14 @@ class VoucherController extends BaseController
 
     public function deleteApproved(Request $request, string $id)
     {
-        if (!$request->user()->isSuperAdmin()) return $this->error('Only Super Admin can delete approved vouchers', 403);
-        return DB::transaction(function () use ($id) {
+        $voucher = AccVoucher::findOrFail($id);
+        $user = $request->user();
+        if ($voucher->status === 'approved' && !$user->isSuperAdmin()) return $this->error('Only Super Admin can delete approved vouchers', 403);
+        if ($voucher->status !== 'approved' && !$user->isSuperAdmin() && !$user->hasPermission($voucher->voucher_type . '.delete')) return $this->error('Forbidden', 403);
+        return DB::transaction(function () use ($voucher) {
+            $id = $voucher->id;
             VoucherEntry::where('voucher_id', $id)->delete();
-            AccVoucher::findOrFail($id)->delete();
+            $voucher->delete();
             return $this->success(['deleted' => true]);
         });
     }
