@@ -1341,7 +1341,7 @@
       "is_active": true
     },
     {
-      "shortcut_code": "RPVD",
+      "shortcut_code": "RPVC",
       "page_name": "PO vs VAT Challan",
       "page_url": "/sales-workflow/reports/po-vs-vat-challan",
       "module_name": "reports",
