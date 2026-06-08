@@ -214,13 +214,30 @@ export const swApi = {
       status: "posted", branch_id: payload.branch_id, notes: payload.notes,
     }).select().single();
     if (error || !inv) return { data: null, error };
-    const invItems = (items || []).map((i: any) => ({
-      invoice_id: inv.id, product_id: i.product_id, qty: i.qty, rate: i.rate,
-      vat_pct: i.vat_pct, vat_amount: i.vat_amount, line_total: i.line_total,
-      source_vat_challan_item_id: i.id,
-    }));
-    if (invItems.length) await supabase.from("sales_invoice_items_v2").insert(invItems);
-    await supabase.from("invoice_challans").insert(vatChallanIds.map((vcId) => ({ invoice_id: inv.id, vat_challan_id: vcId })));
+    const invItems = (items || []).map((i: any, idx: number) => {
+      const qty = Number(i.qty || 0);
+      const rate = Number(i.rate || 0);
+      const line_subtotal = Number(i.line_subtotal ?? qty * rate);
+      const vat_amount = Number(i.vat_amount ?? line_subtotal * Number(i.vat_pct || 0) / 100);
+      const line_total = Number(i.line_total ?? line_subtotal + vat_amount);
+      return {
+        invoice_id: inv.id, product_id: i.product_id, qty, rate,
+        vat_pct: Number(i.vat_pct || 0), line_subtotal, vat_amount, line_total,
+        source_vat_challan_item_id: i.id, sort_order: idx,
+      };
+    });
+    if (invItems.length) {
+      const { error: itemsErr } = await supabase.from("sales_invoice_items_v2").insert(invItems);
+      if (itemsErr) {
+        await supabase.from("sales_invoices_v2").delete().eq("id", inv.id);
+        return { data: null, error: itemsErr };
+      }
+    }
+    const { error: chErr } = await supabase.from("invoice_challans").insert(vatChallanIds.map((vcId) => ({ invoice_id: inv.id, vat_challan_id: vcId })));
+    if (chErr) {
+      await supabase.from("sales_invoices_v2").delete().eq("id", inv.id);
+      return { data: null, error: chErr };
+    }
     await supabase.from("vat_challans").update({ status: "invoiced" }).in("id", vatChallanIds);
     await supabase.from("delivery_challans").update({ status: "invoiced" }).in("vat_challan_id", vatChallanIds);
     await audit("invoice_processing", "create", inv, `Invoice ${inv.invoice_number}`);
