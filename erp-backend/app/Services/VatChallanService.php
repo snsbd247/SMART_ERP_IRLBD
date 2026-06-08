@@ -106,12 +106,13 @@ class VatChallanService
             }
 
             // Update PO status if fully delivered
-            if ($po) {
-                $po->refresh()->load('items');
-                $remainingTotal = $po->items->sum('qty_remaining');
-                if ($remainingTotal <= 0.0001 && $po->status === 'open') {
-                    $po->update(['status' => 'completed']);
-                }
+            $po->refresh()->load('items');
+            $remainingTotal = (float) $po->items->sum('qty_remaining');
+            $deliveredTotal = (float) $po->items->sum('qty_delivered');
+            if ($remainingTotal <= 0.0001) {
+                $po->update(['status' => 'closed']);
+            } elseif ($deliveredTotal > 0) {
+                $po->update(['status' => 'partial']);
             }
 
             return $challan->load('items', 'deliveryChallans');
@@ -131,6 +132,9 @@ class VatChallanService
                         $poi->save();
                     }
                 }
+            }
+            if ($challan->purchase_order_id) {
+                app(PurchaseOrderService::class)->recomputeStatus($challan->purchase_order_id);
             }
             $challan->deliveryChallans()->delete();
             $challan->items()->delete();
