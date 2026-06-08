@@ -4376,7 +4376,9 @@ export type Database = {
           id: string
           line_subtotal: number
           line_total: number
+          po_qty_consumed: number
           product_id: string
+          purchase_order_item_id: string | null
           qty: number
           rate: number
           sort_order: number
@@ -4388,7 +4390,9 @@ export type Database = {
           id?: string
           line_subtotal?: number
           line_total?: number
+          po_qty_consumed?: number
           product_id: string
+          purchase_order_item_id?: string | null
           qty?: number
           rate?: number
           sort_order?: number
@@ -4400,7 +4404,9 @@ export type Database = {
           id?: string
           line_subtotal?: number
           line_total?: number
+          po_qty_consumed?: number
           product_id?: string
+          purchase_order_item_id?: string | null
           qty?: number
           rate?: number
           sort_order?: number
@@ -4414,6 +4420,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "item_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vat_challan_items_purchase_order_item_id_fkey"
+            columns: ["purchase_order_item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_order_items"
             referencedColumns: ["id"]
           },
           {
@@ -4441,6 +4454,7 @@ export type Database = {
           grand_total: number
           id: string
           notes: string | null
+          purchase_order_id: string | null
           source: string
           status: string
           subtotal: number
@@ -4463,6 +4477,7 @@ export type Database = {
           grand_total?: number
           id?: string
           notes?: string | null
+          purchase_order_id?: string | null
           source?: string
           status?: string
           subtotal?: number
@@ -4485,6 +4500,7 @@ export type Database = {
           grand_total?: number
           id?: string
           notes?: string | null
+          purchase_order_id?: string | null
           source?: string
           status?: string
           subtotal?: number
@@ -4505,6 +4521,13 @@ export type Database = {
             columns: ["dispatch_id"]
             isOneToOne: false
             referencedRelation: "dispatches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vat_challans_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
           },
         ]
