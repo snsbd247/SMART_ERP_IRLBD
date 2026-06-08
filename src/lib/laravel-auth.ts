@@ -16,9 +16,14 @@ export function getApiBaseUrl(): string | null {
     // VPS / custom production domains use the same-origin Laravel API.
     // Lovable preview/published domains stay in Cloud Supabase mode unless an
     // explicit VITE_API_BASE_URL is provided at build time.
-    const laravelHosts = new Set(["erp.irlbd.com", "accounting.syncsolutionbd.com"]);
     const isLovableHost = /(^|\.)lovable(project)?\.(app|dev|com)$/.test(host) || host.endsWith(".lovable.app") || host.endsWith(".lovable.dev") || host.endsWith(".lovableproject.com");
-    if (laravelHosts.has(host) || (!isLovableHost && host !== "localhost" && host !== "127.0.0.1")) {
+    // If a Laravel auth token is already stored in this browser, the user is
+    // signed into the Laravel backend on the current origin — keep using it.
+    let hasLaravelToken = false;
+    try {
+      hasLaravelToken = !!(window.localStorage.getItem("laravel_auth_token") || window.localStorage.getItem("auth_token"));
+    } catch { /* ignore */ }
+    if (!isLovableHost && (hasLaravelToken || (host !== "localhost" && host !== "127.0.0.1"))) {
       return `${window.location.origin}/api`;
     }
   }
