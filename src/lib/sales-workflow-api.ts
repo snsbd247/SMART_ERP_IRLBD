@@ -390,4 +390,30 @@ export const swApi = {
     const { error } = await supabase.from("tds_entries").delete().eq("id", id);
     return { error };
   },
+
+  // -------- Bill Submit (customer HO) --------
+  async submitBill(invoiceId: string, payload: { bill_submitted_at: string; payment_terms_days?: number; bill_submission_ref?: string }) {
+    const days = Number(payload.payment_terms_days ?? 30);
+    const submittedAt = payload.bill_submitted_at;
+    const dueDate = new Date(submittedAt);
+    dueDate.setDate(dueDate.getDate() + days);
+    const bill_due_date = dueDate.toISOString().slice(0, 10);
+    const { data: cur } = await supabase.from("sales_invoices_v2").select("status").eq("id", invoiceId).maybeSingle();
+    const newStatus = (cur as any)?.status === "posted" ? "bill_submitted" : (cur as any)?.status;
+    const { error } = await supabase.from("sales_invoices_v2").update({
+      bill_submitted_at: submittedAt,
+      bill_due_date,
+      payment_terms_days: days,
+      bill_submission_ref: payload.bill_submission_ref ?? null,
+      status: newStatus,
+    } as any).eq("id", invoiceId);
+    if (error) return { error };
+    await supabase.from("invoice_status_logs").insert({
+      invoice_id: invoiceId,
+      new_status: "bill_submitted",
+      notes: `Bill submitted to customer HO (ref: ${payload.bill_submission_ref ?? "-"}). Due in ${days} days (${bill_due_date}).`,
+    } as any);
+    await audit("invoice_processing", "update", { id: invoiceId }, `Bill submitted, due ${bill_due_date}`);
+    return { error: null };
+  },
 };

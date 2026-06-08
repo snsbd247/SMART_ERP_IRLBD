@@ -77,4 +77,33 @@ class InvoiceV2Controller extends BaseController
         SalesInvoiceV2::findOrFail($id)->delete();
         return $this->success(['deleted' => true]);
     }
+
+    /**
+     * Mark bill submitted to customer HO. Computes bill_due_date = bill_submitted_at + payment_terms_days.
+     */
+    public function submitBill(Request $r, string $id)
+    {
+        $r->validate([
+            'bill_submitted_at' => 'required|date',
+            'payment_terms_days' => 'nullable|integer|min:0|max:365',
+            'bill_submission_ref' => 'nullable|string|max:100',
+        ]);
+        $inv = SalesInvoiceV2::findOrFail($id);
+        $days = (int) ($r->payment_terms_days ?? $inv->payment_terms_days ?? 30);
+        $submittedAt = $r->bill_submitted_at;
+        $inv->update([
+            'bill_submitted_at' => $submittedAt,
+            'payment_terms_days' => $days,
+            'bill_due_date' => date('Y-m-d', strtotime($submittedAt . " +{$days} days")),
+            'bill_submission_ref' => $r->bill_submission_ref,
+            'status' => $inv->status === 'posted' ? 'bill_submitted' : $inv->status,
+        ]);
+        \App\Models\InvoiceStatusLog::create([
+            'invoice_id' => $inv->id,
+            'new_status' => 'bill_submitted',
+            'changed_by' => $r->user()?->id,
+            'notes' => "Bill submitted to customer HO (ref: {$r->bill_submission_ref}). Due in {$days} days.",
+        ]);
+        return $this->success($inv->fresh());
+    }
 }
