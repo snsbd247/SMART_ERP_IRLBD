@@ -285,8 +285,9 @@ const BackupPage = () => {
   const handleRestoreFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.name.endsWith(".sql")) {
-      toast({ title: "Invalid file", description: "Only .sql backup files are allowed.", variant: "destructive" });
+    const lower = file.name.toLowerCase();
+    if (!lower.endsWith(".sql") && !lower.endsWith(".json")) {
+      toast({ title: "Invalid file", description: "Only .sql or .json backup files are allowed.", variant: "destructive" });
       e.target.value = ""; return;
     }
     setRestoreFile(file);
