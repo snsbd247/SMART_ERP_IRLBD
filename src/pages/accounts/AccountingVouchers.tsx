@@ -308,8 +308,9 @@ const AccountingVouchers = () => {
   };
 
   const canDeleteVoucher = (v: Voucher) => {
+    // Super Admin can permanently delete a voucher in ANY status.
+    if (isSuperAdmin) return true;
     if (v.status === "draft" || v.status === "rejected") return canDeleteForType(activeTab);
-    if (v.status === "approved") return isSuperAdmin;
     return false;
   };
 
