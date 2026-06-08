@@ -39,21 +39,29 @@ class UserController extends BaseController
             'email' => 'nullable|email',
             'password' => 'required|min:6',
             'branch_id' => 'nullable|exists:branches,id',
+            'branch_ids' => 'array',
+            'branch_ids.*' => 'exists:branches,id',
             'role_ids' => 'array',
             'role_ids.*' => 'exists:custom_roles,id',
         ]);
         $data['password'] = Hash::make($data['password']);
-        $user = User::create(collect($data)->except('role_ids')->toArray());
+        $branchIds = $data['branch_ids'] ?? [];
+        // Default primary branch to first selected if not explicitly set
+        if (empty($data['branch_id']) && !empty($branchIds)) {
+            $data['branch_id'] = $branchIds[0];
+        }
+        $user = User::create(collect($data)->except(['role_ids', 'branch_ids'])->toArray());
         if (!empty($data['role_ids'])) $user->roles()->sync($data['role_ids']);
+        $user->branches()->sync($branchIds ?: ($data['branch_id'] ? [$data['branch_id']] : []));
 
         $this->auditService->logCreate('users', $user->id, $user->toArray(), $request);
 
-        return $this->created($user->load('roles'));
+        return $this->created($user->load('roles', 'branches'));
     }
 
     public function show(string $id)
     {
-        return $this->success(User::with('roles.permissions', 'branch')->findOrFail($id));
+        return $this->success(User::with('roles.permissions', 'branch', 'branches')->findOrFail($id));
     }
 
     public function update(Request $request, string $id)
@@ -64,11 +72,19 @@ class UserController extends BaseController
         $data = $request->only('name', 'email', 'phone', 'branch_id', 'status');
         if ($request->password) $data['password'] = Hash::make($request->password);
         $user->update($data);
-        if ($request->has('role_ids')) $user->roles()->sync($request->role_ids);
+        if ($request->has('role_ids')) $user->roles()->sync($request->role_ids ?? []);
+        if ($request->has('branch_ids')) {
+            $ids = $request->input('branch_ids') ?: [];
+            $user->branches()->sync($ids);
+            // Keep primary branch_id consistent: if current branch_id not in list, switch to first
+            if (!empty($ids) && !in_array((int) $user->branch_id, array_map('intval', $ids), true)) {
+                $user->update(['branch_id' => $ids[0]]);
+            }
+        }
 
         $this->auditService->logUpdate('users', $user->id, $oldData, $user->fresh()->toArray(), $request);
 
-        return $this->success($user->load('roles'));
+        return $this->success($user->load('roles', 'branches'));
     }
 
     /**
