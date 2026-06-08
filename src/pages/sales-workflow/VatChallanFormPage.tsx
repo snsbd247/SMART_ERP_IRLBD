@@ -23,7 +23,7 @@ export default function VatChallanFormPage() {
 
   useEffect(() => {
     supabase.from("customers").select("id,name").order("name").then(({ data }) => setCustomers(data || []));
-    supabase.from("item_master").select("id,name").order("name").then(({ data }) => setProducts(data || []));
+    supabase.from("item_master").select("id,name:item_name").order("item_name").then(({ data }) => setProducts(data || []));
     if (form.dispatch_id) {
       supabase.from("dispatches").select("customer_id,vehicle_no,driver_name").eq("id", form.dispatch_id).maybeSingle().then(({ data }) => {
         if (data) setForm((f) => ({ ...f, customer_id: data.customer_id, vehicle_no: data.vehicle_no || "", driver_name: data.driver_name || "" }));
