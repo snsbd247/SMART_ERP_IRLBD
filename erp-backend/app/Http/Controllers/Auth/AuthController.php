@@ -134,8 +134,12 @@ class AuthController extends BaseController
     {
         $request->validate([
             'current_password' => 'nullable',
-            'new_password' => 'required|min:6|confirmed',
+            'new_password' => 'required|string|min:8|max:100|confirmed',
         ]);
+
+        if ($err = \App\Support\PasswordPolicy::validate($request->new_password)) {
+            return $this->error($err, 422);
+        }
 
         $user = $request->user();
         if ($request->filled('current_password') && !Hash::check($request->current_password, $user->password)) {
@@ -143,9 +147,97 @@ class AuthController extends BaseController
         }
 
         $user->update(['password' => Hash::make($request->new_password)]);
-
         $this->activityService->log('password_change', 'Password changed', $request, $user->id);
 
         return $this->success(null, 'Password changed');
+    }
+
+    /**
+     * Public: request a password-reset OTP. Sent to user's phone (employee accounts use mobile).
+     * Always returns success to avoid leaking which usernames exist.
+     */
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['username' => 'required|string|max:100']);
+        $login = trim((string) $request->username);
+
+        $user = User::where('username', $login)->orWhere('email', $login)->first();
+        if ($user && !empty($user->phone)) {
+            // Invalidate previous unused OTPs
+            \DB::table('password_reset_otps')
+                ->where('user_id', $user->id)->whereNull('used_at')
+                ->update(['used_at' => now()]);
+
+            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            \DB::table('password_reset_otps')->insert([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'user_id' => $user->id,
+                'code_hash' => Hash::make($code),
+                'channel' => 'sms',
+                'expires_at' => now()->addMinutes(15),
+                'ip_address' => $request->ip(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            try {
+                app(\App\Services\SmsService::class)->sendSMS(
+                    $user->phone,
+                    "Your password reset code is: {$code}. It expires in 15 minutes. If you did not request this, ignore this message.",
+                    'password_reset',
+                    (string) $user->id
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Password reset SMS failed: ' . $e->getMessage());
+            }
+        }
+
+        return $this->success(null, 'If the account exists, a reset code has been sent to the registered mobile number.');
+    }
+
+    /**
+     * Public: verify OTP + set a new password.
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'username' => 'required|string|max:100',
+            'code' => 'required|string|size:6',
+            'new_password' => 'required|string|min:8|max:100|confirmed',
+        ]);
+
+        if ($err = \App\Support\PasswordPolicy::validate($request->new_password)) {
+            return $this->error($err, 422);
+        }
+
+        $user = User::where('username', $request->username)->orWhere('email', $request->username)->first();
+        if (!$user) return $this->error('Invalid code or username', 422);
+
+        $otp = \DB::table('password_reset_otps')
+            ->where('user_id', $user->id)
+            ->whereNull('used_at')
+            ->where('expires_at', '>', now())
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if (!$otp) return $this->error('Invalid or expired code', 422);
+        if ($otp->attempts >= 5) return $this->error('Too many attempts. Request a new code.', 429);
+
+        if (!Hash::check($request->code, $otp->code_hash)) {
+            \DB::table('password_reset_otps')->where('id', $otp->id)->increment('attempts');
+            return $this->error('Invalid or expired code', 422);
+        }
+
+        \DB::transaction(function () use ($user, $otp, $request) {
+            $user->update(['password' => Hash::make($request->new_password)]);
+            \DB::table('password_reset_otps')->where('id', $otp->id)->update(['used_at' => now()]);
+            // Invalidate any other outstanding tokens for this user
+            \DB::table('password_reset_otps')
+                ->where('user_id', $user->id)->whereNull('used_at')
+                ->update(['used_at' => now()]);
+        });
+
+        $this->activityService->log('password_reset', 'Password reset via OTP', $request, $user->id);
+        return $this->success(null, 'Password has been reset. You can now log in.');
     }
 }
