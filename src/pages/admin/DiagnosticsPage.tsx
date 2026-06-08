@@ -433,7 +433,7 @@ const DiagnosticsPage = () => {
           {backup?.latest ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div><div className="text-xs text-muted-foreground">Last Backup</div>
-                <div>{formatDistanceToNow(new Date(backup.latest.created_at), { addSuffix: true })}</div>
+                <div>{(() => { const d = backup.latest.created_at ? new Date(backup.latest.created_at) : null; return d && !isNaN(d.getTime()) ? formatDistanceToNow(d, { addSuffix: true }) : "—"; })()}</div>
               </div>
               <div><div className="text-xs text-muted-foreground">File</div>
                 <div className="font-mono text-xs truncate">{backup.latest.file_name}</div>
