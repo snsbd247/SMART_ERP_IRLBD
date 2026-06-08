@@ -156,6 +156,7 @@ const navGroups: NavGroup[] = [
     children: [
       { to: "/hrm/dashboard", label: "HR Dashboard", icon: Gauge, permission: "hrm.view" },
       { to: "/hrm/employees", label: "Employees", icon: Users, permission: "hrm.view" },
+      { to: "/hrm/employee-approvals", label: "Employee Approvals", icon: UserCheck, permission: "hrm.edit" },
       { to: "/hrm/departments", label: "Departments", icon: Building2, permission: "hrm.view" },
       { to: "/hrm/sections", label: "Sections", icon: Factory, permission: "hrm.view" },
 
