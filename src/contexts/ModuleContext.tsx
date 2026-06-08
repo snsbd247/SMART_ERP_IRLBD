@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useState, useCallback, ReactNode 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { isLaravelMode } from "@/lib/laravel-auth";
 
 export type ModuleKey = "inventory" | "multi_warehouse" | "multi_branch" | "hrm" | "accounts" | "bank" | "purchase" | "sales" | "sales_basic" | "sales_vat" | "reports" | "manufacturing";
 
@@ -31,12 +30,6 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
   const { user, isSuperAdmin, profile } = useAuth();
 
   const fetchModules = useCallback(async () => {
-    if (isLaravelMode()) {
-      setModules([]);
-      setLoading(false);
-      return;
-    }
-
     const { data, error } = await supabase
       .from("module_settings" as any)
       .select("*");
@@ -58,11 +51,6 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
   const toggleModule = useCallback(async (key: ModuleKey, enabled: boolean) => {
     if (!isSuperAdmin) {
       toast.error("Only Super Admin can change module settings");
-      return;
-    }
-
-    if (isLaravelMode()) {
-      toast.error("Module settings are managed by the Laravel backend on VPS");
       return;
     }
 
