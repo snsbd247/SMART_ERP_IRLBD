@@ -18,9 +18,6 @@ return new class extends Migration
     {
         $this->addFk('purchase_orders',        'customer_id', 'customers',   'purchase_orders_customer_id_fkey');
         $this->addFk('purchase_order_items',   'product_id',  'item_master', 'purchase_order_items_product_id_fkey');
-        $this->addFk('dispatches',             'customer_id', 'customers',   'dispatches_customer_id_fkey');
-        $this->addFk('dispatch_items',         'product_id',  'item_master', 'dispatch_items_product_id_fkey');
-        $this->addFk('dispatch_po_allocations','po_id',       'purchase_orders', 'dispatch_po_allocations_po_id_fkey');
         $this->addFk('vat_challans',           'customer_id', 'customers',   'vat_challans_customer_id_fkey');
         $this->addFk('vat_challan_items',      'product_id',  'item_master', 'vat_challan_items_product_id_fkey');
         $this->addFk('delivery_challans',      'customer_id', 'customers',   'delivery_challans_customer_id_fkey');
@@ -34,9 +31,6 @@ return new class extends Migration
         foreach ([
             ['purchase_orders',        'purchase_orders_customer_id_fkey'],
             ['purchase_order_items',   'purchase_order_items_product_id_fkey'],
-            ['dispatches',             'dispatches_customer_id_fkey'],
-            ['dispatch_items',         'dispatch_items_product_id_fkey'],
-            ['dispatch_po_allocations','dispatch_po_allocations_po_id_fkey'],
             ['vat_challans',           'vat_challans_customer_id_fkey'],
             ['vat_challan_items',      'vat_challan_items_product_id_fkey'],
             ['delivery_challans',      'delivery_challans_customer_id_fkey'],

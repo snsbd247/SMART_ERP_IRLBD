@@ -66,13 +66,13 @@ return new class extends Migration {
             $t->string('challan_number', 50)->unique();
             $t->date('challan_date');
             $t->uuid('customer_id');
-            $t->uuid('dispatch_id')->nullable();
+            $t->uuid('purchase_order_id');
             $t->string('vehicle_no', 50)->nullable();
             $t->string('driver_name', 100)->nullable();
             $t->decimal('subtotal', 18, 2)->default(0);
             $t->decimal('vat_amount', 18, 2)->default(0);
             $t->decimal('grand_total', 18, 2)->default(0);
-            $t->string('source', 20)->default('manual');
+            $t->string('source', 20)->default('purchase_order');
             $t->string('status', 20)->default('issued');
             $t->string('attachment_url', 500)->nullable();
             $t->text('notes')->nullable();
@@ -81,8 +81,9 @@ return new class extends Migration {
             $t->uuid('created_by')->nullable();
             $t->timestamps();
             $t->softDeletes();
-            $t->foreign('dispatch_id')->references('id')->on('dispatches')->nullOnDelete();
+            $t->foreign('purchase_order_id')->references('id')->on('purchase_orders')->restrictOnDelete();
             $t->index(['customer_id', 'challan_date']);
+            $t->index('purchase_order_id');
             $t->index('status');
         });
 
