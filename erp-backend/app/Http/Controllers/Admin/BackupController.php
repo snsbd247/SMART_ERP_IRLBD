@@ -75,9 +75,8 @@ class BackupController extends BaseController
             return $this->error('Backup file not found on disk.', 404);
         }
 
-        return response()->download($fullPath, $record->file_name, [
-            'Content-Type' => 'application/sql',
-        ]);
+        $mime = ($record->format ?? 'sql') === 'json' ? 'application/json' : 'application/sql';
+        return response()->download($fullPath, $record->file_name, ['Content-Type' => $mime]);
     }
 
     /**
