@@ -85,7 +85,7 @@ export default function MyProfilePage() {
                 <img src={employee.photo_url} alt="Photo" className="w-24 h-24 rounded-full object-cover mb-4 border-[3px] border-primary shadow-md" />
               ) : (
                 <div className="w-24 h-24 rounded-full bg-primary/10 mb-4 flex items-center justify-center text-3xl font-bold text-primary border-[3px] border-primary/30">
-                  {employee.first_name[0]}{employee.last_name[0]}
+                  {(employee.first_name?.[0] || "") + (employee.last_name?.[0] || "") || "?"}
                 </div>
               )}
               <h2 className="text-xl font-bold text-foreground">{employee.first_name} {employee.last_name}</h2>
