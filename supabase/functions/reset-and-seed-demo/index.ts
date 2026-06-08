@@ -138,8 +138,8 @@ Deno.serve(async (req) => {
     // Warehouses
     const WH_DHK = U(), WH_CTG = U();
     await bulk("warehouses", [
-      { id: WH_DHK, warehouse_code: "WH-DHK", warehouse_name: "Dhaka Main Warehouse", branch_id: BR_DHK, status: "active" },
-      { id: WH_CTG, warehouse_code: "WH-CTG", warehouse_name: "Chittagong Warehouse", branch_id: BR_CTG, status: "active" },
+      { id: WH_DHK, warehouse_code: "WH-HO", warehouse_name: "Head Office Warehouse", branch_id: BR_DHK, status: "active" },
+      { id: WH_CTG, warehouse_code: "WH-FAC", warehouse_name: "Factory Warehouse", branch_id: BR_CTG, status: "active" },
     ]);
 
     // Units
