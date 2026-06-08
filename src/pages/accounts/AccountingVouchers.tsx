@@ -755,7 +755,7 @@ const AccountingVouchers = () => {
 
             <div className="space-y-2">
               <Label>Description</Label>
-              <Input value={formDesc} onChange={(e) => setFormDesc(e.target.value)} placeholder="Voucher narration" />
+              <Input value={formDesc} onChange={(e) => { setFormDesc(e.target.value); setDescAuto(false); }} placeholder="Voucher narration (auto: dr | cr)" />
             </div>
             
             
