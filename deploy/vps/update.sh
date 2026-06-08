@@ -149,9 +149,31 @@ SUDO
     || warn "Pull & Deploy sudo check failed; verify /etc/sudoers.d/smarterp-deploy."
 }
 
+install_rollback_runner() {
+  if [[ ! -f "${APP_DIR}/deploy/vps/rollback.sh" ]]; then
+    warn "rollback.sh not found; rollback runner was not installed."
+    return 0
+  fi
+  log "Refreshing rollback runner (/usr/local/bin/smarterp-rollback)..."
+  install -m 0755 -o root -g root "${APP_DIR}/deploy/vps/rollback.sh" /usr/local/bin/smarterp-rollback || {
+    warn "Could not install rollback runner."; return 0; }
+  sed -i "s|^APP_DIR=.*|APP_DIR=\"${APP_DIR}\"|" /usr/local/bin/smarterp-rollback
+
+  local sudoers_tmp; sudoers_tmp="$(mktemp)"
+  cat > "${sudoers_tmp}" <<SUDO
+www-data ALL=(root) NOPASSWD: /usr/local/bin/smarterp-rollback
+Defaults!/usr/local/bin/smarterp-rollback !requiretty
+SUDO
+  chmod 0440 "${sudoers_tmp}"
+  if visudo -cf "${sudoers_tmp}" >/dev/null; then
+    install -m 0440 -o root -g root "${sudoers_tmp}" /etc/sudoers.d/smarterp-rollback
+  else
+    warn "Generated rollback sudoers file invalid; not installed."
+  fi
+  rm -f "${sudoers_tmp}"
+}
+
 cd "${APP_DIR}"
-log "Pulling latest from origin/${REPO_BRANCH}..."
-git fetch --all --prune
 CURRENT_STEP="git-pull"
 log "Pulling latest from origin/${REPO_BRANCH}..."
 git fetch --all --prune
