@@ -1206,9 +1206,9 @@
       "is_active": true
     },
     {
-      "shortcut_code": "RPVD",
-      "page_name": "PO vs Dispatch",
-      "page_url": "/sales-workflow/reports/po-vs-dispatch",
+      "shortcut_code": "RPVC",
+      "page_name": "PO vs VAT Challan",
+      "page_url": "/sales-workflow/reports/po-vs-vat-challan",
       "module_name": "reports",
       "is_active": true
     },
@@ -1293,13 +1293,6 @@
       "shortcut_code": "DC",
       "page_name": "Delivery Challan",
       "page_url": "/sales-workflow/delivery-challan",
-      "module_name": "sales",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "DSP",
-      "page_name": "Dispatch",
-      "page_url": "/sales-workflow/dispatch",
       "module_name": "sales",
       "is_active": true
     },

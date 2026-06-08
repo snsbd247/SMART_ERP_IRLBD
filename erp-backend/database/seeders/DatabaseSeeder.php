@@ -231,7 +231,6 @@ class DatabaseSeeder extends Seeder
         // These mirror what the BD VAT migration seeds; insertOrIgnore makes it idempotent.
         $extraSequences = [
             ['id' => 'purchase_order',  'prefix' => 'PO',  'description' => 'Customer Purchase Order'],
-            ['id' => 'dispatch',        'prefix' => 'DSP', 'description' => 'Dispatch / Gate Pass'],
             ['id' => 'vat_challan',     'prefix' => 'VCH', 'description' => 'VAT Challan (Mushak 6.3)'],
             ['id' => 'delivery_challan','prefix' => 'DC',  'description' => 'Delivery Challan'],
             ['id' => 'sales_invoice_v2','prefix' => 'INV', 'description' => 'Consolidated Sales Invoice'],
@@ -357,18 +356,17 @@ class DatabaseSeeder extends Seeder
             ['SMS', 'SMS Settings', '/admin/sms', 'sms'],
             ['DIA', 'Diagnostics', '/admin/diagnostics', 'settings'],
             ['IM', 'IFRS Mapping', '/admin/ifrs-mapping', 'settings'],
-            // Sales Workflow (BD VAT)
+            // Sales (BD VAT)
             ['PO', 'Purchase Orders', '/sales-workflow/po', 'sales'],
-            ['DSP', 'Dispatch', '/sales-workflow/dispatch', 'sales'],
             ['VCH', 'VAT Challan (6.3)', '/sales-workflow/vat-challan', 'sales'],
             ['DC', 'Delivery Challan', '/sales-workflow/delivery-challan', 'sales'],
             ['CRV', 'Customer Receive', '/sales-workflow/customer-receive', 'sales'],
             ['HRV', 'HO Receive', '/sales-workflow/ho-receive', 'sales'],
             ['IQ', 'Invoice Queue', '/sales-workflow/invoice-queue', 'sales'],
-            ['SWI', 'Sales Workflow Invoices', '/sales-workflow/invoices', 'sales'],
+            ['SWI', 'Sales Invoices (V2)', '/sales-workflow/invoices', 'sales'],
             ['TDS', 'TDS Entries', '/sales-workflow/tds', 'sales'],
             ['SWR', 'Sales Workflow Reports', '/sales-workflow/reports', 'reports'],
-            ['RPVD', 'PO vs Dispatch', '/sales-workflow/reports/po-vs-dispatch', 'reports'],
+            ['RPVC', 'PO vs VAT Challan', '/sales-workflow/reports/po-vs-vat-challan', 'reports'],
             ['RPPO', 'Pending PO', '/sales-workflow/reports/pending-po', 'reports'],
             ['RCST', 'Challan Status', '/sales-workflow/reports/challan-status', 'reports'],
             ['RVR', 'VAT Register', '/sales-workflow/reports/vat-register', 'reports'],
