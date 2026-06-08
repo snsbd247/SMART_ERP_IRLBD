@@ -543,6 +543,7 @@ export type Database = {
           email: string | null
           id: string
           phone: string | null
+          public_employee_registration_enabled: boolean
           updated_at: string
           website: string | null
         }
@@ -560,6 +561,7 @@ export type Database = {
           email?: string | null
           id?: string
           phone?: string | null
+          public_employee_registration_enabled?: boolean
           updated_at?: string
           website?: string | null
         }
@@ -577,6 +579,7 @@ export type Database = {
           email?: string | null
           id?: string
           phone?: string | null
+          public_employee_registration_enabled?: boolean
           updated_at?: string
           website?: string | null
         }
