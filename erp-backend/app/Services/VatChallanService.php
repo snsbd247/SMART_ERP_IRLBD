@@ -33,7 +33,6 @@ class VatChallanService
             if (!$poId) {
                 throw new \InvalidArgumentException('VAT Challan must be issued against a Purchase Order.');
             }
-            unset($data['dispatch_id']);
             $po = PurchaseOrder::with('items')->lockForUpdate()->findOrFail($poId);
             if ($po->customer_id !== ($data['customer_id'] ?? $po->customer_id)) {
                 $data['customer_id'] = $po->customer_id;
