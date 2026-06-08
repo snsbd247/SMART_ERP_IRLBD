@@ -321,11 +321,6 @@ export const swApi = {
     return { error };
   },
 
-  async updateDispatchHeader(id: string, payload: any) {
-    const { error } = await supabase.from("dispatches").update(payload).eq("id", id);
-    await audit("dispatch", "update", { id }, "edit");
-    return { error };
-  },
   async deleteVatChallan(id: string) {
     const { data: dcs } = await supabase.from("delivery_challans").select("id,status").eq("vat_challan_id", id);
     if ((dcs || []).some((d: any) => ["customer_received", "ho_received", "invoiced"].includes(d.status))) {
