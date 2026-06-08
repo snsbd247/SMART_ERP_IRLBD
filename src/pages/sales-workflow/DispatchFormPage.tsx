@@ -26,7 +26,7 @@ export default function DispatchFormPage() {
   useEffect(() => {
     if (!form.customer_id) { setOpenPoItems([]); return; }
     supabase.from("purchase_order_items")
-      .select("*, product:item_master(name,sku), po:purchase_orders!inner(po_number,customer_id,status)")
+      .select("*, product:item_master(name:item_name,sku:item_code), po:purchase_orders!inner(po_number,customer_id,status)")
       .gt("qty_remaining", 0)
       .eq("po.customer_id", form.customer_id)
       .then(({ data }) => setOpenPoItems(data || []));
