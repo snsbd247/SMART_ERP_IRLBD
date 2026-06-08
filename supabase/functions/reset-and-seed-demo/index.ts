@@ -19,6 +19,8 @@ const round2 = (n:number) => Math.round(n*100)/100;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  let MODE: "reset" | "reset-and-seed" = "reset-and-seed";
+  try { const b = await req.clone().json(); if (b?.mode === "reset") MODE = "reset"; } catch {}
   const log: string[] = [];
   const t0 = Date.now();
   try {
