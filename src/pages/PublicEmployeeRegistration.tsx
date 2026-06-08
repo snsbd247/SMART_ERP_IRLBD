@@ -15,6 +15,7 @@ interface Config {
   enabled: boolean;
   company_name: string;
   company_logo_url: string | null;
+  next_employee_code?: string | null;
   branches: Option[];
   departments: Option[];
   designations: Option[];
@@ -24,6 +25,7 @@ const empty = {
   first_name: "", last_name: "", email: "", mobile: "", national_id: "",
   address: "", department_id: "", designation_id: "", branch_id: "",
   joining_date: new Date().toISOString().split("T")[0],
+  password: "", password_confirm: "",
 };
 
 export default function PublicEmployeeRegistration() {
@@ -33,7 +35,7 @@ export default function PublicEmployeeRegistration() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(empty);
-  const [done, setDone] = useState<{ code: string } | null>(null);
+  const [done, setDone] = useState<{ code: string; username?: string } | null>(null);
 
   useEffect(() => {
     const loadFromSupabase = async () => {
@@ -72,6 +74,16 @@ export default function PublicEmployeeRegistration() {
       toast({ title: "Missing fields", description: "First name, last name and joining date are required.", variant: "destructive" });
       return;
     }
+    if (form.password || form.password_confirm) {
+      if (form.password.length < 6) {
+        toast({ title: "Weak password", description: "Password must be at least 6 characters.", variant: "destructive" });
+        return;
+      }
+      if (form.password !== form.password_confirm) {
+        toast({ title: "Passwords don't match", description: "Please re-enter the same password.", variant: "destructive" });
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const base = getApiBaseUrl();
@@ -87,11 +99,14 @@ export default function PublicEmployeeRegistration() {
           department_id: form.department_id || null,
           designation_id: form.designation_id || null,
           branch_id: form.branch_id || null,
+          password: form.password || null,
+          password_confirm: undefined,
         }),
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.message || `HTTP ${res.status}`);
-      setDone({ code: payload?.data?.employee_code || "" });
+      const data = payload?.data ?? payload;
+      setDone({ code: data?.employee_code || "", username: data?.username_preview });
     } catch (err: any) {
       toast({ title: "Submission failed", description: err.message, variant: "destructive" });
     } finally {
