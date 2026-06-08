@@ -369,6 +369,21 @@ const GeneralSettingsPage = () => {
                   </Select>
                 </div>
               </div>
+
+              <div className="mt-6 pt-6 border-t border-border space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <Label className="text-sm font-medium">Public Employee Registration</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      When enabled, a public registration form is available at <code className="text-foreground">/register-employee</code> and a link appears on the login page. Submissions are created as inactive employees pending admin approval.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={!!settings.public_employee_registration_enabled}
+                    onCheckedChange={(v) => setSettings({ ...settings, public_employee_registration_enabled: v })}
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
