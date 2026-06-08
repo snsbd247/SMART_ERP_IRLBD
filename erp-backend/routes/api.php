@@ -15,6 +15,8 @@ Route::prefix('install')->middleware(\App\Http\Middleware\InstallGuard::class)->
 // Auth (public)
 Route::prefix('auth')->group(function () {
     Route::post('login', [\App\Http\Controllers\Auth\AuthController::class, 'login']);
+    Route::post('forgot-password', [\App\Http\Controllers\Auth\AuthController::class, 'forgotPassword']);
+    Route::post('reset-password', [\App\Http\Controllers\Auth\AuthController::class, 'resetPassword']);
 });
 
 // Public branding (read-only) — login page needs it before auth
@@ -231,6 +233,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::put('employees/{id}', [\App\Http\Controllers\HRM\EmployeeController::class, 'update']);
             Route::post('employees/{id}/approve', [\App\Http\Controllers\HRM\EmployeeController::class, 'approveRegistration']);
             Route::post('employees/{id}/reject', [\App\Http\Controllers\HRM\EmployeeController::class, 'rejectRegistration']);
+            Route::post('employees/{id}/resend-approval-sms', [\App\Http\Controllers\HRM\EmployeeController::class, 'resendApprovalSms']);
             Route::put('attendance/{id}', [\App\Http\Controllers\HRM\AttendanceController::class, 'update']);
             Route::put('departments/{id}', [\App\Http\Controllers\HRM\DepartmentController::class, 'update']);
             Route::put('designations/{id}', [\App\Http\Controllers\HRM\DesignationController::class, 'update']);

@@ -286,23 +286,26 @@ class EmployeeController extends CrudController
 
     /**
      * Approve a pending registration → becomes an active employee.
+     * Records an audit-log entry and an SMS delivery attempt (with status).
      */
     public function approveRegistration(Request $request, string $id)
     {
         $employee = Employee::where('id', $id)->where('approval_status', 'pending')->firstOrFail();
+        $adminId = optional($request->user())->id;
+        $audit = app(\App\Services\AuditService::class);
 
-        return DB::transaction(function () use ($employee, $request) {
+        return DB::transaction(function () use ($employee, $request, $adminId, $audit) {
             $employee->update([
                 'approval_status' => 'approved',
                 'status' => 'active',
                 'approved_at' => now(),
-                'approved_by' => optional($request->user())->id,
+                'approved_by' => $adminId,
             ]);
 
-            // Create login account if the applicant submitted a password and no user is linked yet
-            $hashedPassword = $employee->proposed_password;
+            $hashedPassword = $employee->proposed_password; // already bcrypt-hashed
             $existingUser = User::where('employee_id', $employee->id)->first();
-            $username = $employee->employee_code; // auto from employee ID
+            $username = $employee->employee_code;
+            $createdUserId = null;
 
             if ($hashedPassword && !$existingUser && !User::where('username', $username)->exists()) {
                 $user = User::create([
@@ -310,37 +313,76 @@ class EmployeeController extends CrudController
                     'name' => "{$employee->first_name} {$employee->last_name}",
                     'email' => $employee->email,
                     'phone' => $employee->mobile,
-                    'password' => $hashedPassword, // already hashed
+                    'password' => $hashedPassword,
                     'employee_id' => $employee->id,
                     'branch_id' => $employee->branch_id,
                     'status' => 'active',
                 ]);
                 $employee->update(['user_id' => $user->id, 'proposed_password' => null]);
+                $createdUserId = $user->id;
 
                 $staffRole = \App\Models\CustomRole::where('name', 'Staff')->first();
-                if ($staffRole) {
-                    $user->roles()->attach($staffRole->id);
-                }
+                if ($staffRole) $user->roles()->attach($staffRole->id);
 
-                // SMS login credentials to the employee's mobile (best-effort, non-blocking)
-                if (!empty($employee->mobile)) {
-                    try {
-                        $sms = app(\App\Services\SmsService::class);
-                        $msg = "Welcome! Your login is ready.\nUsername: {$username}\nUse the password you set during registration.";
-                        $sms->sendSMS($employee->mobile, $msg, 'employee_approval', (string) $employee->id);
-                    } catch (\Throwable $e) {
-                        \Log::warning('Employee approval SMS failed: ' . $e->getMessage());
-                    }
-                }
+                $this->sendApprovalSms($employee, $username);
             } else {
-                // Clear stored password even if we couldn't create the user (avoid keeping it indefinitely)
-                if ($hashedPassword) {
-                    $employee->update(['proposed_password' => null]);
-                }
+                // Always clear stored password after approval; never keep it indefinitely.
+                if ($hashedPassword) $employee->update(['proposed_password' => null]);
             }
 
-            return $this->success($employee->fresh());
+            // Audit log (independent of SMS)
+            $audit->log(
+                'hrm', 'approve_registration', (string) $employee->id,
+                "Approved employee registration {$employee->employee_code}" .
+                ($createdUserId ? " (user account created)" : ''),
+                $request,
+                null,
+                [
+                    'employee_code' => $employee->employee_code,
+                    'employee_id' => (string) $employee->id,
+                    'admin_id' => $adminId,
+                    'user_created' => (bool) $createdUserId,
+                    'created_user_id' => $createdUserId,
+                ]
+            );
+
+            // Never include password fields in the response.
+            $fresh = $employee->fresh()->makeHidden(['proposed_password']);
+            return $this->success($fresh);
         });
+    }
+
+    /**
+     * Resend the approval/welcome SMS (used to retry failed deliveries).
+     */
+    public function resendApprovalSms(Request $request, string $id)
+    {
+        $employee = Employee::where('id', $id)->where('approval_status', 'approved')->firstOrFail();
+        if (empty($employee->mobile)) {
+            return $this->error('Employee has no mobile number on file', 422);
+        }
+        $username = $employee->employee_code;
+        $sent = $this->sendApprovalSms($employee, $username);
+        return $this->success([
+            'status' => $sent ? 'sent' : 'failed',
+            'phone' => $employee->mobile,
+        ], $sent ? 'SMS resent' : 'SMS retry failed — check SMS logs');
+    }
+
+    /**
+     * Best-effort SMS dispatch. Returns true/false and logs status into sms_logs.
+     */
+    protected function sendApprovalSms(Employee $employee, string $username): bool
+    {
+        if (empty($employee->mobile)) return false;
+        try {
+            $sms = app(\App\Services\SmsService::class);
+            $msg = "Welcome! Your login is ready.\nUsername: {$username}\nUse the password you set during registration. You can change it after first login.";
+            return $sms->sendSMS($employee->mobile, $msg, 'employee_approval', (string) $employee->id);
+        } catch (\Throwable $e) {
+            \Log::warning('Employee approval SMS failed: ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
