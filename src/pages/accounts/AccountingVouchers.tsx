@@ -153,6 +153,9 @@ const AccountingVouchers = () => {
     const idBase = Date.now();
     setEditingVoucher(null);
     setFormDesc("");
+    setRawAmounts({});
+    // NOTE: intentionally keep formDate, formBranch, formFinYear so the user
+    // can quickly enter the next voucher without re-selecting them.
     setEntries([
       { id: `${idBase}-1`, account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
       { id: `${idBase}-2`, account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
