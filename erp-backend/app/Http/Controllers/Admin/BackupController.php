@@ -29,7 +29,7 @@ class BackupController extends BaseController
     }
 
     /**
-     * Create a new SQL backup.
+     * Create a new SQL or JSON backup.
      */
     public function create(Request $request): JsonResponse
     {
@@ -37,18 +37,22 @@ class BackupController extends BaseController
             return $this->error('Only Super Admins can create backups.', 403);
         }
 
+        $format = strtolower((string) $request->input('format', 'sql'));
+        if (!in_array($format, ['sql', 'json'], true)) $format = 'sql';
+        $uploadDrive = (bool) $request->input('upload_to_drive', false);
+
         try {
-            $exitCode = Artisan::call('backup:database', ['--type' => 'manual']);
+            $exitCode = Artisan::call('backup:database', [
+                '--type' => 'manual',
+                '--format' => $format,
+                '--gdrive' => $uploadDrive ? 'yes' : 'no',
+            ]);
 
             if ($exitCode !== 0) {
                 return $this->error('Backup command failed.', 500);
             }
 
-            // Get the latest backup record
-            $latest = DB::table('backup_history')
-                ->orderByDesc('created_at')
-                ->first();
-
+            $latest = DB::table('backup_history')->orderByDesc('created_at')->first();
             return $this->success($latest, 'Backup created successfully');
         } catch (\Exception $e) {
             Log::error("Backup creation failed: " . $e->getMessage());
