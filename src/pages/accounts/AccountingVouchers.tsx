@@ -289,7 +289,7 @@ const AccountingVouchers = () => {
     setFormDate(v.voucher_date);
     setFormBranch(v.branch_id || "");
     setFormFinYear(v.financial_year_id || "");
-    setFormDesc(v.description || "");
+    setFormDesc(v.description || ""); setDescAuto(false);
     setEntries((data || []).map((e: any) => ({
       id: e.id,
       account_id: e.account_id,
