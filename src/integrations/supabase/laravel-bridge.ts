@@ -366,6 +366,17 @@ export const laravelSupabaseBridge = {
   },
   storage: {
     from(bucket: string) { return new StorageBucket(bucket); },
+    async listBuckets(): Promise<Result<Array<{ id: string; name: string; public: boolean }>>> {
+      // Laravel mode does not expose a bucket-listing endpoint; return empty so
+      // callers fall back to data-URL / direct-upload paths gracefully.
+      return { data: [], error: null };
+    },
+    async getBucket(id: string): Promise<Result<{ id: string; name: string; public: boolean }>> {
+      return { data: { id, name: id, public: true }, error: null };
+    },
+    async createBucket(_id: string, _opts?: any): Promise<Result<{ name: string }>> {
+      return { data: { name: _id }, error: null };
+    },
   },
   functions: functionsBridge,
   auth: authBridge,
