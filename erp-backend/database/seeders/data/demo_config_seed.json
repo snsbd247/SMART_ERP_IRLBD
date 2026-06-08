@@ -1297,13 +1297,6 @@
       "is_active": true
     },
     {
-      "shortcut_code": "DSP",
-      "page_name": "Dispatch",
-      "page_url": "/sales-workflow/dispatch",
-      "module_name": "sales",
-      "is_active": true
-    },
-    {
       "shortcut_code": "HRV",
       "page_name": "HO Receive",
       "page_url": "/sales-workflow/ho-receive",
