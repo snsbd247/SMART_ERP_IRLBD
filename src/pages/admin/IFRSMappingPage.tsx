@@ -113,7 +113,7 @@ const IFRSMappingPage = () => {
         <h1 className="text-xl font-semibold text-foreground">IFRS Account Mapping</h1>
       </div>
       <p className="text-sm text-muted-foreground">
-        প্রতিটি account-এর IFRS Financial Statement line item override করুন। কোনো override না থাকলে default rule প্রযোজ্য হবে।
+        Override the IFRS Financial Statement line item for each account. If no override is set, the default rule applies.
       </p>
 
       <Card>
