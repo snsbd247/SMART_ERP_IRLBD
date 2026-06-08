@@ -73,7 +73,7 @@ export default function EmployeesPage() {
 
   const fetchAll = useCallback(async () => {
     const [empRes, deptRes, desigRes, branchRes, secRes] = await Promise.all([
-      supabase.from("employees" as any).select("*").order("employee_code"),
+      supabase.from("employees" as any).select("*").neq("approval_status", "pending").order("employee_code"),
       supabase.from("departments" as any).select("id, name").eq("status", "active"),
       supabase.from("designations" as any).select("id, name").eq("status", "active"),
       supabase.from("branches").select("id, name").eq("status", "active"),
