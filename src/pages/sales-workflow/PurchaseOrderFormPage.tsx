@@ -27,7 +27,7 @@ export default function PurchaseOrderFormPage() {
 
   useEffect(() => {
     supabase.from("customers").select("id,name").order("name").then(({ data }) => setCustomers(data || []));
-    supabase.from("item_master").select("id,name,sku").order("name").then(({ data }) => setProducts(data || []));
+    supabase.from("item_master").select("id,name:item_name,sku:item_code").order("item_name").then(({ data }) => setProducts(data || []));
   }, []);
 
   const updateItem = (i: number, k: string, v: any) => {

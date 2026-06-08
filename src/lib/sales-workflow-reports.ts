@@ -24,7 +24,7 @@ export function exportCsv(filename: string, rows: any[], headers: string[]) {
 
 export const swReports = {
   async poVsDispatch(f: ReportFilters) {
-    let q = supabase.from("purchase_order_items").select("*, po:purchase_orders!inner(po_number,po_date,customer_id,status,customer:customers(name)), product:item_master(name,sku)");
+    let q = supabase.from("purchase_order_items").select("*, po:purchase_orders!inner(po_number,po_date,customer_id,status,customer:customers(name)), product:item_master(name:item_name,sku:item_code)");
     if (f.from) q = q.gte("po.po_date", f.from);
     if (f.to) q = q.lte("po.po_date", f.to);
     if (f.customer_id) q = q.eq("po.customer_id", f.customer_id);
@@ -38,7 +38,7 @@ export const swReports = {
     return q;
   },
   async challanStatus(f: ReportFilters) {
-    let q = supabase.from("delivery_challans").select("*, customer:customers(name), product:item_master(name), vat_challan:vat_challans(challan_number,challan_date)");
+    let q = supabase.from("delivery_challans").select("*, customer:customers(name), product:item_master(name:item_name), vat_challan:vat_challans(challan_number,challan_date)");
     if (f.from) q = q.gte("dc_date", f.from);
     if (f.to) q = q.lte("dc_date", f.to);
     if (f.customer_id) q = q.eq("customer_id", f.customer_id);

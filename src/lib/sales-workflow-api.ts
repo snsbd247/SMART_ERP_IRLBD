@@ -44,7 +44,7 @@ export const swApi = {
     return q;
   },
   async getPO(id: string) {
-    return supabase.from("purchase_orders").select("*, customer:customers(*), items:purchase_order_items(*, product:item_master(id,name,sku))").eq("id", id).maybeSingle();
+    return supabase.from("purchase_orders").select("*, customer:customers(*), items:purchase_order_items(*, product:item_master(id,name:item_name,sku:item_code))").eq("id", id).maybeSingle();
   },
   async createPO(payload: any, items: any[]) {
     const po_number = await nextNumber("PO");
@@ -79,7 +79,7 @@ export const swApi = {
     return q;
   },
   async getDispatch(id: string) {
-    return supabase.from("dispatches").select("*, customer:customers(*), items:dispatch_items(*, allocations:dispatch_po_allocations(*, po_item:purchase_order_items(*, po:purchase_orders(po_number))), product:item_master(name,sku))").eq("id", id).maybeSingle();
+    return supabase.from("dispatches").select("*, customer:customers(*), items:dispatch_items(*, allocations:dispatch_po_allocations(*, po_item:purchase_order_items(*, po:purchase_orders(po_number))), product:item_master(name:item_name,sku:item_code))").eq("id", id).maybeSingle();
   },
   async createDispatch(payload: any, items: any[]) {
     const dispatch_number = await nextNumber("DSP");
@@ -126,7 +126,7 @@ export const swApi = {
     return q;
   },
   async getVatChallan(id: string) {
-    return supabase.from("vat_challans").select("*, customer:customers(*), items:vat_challan_items(*, product:item_master(name,sku)), delivery_challans:delivery_challans(*)").eq("id", id).maybeSingle();
+    return supabase.from("vat_challans").select("*, customer:customers(*), items:vat_challan_items(*, product:item_master(name:item_name,sku:item_code)), delivery_challans:delivery_challans(*)").eq("id", id).maybeSingle();
   },
   async createVatChallan(payload: any, items: any[]) {
     const challan_number = await nextNumber("VCH");
@@ -160,7 +160,7 @@ export const swApi = {
 
   // -------- Delivery Challans --------
   async listDeliveryChallans(filters: any = {}) {
-    let q = supabase.from("delivery_challans").select("*, customer:customers(id,name), product:item_master(name,sku), vat_challan:vat_challans(challan_number)").order("dc_date", { ascending: false });
+    let q = supabase.from("delivery_challans").select("*, customer:customers(id,name), product:item_master(name:item_name,sku:item_code), vat_challan:vat_challans(challan_number)").order("dc_date", { ascending: false });
     if (filters.customer_id) q = q.eq("customer_id", filters.customer_id);
     if (filters.status) q = q.eq("status", filters.status);
     if (filters.q) q = q.ilike("dc_number", `%${filters.q}%`);
@@ -187,7 +187,7 @@ export const swApi = {
     return q;
   },
   async getInvoice(id: string) {
-    return supabase.from("sales_invoices_v2").select("*, customer:customers(*), items:sales_invoice_items_v2(*, product:item_master(name,sku)), payments:invoice_payments(*), tds_entries(*)").eq("id", id).maybeSingle();
+    return supabase.from("sales_invoices_v2").select("*, customer:customers(*), items:sales_invoice_items_v2(*, product:item_master(name:item_name,sku:item_code)), payments:invoice_payments(*), tds_entries(*)").eq("id", id).maybeSingle();
   },
   async eligibleVatChallans(customer_id?: string, date?: string) {
     // VAT challans whose ALL delivery_challans are ho_received and not invoiced
