@@ -51,10 +51,11 @@ export default function PurchaseOrderDetailPage() {
           <div className="font-bold text-lg">Total: {Number(po.grand_total).toFixed(2)}</div>
         </div>
       </Card>
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <Link to="/sales-workflow/po"><Button variant="outline">Back</Button></Link>
         <Link to={`/sales-workflow/po/${po.id}/edit`}><Button variant="outline">Edit</Button></Link>
-        <Link to={`/sales-workflow/dispatch/new?po=${po.id}`}><Button>Create Dispatch</Button></Link>
+        <Link to={`/sales-workflow/vat-challan/new?po=${po.id}`}><Button>Issue VAT Challan</Button></Link>
+        <Link to={`/sales-workflow/dispatch/new?po=${po.id}`}><Button variant="secondary">Create Dispatch</Button></Link>
       </div>
     </div>
   );
