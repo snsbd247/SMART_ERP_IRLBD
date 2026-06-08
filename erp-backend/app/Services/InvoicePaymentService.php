@@ -53,7 +53,7 @@ class InvoicePaymentService
 
             // TDS entry
             if ($tds > 0) {
-                TdsEntry::create([
+                $tdsEntry = TdsEntry::create([
                     'invoice_id' => $invoice->id,
                     'payment_id' => $payment->id,
                     'tds_pct' => $invoice->grand_total > 0 ? round($tds * 100 / $invoice->grand_total, 2) : 0,
@@ -73,7 +73,10 @@ class InvoicePaymentService
 
             // Voucher: DR Bank/Cash, DR TDS Receivable, CR AR
             $voucher = $this->postPaymentVoucher($payment, $invoice);
-            if ($voucher) $payment->update(['voucher_id' => $voucher->id]);
+            if ($voucher) {
+                $payment->update(['voucher_id' => $voucher->id]);
+                if (isset($tdsEntry)) $tdsEntry->update(['voucher_id' => $voucher->id]);
+            }
 
             return $payment->fresh();
         });
