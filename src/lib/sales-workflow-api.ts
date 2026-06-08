@@ -148,11 +148,13 @@ export const swApi = {
           }).eq("id", i.purchase_order_item_id);
         }
       }
-      // Mark PO completed if all items delivered
-      const { data: remainingItems } = await supabase.from("purchase_order_items").select("qty_remaining").eq("po_id", payload.purchase_order_id);
+      const { data: remainingItems } = await supabase.from("purchase_order_items").select("qty_remaining,qty_delivered").eq("po_id", payload.purchase_order_id);
       const totalRemaining = (remainingItems || []).reduce((s: number, r: any) => s + Number(r.qty_remaining || 0), 0);
+      const totalDelivered = (remainingItems || []).reduce((s: number, r: any) => s + Number(r.qty_delivered || 0), 0);
       if (totalRemaining <= 0.0001) {
-        await supabase.from("purchase_orders").update({ status: "completed" }).eq("id", payload.purchase_order_id);
+        await supabase.from("purchase_orders").update({ status: "closed" }).eq("id", payload.purchase_order_id);
+      } else if (totalDelivered > 0) {
+        await supabase.from("purchase_orders").update({ status: "partial" }).eq("id", payload.purchase_order_id);
       }
     }
 
@@ -342,17 +344,13 @@ export const swApi = {
     return { error };
   },
 
-  async updateVatChallanHeader(id: string, payload: any) {
-    const { error } = await supabase.from("vat_challans").update(payload).eq("id", id);
-    await audit("vat_challan", "update", { id }, "edit");
-    return { error };
-  },
   async deleteVatChallan(id: string) {
     const { data: dcs } = await supabase.from("delivery_challans").select("id,status").eq("vat_challan_id", id);
     if ((dcs || []).some((d: any) => ["customer_received", "ho_received", "invoiced"].includes(d.status))) {
       return { error: { message: "Cannot delete: DC already received/invoiced" } as any };
     }
     // Restore PO availability for any PO-linked items
+    const { data: challan } = await supabase.from("vat_challans").select("purchase_order_id").eq("id", id).maybeSingle();
     const { data: items } = await supabase.from("vat_challan_items").select("purchase_order_item_id, qty").eq("vat_challan_id", id);
     for (const it of items || []) {
       if (!(it as any).purchase_order_item_id) continue;
@@ -364,6 +362,13 @@ export const swApi = {
           qty_remaining: Math.max(0, Number((poi as any).qty_ordered) - newDelivered),
         }).eq("id", (it as any).purchase_order_item_id);
       }
+    }
+    if ((challan as any)?.purchase_order_id) {
+      const { data: poItems } = await supabase.from("purchase_order_items").select("qty_remaining,qty_delivered").eq("po_id", (challan as any).purchase_order_id);
+      const totalRemaining = (poItems || []).reduce((s: number, r: any) => s + Number(r.qty_remaining || 0), 0);
+      const totalDelivered = (poItems || []).reduce((s: number, r: any) => s + Number(r.qty_delivered || 0), 0);
+      const status = totalDelivered <= 0 ? "open" : totalRemaining <= 0.0001 ? "closed" : "partial";
+      await supabase.from("purchase_orders").update({ status }).eq("id", (challan as any).purchase_order_id);
     }
     await supabase.from("delivery_challans").delete().eq("vat_challan_id", id);
     const { error } = await supabase.from("vat_challans").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
