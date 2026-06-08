@@ -938,7 +938,6 @@ class SeedDemoData extends Command
         $drivers = ['Karim Mia','Rahim Uddin','Salam Hossain','Jamal Khan','Nasir Ahmed'];
 
         $POs = []; $POitems = [];
-        $DSPs = []; $DSPitems = []; $DSPallocs = [];
         $VCHs = []; $VCHitems = [];
         $DCs = []; $CRs = []; $HRs = [];
         $INV2 = []; $INV2items = []; $INVCHs = [];
@@ -970,28 +969,8 @@ class SeedDemoData extends Command
             ];
             $POitems = array_merge($POitems, $poiData);
 
-            // Dispatch
-            $dspId = $this->U(); $this->dspc++;
-            $dspNum = "DSP-{$this->fyTag}-" . str_pad((string)$this->dspc, 5, '0', STR_PAD_LEFT);
-            $dspDate = $this->ymd(Carbon::parse($poDate)->addDays($this->RI(1, 3)));
-            $totalQty = array_reduce($poiData, fn($s,$r) => $s + $r['qty_ordered'], 0);
-            $DSPs[] = [
-                'id'=>$dspId,'dispatch_number'=>$dspNum,'dispatch_date'=>$dspDate,'customer_id'=>$cust['id'],
-                'vehicle_no'=>$this->pick($vehicles),'driver_name'=>$this->pick($drivers),'status'=>'delivered','total_qty'=>$totalQty,
-                'branch_id'=>$this->BR_DHK,'financial_year_id'=>$this->FY,'created_by'=>$this->UID,
-                'created_at'=>now(),'updated_at'=>now(),
-            ];
             $vciByProduct = [];
             foreach ($poiData as $idx => $r) {
-                $diId = $this->U();
-                $DSPitems[] = [
-                    'id'=>$diId,'dispatch_id'=>$dspId,'product_id'=>$r['product_id'],'qty'=>$r['qty_ordered'],'sort_order'=>$idx,
-                ];
-                $DSPallocs[] = [
-                    'id'=>$this->U(),'dispatch_item_id'=>$diId,'po_item_id'=>$r['id'],'po_id'=>$poId,'allocated_qty'=>$r['qty_ordered'],
-                    'created_at'=>now(),
-                ];
-
                 // VAT Challan item (per product)
                 $vciId = $this->U();
                 $vciByProduct[$r['product_id']] = $vciId;
@@ -1000,11 +979,11 @@ class SeedDemoData extends Command
             // VAT Challan
             $vchId = $this->U(); $this->vchc++;
             $vchNum = "VCH-{$this->fyTag}-" . str_pad((string)$this->vchc, 5, '0', STR_PAD_LEFT);
-            $vchDate = $dspDate;
+            $vchDate = $this->ymd(Carbon::parse($poDate)->addDays($this->RI(1, 3)));
             $VCHs[] = [
-                'id'=>$vchId,'challan_number'=>$vchNum,'challan_date'=>$vchDate,'customer_id'=>$cust['id'],'dispatch_id'=>$dspId,
+                'id'=>$vchId,'challan_number'=>$vchNum,'challan_date'=>$vchDate,'customer_id'=>$cust['id'],'purchase_order_id'=>$poId,
                 'vehicle_no'=>$this->pick($vehicles),'driver_name'=>$this->pick($drivers),'subtotal'=>$this->round2($poSub),'vat_amount'=>$this->round2($poVat),
-                'grand_total'=>$poGrand,'source'=>'dispatch','status'=>'issued',
+                'grand_total'=>$poGrand,'source'=>'purchase_order','status'=>'issued',
                 'branch_id'=>$this->BR_DHK,'financial_year_id'=>$this->FY,'created_by'=>$this->UID,
                 'created_at'=>now(),'updated_at'=>now(),
             ];
@@ -1012,7 +991,7 @@ class SeedDemoData extends Command
             foreach ($poiData as $idx => $r) {
                 $vciId = $vciByProduct[$r['product_id']];
                 $VCHitems[] = [
-                    'id'=>$vciId,'vat_challan_id'=>$vchId,'product_id'=>$r['product_id'],'qty'=>$r['qty_ordered'],
+                    'id'=>$vciId,'vat_challan_id'=>$vchId,'product_id'=>$r['product_id'],'purchase_order_item_id'=>$r['id'],'po_qty_consumed'=>$r['qty_ordered'],'qty'=>$r['qty_ordered'],
                     'rate'=>$r['rate'],'vat_pct'=>15,'line_subtotal'=>$r['line_subtotal'],'vat_amount'=>$r['line_vat'],
                     'line_total'=>$r['line_total'],'sort_order'=>$idx,
                 ];
