@@ -87,6 +87,12 @@ const BackupPage = () => {
   const [demoOverall, setDemoOverall] = useState<"success" | "partial" | null>(null);
   const [confirmDemo, setConfirmDemo] = useState(false);
   const [confirmResetDemo, setConfirmResetDemo] = useState(false);
+  const [backupFormat, setBackupFormat] = useState<"sql" | "json">("sql");
+  const [uploadToDrive, setUploadToDrive] = useState(false);
+  const [gdriveForm, setGdriveForm] = useState({ client_id: "", client_secret: "", refresh_token: "", folder_id: "" });
+  const [gdriveTesting, setGdriveTesting] = useState(false);
+  const [gdriveTestResult, setGdriveTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
 
   const DEMO_STEPS = [
     "Chart of Accounts",
