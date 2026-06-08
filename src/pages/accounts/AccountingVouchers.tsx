@@ -202,15 +202,21 @@ const AccountingVouchers = () => {
   };
 
   const updateEntry = (id: string, field: keyof EntryRow, value: any) => {
-    setEntries((prev) => prev.map((e) => {
-      if (e.id !== id) return e;
-      const next: EntryRow = { ...e, [field]: value };
-      if (field === "dr_cr") {
-        if (value === "dr") next.credit = 0;
-        else next.debit = 0;
+    setEntries((prev) => {
+      const next = prev.map((e) => {
+        if (e.id !== id) return e;
+        const n: EntryRow = { ...e, [field]: value };
+        if (field === "dr_cr") {
+          if (value === "dr") n.credit = 0;
+          else n.debit = 0;
+        }
+        return n;
+      });
+      if ((field === "narration" || field === "dr_cr") && descAuto) {
+        setFormDesc(buildAutoDesc(next));
       }
       return next;
-    }));
+    });
   };
 
   // ── Formula-style amount input helpers ──
