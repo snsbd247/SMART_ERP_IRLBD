@@ -7,12 +7,22 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { RowActions } from "@/components/sales-workflow/RowActions";
 
 export default function DispatchPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
-  useEffect(() => { swApi.listDispatches({ q, status }).then(({ data }) => setRows(data || [])); }, [q, status]);
+  const load = () => swApi.listDispatches({ q, status }).then(({ data }) => setRows(data || []));
+  useEffect(() => { load(); }, [q, status]);
+
+  const remove = async (id: string) => {
+    const { error } = await swApi.deleteDispatch(id);
+    if (error) return toast({ title: "Failed", description: (error as any).message, variant: "destructive" });
+    toast({ title: "Dispatch deleted; PO quantities restored" });
+    load();
+  };
 
   return (
     <div className="p-6 space-y-4">
@@ -27,7 +37,7 @@ export default function DispatchPage() {
       </Card>
       <Card>
         <Table>
-          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead>Vehicle</TableHead><TableHead>Qty</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead>Vehicle</TableHead><TableHead>Qty</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
           <TableBody>
             {rows.map((r) => (
               <TableRow key={r.id}>
@@ -37,7 +47,14 @@ export default function DispatchPage() {
                 <TableCell>{r.vehicle_no}</TableCell>
                 <TableCell>{r.total_qty}</TableCell>
                 <TableCell><Badge variant="secondary">{r.status}</Badge></TableCell>
-                <TableCell><Link to={`/sales-workflow/dispatch/${r.id}`}><Button size="sm" variant="ghost">View</Button></Link></TableCell>
+                <TableCell>
+                  <RowActions
+                    viewTo={`/sales-workflow/dispatch/${r.id}`}
+                    editTo={`/sales-workflow/dispatch/${r.id}/edit`}
+                    onDelete={() => remove(r.id)}
+                    deleteLabel={`Delete ${r.dispatch_number}? PO quantities will be restored.`}
+                  />
+                </TableCell>
               </TableRow>
             ))}
             {rows.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No dispatches</TableCell></TableRow>}
