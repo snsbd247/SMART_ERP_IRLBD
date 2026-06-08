@@ -154,11 +154,18 @@ const SalesInvoiceDetailPage = () => {
   };
 
   const deletePayment = async (paymentId: string) => {
-    if (!confirm("Delete this payment? Allocation will be removed.")) return;
-    const { error } = await supabase.from("party_payments" as any).delete().eq("id", paymentId);
-    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
-    toast({ title: "Payment deleted" });
-    load();
+    if (!confirm("Delete this payment? It will be moved to trash and can be restored by Super Admin.")) return;
+    try {
+      const { softDelete } = await import("@/lib/soft-delete");
+      await softDelete("party_payments", paymentId, {
+        userId: user!.id,
+        userName: (user as any)?.email || "user",
+      }, { module: "payments" });
+      toast({ title: "Payment moved to trash" });
+      load();
+    } catch (e: any) {
+      toast({ title: "Failed", description: e?.message || "Delete failed", variant: "destructive" });
+    }
   };
 
   if (loading) return (
