@@ -26,7 +26,7 @@ export function useCompanySettings() {
       .from("company_settings" as any)
       .select("*")
       .eq("id", "default")
-      .single();
+      .maybeSingle();
     setSettings(data as any);
     setLoading(false);
   };
