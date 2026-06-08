@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-export function useUnreadMessages(pollInterval = 5000) {
+export function useUnreadMessages(pollInterval = 30000) {
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 

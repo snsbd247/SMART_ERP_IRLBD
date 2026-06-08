@@ -224,11 +224,11 @@ const MessagingPage = () => {
     if (selectedConvId) fetchMessages(selectedConvId);
   }, [selectedConvId, fetchMessages]);
 
-  // Poll every 5 seconds
+  // Poll periodically (kept moderate to avoid hitting API throttle).
   useEffect(() => {
-    const convInterval = setInterval(fetchConversations, 8000);
+    const convInterval = setInterval(fetchConversations, 20000);
     const msgInterval = selectedConvId
-      ? setInterval(() => fetchMessages(selectedConvId), 4000)
+      ? setInterval(() => fetchMessages(selectedConvId), 10000)
       : undefined;
     return () => {
       clearInterval(convInterval);
