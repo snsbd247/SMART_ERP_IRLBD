@@ -171,7 +171,7 @@ const GeneralSettingsPage = () => {
     }
     setUploading(true);
     try {
-      if (isLaravelMode()) {
+      if (useLaravel()) {
         const fd = new FormData();
         fd.append("file", file);
         fd.append("setting_key", "company_logo_url");
