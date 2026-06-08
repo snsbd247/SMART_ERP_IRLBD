@@ -9,7 +9,7 @@ use Carbon\Carbon;
 use App\Models\{
     AccVoucher, Attendance, BillOfMaterial, BomItem, Branch, ChartOfAccount,
     CompanySetting, Customer, CustomerReceive, DeliveryChallan, Department,
-    Designation, Dispatch, DispatchItem, DispatchPoAllocation, Employee,
+    Designation, Employee,
     EmployeeFundSetting, FinancialYear, FundTransaction, HoReceive,
     InvoicePayment, InvoiceChallan, ItemCategory, ItemMaster, LeaveRequest,
     LeaveType, NumberSequence, PartyNote, PartyPayment, PaymentAllocation,
@@ -91,7 +91,7 @@ class SeedDemoData extends Command
     private array $vouchers = [], $ventries = [];
     private int $vcJV = 0, $vcPV = 0, $vcRV = 0, $vcCV = 0;
     private int $sc = 0, $pc = 0, $src = 0, $prc = 0, $tc = 0, $prdc = 0;
-    private int $poc = 0, $dspc = 0, $vchc = 0, $dcc = 0, $inv2c = 0, $ipayc = 0, $tdsc = 0, $pmc = 0;
+    private int $poc = 0, $vchc = 0, $dcc = 0, $inv2c = 0, $ipayc = 0, $tdsc = 0, $pmc = 0;
     private array $sList = [], $pList = [];
     private Carbon $fyStart, $fyEnd;
 
@@ -150,10 +150,10 @@ class SeedDemoData extends Command
 
         $resetGroups = [
             ['voucher_entries','payment_allocations','sales_invoice_items','sales_return_items','purchase_items','purchase_return_items','stock_movements','stock_ledger','stock_transfers','production_materials','bom_items','fund_transactions','employee_fund_settings','overtime_records','leave_requests','attendance','employee_documents','employee_bank_info','employee_education','employee_experience','employee_emergency_contacts','salary_structures','face_data','biometric_logs','payroll','party_notes','audit_log','login_logs','backup_history','messages','conversation_participants',
-             'tds_entries','invoice_payments','invoice_challans','sales_invoice_items_v2','customer_receives','ho_receives','dispatch_po_allocations','vat_challan_items','dispatch_items','purchase_order_items',
-             'dispatch_status_logs','invoice_status_logs','po_amendments'],
+             'tds_entries','invoice_payments','invoice_challans','sales_invoice_items_v2','customer_receives','ho_receives','vat_challan_items','purchase_order_items',
+             'invoice_status_logs','po_amendments'],
             ['sales_returns','purchase_returns'],
-            ['sales_invoices_v2','delivery_challans','vat_challans','dispatches','purchase_orders'],
+            ['sales_invoices_v2','delivery_challans','vat_challans','purchase_orders'],
             ['acc_vouchers','party_payments','sales_invoices','purchases','production_entries','bill_of_materials','employees','conversations','number_sequences'],
             ['customers','suppliers','item_master','products','raw_materials'],
             ['item_categories','units','warehouses','product_categories'],
