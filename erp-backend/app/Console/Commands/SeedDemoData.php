@@ -1082,9 +1082,6 @@ class SeedDemoData extends Command
         $this->flushVouchers();
         $this->bulk('purchase_orders', $POs);
         $this->bulk('purchase_order_items', $POitems);
-        $this->bulk('dispatches', $DSPs);
-        $this->bulk('dispatch_items', $DSPitems);
-        $this->bulk('dispatch_po_allocations', $DSPallocs);
         $this->bulk('vat_challans', $VCHs);
         $this->bulk('vat_challan_items', $VCHitems);
         $this->bulk('delivery_challans', $DCs);
@@ -1112,7 +1109,6 @@ class SeedDemoData extends Command
             ['id'=>'receipt_voucher','prefix'=>'RV','current_number'=>$this->vcRV,'year'=>2026,'description'=>'Receipt Voucher'],
             ['id'=>'contra_voucher','prefix'=>'CV','current_number'=>$this->vcCV,'year'=>2026,'description'=>'Contra Voucher'],
             ['id'=>'purchase_order','prefix'=>'PO','current_number'=>$this->poc,'year'=>2026,'description'=>'Customer Purchase Order'],
-            ['id'=>'dispatch','prefix'=>'DSP','current_number'=>$this->dspc,'year'=>2026,'description'=>'Dispatch / Gate Pass'],
             ['id'=>'vat_challan','prefix'=>'VCH','current_number'=>$this->vchc,'year'=>2026,'description'=>'VAT Challan (Mushak 6.3)'],
             ['id'=>'delivery_challan','prefix'=>'DC','current_number'=>$this->dcc,'year'=>2026,'description'=>'Delivery Challan'],
             ['id'=>'sales_invoice_v2','prefix'=>'INV2','current_number'=>$this->inv2c,'year'=>2026,'description'=>'Consolidated Sales Invoice'],
