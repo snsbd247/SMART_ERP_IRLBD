@@ -421,7 +421,11 @@ const AccountingVouchers = () => {
       switch (superAdminAction) {
         case "delete":
           await voucherApi.deleteApproved(actionVoucher.id, actionReason);
-          toast({ title: "Voucher deleted" });
+          toast({ title: "Voucher moved to trash", description: "Super Admin can restore it from the deleted list." });
+          break;
+        case "restore":
+          await voucherApi.restore(actionVoucher.id, actionReason);
+          toast({ title: "Voucher restored" });
           break;
         case "reopen":
           await voucherApi.reopen(actionVoucher.id, actionReason);
