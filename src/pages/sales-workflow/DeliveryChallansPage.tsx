@@ -55,6 +55,13 @@ export default function DeliveryChallansPage() {
                   {r.status === "delivered" && <Button size="sm" variant="outline" onClick={() => advance(r, "customer_received")}>Cust. Receive</Button>}
                   {r.status === "customer_received" && <Button size="sm" variant="outline" onClick={() => advance(r, "sent_to_ho")}>Send to HO</Button>}
                   {r.status === "sent_to_ho" && <Button size="sm" variant="outline" onClick={() => advance(r, "ho_received")}>HO Receive</Button>}
+                  <Button size="icon" variant="ghost" title="Delete" className="text-destructive" onClick={async () => {
+                    if (!confirm(`Delete DC ${r.dc_number}?`)) return;
+                    const { error } = await swApi.deleteDeliveryChallan(r.id);
+                    if (error) return toast({ title: "Failed", description: (error as any).message, variant: "destructive" });
+                    toast({ title: "DC deleted" });
+                    load();
+                  }}><Trash2 className="w-4 h-4" /></Button>
                 </TableCell>
               </TableRow>
             ))}
