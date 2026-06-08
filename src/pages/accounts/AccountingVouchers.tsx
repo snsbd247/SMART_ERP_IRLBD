@@ -89,6 +89,17 @@ const AccountingVouchers = () => {
   const [formBranch, setFormBranch] = useState("");
   const [formFinYear, setFormFinYear] = useState("");
   const [formDesc, setFormDesc] = useState("");
+  // True until the user manually edits the voucher description. While true,
+  // the description is auto-derived from entry narrations as "dr | cr".
+  const [descAuto, setDescAuto] = useState(true);
+
+  // Build "dr narrations | cr narrations" from current entries.
+  const buildAutoDesc = (rows: EntryRow[]) => {
+    const dr = rows.filter((e) => e.dr_cr === "dr" && e.narration.trim()).map((e) => e.narration.trim());
+    const cr = rows.filter((e) => e.dr_cr === "cr" && e.narration.trim()).map((e) => e.narration.trim());
+    if (!dr.length && !cr.length) return "";
+    return `${dr.join(", ")} | ${cr.join(", ")}`;
+  };
   const [entries, setEntries] = useState<EntryRow[]>([
     { id: "1", account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
     { id: "2", account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
