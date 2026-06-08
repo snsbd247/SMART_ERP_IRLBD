@@ -49,7 +49,12 @@ class GenericTableController extends BaseController
         if (in_array($table, self::DENYLIST, true)) {
             abort(403, "Table '{$table}' is not accessible via generic API");
         }
-        if (!Schema::hasTable($table)) {
+        // Allow both base tables and views (Schema::hasTable misses views on some drivers)
+        $exists = Schema::hasTable($table) || DB::selectOne(
+            "SELECT 1 AS x FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?",
+            [$table]
+        );
+        if (!$exists) {
             abort(404, "Table '{$table}' not found");
         }
     }
