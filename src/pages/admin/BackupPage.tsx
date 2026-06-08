@@ -738,7 +738,7 @@ const BackupPage = () => {
               <div className="pt-4 mt-2 border-t border-border space-y-2">
                 <p className="text-sm font-medium text-foreground">Full demo data (all modules, 2 branches)</p>
                 <p className="text-xs text-muted-foreground">
-                  Seeds a full year of operational data across Accounts, Bank &amp; Cash, Inventory, Purchase, Manufacturing, Sales Workflow (BD VAT) and HRM for two branches: <strong>Head Office</strong> and <strong>Factory</strong>. Wipes all existing transactional + master data first.
+                  Seeds a full year of operational data across Accounts, Bank &amp; Cash, Inventory, Purchase, Manufacturing, Sales (BD VAT) and HRM for two branches: <strong>Head Office</strong> and <strong>Factory</strong>. Wipes all existing transactional + master data first.
                 </p>
                 <Button
                   variant="destructive"
