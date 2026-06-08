@@ -58,6 +58,7 @@ export default function DispatchDetailPage() {
       </Card>
       <div className="flex gap-2">
         <Link to="/sales-workflow/dispatch"><Button variant="outline">Back</Button></Link>
+        <Link to={`/sales-workflow/dispatch/${d.id}/edit`}><Button variant="outline">Edit Header</Button></Link>
         <Link to={`/sales-workflow/vat-challan/new?dispatch=${d.id}`}><Button>Create VAT Challan</Button></Link>
       </div>
     </div>

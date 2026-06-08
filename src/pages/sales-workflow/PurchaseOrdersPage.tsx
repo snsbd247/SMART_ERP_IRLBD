@@ -7,6 +7,9 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { RowActions } from "@/components/sales-workflow/RowActions";
+import { PrintPO } from "@/components/sales-workflow/SalesWorkflowPrints";
 
 export default function PurchaseOrdersPage() {
   const [rows, setRows] = useState<any[]>([]);
@@ -15,9 +18,21 @@ export default function PurchaseOrdersPage() {
 
   const load = async () => {
     const { data } = await swApi.listPOs({ q, status });
-    setRows(data || []);
+    // Hydrate items for print
+    const withItems = await Promise.all((data || []).map(async (r: any) => {
+      const { data: full } = await swApi.getPO(r.id);
+      return full || r;
+    }));
+    setRows(withItems);
   };
   useEffect(() => { load(); }, [q, status]);
+
+  const remove = async (id: string) => {
+    const { error } = await swApi.deletePO(id);
+    if (error) return toast({ title: "Failed", description: (error as any).message, variant: "destructive" });
+    toast({ title: "PO deleted" });
+    load();
+  };
 
   return (
     <div className="p-6 space-y-4">
@@ -46,7 +61,7 @@ export default function PurchaseOrdersPage() {
               <TableHead className="text-right">VAT</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead></TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -59,7 +74,15 @@ export default function PurchaseOrdersPage() {
                 <TableCell className="text-right">{Number(r.vat_amount).toFixed(2)}</TableCell>
                 <TableCell className="text-right">{Number(r.grand_total).toFixed(2)}</TableCell>
                 <TableCell><Badge variant="secondary">{r.status}</Badge></TableCell>
-                <TableCell><Link to={`/sales-workflow/po/${r.id}`}><Button size="sm" variant="ghost">View</Button></Link></TableCell>
+                <TableCell>
+                  <RowActions
+                    printSlot={<PrintPO po={r} />}
+                    viewTo={`/sales-workflow/po/${r.id}`}
+                    editTo={`/sales-workflow/po/${r.id}/edit`}
+                    onDelete={() => remove(r.id)}
+                    deleteLabel={`Delete PO ${r.po_number}? This cannot be undone.`}
+                  />
+                </TableCell>
               </TableRow>
             ))}
             {rows.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No purchase orders</TableCell></TableRow>}
