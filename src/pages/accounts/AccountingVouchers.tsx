@@ -672,7 +672,7 @@ const AccountingVouchers = () => {
                                 if (e.key === "Enter") e.preventDefault();
                                 const field: "debit" | "credit" = entry.dr_cr === "dr" ? "debit" : "credit";
                                 setRawAmounts((p) => ({ ...p, [`${entry.id}-${field}`]: String(val) }));
-                                setEntries((prev) => prev.map((r) => r.id === entry.id ? { ...r, [field]: val, narration: "" } : r));
+                                setEntries((prev) => prev.map((r) => r.id === entry.id ? { ...r, [field]: val } : r));
                               }}
                               onBlur={(e) => {
                                 const txt = e.target.value.trim();
@@ -681,7 +681,7 @@ const AccountingVouchers = () => {
                                 if (!isFinite(val) || isNaN(val) || val <= 0) return;
                                 const field: "debit" | "credit" = entry.dr_cr === "dr" ? "debit" : "credit";
                                 setRawAmounts((p) => ({ ...p, [`${entry.id}-${field}`]: String(val) }));
-                                setEntries((prev) => prev.map((r) => r.id === entry.id ? { ...r, [field]: val, narration: "" } : r));
+                                setEntries((prev) => prev.map((r) => r.id === entry.id ? { ...r, [field]: val } : r));
                               }} />
                           </TableCell>
                           <TableCell className="pt-3">
