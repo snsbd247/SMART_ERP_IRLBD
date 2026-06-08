@@ -74,10 +74,10 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::post('admin/vouchers/{id}/approve', [\App\Http\Controllers\Accounting\VoucherController::class, 'approve']);
             Route::post('admin/vouchers/{id}/reject', [\App\Http\Controllers\Accounting\VoucherController::class, 'reject']);
             Route::post('vouchers/{id}/edit-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'editApproved']);
-            Route::post('vouchers/{id}/delete-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'deleteApproved']);
             Route::post('vouchers/{id}/reopen', [\App\Http\Controllers\Accounting\VoucherController::class, 'reopen']);
             Route::post('vouchers/{id}/reverse', [\App\Http\Controllers\Accounting\VoucherController::class, 'reverse']);
         });
+        Route::post('vouchers/{id}/delete-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'deleteApproved']);
 
         // ─── Reports ────────────────────────────────────────────
         Route::middleware('permission:reports.view')->prefix('reports')->group(function () {
