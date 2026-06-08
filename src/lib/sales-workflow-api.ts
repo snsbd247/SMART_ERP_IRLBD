@@ -395,7 +395,7 @@ export const swApi = {
       const due = Number(inv.grand_total) - paid - tds;
       await supabase.from("sales_invoices_v2").update({
         paid_amount: paid, tds_amount: tds, due_amount: due,
-        status: due <= 0 ? "paid" : "partially_paid",
+        status: due <= 0 ? "paid" : "partial_paid",
       }).eq("id", invoiceId);
     }
     const voucher = await postInvoicePaymentVoucher(p, currentInvoice);

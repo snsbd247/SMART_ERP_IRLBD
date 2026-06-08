@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Bangladesh VAT Sales Workflow
- * PO → Dispatch → VAT Challan → Delivery Challan → Customer Receive → HO Receive → Invoice → Payment/TDS
+ * PO → VAT Challan → Delivery Challan → Customer Receive → HO Receive → Invoice → Bill Submit → Payment/TDS
  * Additive only — existing tables untouched.
  */
 return new class extends Migration {
@@ -59,47 +59,6 @@ return new class extends Migration {
             $t->text('reason')->nullable();
             $t->timestamp('created_at')->useCurrent();
             $t->foreign('po_id')->references('id')->on('purchase_orders')->cascadeOnDelete();
-        });
-
-        Schema::create('dispatches', function (Blueprint $t) {
-            $t->uuid('id')->primary();
-            $t->string('dispatch_number', 50)->unique();
-            $t->date('dispatch_date');
-            $t->uuid('customer_id');
-            $t->string('vehicle_no', 50)->nullable();
-            $t->string('driver_name', 100)->nullable();
-            $t->string('driver_phone', 30)->nullable();
-            $t->string('status', 20)->default('draft');
-            $t->decimal('total_qty', 18, 3)->default(0);
-            $t->text('notes')->nullable();
-            $t->uuid('branch_id')->nullable();
-            $t->uuid('financial_year_id')->nullable();
-            $t->uuid('created_by')->nullable();
-            $t->timestamps();
-            $t->softDeletes();
-            $t->index(['customer_id', 'status']);
-        });
-
-        Schema::create('dispatch_items', function (Blueprint $t) {
-            $t->uuid('id')->primary();
-            $t->uuid('dispatch_id');
-            $t->uuid('product_id');
-            $t->decimal('qty', 18, 3)->default(0);
-            $t->integer('sort_order')->default(0);
-            $t->foreign('dispatch_id')->references('id')->on('dispatches')->cascadeOnDelete();
-            $t->index('dispatch_id');
-        });
-
-        Schema::create('dispatch_po_allocations', function (Blueprint $t) {
-            $t->uuid('id')->primary();
-            $t->uuid('dispatch_item_id');
-            $t->uuid('po_item_id');
-            $t->uuid('po_id');
-            $t->decimal('allocated_qty', 18, 3)->default(0);
-            $t->timestamp('created_at')->useCurrent();
-            $t->foreign('dispatch_item_id')->references('id')->on('dispatch_items')->cascadeOnDelete();
-            $t->foreign('po_item_id')->references('id')->on('purchase_order_items');
-            $t->index(['dispatch_item_id', 'po_item_id']);
         });
 
         Schema::create('vat_challans', function (Blueprint $t) {
