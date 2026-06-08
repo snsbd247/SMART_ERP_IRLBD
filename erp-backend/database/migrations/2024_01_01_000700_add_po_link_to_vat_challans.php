@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
@@ -14,6 +15,10 @@ return new class extends Migration {
             }
         });
 
+        DB::table('vat_challans')
+            ->where('source', '!=', 'purchase_order')
+            ->update(['source' => 'purchase_order']);
+
         Schema::table('vat_challan_items', function (Blueprint $t) {
             if (!Schema::hasColumn('vat_challan_items', 'purchase_order_item_id')) {
                 $t->uuid('purchase_order_item_id')->nullable()->after('product_id');
@@ -23,6 +28,13 @@ return new class extends Migration {
                 $t->decimal('po_qty_consumed', 18, 3)->default(0)->after('qty');
             }
         });
+
+        if (Schema::hasColumn('vat_challans', 'purchase_order_id')) {
+            try { DB::statement("ALTER TABLE vat_challans MODIFY purchase_order_id CHAR(36) NOT NULL"); } catch (Throwable $e) {}
+        }
+        if (Schema::hasColumn('vat_challan_items', 'purchase_order_item_id')) {
+            try { DB::statement("ALTER TABLE vat_challan_items MODIFY purchase_order_item_id CHAR(36) NOT NULL"); } catch (Throwable $e) {}
+        }
     }
 
     public function down(): void
