@@ -827,7 +827,7 @@ const AccountingVouchers = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleSuperAdminAction}
-              disabled={!actionReason.trim()}
+              disabled={superAdminAction !== "restore" && !actionReason.trim()}
               className={superAdminAction === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
             >
               {superAdminAction && actionLabels[superAdminAction]?.confirm}
