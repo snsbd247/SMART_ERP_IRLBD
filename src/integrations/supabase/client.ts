@@ -5,10 +5,11 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { laravelSupabaseBridge } from './laravel-bridge';
+import { getApiBaseUrl } from '@/lib/laravel-auth';
 
 function isLaravelOnlyRuntime(): boolean {
   if (typeof window !== "undefined") {
-    if (window.location.hostname === "erp.irlbd.com") return true;
+    if (getApiBaseUrl()) return true;
     if ((window as any).__FORCE_LARAVEL_FALLBACK__) return true;
     try {
       if (sessionStorage.getItem("force_laravel_fallback")) return true;
