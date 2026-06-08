@@ -287,8 +287,8 @@ const App = () => (
                 <Route path="/reports/stock-by-group" element={<P perm="inventory.view"><StockByGroupPage /></P>} />
                 <Route path="/reports/low-stock" element={<P perm="inventory.view"><LowStockPage /></P>} />
                 <Route path="/reports/customer-statement" element={<P perm="sales.view"><CustomerStatementPage /></P>} />
-                <Route path="/reports/sales" element={<P perm="sales.view"><FinancialReports /></P>} />
-                <Route path="/reports/purchase" element={<P perm="purchase.view"><FinancialReports /></P>} />
+                <Route path="/reports/sales" element={<P perm="sales.view"><SalesReport /></P>} />
+                <Route path="/reports/purchase" element={<P perm="purchase.view"><PurchaseReport /></P>} />
 
                 {/* ─── Administration ──────────────────────────── */}
                 <Route path="/admin/users" element={<P perm="users.view"><UsersPage /></P>} />
