@@ -19,6 +19,8 @@ const round2 = (n:number) => Math.round(n*100)/100;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  let MODE: "reset" | "reset-and-seed" = "reset-and-seed";
+  try { const b = await req.clone().json(); if (b?.mode === "reset") MODE = "reset"; } catch {}
   const log: string[] = [];
   const t0 = Date.now();
   try {
@@ -45,7 +47,7 @@ Deno.serve(async (req) => {
       // Returns must be deleted BEFORE their parent invoices/purchases
       ["sales_returns","purchase_returns"],
       ["sales_invoices_v2","delivery_challans","vat_challans","dispatches","purchase_orders"],
-      ["acc_vouchers","party_payments","sales_invoices","purchases","production_entries","bill_of_materials","employees","conversations","number_sequences"],
+      ["acc_vouchers","party_payments","sales_invoices","purchases","production_entries","bill_of_materials","employees","conversations"],
       ["customers","suppliers","item_master","products","raw_materials"],
       ["item_categories","units","warehouses","product_categories"],
     ];
@@ -56,6 +58,19 @@ Deno.serve(async (req) => {
       }
     }
     await db.from("profiles").delete().not("employee_id", "is", null);
+
+    if (MODE === "reset") {
+      // Reset-only mode: protect Chart of Accounts, IFRS Mapping, Document Numbering,
+      // Page Shortcuts, General Settings, SMS, Branding (untouched above).
+      return new Response(JSON.stringify({
+        success: true,
+        mode: "reset",
+        message: "All demo transactional + master data wiped. Configuration preserved.",
+        elapsedMs: Date.now() - t0,
+        log,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
 
     // ===== RESOLVE / ENSURE MASTER REFS =====
     // Branches
@@ -787,26 +802,30 @@ Deno.serve(async (req) => {
     await bulk("invoice_payments", IPAYs);
     await bulk("tds_entries", TDSs);
 
-    // ===== Number sequences =====
-    await bulk("number_sequences", [
-      { id:"sales_invoice", prefix:"INV", current_number:sc, year: Number(fyTag), description:"Sales Invoice" },
-      { id:"purchase", prefix:"PUR", current_number:pc, year: Number(fyTag), description:"Purchase" },
-      { id:"sales_return", prefix:"SRN", current_number:src, year: Number(fyTag), description:"Sales Return" },
-      { id:"purchase_return", prefix:"PRN", current_number:prc, year: Number(fyTag), description:"Purchase Return" },
-      { id:"production", prefix:"PRD", current_number:prdc, year: Number(fyTag), description:"Production" },
-      { id:"stock_transfer", prefix:"STR", current_number:tc, year: Number(fyTag), description:"Stock Transfer" },
-      { id:"journal_voucher", prefix:"JV", current_number:vc.JV, year: Number(fyTag), description:"Journal Voucher" },
-      { id:"payment_voucher", prefix:"PV", current_number:vc.PV, year: Number(fyTag), description:"Payment Voucher" },
-      { id:"receipt_voucher", prefix:"RV", current_number:vc.RV, year: Number(fyTag), description:"Receipt Voucher" },
-      { id:"contra_voucher", prefix:"CV", current_number:vc.CV, year: Number(fyTag), description:"Contra Voucher" },
-      { id:"purchase_order", prefix:"PO", current_number:poc, year: Number(fyTag), description:"Customer Purchase Order" },
-      { id:"dispatch", prefix:"DSP", current_number:dspc, year: Number(fyTag), description:"Dispatch / Gate Pass" },
-      { id:"vat_challan", prefix:"VCH", current_number:vchc, year: Number(fyTag), description:"VAT Challan (Mushak 6.3)" },
-      { id:"delivery_challan", prefix:"DC", current_number:dcc, year: Number(fyTag), description:"Delivery Challan" },
-      { id:"sales_invoice_v2", prefix:"INV2", current_number:inv2c, year: Number(fyTag), description:"Consolidated Sales Invoice" },
-      { id:"invoice_payment", prefix:"RCP", current_number:ipayc, year: Number(fyTag), description:"Invoice Payment Receipt" },
-      { id:"tds_entry", prefix:"TDS", current_number:tdsc, year: Number(fyTag), description:"TDS Entry" },
-    ]);
+    // ===== Number sequences (upsert — Document Numbering is protected from reset) =====
+    {
+      const seqRows = [
+        { id:"sales_invoice", prefix:"INV", current_number:sc, year: Number(fyTag), description:"Sales Invoice" },
+        { id:"purchase", prefix:"PUR", current_number:pc, year: Number(fyTag), description:"Purchase" },
+        { id:"sales_return", prefix:"SRN", current_number:src, year: Number(fyTag), description:"Sales Return" },
+        { id:"purchase_return", prefix:"PRN", current_number:prc, year: Number(fyTag), description:"Purchase Return" },
+        { id:"production", prefix:"PRD", current_number:prdc, year: Number(fyTag), description:"Production" },
+        { id:"stock_transfer", prefix:"STR", current_number:tc, year: Number(fyTag), description:"Stock Transfer" },
+        { id:"journal_voucher", prefix:"JV", current_number:vc.JV, year: Number(fyTag), description:"Journal Voucher" },
+        { id:"payment_voucher", prefix:"PV", current_number:vc.PV, year: Number(fyTag), description:"Payment Voucher" },
+        { id:"receipt_voucher", prefix:"RV", current_number:vc.RV, year: Number(fyTag), description:"Receipt Voucher" },
+        { id:"contra_voucher", prefix:"CV", current_number:vc.CV, year: Number(fyTag), description:"Contra Voucher" },
+        { id:"purchase_order", prefix:"PO", current_number:poc, year: Number(fyTag), description:"Customer Purchase Order" },
+        { id:"dispatch", prefix:"DSP", current_number:dspc, year: Number(fyTag), description:"Dispatch / Gate Pass" },
+        { id:"vat_challan", prefix:"VCH", current_number:vchc, year: Number(fyTag), description:"VAT Challan (Mushak 6.3)" },
+        { id:"delivery_challan", prefix:"DC", current_number:dcc, year: Number(fyTag), description:"Delivery Challan" },
+        { id:"sales_invoice_v2", prefix:"INV2", current_number:inv2c, year: Number(fyTag), description:"Consolidated Sales Invoice" },
+        { id:"invoice_payment", prefix:"RCP", current_number:ipayc, year: Number(fyTag), description:"Invoice Payment Receipt" },
+        { id:"tds_entry", prefix:"TDS", current_number:tdsc, year: Number(fyTag), description:"TDS Entry" },
+      ];
+      const { error: seqErr } = await db.from("number_sequences").upsert(seqRows, { onConflict: "id" });
+      if (seqErr) log.push(`number_sequences upsert: ${seqErr.message}`);
+    }
 
     // ===== Demo Party Notes (showcase party notes feature) =====
     const noteSnippets = [

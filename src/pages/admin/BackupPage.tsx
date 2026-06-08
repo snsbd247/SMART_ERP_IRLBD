@@ -166,6 +166,8 @@ const BackupPage = () => {
 
   const [seedingFull, setSeedingFull] = useState(false);
   const [fullSeedLog, setFullSeedLog] = useState<string | null>(null);
+  const [resettingDemo, setResettingDemo] = useState(false);
+
   const handleFullDemoSeed = async () => {
     if (!isSuperAdmin) {
       toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
@@ -187,6 +189,32 @@ const BackupPage = () => {
       setSeedingFull(false);
     }
   };
+
+  const handleResetDemoOnly = async () => {
+    if (!isSuperAdmin) {
+      toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
+      return;
+    }
+    if (!confirm(
+      "This will WIPE all demo transactions and master data (vouchers, invoices, POs, stock, payroll, parties, items, employees, etc.).\n\n" +
+      "PROTECTED (not touched): Chart of Accounts, IFRS Mapping, Document Numbering, Page Shortcuts, General Settings, SMS Integration, Branding, GitHub Deploy Sync.\n\nContinue?"
+    )) return;
+    setResettingDemo(true);
+    setFullSeedLog(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "reset" } });
+      if (error) throw error;
+      if (data?.success === false) throw new Error(data.error || "Reset failed");
+      setFullSeedLog(JSON.stringify(data, null, 2));
+      toast({ title: "Demo data reset", description: `Completed in ${data?.elapsedMs ?? "?"}ms.` });
+    } catch (err: any) {
+      toast({ title: "Reset failed", description: err.message, variant: "destructive" });
+      setFullSeedLog(String(err.message || err));
+    } finally {
+      setResettingDemo(false);
+    }
+  };
+
 
 
   const fetchHistory = useCallback(async () => {
@@ -715,12 +743,24 @@ const BackupPage = () => {
                 <Button
                   variant="destructive"
                   onClick={handleFullDemoSeed}
-                  disabled={seedingFull || !isSuperAdmin}
+                  disabled={seedingFull || resettingDemo || !isSuperAdmin}
                   className="w-full"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
                   {seedingFull ? "Seeding full demo data..." : "Wipe & Seed Full Demo Data (2 branches)"}
                 </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleResetDemoOnly}
+                  disabled={resettingDemo || seedingFull || !isSuperAdmin}
+                  className="w-full"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  {resettingDemo ? "Resetting demo data..." : "Reset Demo Data Only (preserve config)"}
+                </Button>
+                <p className="text-[11px] text-muted-foreground">
+                  <strong>Reset Demo Data Only</strong> wipes all transactions + masters but PRESERVES Chart of Accounts, IFRS Mapping, Document Numbering, Page Shortcuts, General Settings, SMS Integration, Branding &amp; GitHub Deploy Sync.
+                </p>
                 {fullSeedLog && (
                   <pre className="text-[10px] p-2 bg-muted rounded max-h-48 overflow-auto">{fullSeedLog}</pre>
                 )}
