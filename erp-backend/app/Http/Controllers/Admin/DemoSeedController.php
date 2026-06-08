@@ -56,7 +56,6 @@ class DemoSeedController extends BaseController
             'sales'            => 'sales_invoices',
             'sales_v2'         => 'sales_invoices_v2',
             'purchases'        => 'purchase_orders',
-            'dispatches'       => 'dispatches',
             'vat_challans'     => 'vat_challans',
             'delivery_challans' => 'delivery_challans',
             'payments'         => 'party_payments',

@@ -474,7 +474,7 @@ class BackupController extends BaseController
             'login_logs', 'user_activities', 'audit_log', 'page_shortcuts', 'module_settings', 'system_settings', 'backup_settings',
             'tds_entries', 'invoice_payments', 'invoice_challans', 'sales_invoice_items_v2', 'sales_invoices_v2',
             'ho_receives', 'customer_receives', 'delivery_challans', 'vat_challan_items', 'vat_challans',
-            'dispatch_status_logs', 'dispatch_po_allocations', 'dispatch_items', 'dispatches', 'invoice_status_logs',
+            'invoice_status_logs',
             'po_amendments', 'purchase_order_items', 'purchase_orders',
             'payment_allocations', 'party_payments', 'party_notes',
             'fund_transactions', 'employee_fund_settings', 'payroll', 'overtime_records', 'leave_requests', 'attendance',
