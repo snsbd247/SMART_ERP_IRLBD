@@ -113,7 +113,7 @@ export const swApi = {
     const subtotal = items.reduce((s, i) => s + Number(i.qty) * Number(i.rate), 0);
     const vat_amount = items.reduce((s, i) => s + Number(i.qty) * Number(i.rate) * (Number(i.vat_pct || 0) / 100), 0);
     const { data: v, error } = await supabase.from("vat_challans").insert({
-      ...payload, challan_number, subtotal, vat_amount, grand_total: subtotal + vat_amount, status: "issued", source: "purchase_order", dispatch_id: null,
+      ...payload, challan_number, subtotal, vat_amount, grand_total: subtotal + vat_amount, status: "issued", source: "purchase_order",
     }).select().single();
     if (error || !v) return { data: null, error };
 
