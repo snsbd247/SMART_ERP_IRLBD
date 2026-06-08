@@ -377,6 +377,75 @@ const BackupPage = () => {
     setSavingSettings(false);
   };
 
+  const saveGdriveSettings = async () => {
+    if (!USE_LARAVEL) {
+      toast({ title: "Google Drive settings require the Laravel backend.", variant: "destructive" });
+      return;
+    }
+    setSavingSettings(true);
+    try {
+      // Only send fields the admin actually filled in so we don't wipe existing secrets
+      const body: Record<string, any> = {
+        gdrive_enabled: !!settings?.gdrive_enabled,
+        gdrive_format: settings?.gdrive_format || "sql",
+      };
+      if (gdriveForm.client_id) body.gdrive_client_id = gdriveForm.client_id;
+      if (gdriveForm.client_secret) body.gdrive_client_secret = gdriveForm.client_secret;
+      if (gdriveForm.refresh_token) body.gdrive_refresh_token = gdriveForm.refresh_token;
+      if (gdriveForm.folder_id) body.gdrive_folder_id = gdriveForm.folder_id;
+      await laravelApiCall("/v1/backups/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      toast({ title: "Google Drive settings saved" });
+      setGdriveForm({ client_id: "", client_secret: "", refresh_token: "", folder_id: "" });
+      fetchSettings();
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    }
+    setSavingSettings(false);
+  };
+
+  const testGdrive = async () => {
+    if (!USE_LARAVEL) return;
+    setGdriveTesting(true);
+    setGdriveTestResult(null);
+    try {
+      const res = await fetch(`${API_BASE}/v1/backups/gdrive/test`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(gdriveForm),
+      });
+      const result = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+      if (!res.ok || !result.success) throw new Error(result.message || result.error || "Test failed");
+      const email = result.data?.user?.emailAddress || "";
+      setGdriveTestResult({ ok: true, message: `Connected${email ? ` as ${email}` : ""}.` });
+    } catch (err: any) {
+      setGdriveTestResult({ ok: false, message: err.message });
+    }
+    setGdriveTesting(false);
+  };
+
+  const uploadBackupToDrive = async (id: string) => {
+    if (!USE_LARAVEL) return;
+    setUploadingId(id);
+    try {
+      const res = await fetch(`${API_BASE}/v1/backups/${id}/gdrive-upload`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      const result = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+      if (!res.ok || !result.success) throw new Error(result.message || result.error || "Upload failed");
+      toast({ title: "Uploaded to Google Drive" });
+      fetchSettings();
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    }
+    setUploadingId(null);
+  };
+
+
   const statusBadge = (status: string) => {
     switch (status) {
       case "completed": return <Badge variant="default" className="bg-green-600 text-white"><CheckCircle className="w-3 h-3 mr-1" />Completed</Badge>;
