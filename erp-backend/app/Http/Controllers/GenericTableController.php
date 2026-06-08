@@ -49,7 +49,12 @@ class GenericTableController extends BaseController
         if (in_array($table, self::DENYLIST, true)) {
             abort(403, "Table '{$table}' is not accessible via generic API");
         }
-        if (!Schema::hasTable($table)) {
+        // Allow both base tables and views (Schema::hasTable misses views on some drivers)
+        $exists = Schema::hasTable($table) || DB::selectOne(
+            "SELECT 1 AS x FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?",
+            [$table]
+        );
+        if (!$exists) {
             abort(404, "Table '{$table}' not found");
         }
     }
@@ -59,18 +64,18 @@ class GenericTableController extends BaseController
         $this->assertTable($table);
 
         $query = DB::table($table);
+        $tableCols = Schema::getColumnListing($table);
 
-        // SELECT projection
+        // SELECT projection — drop relation embeds and unknown columns silently
         if ($sel = $request->query('select')) {
             $cols = array_filter(array_map('trim', explode(',', $sel)));
-            // strip PostgREST relation syntax: "rel(*)" -> skip
-            $cols = array_filter($cols, fn ($c) => !str_contains($c, '('));
+            $cols = array_filter($cols, fn ($c) => !str_contains($c, '(') && !str_contains($c, '.'));
+            $cols = array_values(array_filter($cols, fn ($c) => in_array($c, $tableCols, true)));
             if ($cols) $query->select($cols);
         }
 
         // Filters: ?f[col][op]=value  (skip unknown columns to avoid 500s)
         $filters = (array) $request->query('f', []);
-        $tableCols = Schema::getColumnListing($table);
         foreach ($filters as $col => $ops) {
             if (!is_array($ops) || !preg_match('/^[a-z_][a-z0-9_]*$/i', $col)) continue;
             if (!in_array($col, $tableCols, true)) continue; // ignore relation/foreign cols
