@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, Building2, Eye, EyeOff, Mail } from "lucide-react";
+import { LogIn, Building2, Eye, EyeOff, Mail, UserPlus } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/laravel-auth";
+import { useEffect as useEffectReact } from "react";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -19,7 +21,17 @@ const Login = () => {
   const [submitting, setSubmitting] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
+  const [publicRegEnabled, setPublicRegEnabled] = useState(false);
   const { signIn } = useAuth();
+
+  useEffectReact(() => {
+    const base = getApiBaseUrl();
+    if (!base) return;
+    fetch(`${base}/v1/public/employee-registration/config`)
+      .then(r => r.json())
+      .then(p => setPublicRegEnabled(!!(p?.data ?? p)?.enabled))
+      .catch(() => {});
+  }, []);
   const { branding } = useBranding();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -155,6 +167,13 @@ const Login = () => {
                   Verify Employee
                 </a>
               </div>
+              {publicRegEnabled && (
+                <div className="mt-3 text-center border-t border-border pt-3">
+                  <a href="/register-employee" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                    <UserPlus className="w-3 h-3" /> New employee? Register here
+                  </a>
+                </div>
+              )}
             </>
           )}
         </CardContent>

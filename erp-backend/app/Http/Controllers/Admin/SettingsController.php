@@ -32,6 +32,7 @@ class SettingsController extends BaseController
             'currency_position' => 'sometimes|in:before,after',
             'default_branch_id' => 'nullable|exists:branches,id',
             'default_financial_year_id' => 'nullable|exists:financial_years,id',
+            'public_employee_registration_enabled' => 'sometimes|boolean',
         ]);
 
         $settings = DB::transaction(function () use ($data) {

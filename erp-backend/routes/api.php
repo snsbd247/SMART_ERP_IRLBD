@@ -20,6 +20,10 @@ Route::prefix('auth')->group(function () {
 // Public branding (read-only) — login page needs it before auth
 Route::get('v1/public/branding', [\App\Http\Controllers\Admin\BrandingController::class, 'show']);
 
+// Public employee registration (toggle-gated inside the controller)
+Route::get('v1/public/employee-registration/config', [\App\Http\Controllers\PublicEmployeeRegistrationController::class, 'config']);
+Route::post('v1/public/employee-registration', [\App\Http\Controllers\PublicEmployeeRegistrationController::class, 'register']);
+
 // Protected routes
 Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App\Http\Middleware\UpdateLastSeen::class])->group(function () {
 
