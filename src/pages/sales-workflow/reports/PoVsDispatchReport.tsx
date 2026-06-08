@@ -16,7 +16,7 @@ export default function PoVsDispatchReport() {
   }));
 
   return (
-    <ReportShell title="PO vs Dispatch" filters={filters} onExport={() => exportCsv("po-vs-dispatch.csv", flat, ["po_number","po_date","customer","product","ordered","delivered","remaining"])}>
+    <ReportShell title="PO vs VAT Challan" filters={filters} onExport={() => exportCsv("po-vs-vat-challan.csv", flat, ["po_number","po_date","customer","product","ordered","delivered","remaining"])}>
       <FilterBar filters={filters} setFilters={setFilters} customers={customers} />
       <Card>
         <Table>

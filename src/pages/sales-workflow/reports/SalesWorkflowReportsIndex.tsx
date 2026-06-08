@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { FileBarChart } from "lucide-react";
 
 const REPORTS = [
-  { to: "/sales-workflow/reports/po-vs-dispatch", label: "PO vs Dispatch" },
+  { to: "/sales-workflow/reports/po-vs-vat-challan", label: "PO vs VAT Challan" },
   { to: "/sales-workflow/reports/pending-po", label: "Pending POs" },
   { to: "/sales-workflow/reports/challan-status", label: "Challan Status Tracker" },
   { to: "/sales-workflow/reports/vat-register", label: "VAT Register (Mushak)" },
