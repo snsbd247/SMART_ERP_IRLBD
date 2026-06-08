@@ -139,12 +139,13 @@ Deno.serve(async (req) => {
     switch (action) {
       // ============ LIST VOUCHERS ============
       case "list": {
-        const { voucher_type } = body;
-        const { data, error } = await admin
+        const { voucher_type, include_deleted } = body;
+        let q = admin
           .from("acc_vouchers")
           .select("*")
-          .eq("voucher_type", voucher_type || "journal")
-          .order("created_at", { ascending: false });
+          .eq("voucher_type", voucher_type || "journal");
+        if (!include_deleted) q = q.is("deleted_at", null);
+        const { data, error } = await q.order("created_at", { ascending: false });
         if (error) return err(error.message, 500);
 
         const voucherIds = (data || []).map((v: any) => v.id);
@@ -407,42 +408,79 @@ Deno.serve(async (req) => {
         return json({ success: true });
       }
 
-      // ============ DELETE APPROVED VOUCHER (SUPER ADMIN ONLY) ============
+      // ============ SOFT-DELETE VOUCHER (SUPER ADMIN ONLY) ============
       case "delete_approved": {
         if (!isSuperAdmin(roles)) {
-          return err("Only Super Admin can delete approved vouchers", 403);
+          return err("Only Super Admin can delete vouchers", 403);
         }
         const { id, reason } = body;
 
         const { data: v } = await admin.from("acc_vouchers").select("*").eq("id", id).single();
         if (!v) return err("Voucher not found", 404);
+        if (v.deleted_at) return err("Voucher already deleted", 400);
 
-        // Get entries for audit before deleting
-        const { data: oldEntries } = await admin
-          .from("voucher_entries")
-          .select("*")
-          .eq("voucher_id", id);
-
-        // Delete entries then voucher
-        await admin.from("voucher_entries").delete().eq("voucher_id", id);
-        await admin.from("acc_vouchers").delete().eq("id", id);
+        // Soft delete: keep rows, mark deleted_at + remember prev_status so
+        // reports filtering by status='approved' automatically exclude it.
+        await admin.from("acc_vouchers").update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user.id,
+          prev_status: v.status,
+          status: "deleted",
+          updated_at: new Date().toISOString(),
+        }).eq("id", id);
 
         await logAudit(admin, {
           userId: user.id,
           userName,
           module: "accounting",
-          action: "approved_voucher_deleted",
+          action: "voucher_soft_deleted",
           recordId: id,
           details: JSON.stringify({
             voucher_number: v.voucher_number,
             reason: reason || "No reason provided",
-            deleted_voucher: v,
-            deleted_entries: oldEntries,
+            prev_status: v.status,
           }),
           ipAddress,
         });
 
         return json({ success: true });
+      }
+
+      // ============ RESTORE SOFT-DELETED VOUCHER (SUPER ADMIN ONLY) ============
+      case "restore": {
+        if (!isSuperAdmin(roles)) {
+          return err("Only Super Admin can restore vouchers", 403);
+        }
+        const { id, reason } = body;
+
+        const { data: v } = await admin.from("acc_vouchers").select("*").eq("id", id).single();
+        if (!v) return err("Voucher not found", 404);
+        if (!v.deleted_at) return err("Voucher is not deleted", 400);
+
+        const restoredStatus = v.prev_status || "draft";
+        await admin.from("acc_vouchers").update({
+          deleted_at: null,
+          deleted_by: null,
+          prev_status: null,
+          status: restoredStatus,
+          updated_at: new Date().toISOString(),
+        }).eq("id", id);
+
+        await logAudit(admin, {
+          userId: user.id,
+          userName,
+          module: "accounting",
+          action: "voucher_restored",
+          recordId: id,
+          details: JSON.stringify({
+            voucher_number: v.voucher_number,
+            reason: reason || "",
+            restored_to_status: restoredStatus,
+          }),
+          ipAddress,
+        });
+
+        return json({ success: true, status: restoredStatus });
       }
 
       // ============ REOPEN VOUCHER (SUPER ADMIN ONLY) ============

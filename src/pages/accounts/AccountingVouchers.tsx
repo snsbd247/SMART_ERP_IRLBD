@@ -40,7 +40,7 @@ interface Voucher {
   ledger_accounts?: string[];
 }
 
-type SuperAdminAction = "delete" | "reopen" | "reverse" | null;
+type SuperAdminAction = "delete" | "reopen" | "reverse" | "restore" | null;
 
 const AccountingVouchers = () => {
   const { isSuperAdmin, hasPermission } = useAuth();
@@ -117,12 +117,13 @@ const AccountingVouchers = () => {
   const [actionReason, setActionReason] = useState("");
 
   const [voucherAccountsMap, setVoucherAccountsMap] = useState<Record<string, string[]>>({});
+  const [showDeleted, setShowDeleted] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [vRes, aRes, bRes, fRes] = await Promise.all([
-        voucherApi.list(activeTab),
+        voucherApi.list(activeTab, showDeleted),
         voucherApi.listAccounts(),
         voucherApi.listBranches(),
         voucherApi.listFinancialYears(),
@@ -145,7 +146,7 @@ const AccountingVouchers = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, toast]);
+  }, [activeTab, showDeleted, toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -420,7 +421,11 @@ const AccountingVouchers = () => {
       switch (superAdminAction) {
         case "delete":
           await voucherApi.deleteApproved(actionVoucher.id, actionReason);
-          toast({ title: "Voucher deleted" });
+          toast({ title: "Voucher moved to trash", description: "Super Admin can restore it from the deleted list." });
+          break;
+        case "restore":
+          await voucherApi.restore(actionVoucher.id, actionReason);
+          toast({ title: "Voucher restored" });
           break;
         case "reopen":
           await voucherApi.reopen(actionVoucher.id, actionReason);
@@ -459,7 +464,8 @@ const AccountingVouchers = () => {
   const branchMap = new Map(branches.map((b) => [b.id, b.name]));
 
   const actionLabels: Record<string, { title: string; desc: string; confirm: string }> = {
-    delete: { title: "Delete Approved Voucher", desc: "This will permanently delete this approved voucher and all its entries. This action is irreversible and will be logged.", confirm: "Delete Voucher" },
+    delete: { title: "Delete Voucher", desc: "This will move the voucher to the trash. It will no longer appear in reports or ledgers. Only a Super Admin can restore it later. This action is logged.", confirm: "Move to Trash" },
+    restore: { title: "Restore Voucher", desc: "This will restore the voucher to its previous status and make it visible in reports again. This action is logged.", confirm: "Restore Voucher" },
     reopen: { title: "Reopen Voucher", desc: "This will change the voucher status back to draft, allowing it to be edited and re-submitted. This action will be logged.", confirm: "Reopen Voucher" },
     reverse: { title: "Reverse Voucher", desc: "This will create a new reversal voucher with swapped debit/credit entries to offset the original transaction. Both vouchers will remain in the system.", confirm: "Create Reversal" },
   };
@@ -471,9 +477,22 @@ const AccountingVouchers = () => {
           <FileText className="w-5 h-5 text-primary" />
           <h1 className="text-xl font-semibold text-foreground">Accounting Vouchers</h1>
         </div>
-        {canCreateForType(activeTab) && (
-          <Button onClick={openCreate} size="sm"><Plus className="w-4 h-4 mr-1" />New Voucher</Button>
-        )}
+        <div className="flex items-center gap-2">
+          {isSuperAdmin && (
+            <Button
+              variant={showDeleted ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowDeleted((v) => !v)}
+              title="Show soft-deleted vouchers"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              {showDeleted ? "Showing Trash" : "Show Deleted"}
+            </Button>
+          )}
+          {canCreateForType(activeTab) && (
+            <Button onClick={openCreate} size="sm"><Plus className="w-4 h-4 mr-1" />New Voucher</Button>
+          )}
+        </div>
       </div>
 
       {!dialogOpen && (allowedTypes.length === 0 ? (
@@ -558,8 +577,14 @@ const AccountingVouchers = () => {
                                 <ArrowLeftRight className="w-3.5 h-3.5 text-primary" />
                               </Button>
                             )}
-                            {/* Delete - based on role & status */}
-                            {canDeleteVoucher(v) && (
+                            {/* Restore - super admin only, deleted vouchers */}
+                            {isSuperAdmin && (v as any).deleted_at && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSuperAdminAction("restore", v)} title="Restore">
+                                <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
+                              </Button>
+                            )}
+                            {/* Delete - based on role & status, not for already-deleted */}
+                            {canDeleteVoucher(v) && !(v as any).deleted_at && (
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSuperAdminAction("delete", v)} title="Delete">
                                 <Trash2 className="w-3.5 h-3.5 text-destructive" />
                               </Button>
@@ -802,7 +827,7 @@ const AccountingVouchers = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleSuperAdminAction}
-              disabled={!actionReason.trim()}
+              disabled={superAdminAction !== "restore" && !actionReason.trim()}
               className={superAdminAction === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
             >
               {superAdminAction && actionLabels[superAdminAction]?.confirm}

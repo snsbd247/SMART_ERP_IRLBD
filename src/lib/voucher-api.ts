@@ -50,12 +50,13 @@ function unwrapItem(json: any): any {
 }
 
 export const voucherApi = {
-  list: async (voucher_type: string) => {
+  list: async (voucher_type: string, include_deleted = false) => {
     if (isLaravelMode()) {
-      const json = await laravelFetch<any>(`vouchers/${voucher_type}`);
+      const qs = include_deleted ? "?include_deleted=1" : "";
+      const json = await laravelFetch<any>(`vouchers/${voucher_type}${qs}`);
       return { data: unwrapList(json) } as { data: any[] };
     }
-    return invokeEdge<{ data: any[] }>({ action: "list", voucher_type });
+    return invokeEdge<{ data: any[] }>({ action: "list", voucher_type, include_deleted });
   },
 
   get: async (id: string) => {
@@ -167,6 +168,11 @@ export const voucherApi = {
   deleteApproved: async (id: string, reason: string) => {
     if (isLaravelMode()) return laravelFetch(`vouchers/${id}/delete-approved`, { method: "POST", body: JSON.stringify({ reason }) });
     return invokeEdge({ action: "delete_approved", id, reason });
+  },
+
+  restore: async (id: string, reason?: string) => {
+    if (isLaravelMode()) return laravelFetch(`vouchers/${id}/restore`, { method: "POST", body: JSON.stringify({ reason }) });
+    return invokeEdge({ action: "restore", id, reason });
   },
 
   reopen: async (id: string, reason: string) => {
