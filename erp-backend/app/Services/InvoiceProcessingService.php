@@ -31,7 +31,7 @@ class InvoiceProcessingService
     public function create(array $data, array $vatChallanIds, string $mode = 'custom'): SalesInvoiceV2
     {
         $this->period->assertOpen($data['invoice_date'] ?? null, 'Invoice');
-    {
+
         if (empty($vatChallanIds)) {
             throw new \InvalidArgumentException('No VAT challans selected for invoicing.');
         }
