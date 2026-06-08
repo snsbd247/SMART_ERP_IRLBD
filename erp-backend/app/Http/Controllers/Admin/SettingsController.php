@@ -56,15 +56,12 @@ class SettingsController extends BaseController
     private function singleton(): CompanySetting
     {
         return DB::transaction(function () {
-            $existing = CompanySetting::where('id', self::SINGLETON_ID)->first();
-            if (!$existing) {
-                $source = CompanySetting::orderByDesc('updated_at')->orderByDesc('created_at')->first();
-                $payload = $source ? (array) $source->getAttributes() : $this->defaultPayload();
-                $payload['id'] = self::SINGLETON_ID;
-                if (Schema::hasColumn('company_settings', 'created_at')) $payload['created_at'] = $payload['created_at'] ?? now();
-                if (Schema::hasColumn('company_settings', 'updated_at')) $payload['updated_at'] = $payload['updated_at'] ?? now();
-                DB::table('company_settings')->updateOrInsert(['id' => self::SINGLETON_ID], $this->cleanPayload($payload));
-            }
+            $source = CompanySetting::orderByDesc('updated_at')->orderByDesc('created_at')->first();
+            $payload = $source ? (array) $source->getAttributes() : $this->defaultPayload();
+            $payload['id'] = self::SINGLETON_ID;
+            if (Schema::hasColumn('company_settings', 'created_at')) $payload['created_at'] = $payload['created_at'] ?? now();
+            if (Schema::hasColumn('company_settings', 'updated_at')) $payload['updated_at'] = $payload['updated_at'] ?? now();
+            DB::table('company_settings')->updateOrInsert(['id' => self::SINGLETON_ID], $this->cleanPayload($payload));
 
             DB::table('company_settings')->where('id', '!=', self::SINGLETON_ID)->delete();
             return CompanySetting::where('id', self::SINGLETON_ID)->firstOrFail();
