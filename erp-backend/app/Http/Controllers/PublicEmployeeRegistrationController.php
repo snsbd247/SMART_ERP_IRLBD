@@ -6,6 +6,7 @@ use App\Models\CompanySetting;
 use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class PublicEmployeeRegistrationController extends BaseController
 {
@@ -19,6 +20,7 @@ class PublicEmployeeRegistrationController extends BaseController
             'enabled' => $enabled,
             'company_name' => $settings->company_name ?? 'Company',
             'company_logo_url' => $settings->company_logo_url ?? null,
+            'next_employee_code' => $enabled ? $this->nextEmployeeCode() : null,
             'branches' => [],
             'departments' => [],
             'designations' => [],
@@ -52,9 +54,13 @@ class PublicEmployeeRegistrationController extends BaseController
             'designation_id' => 'nullable|exists:designations,id',
             'branch_id' => 'nullable|exists:branches,id',
             'joining_date' => 'required|date',
+            'password' => 'nullable|string|min:6|max:100',
         ]);
 
-        $employee = DB::transaction(function () use ($data) {
+        $plainPassword = $data['password'] ?? null;
+        unset($data['password']);
+
+        $employee = DB::transaction(function () use ($data, $plainPassword) {
             $code = $this->nextEmployeeCode();
             return Employee::create(array_merge($data, [
                 'employee_code' => $code,
@@ -62,12 +68,14 @@ class PublicEmployeeRegistrationController extends BaseController
                 'approval_status' => 'pending', // awaiting admin approval
                 'employment_type' => 'permanent',
                 'salary' => 0,
+                'proposed_password' => $plainPassword ? Hash::make($plainPassword) : null,
             ]));
         });
 
         return $this->success([
             'message' => 'Registration submitted. An administrator will review and activate your account.',
             'employee_code' => $employee->employee_code,
+            'username_preview' => $employee->employee_code,
         ]);
     }
 
