@@ -23,7 +23,7 @@ export function exportCsv(filename: string, rows: any[], headers: string[]) {
 }
 
 export const swReports = {
-  async poVsDispatch(f: ReportFilters) {
+  async poVsVatChallan(f: ReportFilters) {
     let q = supabase.from("purchase_order_items").select("*, po:purchase_orders!inner(po_number,po_date,customer_id,status,customer:customers(name)), product:item_master(name:item_name,sku:item_code)");
     if (f.from) q = q.gte("po.po_date", f.from);
     if (f.to) q = q.lte("po.po_date", f.to);
