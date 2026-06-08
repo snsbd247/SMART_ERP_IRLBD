@@ -17,7 +17,7 @@ export function getApiBaseUrl(): string | null {
     // Lovable preview/published domains stay in Cloud Supabase mode unless an
     // explicit VITE_API_BASE_URL is provided at build time.
     const laravelHosts = new Set(["erp.irlbd.com", "accounting.syncsolutionbd.com"]);
-    const isLovableHost = /(^|\.)lovable(project)?\.(app|dev)$/.test(host) || host.endsWith(".lovable.app") || host.endsWith(".lovable.dev");
+    const isLovableHost = /(^|\.)lovable(project)?\.(app|dev|com)$/.test(host) || host.endsWith(".lovable.app") || host.endsWith(".lovable.dev") || host.endsWith(".lovableproject.com");
     if (laravelHosts.has(host) || (!isLovableHost && host !== "localhost" && host !== "127.0.0.1")) {
       return `${window.location.origin}/api`;
     }
