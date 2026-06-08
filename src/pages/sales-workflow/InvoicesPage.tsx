@@ -39,9 +39,11 @@ export default function InvoicesPage() {
       <Card className="p-4"><Input placeholder="Search invoice no..." value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" /></Card>
       <Card>
         <Table>
-          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Total</TableHead><TableHead className="text-right">Paid</TableHead><TableHead className="text-right">Due</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead>Mode</TableHead><TableHead className="text-right">Total</TableHead><TableHead className="text-right">Paid</TableHead><TableHead className="text-right">Due</TableHead><TableHead>Bill Submitted</TableHead><TableHead>Payment Due</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
           <TableBody>
-            {rows.map((r) => (
+            {rows.map((r) => {
+              const overdue = r.bill_due_date && Number(r.due_amount) > 0.01 && new Date(r.bill_due_date) < new Date();
+              return (
               <TableRow key={r.id}>
                 <TableCell className="font-medium">{r.invoice_number}</TableCell>
                 <TableCell>{r.invoice_date}</TableCell>
@@ -50,7 +52,9 @@ export default function InvoicesPage() {
                 <TableCell className="text-right">{Number(r.grand_total).toFixed(2)}</TableCell>
                 <TableCell className="text-right">{Number(r.paid_amount).toFixed(2)}</TableCell>
                 <TableCell className="text-right">{Number(r.due_amount).toFixed(2)}</TableCell>
-                <TableCell><Badge variant="secondary">{r.status}</Badge></TableCell>
+                <TableCell className="text-sm">{r.bill_submitted_at || <span className="text-muted-foreground">—</span>}</TableCell>
+                <TableCell className="text-sm">{r.bill_due_date ? <span className={overdue ? "text-destructive font-medium" : ""}>{r.bill_due_date}</span> : <span className="text-muted-foreground">—</span>}</TableCell>
+                <TableCell><Badge variant={overdue ? "destructive" : "secondary"}>{overdue ? "overdue" : r.status}</Badge></TableCell>
                 <TableCell>
                   <RowActions
                     printSlot={<PrintTaxInvoice inv={r} />}
@@ -61,8 +65,8 @@ export default function InvoicesPage() {
                   />
                 </TableCell>
               </TableRow>
-            ))}
-            {rows.length === 0 && <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No invoices</TableCell></TableRow>}
+            );})}
+            {rows.length === 0 && <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">No invoices</TableCell></TableRow>}
           </TableBody>
         </Table>
       </Card>
