@@ -67,7 +67,6 @@ class PullFromSupabase extends Command
         'sales_invoices', 'sales_invoice_items',
         'sales_invoices_v2', 'sales_invoice_items_v2',
         'sales_returns', 'sales_return_items',
-        'dispatches', 'dispatch_items', 'dispatch_po_allocations', 'dispatch_status_logs',
         'delivery_challans', 'invoice_challans', 'invoice_payments', 'invoice_status_logs',
         'vat_challans', 'vat_challan_items',
         // Payments

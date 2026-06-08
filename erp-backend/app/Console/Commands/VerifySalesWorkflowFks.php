@@ -23,9 +23,6 @@ class VerifySalesWorkflowFks extends Command
     private array $checks = [
         ['table' => 'purchase_orders',         'column' => 'customer_id', 'ref' => 'customers',       'fk' => 'purchase_orders_customer_id_fkey'],
         ['table' => 'purchase_order_items',    'column' => 'product_id',  'ref' => 'item_master',     'fk' => 'purchase_order_items_product_id_fkey'],
-        ['table' => 'dispatches',              'column' => 'customer_id', 'ref' => 'customers',       'fk' => 'dispatches_customer_id_fkey'],
-        ['table' => 'dispatch_items',          'column' => 'product_id',  'ref' => 'item_master',     'fk' => 'dispatch_items_product_id_fkey'],
-        ['table' => 'dispatch_po_allocations', 'column' => 'po_id',       'ref' => 'purchase_orders', 'fk' => 'dispatch_po_allocations_po_id_fkey'],
         ['table' => 'vat_challans',            'column' => 'customer_id', 'ref' => 'customers',       'fk' => 'vat_challans_customer_id_fkey'],
         ['table' => 'vat_challan_items',       'column' => 'product_id',  'ref' => 'item_master',     'fk' => 'vat_challan_items_product_id_fkey'],
         ['table' => 'delivery_challans',       'column' => 'customer_id', 'ref' => 'customers',       'fk' => 'delivery_challans_customer_id_fkey'],
