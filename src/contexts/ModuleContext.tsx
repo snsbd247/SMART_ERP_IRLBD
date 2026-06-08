@@ -30,6 +30,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
   const { user, isSuperAdmin, profile } = useAuth();
 
   const fetchModules = useCallback(async () => {
+    if (!user) { setLoading(false); return; }
     const { data, error } = await supabase
       .from("module_settings" as any)
       .select("*");
@@ -37,7 +38,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
       setModules(data as any as ModuleSetting[]);
     }
     setLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchModules();
