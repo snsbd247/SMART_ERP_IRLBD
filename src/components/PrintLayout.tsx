@@ -151,7 +151,7 @@ export const PrintLayout = ({
             {/* Doc Info */}
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px", padding: "8px 12px", background: "#f8f8f8", borderRadius: "4px" }}>
               <div style={{ color: "#1a1a1a" }}><span style={{ fontWeight: 600 }}>Document #:</span> {docNumber}</div>
-              <div style={{ color: "#1a1a1a" }}><span style={{ fontWeight: 600 }}>Date:</span> {docDate}</div>
+              <div style={{ color: "#1a1a1a" }}><span style={{ fontWeight: 600 }}>Date:</span> {(() => { const d = new Date(docDate); return isNaN(d.getTime()) ? docDate : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }); })()}</div>
               {branch && <div style={{ color: "#1a1a1a" }}><span style={{ fontWeight: 600 }}>Branch:</span> {branch}</div>}
               {partyName && <div style={{ color: "#1a1a1a" }}><span style={{ fontWeight: 600 }}>{partyLabel || "Party"}:</span> {partyName}</div>}
             </div>
