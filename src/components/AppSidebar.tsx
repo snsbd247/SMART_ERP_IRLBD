@@ -131,7 +131,7 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: "Sales Workflow (BD VAT)",
+    label: "Sales (BD VAT)",
     icon: FileText,
     permission: "sales.view",
     requiredModules: ["sales_vat"],
