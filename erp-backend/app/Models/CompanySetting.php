@@ -1,11 +1,9 @@
 <?php
 namespace App\Models;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class CompanySetting extends Model
 {
-    use HasUuids;
     protected $table = 'company_settings';
     protected $fillable = [
         'company_name', 'email', 'phone', 'address', 'website', 'company_logo_url',
