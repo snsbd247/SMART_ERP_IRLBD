@@ -271,4 +271,48 @@ class EmployeeController extends CrudController
     {
         return $this->success(['username' => $this->generateUsername()]);
     }
+
+    /**
+     * List employees pending public-registration approval.
+     */
+    public function pendingApprovals(Request $request)
+    {
+        $rows = Employee::with(['department', 'designation', 'branch'])
+            ->where('approval_status', 'pending')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        return $this->success($rows);
+    }
+
+    /**
+     * Approve a pending registration → becomes an active employee.
+     */
+    public function approveRegistration(Request $request, string $id)
+    {
+        $employee = Employee::where('id', $id)->where('approval_status', 'pending')->firstOrFail();
+        $employee->update([
+            'approval_status' => 'approved',
+            'status' => 'active',
+            'approved_at' => now(),
+            'approved_by' => optional($request->user())->id,
+        ]);
+        return $this->success($employee->fresh());
+    }
+
+    /**
+     * Reject a pending registration. Marks it rejected (kept for audit) and inactive.
+     */
+    public function rejectRegistration(Request $request, string $id)
+    {
+        $request->validate(['reason' => 'nullable|string|max:500']);
+        $employee = Employee::where('id', $id)->where('approval_status', 'pending')->firstOrFail();
+        $employee->update([
+            'approval_status' => 'rejected',
+            'status' => 'inactive',
+            'rejection_reason' => $request->input('reason'),
+            'approved_at' => now(),
+            'approved_by' => optional($request->user())->id,
+        ]);
+        return $this->success($employee->fresh());
+    }
 }
