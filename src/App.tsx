@@ -128,14 +128,9 @@ import PurchaseReport from "./pages/reports/PurchaseReport";
 import PurchaseOrdersPage from "./pages/sales-workflow/PurchaseOrdersPage";
 import PurchaseOrderFormPage from "./pages/sales-workflow/PurchaseOrderFormPage";
 import PurchaseOrderDetailPage from "./pages/sales-workflow/PurchaseOrderDetailPage";
-import DispatchPage from "./pages/sales-workflow/DispatchPage";
-import DispatchFormPage from "./pages/sales-workflow/DispatchFormPage";
-import DispatchDetailPage from "./pages/sales-workflow/DispatchDetailPage";
-import DispatchEditPage from "./pages/sales-workflow/DispatchEditPage";
 import VatChallansPage from "./pages/sales-workflow/VatChallansPage";
 import VatChallanFormPage from "./pages/sales-workflow/VatChallanFormPage";
 import VatChallanDetailPage from "./pages/sales-workflow/VatChallanDetailPage";
-import VatChallanEditPage from "./pages/sales-workflow/VatChallanEditPage";
 import DeliveryChallansPage from "./pages/sales-workflow/DeliveryChallansPage";
 import CustomerReceivePage from "./pages/sales-workflow/CustomerReceivePage";
 import HoReceivePage from "./pages/sales-workflow/HoReceivePage";
@@ -319,13 +314,8 @@ const App = () => (
                 <Route path="/sales-workflow/po/new" element={<P perm="sales.add"><PurchaseOrderFormPage /></P>} />
                 <Route path="/sales-workflow/po/:id/edit" element={<P perm="sales.edit"><PurchaseOrderFormPage /></P>} />
                 <Route path="/sales-workflow/po/:id" element={<P perm="sales.view"><PurchaseOrderDetailPage /></P>} />
-                <Route path="/sales-workflow/dispatch" element={<P perm="sales.view"><DispatchPage /></P>} />
-                <Route path="/sales-workflow/dispatch/new" element={<P perm="sales.add"><DispatchFormPage /></P>} />
-                <Route path="/sales-workflow/dispatch/:id/edit" element={<P perm="sales.edit"><DispatchEditPage /></P>} />
-                <Route path="/sales-workflow/dispatch/:id" element={<P perm="sales.view"><DispatchDetailPage /></P>} />
                 <Route path="/sales-workflow/vat-challan" element={<P perm="sales.view"><VatChallansPage /></P>} />
                 <Route path="/sales-workflow/vat-challan/new" element={<P perm="sales.add"><VatChallanFormPage /></P>} />
-                <Route path="/sales-workflow/vat-challan/:id/edit" element={<P perm="sales.edit"><VatChallanEditPage /></P>} />
                 <Route path="/sales-workflow/vat-challan/:id" element={<P perm="sales.view"><VatChallanDetailPage /></P>} />
                 <Route path="/sales-workflow/delivery-challan" element={<P perm="sales.view"><DeliveryChallansPage /></P>} />
                 <Route path="/sales-workflow/customer-receive" element={<P perm="sales.edit"><CustomerReceivePage /></P>} />
