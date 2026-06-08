@@ -1,8 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { voucherApi } from "@/lib/voucher-api";
-import { logEditAudit } from "@/lib/audit-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -114,9 +112,9 @@ const AccountingVouchers = () => {
     try {
       const [vRes, aRes, bRes, fRes] = await Promise.all([
         voucherApi.list(activeTab),
-        supabase.from("chart_of_accounts").select("id, account_name, account_code").order("account_code"),
-        supabase.from("branches").select("id, name"),
-        supabase.from("financial_years").select("id, name"),
+        voucherApi.listAccounts(),
+        voucherApi.listBranches(),
+        voucherApi.listFinancialYears(),
       ]);
       const vList = (vRes.data || []) as Voucher[];
       setVouchers(vList);
@@ -124,30 +122,11 @@ const AccountingVouchers = () => {
       setBranches((bRes.data || []) as Branch[]);
       setFinYears((fRes.data || []) as FinYear[]);
 
-      // Prefer ledger names returned by the secured voucher API; fall back to a direct read when available.
-      const ids = vList.map((v) => v.id);
-      const apiLedgerMap = vList.reduce<Record<string, string[]>>((map, voucher) => {
+      const ledgerMap = vList.reduce<Record<string, string[]>>((map, voucher) => {
         map[voucher.id] = Array.isArray(voucher.ledger_accounts) ? voucher.ledger_accounts : [];
         return map;
       }, {});
-      if (ids.length > 0) {
-        const accNameMap = new Map(((aRes.data || []) as Account[]).map((a) => [a.id, a.account_name]));
-        const { data: entryRows } = await supabase
-          .from("voucher_entries")
-          .select("voucher_id, account_id, sort_order")
-          .in("voucher_id", ids)
-          .order("sort_order");
-        const map: Record<string, string[]> = { ...apiLedgerMap };
-        (entryRows || []).forEach((r: any) => {
-          const name = accNameMap.get(r.account_id);
-          if (!name) return;
-          if (!map[r.voucher_id]) map[r.voucher_id] = [];
-          if (!map[r.voucher_id].includes(name)) map[r.voucher_id].push(name);
-        });
-        setVoucherAccountsMap(map);
-      } else {
-        setVoucherAccountsMap({});
-      }
+      setVoucherAccountsMap(ledgerMap);
     } catch (err: any) {
       setVouchers([]);
       setVoucherAccountsMap({});
@@ -319,28 +298,20 @@ const AccountingVouchers = () => {
           });
           toast({ title: "Approved voucher updated (Super Admin override)" });
         } else {
-          // Draft/rejected edit — update via direct DB
-          await supabase.from("acc_vouchers").update({
+          await voucherApi.update({
+            id: editingVoucher.id,
             voucher_date: formDate,
             branch_id: formBranch || null,
             financial_year_id: formFinYear || null,
             description: formDesc,
-            total_amount: totalDebit,
-            status: submitForApproval ? "pending" : "draft",
-            updated_at: new Date().toISOString(),
-          }).eq("id", editingVoucher.id);
-          // Replace entries
-          await supabase.from("voucher_entries").delete().eq("voucher_id", editingVoucher.id);
-          await supabase.from("voucher_entries").insert(
-            validEntries.map((e, i) => ({
-              voucher_id: editingVoucher.id,
+            entries: validEntries.map((e) => ({
               account_id: e.account_id,
               debit: e.debit,
               credit: e.credit,
               narration: e.narration,
-              sort_order: i,
-            }))
-          );
+            })),
+            submit: submitForApproval,
+          });
           toast({ title: "Voucher updated successfully" });
         }
       } else {
