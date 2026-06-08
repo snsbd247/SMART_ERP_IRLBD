@@ -669,20 +669,6 @@ Deno.serve(async (req) => {
         notes:"Demo PO", branch_id:BR, financial_year_id:FY, created_by:UID });
       POitems.push(...poiData);
 
-      // Dispatch
-      const dspId = U(); dspc++;
-      const dspNum = `DSP-${fyTag}-${String(dspc).padStart(5,"0")}`;
-      const dspDate = ymd(new Date(new Date(poDate).getTime() + RI(1,3)*86400000));
-      const totalQty = poiData.reduce((s,r)=>s+r.qty_ordered,0);
-      DSPs.push({ id:dspId, dispatch_number:dspNum, dispatch_date:dspDate, customer_id:cust.id,
-        vehicle_no:pick(vehicles), driver_name:pick(drivers), status:"delivered", total_qty:totalQty,
-        branch_id:BR, financial_year_id:FY, created_by:UID });
-      poiData.forEach((r,idx) => {
-        const diId = U();
-        DSPitems.push({ id:diId, dispatch_id:dspId, product_id:r.product_id, qty:r.qty_ordered, sort_order:idx });
-        DSPallocs.push({ id:U(), dispatch_item_id:diId, po_item_id:r.id, po_id:poId, allocated_qty:r.qty_ordered });
-      });
-
       // Stage controls the terminal workflow state so every queue page has visible demo data.
       // 0: Customer Receive queue (DC=delivered)
       // 1: HO Receive queue       (DC=sent_to_ho, CR done)
@@ -699,16 +685,16 @@ Deno.serve(async (req) => {
       // VAT Challan
       const vchId = U(); vchc++;
       const vchNum = `VCH-${fyTag}-${String(vchc).padStart(5,"0")}`;
-      const vchDate = dspDate;
-      VCHs.push({ id:vchId, challan_number:vchNum, challan_date:vchDate, customer_id:cust.id, dispatch_id:dspId,
+      const vchDate = ymd(new Date(new Date(poDate).getTime() + RI(1,3)*86400000));
+      VCHs.push({ id:vchId, challan_number:vchNum, challan_date:vchDate, customer_id:cust.id, purchase_order_id:poId,
         vehicle_no:pick(vehicles), driver_name:pick(drivers), subtotal:round2(poSub), vat_amount:round2(poVat),
-        grand_total:poGrand, source:"dispatch", status:vchStatus,
+        grand_total:poGrand, source:"purchase_order", status:vchStatus,
         branch_id:BR, financial_year_id:FY, created_by:UID });
       const vciByProduct: Record<string,string> = {};
       poiData.forEach((r,idx) => {
         const vciId = U();
         vciByProduct[r.product_id] = vciId;
-        VCHitems.push({ id:vciId, vat_challan_id:vchId, product_id:r.product_id, qty:r.qty_ordered,
+        VCHitems.push({ id:vciId, vat_challan_id:vchId, product_id:r.product_id, purchase_order_item_id:r.id, po_qty_consumed:r.qty_ordered, qty:r.qty_ordered,
           rate:r.rate, vat_pct:15, line_subtotal:r.line_subtotal, vat_amount:r.line_vat,
           line_total:r.line_total, sort_order:idx });
         // Delivery Challan (one per product)
