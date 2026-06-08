@@ -743,12 +743,24 @@ const BackupPage = () => {
                 <Button
                   variant="destructive"
                   onClick={handleFullDemoSeed}
-                  disabled={seedingFull || !isSuperAdmin}
+                  disabled={seedingFull || resettingDemo || !isSuperAdmin}
                   className="w-full"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
                   {seedingFull ? "Seeding full demo data..." : "Wipe & Seed Full Demo Data (2 branches)"}
                 </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleResetDemoOnly}
+                  disabled={resettingDemo || seedingFull || !isSuperAdmin}
+                  className="w-full"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  {resettingDemo ? "Resetting demo data..." : "Reset Demo Data Only (preserve config)"}
+                </Button>
+                <p className="text-[11px] text-muted-foreground">
+                  <strong>Reset Demo Data Only</strong> wipes all transactions + masters but PRESERVES Chart of Accounts, IFRS Mapping, Document Numbering, Page Shortcuts, General Settings, SMS Integration, Branding &amp; GitHub Deploy Sync.
+                </p>
                 {fullSeedLog && (
                   <pre className="text-[10px] p-2 bg-muted rounded max-h-48 overflow-auto">{fullSeedLog}</pre>
                 )}
