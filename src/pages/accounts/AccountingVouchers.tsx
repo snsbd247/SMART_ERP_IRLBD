@@ -477,9 +477,22 @@ const AccountingVouchers = () => {
           <FileText className="w-5 h-5 text-primary" />
           <h1 className="text-xl font-semibold text-foreground">Accounting Vouchers</h1>
         </div>
-        {canCreateForType(activeTab) && (
-          <Button onClick={openCreate} size="sm"><Plus className="w-4 h-4 mr-1" />New Voucher</Button>
-        )}
+        <div className="flex items-center gap-2">
+          {isSuperAdmin && (
+            <Button
+              variant={showDeleted ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowDeleted((v) => !v)}
+              title="Show soft-deleted vouchers"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              {showDeleted ? "Showing Trash" : "Show Deleted"}
+            </Button>
+          )}
+          {canCreateForType(activeTab) && (
+            <Button onClick={openCreate} size="sm"><Plus className="w-4 h-4 mr-1" />New Voucher</Button>
+          )}
+        </div>
       </div>
 
       {!dialogOpen && (allowedTypes.length === 0 ? (
