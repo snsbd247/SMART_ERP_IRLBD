@@ -68,6 +68,22 @@ export default function PublicEmployeeRegistration() {
       .catch(() => loadFromSupabase());
   }, []);
 
+  const validatePassword = (pw: string): string | null => {
+    if (pw.length < 8) return "Password must be at least 8 characters.";
+    if (!/[A-Za-z]/.test(pw)) return "Password must contain at least one letter.";
+    if (!/\d/.test(pw)) return "Password must contain at least one number.";
+    if (/^(.)\1+$/.test(pw)) return "Password cannot be a single repeated character.";
+    const isSeq = (s: string, step: 1 | -1) => {
+      for (let i = 1; i < s.length; i++) if (s.charCodeAt(i) - s.charCodeAt(i - 1) !== step) return false;
+      return true;
+    };
+    const lower = pw.toLowerCase();
+    if (isSeq(lower, 1) || isSeq(lower, -1)) return "Password cannot be a simple sequence like 12345678.";
+    const banned = ["password", "password1", "password123", "qwerty123", "12345678", "123456789", "1234567890", "abcdefgh"];
+    if (banned.includes(lower)) return "This password is too common. Choose a stronger one.";
+    return null;
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.first_name || !form.last_name || !form.joining_date) {
@@ -75,10 +91,8 @@ export default function PublicEmployeeRegistration() {
       return;
     }
     if (form.password || form.password_confirm) {
-      if (form.password.length < 6) {
-        toast({ title: "Weak password", description: "Password must be at least 6 characters.", variant: "destructive" });
-        return;
-      }
+      const err = validatePassword(form.password);
+      if (err) { toast({ title: "Weak password", description: err, variant: "destructive" }); return; }
       if (form.password !== form.password_confirm) {
         toast({ title: "Passwords don't match", description: "Please re-enter the same password.", variant: "destructive" });
         return;
@@ -100,6 +114,7 @@ export default function PublicEmployeeRegistration() {
           designation_id: form.designation_id || null,
           branch_id: form.branch_id || null,
           password: form.password || null,
+          password_confirmation: form.password ? form.password_confirm : null,
           password_confirm: undefined,
         }),
       });
@@ -209,11 +224,11 @@ export default function PublicEmployeeRegistration() {
               <p className="text-xs text-muted-foreground mb-3">
                 Set a password to request a login account. Your username will be auto-generated from your Employee ID
                 {config.next_employee_code ? <> (e.g. <span className="font-mono">{config.next_employee_code}</span>)</> : null}.
-                You'll receive login info by SMS after admin approval.
+                You'll receive login info by SMS after admin approval. Password must be at least 8 characters with letters and numbers — avoid sequences like <span className="font-mono">123456789</span>.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div><Label>Password</Label><Input type="password" autoComplete="new-password" value={form.password} onChange={e => set("password", e.target.value)} minLength={6} placeholder="Min 6 characters" /></div>
-                <div><Label>Confirm Password</Label><Input type="password" autoComplete="new-password" value={form.password_confirm} onChange={e => set("password_confirm", e.target.value)} minLength={6} /></div>
+                <div><Label>Password</Label><Input type="password" autoComplete="new-password" value={form.password} onChange={e => set("password", e.target.value)} minLength={8} placeholder="Min 8 chars, letters + numbers" /></div>
+                <div><Label>Confirm Password</Label><Input type="password" autoComplete="new-password" value={form.password_confirm} onChange={e => set("password_confirm", e.target.value)} minLength={8} /></div>
               </div>
             </div>
 
