@@ -145,7 +145,7 @@ const BOMPage = () => {
 
   const handleSave = async () => {
     if (!form.product_id || items.some((i) => !i.material_id)) {
-      toast.error("Finished product এবং সব material পূরণ করুন");
+      toast.error("Please fill in the finished product and all materials");
       return;
     }
     const finalName = form.name || `BOM - ${products.find((p) => p.id === form.product_id)?.item_name || ""}`;
