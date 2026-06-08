@@ -16,7 +16,7 @@ class PurchaseOrderController extends BaseController
         $q = PurchaseOrder::with('customer', 'items')->latest('po_date');
         if ($r->customer_id) $q->where('customer_id', $r->customer_id);
         if ($r->status) $q->where('status', $r->status);
-        if ($r->branch_id) $q->where('branch_id', $r->branch_id);
+        if ($r->branch_id) { $q->where('branch_id', $r->branch_id); } elseif (is_array($r->input('allowed_branch_ids')) && count($r->input('allowed_branch_ids'))) { $q->whereIn('branch_id', $r->input('allowed_branch_ids')); }
         if ($r->from) $q->where('po_date', '>=', $r->from);
         if ($r->to) $q->where('po_date', '<=', $r->to);
         if ($r->q) $q->where('po_number', 'like', "%{$r->q}%");
