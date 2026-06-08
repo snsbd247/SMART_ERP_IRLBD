@@ -59,6 +59,19 @@ Deno.serve(async (req) => {
     }
     await db.from("profiles").delete().not("employee_id", "is", null);
 
+    if (MODE === "reset") {
+      // Reset-only mode: protect Chart of Accounts, IFRS Mapping, Document Numbering,
+      // Page Shortcuts, General Settings, SMS, Branding (untouched above).
+      return new Response(JSON.stringify({
+        success: true,
+        mode: "reset",
+        message: "All demo transactional + master data wiped. Configuration preserved.",
+        elapsedMs: Date.now() - t0,
+        log,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+
     // ===== RESOLVE / ENSURE MASTER REFS =====
     // Branches
     const { data: brData } = await db.from("branches").select("id,code,name").order("created_at");
