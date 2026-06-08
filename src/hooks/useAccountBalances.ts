@@ -83,6 +83,8 @@ export function useAccountBalances(filters: Filters = {}) {
           const closing = openSigned + txn.debit - txn.credit;
           return { ...a, total_debit: txn.debit, total_credit: txn.credit, closing_balance: Math.abs(closing), closing_balance_type: (closing >= 0 ? "debit" : "credit") as "debit" | "credit" };
         }));
+      } catch {
+        setAccounts([]);
       } finally {
         setLoading(false);
       }
