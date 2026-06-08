@@ -119,6 +119,8 @@ import ChartOfAccountsVertical from "./pages/reports/accounting/ChartOfAccountsV
 import IFRSFinancialStatements from "./pages/reports/accounting/IFRSFinancialStatements";
 import IFRSMappingPage from "./pages/admin/IFRSMappingPage";
 import CustomerStatementPage from "./pages/reports/CustomerStatementPage";
+import SalesReport from "./pages/reports/SalesReport";
+import PurchaseReport from "./pages/reports/PurchaseReport";
 
 // Sales Workflow (BD VAT)
 import PurchaseOrdersPage from "./pages/sales-workflow/PurchaseOrdersPage";
