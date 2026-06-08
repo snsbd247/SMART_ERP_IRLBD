@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  */
 class GenericStorageController extends BaseController
 {
-    private const ALLOWED_BUCKETS = ['branding', 'employee-photos', 'backups'];
+    private const ALLOWED_BUCKETS = ['company-assets', 'branding', 'employee-photos', 'backups'];
     private const MAX_KB = 10240; // 10 MB default
 
     public function upload(Request $request, string $bucket)
@@ -31,7 +31,9 @@ class GenericStorageController extends BaseController
         $file = $request->file('file');
         $folder = trim((string) $request->input('path', ''), '/');
         $ext = strtolower($file->getClientOriginalExtension() ?: 'bin');
-        $name = ($folder ? $folder . '/' : '') . Str::uuid() . '.' . $ext;
+        $original = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME) ?: (string) Str::uuid();
+        $safeName = Str::slug($original) ?: (string) Str::uuid();
+        $name = ($folder ? $folder . '/' : '') . $safeName . '.' . $ext;
 
         $stored = $file->storeAs($bucket, $name, 'public');
         return $this->success([

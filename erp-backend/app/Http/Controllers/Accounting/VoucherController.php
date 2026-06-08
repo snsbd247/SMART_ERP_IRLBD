@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Accounting;
 
 use App\Http\Controllers\BaseController;
+use App\Models\AccVoucher;
+use App\Models\VoucherEntry;
 use App\Repositories\VoucherRepository;
 use App\Services\AccountingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class VoucherController extends BaseController
 {
@@ -49,11 +52,69 @@ class VoucherController extends BaseController
             array_merge($request->only('voucher_type', 'voucher_date', 'description', 'branch_id', 'financial_year_id'), ['created_by' => $request->user()->id]),
             $request->entries
         );
+        if ($request->boolean('submit')) {
+            $voucher->update(['status' => 'pending']);
+            $voucher->refresh();
+        }
 
         return $this->created($voucher);
     }
 
     public function show(string $id) { return $this->success($this->repo->findWithEntries($id)); }
+
+    public function update(Request $request, string $id)
+    {
+        $voucher = AccVoucher::findOrFail($id);
+        $user = $request->user();
+        if (!$user->isSuperAdmin() && !$user->hasPermission($voucher->voucher_type . '.edit')) {
+            return $this->error('Forbidden', 403);
+        }
+        if ($voucher->status === 'approved') {
+            return $this->error('Approved vouchers require Super Admin override.', 422);
+        }
+
+        $data = $request->validate([
+            'voucher_date' => 'required|date',
+            'branch_id' => 'nullable|exists:branches,id',
+            'financial_year_id' => 'nullable|exists:financial_years,id',
+            'description' => 'nullable|string',
+            'submit' => 'boolean',
+            'entries' => 'required|array|min:2',
+            'entries.*.account_id' => 'required|exists:chart_of_accounts,id',
+            'entries.*.debit' => 'numeric|min:0',
+            'entries.*.credit' => 'numeric|min:0',
+            'entries.*.narration' => 'nullable|string',
+        ]);
+
+        $totalDebit = collect($data['entries'])->sum('debit');
+        $totalCredit = collect($data['entries'])->sum('credit');
+        if (abs($totalDebit - $totalCredit) > 0.01) {
+            return $this->error('Debit and Credit must be equal', 422);
+        }
+
+        return DB::transaction(function () use ($voucher, $data, $totalDebit) {
+            $voucher->update([
+                'voucher_date' => $data['voucher_date'],
+                'branch_id' => $data['branch_id'] ?? null,
+                'financial_year_id' => $data['financial_year_id'] ?? null,
+                'description' => $data['description'] ?? '',
+                'total_amount' => $totalDebit,
+                'status' => !empty($data['submit']) ? 'pending' : 'draft',
+            ]);
+            VoucherEntry::where('voucher_id', $voucher->id)->delete();
+            foreach ($data['entries'] as $i => $entry) {
+                VoucherEntry::create([
+                    'voucher_id' => $voucher->id,
+                    'account_id' => $entry['account_id'],
+                    'debit' => $entry['debit'] ?? 0,
+                    'credit' => $entry['credit'] ?? 0,
+                    'narration' => $entry['narration'] ?? '',
+                    'sort_order' => $i,
+                ]);
+            }
+            return $this->success($this->repo->findWithEntries($voucher->id));
+        });
+    }
 
     public function approve(Request $request, string $id)
     {
@@ -63,5 +124,88 @@ class VoucherController extends BaseController
     public function reject(string $id)
     {
         return $this->success($this->service->rejectVoucher($id));
+    }
+
+    public function editApproved(Request $request, string $id)
+    {
+        if (!$request->user()->isSuperAdmin()) return $this->error('Only Super Admin can edit approved vouchers', 403);
+        $voucher = AccVoucher::findOrFail($id);
+        if ($voucher->status !== 'approved') return $this->error('Voucher is not approved', 422);
+
+        $data = $request->validate([
+            'description' => 'nullable|string',
+            'entries' => 'nullable|array|min:2',
+            'entries.*.account_id' => 'required_with:entries|exists:chart_of_accounts,id',
+            'entries.*.debit' => 'numeric|min:0',
+            'entries.*.credit' => 'numeric|min:0',
+            'entries.*.narration' => 'nullable|string',
+        ]);
+
+        return DB::transaction(function () use ($voucher, $data) {
+            if (array_key_exists('description', $data)) $voucher->description = $data['description'] ?? '';
+            if (!empty($data['entries'])) {
+                $totalDebit = collect($data['entries'])->sum('debit');
+                $totalCredit = collect($data['entries'])->sum('credit');
+                if (abs($totalDebit - $totalCredit) > 0.01) return $this->error('Debit and Credit must be equal', 422);
+                $voucher->total_amount = $totalDebit;
+                VoucherEntry::where('voucher_id', $voucher->id)->delete();
+                foreach ($data['entries'] as $i => $entry) {
+                    VoucherEntry::create([
+                        'voucher_id' => $voucher->id,
+                        'account_id' => $entry['account_id'],
+                        'debit' => $entry['debit'] ?? 0,
+                        'credit' => $entry['credit'] ?? 0,
+                        'narration' => $entry['narration'] ?? '',
+                        'sort_order' => $i,
+                    ]);
+                }
+            }
+            $voucher->save();
+            return $this->success($this->repo->findWithEntries($voucher->id));
+        });
+    }
+
+    public function deleteApproved(Request $request, string $id)
+    {
+        $voucher = AccVoucher::findOrFail($id);
+        $user = $request->user();
+        if ($voucher->status === 'approved' && !$user->isSuperAdmin()) return $this->error('Only Super Admin can delete approved vouchers', 403);
+        if ($voucher->status !== 'approved' && !$user->isSuperAdmin() && !$user->hasPermission($voucher->voucher_type . '.delete')) return $this->error('Forbidden', 403);
+        return DB::transaction(function () use ($voucher) {
+            $id = $voucher->id;
+            VoucherEntry::where('voucher_id', $id)->delete();
+            $voucher->delete();
+            return $this->success(['deleted' => true]);
+        });
+    }
+
+    public function reopen(Request $request, string $id)
+    {
+        if (!$request->user()->isSuperAdmin()) return $this->error('Only Super Admin can reopen vouchers', 403);
+        $voucher = AccVoucher::findOrFail($id);
+        if (!in_array($voucher->status, ['approved', 'rejected'], true)) return $this->error('Only approved or rejected vouchers can be reopened', 422);
+        $voucher->update(['status' => 'draft', 'approved_by' => null, 'approved_at' => null]);
+        return $this->success($voucher->fresh());
+    }
+
+    public function reverse(Request $request, string $id)
+    {
+        if (!$request->user()->isSuperAdmin()) return $this->error('Only Super Admin can reverse vouchers', 403);
+        $voucher = $this->repo->findWithEntries($id);
+        if ($voucher->status !== 'approved') return $this->error('Only approved vouchers can be reversed', 422);
+        $reversal = $this->service->createVoucher([
+            'voucher_type' => $voucher->voucher_type,
+            'voucher_date' => now()->toDateString(),
+            'description' => 'Reversal of ' . $voucher->voucher_number . ': ' . ($request->input('reason') ?? ''),
+            'branch_id' => $voucher->branch_id,
+            'financial_year_id' => $voucher->financial_year_id,
+            'created_by' => $request->user()->id,
+        ], $voucher->entries->map(fn ($entry) => [
+            'account_id' => $entry->account_id,
+            'debit' => $entry->credit,
+            'credit' => $entry->debit,
+            'narration' => 'Reversal: ' . ($entry->narration ?? ''),
+        ])->all(), true);
+        return $this->success($reversal->load('entries'));
     }
 }
