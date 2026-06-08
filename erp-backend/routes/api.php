@@ -312,10 +312,12 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::get('/', [\App\Http\Controllers\Admin\BackupController::class, 'index']);
             Route::post('create', [\App\Http\Controllers\Admin\BackupController::class, 'create']);
             Route::get('{id}/download', [\App\Http\Controllers\Admin\BackupController::class, 'download']);
+            Route::post('{id}/gdrive-upload', [\App\Http\Controllers\Admin\BackupController::class, 'gdriveUpload']);
             Route::post('restore', [\App\Http\Controllers\Admin\BackupController::class, 'restore']);
             Route::delete('{id}', [\App\Http\Controllers\Admin\BackupController::class, 'destroy']);
             Route::get('settings', [\App\Http\Controllers\Admin\BackupController::class, 'settings']);
             Route::put('settings', [\App\Http\Controllers\Admin\BackupController::class, 'settings']);
+            Route::post('gdrive/test', [\App\Http\Controllers\Admin\BackupController::class, 'gdriveTest']);
         });
 
         // ─── Demo Data Seeder (Super Admin only) ─────────────────
