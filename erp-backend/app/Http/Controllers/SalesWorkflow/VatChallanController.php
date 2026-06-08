@@ -27,15 +27,15 @@ class VatChallanController extends BaseController
         $r->validate([
             'challan_date' => 'required|date',
             'customer_id' => 'required|exists:customers,id',
-            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
+            'purchase_order_id' => 'required|exists:purchase_orders,id',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:item_master,id',
-            'items.*.purchase_order_item_id' => 'nullable|exists:purchase_order_items,id',
+            'items.*.purchase_order_item_id' => 'required|exists:purchase_order_items,id',
             'items.*.qty' => 'required|numeric|min:0.001',
             'items.*.rate' => 'required|numeric|min:0',
             'items.*.vat_pct' => 'nullable|numeric|min:0|max:100',
         ]);
-        $data = array_merge($r->only('challan_date','customer_id','purchase_order_id','dispatch_id','vehicle_no','driver_name','source','attachment_url','notes','branch_id','financial_year_id'),
+        $data = array_merge($r->only('challan_date','customer_id','purchase_order_id','vehicle_no','driver_name','source','attachment_url','notes','branch_id','financial_year_id'),
                             ['created_by' => $r->user()?->id]);
         return $this->created($this->service->create($data, $r->items));
     }
