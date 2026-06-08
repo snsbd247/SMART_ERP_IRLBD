@@ -21,9 +21,12 @@ export type Database = {
           branch_id: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           description: string | null
           financial_year_id: string | null
           id: string
+          prev_status: string | null
           status: string
           total_amount: number
           updated_at: string
@@ -37,9 +40,12 @@ export type Database = {
           branch_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           financial_year_id?: string | null
           id?: string
+          prev_status?: string | null
           status?: string
           total_amount?: number
           updated_at?: string
@@ -53,9 +59,12 @@ export type Database = {
           branch_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           description?: string | null
           financial_year_id?: string | null
           id?: string
+          prev_status?: string | null
           status?: string
           total_amount?: number
           updated_at?: string
