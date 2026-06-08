@@ -164,6 +164,30 @@ const BackupPage = () => {
     }
   };
 
+  const [seedingFull, setSeedingFull] = useState(false);
+  const [fullSeedLog, setFullSeedLog] = useState<string | null>(null);
+  const handleFullDemoSeed = async () => {
+    if (!isSuperAdmin) {
+      toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
+      return;
+    }
+    if (!confirm("This will WIPE all transactions/masters and seed a full year of demo data across Accounts, Bank, Inventory, Purchase, Manufacturing, Sales (BD VAT) and HRM for 2 branches (Head Office, Factory). Continue?")) return;
+    setSeedingFull(true);
+    setFullSeedLog(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-and-seed-demo", { body: {} });
+      if (error) throw error;
+      if (data?.success === false) throw new Error(data.error || "Seed failed");
+      setFullSeedLog(JSON.stringify(data, null, 2));
+      toast({ title: "Demo data seeded", description: `Completed in ${data?.elapsedMs ?? "?"}ms.` });
+    } catch (err: any) {
+      toast({ title: "Seed failed", description: err.message, variant: "destructive" });
+      setFullSeedLog(String(err.message || err));
+    } finally {
+      setSeedingFull(false);
+    }
+  };
+
 
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -682,6 +706,25 @@ const BackupPage = () => {
               <p className="text-[11px] text-muted-foreground -mt-2">
                 <strong>Reset &amp; Re-import</strong> wipes only the 5 configuration tables (CoA, IFRS, Roles, Numbering, Shortcuts) and re-seeds them fresh. Vouchers, invoices, stock and payroll are NOT touched.
               </p>
+
+              <div className="pt-4 mt-2 border-t border-border space-y-2">
+                <p className="text-sm font-medium text-foreground">Full demo data (all modules, 2 branches)</p>
+                <p className="text-xs text-muted-foreground">
+                  Seeds a full year of operational data across Accounts, Bank &amp; Cash, Inventory, Purchase, Manufacturing, Sales Workflow (BD VAT) and HRM for two branches: <strong>Head Office</strong> and <strong>Factory</strong>. Wipes all existing transactional + master data first.
+                </p>
+                <Button
+                  variant="destructive"
+                  onClick={handleFullDemoSeed}
+                  disabled={seedingFull || !isSuperAdmin}
+                  className="w-full"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  {seedingFull ? "Seeding full demo data..." : "Wipe & Seed Full Demo Data (2 branches)"}
+                </Button>
+                {fullSeedLog && (
+                  <pre className="text-[10px] p-2 bg-muted rounded max-h-48 overflow-auto">{fullSeedLog}</pre>
+                )}
+              </div>
 
               {(importingDemo || demoProgress > 0) && (
                 <div className="space-y-2 pt-2">

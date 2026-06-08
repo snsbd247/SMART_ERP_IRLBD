@@ -63,15 +63,15 @@ Deno.serve(async (req) => {
     let branches = brData || [];
     if (branches.length === 0) {
       const ins = [
-        { id: U(), code: "HQ", name: "Head Office", phone: "+8801700000000", address: "Dhaka", status: "active" },
-        { id: U(), code: "CTG", name: "Chittagong Branch", phone: "+8801800000000", address: "Chittagong", status: "active" },
+        { id: U(), code: "HO", name: "Head Office", phone: "+8801700000000", address: "Dhaka", status: "active" },
+        { id: U(), code: "FAC", name: "Factory", phone: "+8801800000000", address: "Gazipur", status: "active" },
       ];
       await db.from("branches").insert(ins);
       branches = ins.map(b => ({ id:b.id, code:b.code, name:b.name }));
     } else if (branches.length === 1) {
       const id = U();
-      await db.from("branches").insert([{ id, code: "CTG", name: "Chittagong Branch", phone: "+8801800000000", address: "Chittagong", status: "active" }]);
-      branches.push({ id, code: "CTG", name: "Chittagong Branch" });
+      await db.from("branches").insert([{ id, code: "FAC", name: "Factory", phone: "+8801800000000", address: "Gazipur", status: "active" }]);
+      branches.push({ id, code: "FAC", name: "Factory" });
     }
     const BR_DHK = branches[0].id, BR_CTG = branches[1].id;
 
@@ -138,8 +138,8 @@ Deno.serve(async (req) => {
     // Warehouses
     const WH_DHK = U(), WH_CTG = U();
     await bulk("warehouses", [
-      { id: WH_DHK, warehouse_code: "WH-DHK", warehouse_name: "Dhaka Main Warehouse", branch_id: BR_DHK, status: "active" },
-      { id: WH_CTG, warehouse_code: "WH-CTG", warehouse_name: "Chittagong Warehouse", branch_id: BR_CTG, status: "active" },
+      { id: WH_DHK, warehouse_code: "WH-HO", warehouse_name: "Head Office Warehouse", branch_id: BR_DHK, status: "active" },
+      { id: WH_CTG, warehouse_code: "WH-FAC", warehouse_name: "Factory Warehouse", branch_id: BR_CTG, status: "active" },
     ]);
 
     // Units
