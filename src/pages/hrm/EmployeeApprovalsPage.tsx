@@ -49,7 +49,8 @@ export default function EmployeeApprovalsPage() {
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.message || `HTTP ${res.status}`);
-      setRows((payload?.data ?? payload) as PendingEmployee[]);
+      const data = payload?.data ?? payload;
+      setRows(Array.isArray(data) ? (data as PendingEmployee[]) : []);
     } catch (err: any) {
       toast({ title: "Failed to load", description: err.message, variant: "destructive" });
     } finally {
