@@ -117,12 +117,13 @@ const AccountingVouchers = () => {
   const [actionReason, setActionReason] = useState("");
 
   const [voucherAccountsMap, setVoucherAccountsMap] = useState<Record<string, string[]>>({});
+  const [showDeleted, setShowDeleted] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [vRes, aRes, bRes, fRes] = await Promise.all([
-        voucherApi.list(activeTab),
+        voucherApi.list(activeTab, showDeleted),
         voucherApi.listAccounts(),
         voucherApi.listBranches(),
         voucherApi.listFinancialYears(),
