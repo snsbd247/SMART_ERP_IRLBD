@@ -11,5 +11,4 @@ class PurchaseOrderItem extends Model
 
     public function po() { return $this->belongsTo(PurchaseOrder::class, 'po_id'); }
     public function product() { return $this->belongsTo(ItemMaster::class, 'product_id'); }
-    public function allocations() { return $this->hasMany(DispatchPoAllocation::class, 'po_item_id'); }
 }
