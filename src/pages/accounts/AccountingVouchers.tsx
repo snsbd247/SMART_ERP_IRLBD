@@ -111,45 +111,51 @@ const AccountingVouchers = () => {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [vRes, aRes, bRes, fRes] = await Promise.all([
-      voucherApi.list(activeTab),
-      supabase.from("chart_of_accounts").select("id, account_name, account_code").order("account_code"),
-      supabase.from("branches").select("id, name"),
-      supabase.from("financial_years").select("id, name"),
-    ]);
-    const vList = (vRes.data || []) as Voucher[];
-    console.log("[voucher-api] list response", { count: vList.length, withLedgerAccounts: vList.filter(v => Array.isArray(v.ledger_accounts) && v.ledger_accounts.length > 0).length, sample: vList[0]?.ledger_accounts });
-    setVouchers(vList);
-    setAccounts((aRes.data || []) as Account[]);
-    setBranches((bRes.data || []) as Branch[]);
-    setFinYears((fRes.data || []) as FinYear[]);
+    try {
+      const [vRes, aRes, bRes, fRes] = await Promise.all([
+        voucherApi.list(activeTab),
+        supabase.from("chart_of_accounts").select("id, account_name, account_code").order("account_code"),
+        supabase.from("branches").select("id, name"),
+        supabase.from("financial_years").select("id, name"),
+      ]);
+      const vList = (vRes.data || []) as Voucher[];
+      setVouchers(vList);
+      setAccounts((aRes.data || []) as Account[]);
+      setBranches((bRes.data || []) as Branch[]);
+      setFinYears((fRes.data || []) as FinYear[]);
 
-    // Prefer ledger names returned by the secured voucher API; fall back to a direct read when available.
-    const ids = vList.map((v) => v.id);
-    const apiLedgerMap = vList.reduce<Record<string, string[]>>((map, voucher) => {
-      map[voucher.id] = Array.isArray(voucher.ledger_accounts) ? voucher.ledger_accounts : [];
-      return map;
-    }, {});
-    if (ids.length > 0) {
-      const accNameMap = new Map(((aRes.data || []) as Account[]).map((a) => [a.id, a.account_name]));
-      const { data: entryRows } = await supabase
-        .from("voucher_entries")
-        .select("voucher_id, account_id, sort_order")
-        .in("voucher_id", ids)
-        .order("sort_order");
-      const map: Record<string, string[]> = { ...apiLedgerMap };
-      (entryRows || []).forEach((r: any) => {
-        const name = accNameMap.get(r.account_id);
-        if (!name) return;
-        if (!map[r.voucher_id]) map[r.voucher_id] = [];
-        if (!map[r.voucher_id].includes(name)) map[r.voucher_id].push(name);
-      });
-      setVoucherAccountsMap(map);
-    } else {
+      // Prefer ledger names returned by the secured voucher API; fall back to a direct read when available.
+      const ids = vList.map((v) => v.id);
+      const apiLedgerMap = vList.reduce<Record<string, string[]>>((map, voucher) => {
+        map[voucher.id] = Array.isArray(voucher.ledger_accounts) ? voucher.ledger_accounts : [];
+        return map;
+      }, {});
+      if (ids.length > 0) {
+        const accNameMap = new Map(((aRes.data || []) as Account[]).map((a) => [a.id, a.account_name]));
+        const { data: entryRows } = await supabase
+          .from("voucher_entries")
+          .select("voucher_id, account_id, sort_order")
+          .in("voucher_id", ids)
+          .order("sort_order");
+        const map: Record<string, string[]> = { ...apiLedgerMap };
+        (entryRows || []).forEach((r: any) => {
+          const name = accNameMap.get(r.account_id);
+          if (!name) return;
+          if (!map[r.voucher_id]) map[r.voucher_id] = [];
+          if (!map[r.voucher_id].includes(name)) map[r.voucher_id].push(name);
+        });
+        setVoucherAccountsMap(map);
+      } else {
+        setVoucherAccountsMap({});
+      }
+    } catch (err: any) {
+      setVouchers([]);
       setVoucherAccountsMap({});
+      toast({ title: "Error loading vouchers", description: err?.message || "Unable to load accounting vouchers", variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [activeTab]);
+  }, [activeTab, toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

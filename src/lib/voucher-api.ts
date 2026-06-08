@@ -12,7 +12,7 @@ function isLaravelMode(): boolean {
 
 async function laravelFetch<T = any>(path: string, init?: RequestInit): Promise<T> {
   const base = getApiBaseUrl().replace(/\/$/, "");
-  const res = await fetch(`${base}/v1/admin/${path.replace(/^\//, "")}`, {
+  const res = await fetch(`${base}/v1/${path.replace(/^\//, "")}`, {
     ...init,
     headers: {
       Accept: "application/json",
