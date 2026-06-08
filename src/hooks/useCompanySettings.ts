@@ -17,6 +17,7 @@ export interface CompanySettings {
   currency_position: string;
   default_branch_id: string | null;
   default_financial_year_id: string | null;
+  public_employee_registration_enabled?: boolean;
 }
 
 export function useCompanySettings() {
