@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Bangladesh VAT Sales Workflow
- * PO → Dispatch → VAT Challan → Delivery Challan → Customer Receive → HO Receive → Invoice → Payment/TDS
+ * PO → VAT Challan → Delivery Challan → Customer Receive → HO Receive → Invoice → Bill Submit → Payment/TDS
  * Additive only — existing tables untouched.
  */
 return new class extends Migration {
@@ -61,59 +61,18 @@ return new class extends Migration {
             $t->foreign('po_id')->references('id')->on('purchase_orders')->cascadeOnDelete();
         });
 
-        Schema::create('dispatches', function (Blueprint $t) {
-            $t->uuid('id')->primary();
-            $t->string('dispatch_number', 50)->unique();
-            $t->date('dispatch_date');
-            $t->uuid('customer_id');
-            $t->string('vehicle_no', 50)->nullable();
-            $t->string('driver_name', 100)->nullable();
-            $t->string('driver_phone', 30)->nullable();
-            $t->string('status', 20)->default('draft');
-            $t->decimal('total_qty', 18, 3)->default(0);
-            $t->text('notes')->nullable();
-            $t->uuid('branch_id')->nullable();
-            $t->uuid('financial_year_id')->nullable();
-            $t->uuid('created_by')->nullable();
-            $t->timestamps();
-            $t->softDeletes();
-            $t->index(['customer_id', 'status']);
-        });
-
-        Schema::create('dispatch_items', function (Blueprint $t) {
-            $t->uuid('id')->primary();
-            $t->uuid('dispatch_id');
-            $t->uuid('product_id');
-            $t->decimal('qty', 18, 3)->default(0);
-            $t->integer('sort_order')->default(0);
-            $t->foreign('dispatch_id')->references('id')->on('dispatches')->cascadeOnDelete();
-            $t->index('dispatch_id');
-        });
-
-        Schema::create('dispatch_po_allocations', function (Blueprint $t) {
-            $t->uuid('id')->primary();
-            $t->uuid('dispatch_item_id');
-            $t->uuid('po_item_id');
-            $t->uuid('po_id');
-            $t->decimal('allocated_qty', 18, 3)->default(0);
-            $t->timestamp('created_at')->useCurrent();
-            $t->foreign('dispatch_item_id')->references('id')->on('dispatch_items')->cascadeOnDelete();
-            $t->foreign('po_item_id')->references('id')->on('purchase_order_items');
-            $t->index(['dispatch_item_id', 'po_item_id']);
-        });
-
         Schema::create('vat_challans', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->string('challan_number', 50)->unique();
             $t->date('challan_date');
             $t->uuid('customer_id');
-            $t->uuid('dispatch_id')->nullable();
+            $t->uuid('purchase_order_id');
             $t->string('vehicle_no', 50)->nullable();
             $t->string('driver_name', 100)->nullable();
             $t->decimal('subtotal', 18, 2)->default(0);
             $t->decimal('vat_amount', 18, 2)->default(0);
             $t->decimal('grand_total', 18, 2)->default(0);
-            $t->string('source', 20)->default('manual');
+            $t->string('source', 20)->default('purchase_order');
             $t->string('status', 20)->default('issued');
             $t->string('attachment_url', 500)->nullable();
             $t->text('notes')->nullable();
@@ -122,8 +81,9 @@ return new class extends Migration {
             $t->uuid('created_by')->nullable();
             $t->timestamps();
             $t->softDeletes();
-            $t->foreign('dispatch_id')->references('id')->on('dispatches')->nullOnDelete();
+            $t->foreign('purchase_order_id')->references('id')->on('purchase_orders')->restrictOnDelete();
             $t->index(['customer_id', 'challan_date']);
+            $t->index('purchase_order_id');
             $t->index('status');
         });
 
@@ -287,22 +247,9 @@ return new class extends Migration {
             $t->index('invoice_id');
         });
 
-        Schema::create('dispatch_status_logs', function (Blueprint $t) {
-            $t->uuid('id')->primary();
-            $t->uuid('dispatch_id');
-            $t->string('old_status', 20)->nullable();
-            $t->string('new_status', 20);
-            $t->uuid('changed_by')->nullable();
-            $t->text('notes')->nullable();
-            $t->timestamp('created_at')->useCurrent();
-            $t->foreign('dispatch_id')->references('id')->on('dispatches')->cascadeOnDelete();
-            $t->index('dispatch_id');
-        });
-
         // Seed number sequences for the new doc types
         \DB::table('number_sequences')->insertOrIgnore([
             ['id' => 'purchase_order',  'prefix' => 'PO',  'current_number' => 0, 'year' => (int) date('Y'), 'description' => 'Customer Purchase Order'],
-            ['id' => 'dispatch',        'prefix' => 'DSP', 'current_number' => 0, 'year' => (int) date('Y'), 'description' => 'Dispatch / Gate Pass'],
             ['id' => 'vat_challan',     'prefix' => 'VCH', 'current_number' => 0, 'year' => (int) date('Y'), 'description' => 'VAT Challan (Mushak 6.3)'],
             ['id' => 'delivery_challan','prefix' => 'DC',  'current_number' => 0, 'year' => (int) date('Y'), 'description' => 'Delivery Challan'],
             ['id' => 'sales_invoice_v2','prefix' => 'INV', 'current_number' => 0, 'year' => (int) date('Y'), 'description' => 'Consolidated Sales Invoice'],
@@ -314,11 +261,10 @@ return new class extends Migration {
     public function down(): void
     {
         foreach ([
-            'dispatch_status_logs','invoice_status_logs','tds_entries','invoice_payments',
+            'invoice_status_logs','tds_entries','invoice_payments',
             'invoice_challans','sales_invoice_items_v2','sales_invoices_v2',
             'ho_receives','customer_receives','delivery_challans',
             'vat_challan_items','vat_challans',
-            'dispatch_po_allocations','dispatch_items','dispatches',
             'po_amendments','purchase_order_items','purchase_orders',
         ] as $tbl) {
             Schema::dropIfExists($tbl);

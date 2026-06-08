@@ -7,6 +7,7 @@ class TdsEntry extends Model
 {
     use HasUuids;
     public $timestamps = false;
+    protected $table = 'tds_entries';
     protected $fillable = ['invoice_id','payment_id','tds_pct','tds_amount','certificate_no','certificate_date','voucher_id','notes','created_by'];
     protected $casts = ['certificate_date' => 'date', 'created_at' => 'datetime'];
 
