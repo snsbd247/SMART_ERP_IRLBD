@@ -358,21 +358,30 @@ export const swApi = {
     }
     await supabase.from("vat_challans").update({ status: "invoiced" }).in("id", vatChallanIds);
     await supabase.from("delivery_challans").update({ status: "invoiced" }).in("vat_challan_id", vatChallanIds);
+    const voucher = await postSalesInvoiceVoucher(inv);
+    if (voucher?.id) await supabase.from("sales_invoices_v2").update({ voucher_id: voucher.id } as any).eq("id", inv.id);
     await audit("invoice_processing", "create", inv, `Invoice ${inv.invoice_number}`);
     return { data: inv, error: null };
   },
   async recordPayment(invoiceId: string, payload: any) {
     const payment_number = await nextNumber("RCP");
     const total_settled = Number(payload.amount_received || 0) + Number(payload.tds_amount || 0);
+    const { data: currentInvoice } = await supabase.from("sales_invoices_v2").select("*").eq("id", invoiceId).maybeSingle();
+    if (!currentInvoice) return { data: null, error: { message: "Invoice not found." } as any };
+    if (total_settled <= 0) return { data: null, error: { message: "Payment must be greater than zero." } as any };
+    if (total_settled > Number((currentInvoice as any).due_amount || 0) + 0.01) {
+      return { data: null, error: { message: `Payment ${total_settled} exceeds outstanding ${(currentInvoice as any).due_amount}.` } as any };
+    }
     const { data: p, error } = await supabase.from("invoice_payments").insert({
       invoice_id: invoiceId, payment_number, ...payload, total_settled,
+      branch_id: payload.branch_id ?? (currentInvoice as any).branch_id,
+      financial_year_id: payload.financial_year_id ?? (currentInvoice as any).financial_year_id,
     }).select().single();
     if (error || !p) return { data: null, error };
     if (payload.tds_amount && Number(payload.tds_amount) > 0) {
-      const tds_number = await nextNumber("TDS");
       await supabase.from("tds_entries").insert({
         invoice_id: invoiceId, payment_id: p.id,
-        tds_number, tds_amount: payload.tds_amount,
+        tds_amount: payload.tds_amount,
         tds_pct: payload.tds_pct || 0,
         certificate_no: payload.tds_certificate_no,
         certificate_date: payload.tds_certificate_date,
@@ -389,6 +398,8 @@ export const swApi = {
         status: due <= 0 ? "paid" : "partially_paid",
       }).eq("id", invoiceId);
     }
+    const voucher = await postInvoicePaymentVoucher(p, currentInvoice);
+    if (voucher?.id) await supabase.from("invoice_payments").update({ voucher_id: voucher.id } as any).eq("id", p.id);
     await audit("invoice_processing", "create", p, `Payment ${p.payment_number} (TDS ${payload.tds_amount || 0})`);
     return { data: p, error: null };
   },
@@ -407,7 +418,7 @@ export const swApi = {
     if (error) return { data: null, error };
     const { data: existing } = await supabase.from("purchase_order_items").select("id,qty_delivered").eq("po_id", id);
     if ((existing || []).some((it: any) => Number(it.qty_delivered) > 0)) {
-      return { data: null, error: { message: "Cannot edit items after dispatch started." } as any };
+      return { data: null, error: { message: "Cannot edit items after VAT Challan started." } as any };
     }
     await supabase.from("purchase_order_items").delete().eq("po_id", id);
     const rows = items.map((i) => ({
