@@ -181,6 +181,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:hrm.view')->group(function () {
             Route::get('hr-dashboard', [\App\Http\Controllers\HRM\HrDashboardController::class, 'index']);
             Route::get('employees', [\App\Http\Controllers\HRM\EmployeeController::class, 'index']);
+            Route::get('employees/pending-approvals', [\App\Http\Controllers\HRM\EmployeeController::class, 'pendingApprovals']);
             Route::get('employees/{id}', [\App\Http\Controllers\HRM\EmployeeController::class, 'show']);
             Route::get('employees/{id}/bank-info', fn($id) => response()->json(['success' => true, 'data' => \App\Models\EmployeeBankInfo::where('employee_id', $id)->first()]));
             Route::get('employees/{id}/education', fn($id) => response()->json(['success' => true, 'data' => \App\Models\EmployeeEducation::where('employee_id', $id)->get()]));
@@ -228,6 +229,8 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         });
         Route::middleware('permission:hrm.edit')->group(function () {
             Route::put('employees/{id}', [\App\Http\Controllers\HRM\EmployeeController::class, 'update']);
+            Route::post('employees/{id}/approve', [\App\Http\Controllers\HRM\EmployeeController::class, 'approveRegistration']);
+            Route::post('employees/{id}/reject', [\App\Http\Controllers\HRM\EmployeeController::class, 'rejectRegistration']);
             Route::put('attendance/{id}', [\App\Http\Controllers\HRM\AttendanceController::class, 'update']);
             Route::put('departments/{id}', [\App\Http\Controllers\HRM\DepartmentController::class, 'update']);
             Route::put('designations/{id}', [\App\Http\Controllers\HRM\DesignationController::class, 'update']);
