@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 
 export interface AccountWithBalance {
   id: string;
@@ -33,12 +34,62 @@ type AccountRow = Omit<AccountWithBalance, "total_debit" | "total_credit" | "clo
 
 const PAGE_SIZE = 1000;
 
+async function laravelGetList(path: string): Promise<any[]> {
+  const base = getApiBaseUrl();
+  if (!base) return [];
+  const res = await fetch(`${base}/v1/${path}`, { headers: getLaravelAuthHeaders() });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json?.data)) return json.data;
+  if (Array.isArray(json?.data?.data)) return json.data.data;
+  return [];
+}
+
 export function useAccountBalances(filters: Filters = {}) {
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetch = useCallback(async () => {
     setLoading(true);
+    if (isLaravelMode()) {
+      try {
+        const accs = await laravelGetList("db/chart_of_accounts?order[account_code]=asc");
+        const voucherFilters = new URLSearchParams();
+        voucherFilters.set("select", "id");
+        voucherFilters.set("f[status][eq]", "approved");
+        if (filters.branchId) voucherFilters.set("f[branch_id][eq]", filters.branchId);
+        if (filters.financialYearId) voucherFilters.set("f[financial_year_id][eq]", filters.financialYearId);
+        if (filters.dateFrom) voucherFilters.set("f[voucher_date][gte]", filters.dateFrom);
+        if (filters.dateTo) voucherFilters.set("f[voucher_date][lte]", filters.dateTo);
+        const vouchers = await laravelGetList(`db/acc_vouchers?${voucherFilters.toString()}`);
+        const voucherIds = vouchers.map((v: any) => v.id);
+        const entries: VoucherEntryBalanceRow[] = [];
+        for (let i = 0; i < voucherIds.length; i += 500) {
+          const ids = voucherIds.slice(i, i + 500).join(",");
+          entries.push(...await laravelGetList(`db/voucher_entries?select=account_id,debit,credit&f[voucher_id][in]=${encodeURIComponent(ids)}`));
+        }
+        const balMap = new Map<string, { debit: number; credit: number }>();
+        entries.forEach((e) => {
+          const cur = balMap.get(e.account_id) || { debit: 0, credit: 0 };
+          cur.debit += Number(e.debit) || 0;
+          cur.credit += Number(e.credit) || 0;
+          balMap.set(e.account_id, cur);
+        });
+        setAccounts((accs as AccountRow[]).map((a) => {
+          const txn = balMap.get(a.id) || { debit: 0, credit: 0 };
+          const opening = Number(a.opening_balance) || 0;
+          const openSigned = a.opening_balance_type === "debit" ? opening : -opening;
+          const closing = openSigned + txn.debit - txn.credit;
+          return { ...a, total_debit: txn.debit, total_credit: txn.credit, closing_balance: Math.abs(closing), closing_balance_type: (closing >= 0 ? "debit" : "credit") as "debit" | "credit" };
+        }));
+      } catch {
+        setAccounts([]);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
     // 1. Get all accounts
     const { data: accs } = await supabase
