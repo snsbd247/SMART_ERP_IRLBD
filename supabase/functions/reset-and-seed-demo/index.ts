@@ -41,12 +41,12 @@ Deno.serve(async (req) => {
     // ===== RESET =====
     const resetGroups: string[][] = [
       ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","purchase_items","purchase_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","bom_items","fund_transactions","employee_fund_settings","overtime_records","leave_requests","attendance","employee_documents","employee_bank_info","employee_education","employee_experience","employee_emergency_contacts","salary_structures","face_data","biometric_logs","payroll","party_notes","audit_log","login_logs","backup_history","messages","conversation_participants",
-        "tds_entries","invoice_payments","invoice_challans","sales_invoice_items_v2","customer_receives","ho_receives","dispatch_po_allocations","vat_challan_items","dispatch_items","purchase_order_items",
+        "tds_entries","invoice_payments","invoice_challans","sales_invoice_items_v2","customer_receives","ho_receives","vat_challan_items","purchase_order_items",
         // Status logs / amendments — defensive (cascade would also handle these)
-        "dispatch_status_logs","invoice_status_logs","po_amendments"],
+        "invoice_status_logs","po_amendments"],
       // Returns must be deleted BEFORE their parent invoices/purchases
       ["sales_returns","purchase_returns"],
-      ["sales_invoices_v2","delivery_challans","vat_challans","dispatches","purchase_orders"],
+      ["sales_invoices_v2","delivery_challans","vat_challans","purchase_orders"],
       ["acc_vouchers","party_payments","sales_invoices","purchases","production_entries","bill_of_materials","employees","conversations"],
       ["customers","suppliers","item_master","products","raw_materials"],
       ["item_categories","units","warehouses","product_categories"],
@@ -635,14 +635,13 @@ Deno.serve(async (req) => {
     await bulk("production_entries", prodEntries);
     await bulk("production_materials", prodMats);
 
-    // ===== Sales Workflow (BD VAT): PO → Dispatch → VAT Challan → DC → Receive → Invoice v2 → Payment + TDS =====
+    // ===== Sales Workflow (BD VAT): PO → VAT Challan → DC → Receive → Invoice v2 → Payment + TDS =====
     const POs: any[] = [], POitems: any[] = [];
-    const DSPs: any[] = [], DSPitems: any[] = [], DSPallocs: any[] = [];
     const VCHs: any[] = [], VCHitems: any[] = [];
     const DCs: any[] = [], CRs: any[] = [], HRs: any[] = [];
     const INV2: any[] = [], INV2items: any[] = [], INVCHs: any[] = [];
     const IPAYs: any[] = [], TDSs: any[] = [];
-    let poc=0, dspc=0, vchc=0, dcc=0, inv2c=0, ipayc=0, tdsc=0;
+    let poc=0, vchc=0, dcc=0, inv2c=0, ipayc=0, tdsc=0;
 
     const vehicles = ["DHK-METRO-1234","DHK-METRO-5678","CTG-METRO-9012","DHK-METRO-3456","CTG-METRO-7890"];
     const drivers  = ["Karim Mia","Rahim Uddin","Salam Hossain","Jamal Khan","Nasir Ahmed"];
