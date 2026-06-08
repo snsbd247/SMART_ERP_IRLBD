@@ -290,13 +290,57 @@ class EmployeeController extends CrudController
     public function approveRegistration(Request $request, string $id)
     {
         $employee = Employee::where('id', $id)->where('approval_status', 'pending')->firstOrFail();
-        $employee->update([
-            'approval_status' => 'approved',
-            'status' => 'active',
-            'approved_at' => now(),
-            'approved_by' => optional($request->user())->id,
-        ]);
-        return $this->success($employee->fresh());
+
+        return DB::transaction(function () use ($employee, $request) {
+            $employee->update([
+                'approval_status' => 'approved',
+                'status' => 'active',
+                'approved_at' => now(),
+                'approved_by' => optional($request->user())->id,
+            ]);
+
+            // Create login account if the applicant submitted a password and no user is linked yet
+            $hashedPassword = $employee->proposed_password;
+            $existingUser = User::where('employee_id', $employee->id)->first();
+            $username = $employee->employee_code; // auto from employee ID
+
+            if ($hashedPassword && !$existingUser && !User::where('username', $username)->exists()) {
+                $user = User::create([
+                    'username' => $username,
+                    'name' => "{$employee->first_name} {$employee->last_name}",
+                    'email' => $employee->email,
+                    'phone' => $employee->mobile,
+                    'password' => $hashedPassword, // already hashed
+                    'employee_id' => $employee->id,
+                    'branch_id' => $employee->branch_id,
+                    'status' => 'active',
+                ]);
+                $employee->update(['user_id' => $user->id, 'proposed_password' => null]);
+
+                $staffRole = \App\Models\CustomRole::where('name', 'Staff')->first();
+                if ($staffRole) {
+                    $user->roles()->attach($staffRole->id);
+                }
+
+                // SMS login credentials to the employee's mobile (best-effort, non-blocking)
+                if (!empty($employee->mobile)) {
+                    try {
+                        $sms = app(\App\Services\SmsService::class);
+                        $msg = "Welcome! Your login is ready.\nUsername: {$username}\nUse the password you set during registration.";
+                        $sms->sendSMS($employee->mobile, $msg, 'employee_approval', (string) $employee->id);
+                    } catch (\Throwable $e) {
+                        \Log::warning('Employee approval SMS failed: ' . $e->getMessage());
+                    }
+                }
+            } else {
+                // Clear stored password even if we couldn't create the user (avoid keeping it indefinitely)
+                if ($hashedPassword) {
+                    $employee->update(['proposed_password' => null]);
+                }
+            }
+
+            return $this->success($employee->fresh());
+        });
     }
 
     /**
