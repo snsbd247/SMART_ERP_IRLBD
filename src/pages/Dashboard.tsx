@@ -15,6 +15,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell,
   Legend,
 } from "recharts";
+import { RecentReturnsWidget } from "@/components/dashboard/RecentReturnsWidget";
 
 interface Stats {
   totalSales: number;
@@ -323,6 +324,9 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Returns (consolidated audit widget) */}
+      <RecentReturnsWidget />
 
       {/* Recent Activity */}
       <Card>
