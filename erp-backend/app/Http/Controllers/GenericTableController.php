@@ -41,6 +41,16 @@ class GenericTableController extends BaseController
         'lt' => '<', 'lte' => '<=', 'like' => 'LIKE', 'ilike' => 'ILIKE',
     ];
 
+    private const TABLE_PERMISSIONS = [
+        'custom_roles' => ['read' => ['roles.view'], 'write' => ['roles.create', 'roles.edit'], 'delete' => ['roles.delete']],
+        'role_permissions' => ['read' => ['roles.view'], 'write' => ['roles.create', 'roles.edit'], 'delete' => ['roles.edit']],
+        'user_roles' => ['read' => ['users.view'], 'write' => ['users.create', 'users.edit'], 'delete' => ['users.edit']],
+        'user_custom_roles' => ['read' => ['users.view'], 'write' => ['users.create', 'users.edit'], 'delete' => ['users.edit']],
+        'number_sequences' => ['read' => ['document_numbering.view', 'settings.view'], 'write' => ['document_numbering.edit', 'settings.edit'], 'delete' => ['document_numbering.delete', 'settings.edit']],
+        'sms_logs' => ['read' => ['sms.view', 'settings.view'], 'write' => ['sms.edit', 'settings.edit'], 'delete' => ['sms.delete', 'settings.edit']],
+        'login_logs' => ['read' => ['hrm.view', 'users.view'], 'write' => ['users.edit'], 'delete' => ['users.delete']],
+    ];
+
     /**
      * Per-table virtual column aliases. Lets frontend code written against the
      * Supabase schema (e.g. item_master.name / item_master.sku) keep working
@@ -114,9 +124,22 @@ class GenericTableController extends BaseController
         }
     }
 
+    private function assertTablePermission(Request $request, string $table, string $action): void
+    {
+        $rules = self::TABLE_PERMISSIONS[$table][$action] ?? null;
+        if (!$rules) return;
+        $user = $request->user();
+        if (!$user) abort(401);
+        foreach ($rules as $permission) {
+            if ($user->hasPermission($permission)) return;
+        }
+        abort(403, "Permission denied for {$table}");
+    }
+
     public function index(Request $request, string $table)
     {
         $this->assertTable($table);
+        $this->assertTablePermission($request, $table, 'read');
 
         $query = DB::table($table);
         $tableCols = Schema::getColumnListing($table);
@@ -186,6 +209,7 @@ class GenericTableController extends BaseController
     public function show(Request $request, string $table, $id)
     {
         $this->assertTable($table);
+        $this->assertTablePermission($request, $table, 'read');
         $pk = $this->primaryKey($table);
         $row = DB::table($table)->where($pk, $id)->first();
         if (!$row) abort(404);
@@ -195,6 +219,7 @@ class GenericTableController extends BaseController
     public function store(Request $request, string $table)
     {
         $this->assertTable($table);
+        $this->assertTablePermission($request, $table, 'write');
         $payload = $request->json()->all();
         if (!is_array($payload)) abort(400, 'Body must be JSON object or array');
 
@@ -219,6 +244,7 @@ class GenericTableController extends BaseController
     public function update(Request $request, string $table)
     {
         $this->assertTable($table);
+        $this->assertTablePermission($request, $table, 'write');
         $payload = $request->json()->all();
         $filters = (array) $request->query('f', []);
         if (empty($filters)) abort(400, 'UPDATE requires at least one filter (f[col][eq]=...)');
@@ -251,6 +277,7 @@ class GenericTableController extends BaseController
     public function upsert(Request $request, string $table)
     {
         $this->assertTable($table);
+        $this->assertTablePermission($request, $table, 'write');
         $payload = $request->json()->all();
         $rows = $this->isAssoc($payload) ? [$payload] : $payload;
         $onConflict = $request->query('on_conflict');
@@ -292,6 +319,7 @@ class GenericTableController extends BaseController
     public function destroy(Request $request, string $table)
     {
         $this->assertTable($table);
+        $this->assertTablePermission($request, $table, 'delete');
         $filters = (array) $request->query('f', []);
         if (empty($filters)) abort(400, 'DELETE requires at least one filter');
 
