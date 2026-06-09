@@ -12,38 +12,30 @@ import { Users } from "lucide-react";
 
 const PartyLedgerReport = () => {
   const { branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
-  const [partyType, setPartyType] = useState<"customer" | "supplier">("customer");
+  const [partyType] = useState<"customer">("customer");
   const [parties, setParties] = useState<any[]>([]);
   const [selectedParty, setSelectedParty] = useState("");
   const [data, setData] = useState<any[]>([]);
 
-  const fetchParties = async (type: "customer" | "supplier") => {
-    const table = type === "customer" ? "customers" : "suppliers";
-    const { data } = await supabase.from(table).select("id, name").order("name");
+  const fetchParties = async () => {
+    const { data } = await supabase.from("customers").select("id, name").order("name");
     setParties(data || []);
   };
 
-  const handlePartyTypeChange = (type: string) => {
-    setPartyType(type as "customer" | "supplier");
+  const handlePartyTypeChange = (_type: string) => {
     setSelectedParty("");
     setData([]);
-    fetchParties(type as "customer" | "supplier");
+    fetchParties();
   };
 
   const fetchData = async () => {
     if (!selectedParty) return;
     setLoading(true);
-    // Get invoices for this party
-    const table = partyType === "customer" ? "sales_invoices" : "purchases";
-    const partyField = partyType === "customer" ? "customer_id" : "supplier_id";
-    const numberField = partyType === "customer" ? "invoice_number" : "purchase_number";
-    const dateField = partyType === "customer" ? "invoice_date" : "purchase_date";
-
-    let query = (supabase.from(table) as any).select("*")
-      .eq(partyField, selectedParty)
-      .gte(dateField, dateFrom)
-      .lte(dateField, dateTo)
-      .order(dateField);
+    let query = supabase.from("sales_invoices").select("*")
+      .eq("customer_id", selectedParty)
+      .gte("invoice_date", dateFrom)
+      .lte("invoice_date", dateTo)
+      .order("invoice_date");
 
     if (branch !== "all") query = query.eq("branch_id", branch);
 
@@ -51,13 +43,13 @@ const PartyLedgerReport = () => {
     let runBal = 0;
     const result = (invoices || []).map((inv: any) => {
       const amount = Number(inv.total_amount || inv.net_amount || 0);
-      const dr = partyType === "customer" ? amount : 0;
-      const cr = partyType === "customer" ? 0 : amount;
+      const dr = amount;
+      const cr = 0;
       runBal += dr - cr;
       return {
         id: inv.id,
-        date: inv[dateField],
-        voucher_number: inv[numberField],
+        date: inv.invoice_date,
+        voucher_number: inv.invoice_number,
         description: inv.notes || "—",
         debit: dr,
         credit: cr,
