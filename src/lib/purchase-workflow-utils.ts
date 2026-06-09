@@ -11,7 +11,7 @@ export async function getActiveFinancialYearId(): Promise<string | null> {
   const { data } = await supabase
     .from("financial_years")
     .select("id")
-    .eq("status", "active")
+    .eq("is_active", true)
     .limit(1)
     .maybeSingle();
   return data ? (data as any).id : null;

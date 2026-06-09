@@ -38,7 +38,7 @@ export default function BillDetailPage() {
       supabase.from("purchase_bills" as any).select("*, suppliers(name)").eq("id", id).single(),
       supabase.from("purchase_bill_grns" as any).select("*, grns(grn_number, grn_date)").eq("bill_id", id),
       supabase.from("purchase_bill_payments" as any).select("*").eq("bill_id", id).order("payment_date", { ascending: false }),
-      supabase.from("chart_of_accounts").select("id, account_name, account_code").eq("status", "active"),
+      supabase.from("chart_of_accounts").select("id, account_name, account_code").eq("is_active", true),
     ]);
     setBill(b.data); setGrns((gl.data as any) || []); setPayments((pl.data as any) || []); setBanks((bk.data as any) || []);
   };
