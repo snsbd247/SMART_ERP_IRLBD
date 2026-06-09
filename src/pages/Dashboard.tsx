@@ -74,8 +74,6 @@ const Dashboard = () => {
   useEffect(() => { loadDashboardData(); }, []);
 
   const loadDashboardData = async () => {
-    const [salesV1Res, salesV2Res, billsV2Res, auditRes, recentInvV2Res, recentInvV1Res, recentPayRes, paymentsRes, voucherRes] = await Promise.all([
-  const loadDashboardData = async () => {
     const [
       salesV1Res, salesV2Res, billsV2Res, auditRes,
       recentInvV2Res, recentInvV1Res, recentBillRes, recentVatRes,
