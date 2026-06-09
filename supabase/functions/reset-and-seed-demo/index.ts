@@ -615,14 +615,21 @@ Deno.serve(async (req) => {
       }
       pc++;
     }
+    await bulk("purchase_requisitions", PRs);
+    await bulk("purchase_requisition_items", PRitems);
     await bulk("purchase_orders_v2", POs2);
     await bulk("purchase_order_items_v2", POitems2);
+    await bulk("po_pr_links", PRPOlinks);
     await bulk("grns_v2", GRNs);
     await bulk("grn_items_v2", GRNitems);
     await bulk("supplier_bills_v2", SBills);
     await bulk("supplier_bill_items_v2", SBitems);
     await bulk("supplier_payments_v2", SPays);
     await bulk("supplier_payment_allocations", SPallocs);
+    await bulk("purchase_returns_v2", PRets);
+    await bulk("purchase_return_items_v2", PRetItems);
+    await bulk("lc_documents", LCs);
+    await bulk("lc_charges", LCcharges);
 
 
     // ===== Customer Payments (with optional TDS 5%) =====
