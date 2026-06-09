@@ -150,8 +150,8 @@ class DemoConfigImportController extends BaseController
             'results'        => $results,
         ]);
     }
-        ]);
-    }
+
+
 
     /** Delete config rows for the 14 sections. Transactional data is untouched. */
     private function resetConfigTables(): void
