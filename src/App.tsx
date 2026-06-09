@@ -33,6 +33,17 @@ import PurchasesPage from "./pages/purchase/PurchasesPage";
 import SalesPage from "./pages/sales/SalesPage";
 import SalesInvoiceDetailPage from "./pages/sales/SalesInvoiceDetailPage";
 import PurchaseDetailPage from "./pages/purchase/PurchaseDetailPage";
+import RequisitionsPage from "./pages/purchase-workflow/RequisitionsPage";
+import RequisitionDetailPage from "./pages/purchase-workflow/RequisitionDetailPage";
+import PoListPage from "./pages/purchase-workflow/PoListPage";
+import PoFormPage from "./pages/purchase-workflow/PoFormPage";
+import PoDetailPage from "./pages/purchase-workflow/PoDetailPage";
+import GrnsPage from "./pages/purchase-workflow/GrnsPage";
+import GrnFormPage from "./pages/purchase-workflow/GrnFormPage";
+import GrnDetailPage from "./pages/purchase-workflow/GrnDetailPage";
+import BillsPage from "./pages/purchase-workflow/BillsPage";
+import BillFormPage from "./pages/purchase-workflow/BillFormPage";
+import BillDetailPage from "./pages/purchase-workflow/BillDetailPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
@@ -150,21 +161,6 @@ import CollectionReport from "./pages/sales-workflow/reports/CollectionReport";
 import ArAgingReport from "./pages/sales-workflow/reports/ArAgingReport";
 import Mushak91Page from "./pages/sales-workflow/reports/Mushak91Page";
 
-// Purchase Workflow
-import PwRequisitionsPage from "./pages/purchase-workflow/RequisitionsPage";
-import PwRequisitionDetailPage from "./pages/purchase-workflow/RequisitionDetailPage";
-import PwPoListPage from "./pages/purchase-workflow/PoListPage";
-import PwPoFormPage from "./pages/purchase-workflow/PoFormPage";
-import PwPoDetailPage from "./pages/purchase-workflow/PoDetailPage";
-import PwGrnsPage from "./pages/purchase-workflow/GrnsPage";
-import PwGrnFormPage from "./pages/purchase-workflow/GrnFormPage";
-import PwGrnDetailPage from "./pages/purchase-workflow/GrnDetailPage";
-import PwBillsPage from "./pages/purchase-workflow/BillsPage";
-import PwBillFormPage from "./pages/purchase-workflow/BillFormPage";
-import PwBillDetailPage from "./pages/purchase-workflow/BillDetailPage";
-
-
-
 
 const queryClient = new QueryClient();
 
@@ -221,6 +217,19 @@ const App = () => (
                 <Route path="/purchase/returns" element={<P perm="purchase.view"><PurchasesPage /></P>} />
                 <Route path="/suppliers" element={<P perm="suppliers.view,purchase.view"><SuppliersPage /></P>} />
                 <Route path="/suppliers/:id" element={<P perm="suppliers.view,purchase.view"><SupplierProfilePage /></P>} />
+
+                {/* ─── Purchase Workflow (new) ─────────────────── */}
+                <Route path="/purchase-workflow/requisitions" element={<P perm="purchase.view"><RequisitionsPage /></P>} />
+                <Route path="/purchase-workflow/requisitions/:id" element={<P perm="purchase.view"><RequisitionDetailPage /></P>} />
+                <Route path="/purchase-workflow/po" element={<P perm="purchase.view"><PoListPage /></P>} />
+                <Route path="/purchase-workflow/po/new" element={<P perm="purchase.view"><PoFormPage /></P>} />
+                <Route path="/purchase-workflow/po/:id" element={<P perm="purchase.view"><PoDetailPage /></P>} />
+                <Route path="/purchase-workflow/grn" element={<P perm="purchase.view"><GrnsPage /></P>} />
+                <Route path="/purchase-workflow/grn/new" element={<P perm="purchase.view"><GrnFormPage /></P>} />
+                <Route path="/purchase-workflow/grn/:id" element={<P perm="purchase.view"><GrnDetailPage /></P>} />
+                <Route path="/purchase-workflow/bills" element={<P perm="purchase.view"><BillsPage /></P>} />
+                <Route path="/purchase-workflow/bills/new" element={<P perm="purchase.view"><BillFormPage /></P>} />
+                <Route path="/purchase-workflow/bills/:id" element={<P perm="purchase.view"><BillDetailPage /></P>} />
 
                 {/* ─── Inventory ────────────────────────────────── */}
                 <Route path="/inventory" element={<P perm="inventory.view"><InventoryPage /></P>} />
@@ -351,19 +360,6 @@ const App = () => (
                 <Route path="/sales-workflow/reports/collection" element={<P perm="reports.view"><CollectionReport /></P>} />
                 <Route path="/sales-workflow/reports/aging" element={<P perm="reports.view"><ArAgingReport /></P>} />
                 <Route path="/sales-workflow/reports/mushak-9-1" element={<P perm="reports.view"><Mushak91Page /></P>} />
-
-                {/* ─── Purchase Workflow ─────────────── */}
-                <Route path="/purchase-workflow/requisitions" element={<P perm="purchase.view"><PwRequisitionsPage /></P>} />
-                <Route path="/purchase-workflow/requisitions/:id" element={<P perm="purchase.view"><PwRequisitionDetailPage /></P>} />
-                <Route path="/purchase-workflow/po" element={<P perm="purchase.view"><PwPoListPage /></P>} />
-                <Route path="/purchase-workflow/po/new" element={<P perm="purchase.view"><PwPoFormPage /></P>} />
-                <Route path="/purchase-workflow/po/:id" element={<P perm="purchase.view"><PwPoDetailPage /></P>} />
-                <Route path="/purchase-workflow/grn" element={<P perm="purchase.view"><PwGrnsPage /></P>} />
-                <Route path="/purchase-workflow/grn/new" element={<P perm="purchase.view"><PwGrnFormPage /></P>} />
-                <Route path="/purchase-workflow/grn/:id" element={<P perm="purchase.view"><PwGrnDetailPage /></P>} />
-                <Route path="/purchase-workflow/bills" element={<P perm="purchase.view"><PwBillsPage /></P>} />
-                <Route path="/purchase-workflow/bills/new" element={<P perm="purchase.view"><PwBillFormPage /></P>} />
-                <Route path="/purchase-workflow/bills/:id" element={<P perm="purchase.view"><PwBillDetailPage /></P>} />
 
               </Route>
               <Route path="*" element={<NotFound />} />

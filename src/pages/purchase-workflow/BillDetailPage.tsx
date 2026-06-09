@@ -2,185 +2,195 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBranch } from "@/contexts/BranchContext";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Printer } from "lucide-react";
-import { genDocNumber, PAY_PREFIX } from "@/lib/purchase-workflow-utils";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Wallet } from "lucide-react";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { newPaymentNumber, getActiveFinancialYearId } from "@/lib/purchase-workflow-utils";
 import { autoPostAccounting, findAccountByName } from "@/lib/accounting-utils";
 
 export default function BillDetailPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const nav = useNavigate();
   const { user } = useAuth();
+  const { userBranchId } = useBranch();
   const { toast } = useToast();
+  const { fc } = useCurrency();
   const [bill, setBill] = useState<any>(null);
-  const [supplier, setSupplier] = useState<any>(null);
   const [grns, setGrns] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
-  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
-  const [payOpen, setPayOpen] = useState(false);
-  const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10));
-  const [payAmount, setPayAmount] = useState(0);
-  const [tdsAmount, setTdsAmount] = useState(0);
-  const [payMethod, setPayMethod] = useState("cash");
-  const [bankAccountId, setBankAccountId] = useState("");
-  const [refNo, setRefNo] = useState("");
+  const [banks, setBanks] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+  const [pay, setPay] = useState({ date: new Date().toISOString().slice(0, 10), amount: 0, tds: 0, method: "cash", bankId: "", ref: "", notes: "" });
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
-    const { data: b } = await supabase.from("purchase_bills").select("*").eq("id", id).single();
-    setBill(b);
-    if (b) {
-      supabase.from("suppliers").select("*").eq("id", (b as any).supplier_id).single().then(({ data }) => setSupplier(data));
-      const { data: links } = await supabase.from("purchase_bill_grns").select("grn_id, amount").eq("bill_id", id);
-      const gids = (links || []).map((l: any) => l.grn_id);
-      if (gids.length) {
-        const { data: gs } = await supabase.from("grns").select("id, grn_number, grn_date, total_amount").in("id", gids);
-        setGrns(gs || []);
-      } else setGrns([]);
-      const { data: pays } = await supabase.from("purchase_bill_payments").select("*").eq("bill_id", id).order("payment_date");
-      setPayments(pays || []);
-      const due = Number((b as any).grand_total) - Number((b as any).paid_amount);
-      setPayAmount(due);
-    }
-    supabase.from("chart_of_accounts").select("id, account_code, account_name").eq("is_active", true).ilike("account_name", "%bank%").then(({ data }) => setBankAccounts(data || []));
+    if (!id) return;
+    const [b, gl, pl, bk] = await Promise.all([
+      supabase.from("purchase_bills" as any).select("*, suppliers(name)").eq("id", id).single(),
+      supabase.from("purchase_bill_grns" as any).select("*, grns(grn_number, grn_date)").eq("bill_id", id),
+      supabase.from("purchase_bill_payments" as any).select("*").eq("bill_id", id).order("payment_date", { ascending: false }),
+      supabase.from("chart_of_accounts").select("id, account_name, account_code").eq("is_active", true),
+    ]);
+    setBill(b.data); setGrns((gl.data as any) || []); setPayments((pl.data as any) || []); setBanks((bk.data as any) || []);
   };
   useEffect(() => { load(); }, [id]);
 
-  const recordPayment = async () => {
-    if (payAmount <= 0) return toast({ title: "Enter amount", variant: "destructive" });
+  if (!bill) return <div className="p-6">Loading...</div>;
+  const outstanding = Number(bill.grand_total) - Number(bill.paid_amount) - Number(bill.tds_amount);
+
+  const savePayment = async () => {
+    if (pay.amount <= 0 && pay.tds <= 0) return toast({ title: "Enter amount", variant: "destructive" });
+    if (pay.amount + pay.tds > outstanding + 0.01) return toast({ title: "Exceeds outstanding", variant: "destructive" });
     setSaving(true);
     try {
-      const payment_number = await genDocNumber(PAY_PREFIX, "purchase_bill_payments");
-      const totalDebited = payAmount + tdsAmount;
-      // Accounting: DR AP (totalDebited), CR Bank/Cash (payAmount), CR TDS Payable (tdsAmount)
-      const apAcc = await findAccountByName("Accounts Payable");
-      const bankOrCashName = payMethod === "cash" ? "Cash" : "Bank";
-      const bankAcc = bankAccountId || await findAccountByName(bankOrCashName);
-      const tdsAcc = tdsAmount > 0 ? (await findAccountByName("TDS Payable")) : null;
-      let voucherId: string | null = null;
-      if (apAcc && bankAcc) {
-        const entries: any[] = [
-          { account_id: apAcc, debit: totalDebited, credit: 0, narration: `Payment ${payment_number}` },
-          { account_id: bankAcc, debit: 0, credit: payAmount, narration: `Payment ${payment_number}` },
-        ];
-        if (tdsAmount > 0 && tdsAcc) entries.push({ account_id: tdsAcc, debit: 0, credit: tdsAmount, narration: `TDS on ${payment_number}` });
-        else if (tdsAmount > 0) { toast({ title: "TDS Payable account not found; TDS netted to bank" }); entries[1].credit += tdsAmount; }
-        const r = await autoPostAccounting({
-          voucher_type: "payment", voucher_date: payDate, description: `Bill ${bill.bill_number} payment`, entries, created_by: user?.id,
-        });
-        voucherId = r.voucherId;
-      } else {
-        toast({ title: "Saved without accounting", description: "Configure Accounts Payable / Bank ledgers" });
-      }
-      const { error } = await supabase.from("purchase_bill_payments").insert({
-        payment_number, bill_id: id, payment_date: payDate, amount: payAmount, tds_amount: tdsAmount,
-        payment_method: payMethod, bank_account_id: bankAccountId || null, reference_no: refNo || null,
-        voucher_id: voucherId, created_by: user?.id,
-      });
+      const payment_number = await newPaymentNumber();
+      const { data: p, error } = await supabase.from("purchase_bill_payments" as any).insert({
+        payment_number, bill_id: bill.id, payment_date: pay.date,
+        amount: pay.amount, tds_amount: pay.tds, payment_method: pay.method,
+        bank_account_id: pay.bankId || null, reference_no: pay.ref || null,
+        notes: pay.notes || null, created_by: user?.id || null,
+      } as any).select().single();
       if (error) throw error;
-      const newPaid = Number(bill.paid_amount) + totalDebited;
-      const newStatus = newPaid >= Number(bill.grand_total) - 0.01 ? "paid" : "partial";
-      await supabase.from("purchase_bills").update({ paid_amount: newPaid, tds_amount: Number(bill.tds_amount) + tdsAmount, status: newStatus }).eq("id", id);
-      toast({ title: "Payment recorded" });
-      setPayOpen(false); setTdsAmount(0); setRefNo("");
+
+      // Auto-post: DR AP, CR Bank/Cash, CR TDS Payable
+      try {
+        const apAcc = await findAccountByName("Accounts Payable");
+        const payAcc = pay.bankId || await findAccountByName(pay.method === "cash" ? "Cash" : "Bank");
+        const tdsAcc = pay.tds > 0 ? await findAccountByName("TDS Payable") : null;
+        if (apAcc && payAcc) {
+          const entries: any[] = [
+            { account_id: apAcc, debit: pay.amount + pay.tds, credit: 0, narration: `Bill ${bill.bill_number}` },
+            { account_id: payAcc, debit: 0, credit: pay.amount, narration: `Payment ${payment_number}` },
+          ];
+          if (tdsAcc && pay.tds > 0) entries.push({ account_id: tdsAcc, debit: 0, credit: pay.tds, narration: "TDS" });
+          else if (pay.tds > 0) entries[1].credit += pay.tds;
+          const fy = await getActiveFinancialYearId();
+          const v = await autoPostAccounting({
+            voucher_type: "payment", voucher_date: pay.date, description: `Bill Payment ${payment_number}`,
+            branch_id: userBranchId, financial_year_id: fy, entries, created_by: user?.id,
+            reference_type: "purchase_bill_payment", reference_id: (p as any).id,
+          });
+          await supabase.from("purchase_bill_payments" as any).update({ voucher_id: v.voucherId }).eq("id", (p as any).id);
+        }
+      } catch (e: any) { console.warn("Auto-post:", e.message); }
+
+      // Update bill totals
+      const newPaid = Number(bill.paid_amount) + pay.amount;
+      const newTds = Number(bill.tds_amount) + pay.tds;
+      const remaining = Number(bill.grand_total) - newPaid - newTds;
+      const status = remaining <= 0.01 ? "paid" : newPaid + newTds > 0 ? "partial" : "unpaid";
+      await supabase.from("purchase_bills" as any).update({ paid_amount: newPaid, tds_amount: newTds, status }).eq("id", bill.id);
+
+      toast({ title: "Payment recorded", description: payment_number });
+      setOpen(false); setPay({ date: new Date().toISOString().slice(0, 10), amount: 0, tds: 0, method: "cash", bankId: "", ref: "", notes: "" });
       load();
-    } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
-    finally { setSaving(false); }
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally { setSaving(false); }
   };
 
-  if (!bill) return <div className="p-6">Loading…</div>;
-  const due = Number(bill.grand_total) - Number(bill.paid_amount);
-
   return (
-    <div className="p-4 lg:p-6 max-w-[1100px] mx-auto space-y-4">
-      <div className="flex items-center justify-between print:hidden">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4" /></Button>
-          <h1 className="text-xl font-bold">{bill.bill_number}</h1>
-          <Badge>{bill.status}</Badge>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
-          {bill.status !== "paid" && <Button size="sm" onClick={() => setPayOpen(true)}><Plus className="w-4 h-4 mr-1" />Record Payment</Button>}
-        </div>
-      </div>
-      <Card><CardContent className="p-6 space-y-4">
-        <div className="text-center"><h2 className="text-2xl font-bold">PURCHASE BILL</h2><p className="text-sm text-muted-foreground">{bill.bill_number}</p></div>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+    <div className="p-6 space-y-4">
+      <Button variant="ghost" onClick={() => nav("/purchase-workflow/bills")}><ArrowLeft className="w-4 h-4 mr-2" />Back</Button>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>{bill.bill_number} <Badge className="ml-2">{bill.status}</Badge></CardTitle>
+          {outstanding > 0.01 && <Button onClick={() => setOpen(true)}><Wallet className="w-4 h-4 mr-2" />Record Payment</Button>}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-4 gap-4 text-sm">
+            <div><span className="text-muted-foreground">Date:</span> {bill.bill_date}</div>
+            <div><span className="text-muted-foreground">Supplier:</span> {bill.suppliers?.name}</div>
+            <div><span className="text-muted-foreground">Due:</span> {bill.due_date || "-"}</div>
+            <div><span className="text-muted-foreground">Supplier Bill #:</span> {bill.supplier_bill_no || "-"}</div>
+            <div><span className="text-muted-foreground">Subtotal:</span> {fc(bill.subtotal)}</div>
+            <div><span className="text-muted-foreground">VAT:</span> {fc(bill.vat_amount)}</div>
+            <div><span className="text-muted-foreground">Grand:</span> <b>{fc(bill.grand_total)}</b></div>
+            <div><span className="text-muted-foreground">Outstanding:</span> <b className="text-destructive">{fc(outstanding)}</b></div>
+          </div>
+
           <div>
-            <div className="font-semibold">Supplier:</div>
-            <div>{supplier?.name}</div>
-            {supplier?.bin_number && <div>BIN: {supplier.bin_number}</div>}
+            <h3 className="font-semibold mb-2">Linked GRNs</h3>
+            <Table>
+              <TableHeader><TableRow><TableHead>GRN #</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {grns.map(g => (
+                  <TableRow key={g.id}><TableCell className="font-mono">{g.grns?.grn_number}</TableCell><TableCell>{g.grns?.grn_date}</TableCell><TableCell className="text-right">{fc(g.amount)}</TableCell></TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
-          <div className="text-right">
-            <div><span className="text-muted-foreground">Bill Date:</span> {bill.bill_date}</div>
-            <div><span className="text-muted-foreground">Due Date:</span> {bill.due_date || "—"}</div>
-            <div><span className="text-muted-foreground">Supplier Bill:</span> {bill.supplier_bill_no || "—"}</div>
-          </div>
-        </div>
-        <div>
-          <h3 className="font-medium mb-2">Linked GRNs</h3>
-          <Table>
-            <TableHeader><TableRow><TableHead>GRN #</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
-            <TableBody>{grns.map(g => <TableRow key={g.id}><TableCell>{g.grn_number}</TableCell><TableCell>{g.grn_date}</TableCell><TableCell className="text-right">{Number(g.total_amount).toFixed(2)}</TableCell></TableRow>)}</TableBody>
-          </Table>
-        </div>
-        <div className="flex justify-end text-sm">
-          <div className="w-64 space-y-1">
-            <div className="flex justify-between"><span>Subtotal</span><span>{Number(bill.subtotal).toFixed(2)}</span></div>
-            <div className="flex justify-between"><span>VAT</span><span>{Number(bill.vat_amount).toFixed(2)}</span></div>
-            <div className="flex justify-between font-bold border-t pt-1"><span>Grand Total</span><span>{Number(bill.grand_total).toFixed(2)}</span></div>
-            <div className="flex justify-between text-emerald-600"><span>Paid</span><span>{Number(bill.paid_amount).toFixed(2)}</span></div>
-            <div className="flex justify-between text-red-600 font-bold"><span>Due</span><span>{due.toFixed(2)}</span></div>
-          </div>
-        </div>
-      </CardContent></Card>
 
-      <Card><CardContent className="p-4 space-y-2">
-        <h3 className="font-medium">Payments</h3>
-        <Table>
-          <TableHeader><TableRow><TableHead>Payment #</TableHead><TableHead>Date</TableHead><TableHead>Method</TableHead><TableHead>Ref</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">TDS</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {payments.map(p => (
-              <TableRow key={p.id}><TableCell>{p.payment_number}</TableCell><TableCell>{p.payment_date}</TableCell><TableCell>{p.payment_method}</TableCell><TableCell>{p.reference_no || "—"}</TableCell><TableCell className="text-right">{Number(p.amount).toFixed(2)}</TableCell><TableCell className="text-right">{Number(p.tds_amount).toFixed(2)}</TableCell></TableRow>
-            ))}
-            {payments.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-4 text-muted-foreground">No payments</TableCell></TableRow>}
-          </TableBody>
-        </Table>
-      </CardContent></Card>
+          <div>
+            <h3 className="font-semibold mb-2">Payments</h3>
+            <Table>
+              <TableHeader><TableRow><TableHead>Payment #</TableHead><TableHead>Date</TableHead><TableHead>Method</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">TDS</TableHead><TableHead>Ref</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {payments.map(p => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-mono">{p.payment_number}</TableCell>
+                    <TableCell>{p.payment_date}</TableCell>
+                    <TableCell>{p.payment_method}</TableCell>
+                    <TableCell className="text-right">{fc(p.amount)}</TableCell>
+                    <TableCell className="text-right">{fc(p.tds_amount)}</TableCell>
+                    <TableCell>{p.reference_no || "-"}</TableCell>
+                  </TableRow>
+                ))}
+                {!payments.length && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No payments yet</TableCell></TableRow>}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Payment Date</Label><Input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} /></div>
-              <div><Label>Method</Label>
-                <select className="w-full h-9 border rounded px-2 bg-background text-sm" value={payMethod} onChange={e => setPayMethod(e.target.value)}>
-                  <option value="cash">Cash</option><option value="bank">Bank</option><option value="cheque">Cheque</option>
-                </select>
+              <div><Label>Date</Label><Input type="date" value={pay.date} onChange={e => setPay({ ...pay, date: e.target.value })} /></div>
+              <div>
+                <Label>Method</Label>
+                <Select value={pay.method} onValueChange={v => setPay({ ...pay, method: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="bank">Bank Transfer</SelectItem>
+                    <SelectItem value="cheque">Cheque</SelectItem>
+                    <SelectItem value="mfs">MFS</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div><Label>Amount Paid</Label><Input type="number" min={0} step={0.01} value={payAmount} onChange={e => setPayAmount(Number(e.target.value))} /></div>
-              <div><Label>TDS Amount</Label><Input type="number" min={0} step={0.01} value={tdsAmount} onChange={e => setTdsAmount(Number(e.target.value))} /></div>
-              {payMethod !== "cash" && (
-                <div className="col-span-2"><Label>Bank Ledger</Label>
-                  <select className="w-full h-9 border rounded px-2 bg-background text-sm" value={bankAccountId} onChange={e => setBankAccountId(e.target.value)}>
-                    <option value="">Auto (lookup "Bank")</option>{bankAccounts.map(b => <option key={b.id} value={b.id}>{b.account_code} — {b.account_name}</option>)}
-                  </select>
-                </div>
-              )}
-              <div className="col-span-2"><Label>Reference / Cheque #</Label><Input value={refNo} onChange={e => setRefNo(e.target.value)} /></div>
+              <div><Label>Amount</Label><Input type="number" value={pay.amount || ""} onChange={e => setPay({ ...pay, amount: Number(e.target.value) })} /></div>
+              <div><Label>TDS Deducted</Label><Input type="number" value={pay.tds || ""} onChange={e => setPay({ ...pay, tds: Number(e.target.value) })} /></div>
+              <div className="col-span-2">
+                <Label>Bank/Cash Account (optional)</Label>
+                <Select value={pay.bankId || "none"} onValueChange={v => setPay({ ...pay, bankId: v === "none" ? "" : v })}>
+                  <SelectTrigger><SelectValue placeholder="Auto-detect" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Auto —</SelectItem>
+                    {banks.filter(a => /cash|bank/i.test(a.account_name)).map(a => <SelectItem key={a.id} value={a.id}>{a.account_code} - {a.account_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2"><Label>Reference</Label><Input value={pay.ref} onChange={e => setPay({ ...pay, ref: e.target.value })} placeholder="Cheque/Txn #" /></div>
+              <div className="col-span-2"><Label>Notes</Label><Input value={pay.notes} onChange={e => setPay({ ...pay, notes: e.target.value })} /></div>
             </div>
-            <p className="text-xs text-muted-foreground">Total settled: {(payAmount + tdsAmount).toFixed(2)} (Amount + TDS)</p>
+            <div className="text-sm text-muted-foreground">Outstanding: <b>{fc(outstanding)}</b></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button><Button onClick={recordPayment} disabled={saving}>{saving ? "Saving…" : "Save Payment"}</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={savePayment} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

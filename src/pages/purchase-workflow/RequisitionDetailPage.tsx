@@ -3,91 +3,78 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Check, X, FileText } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Check, X, ShoppingBag } from "lucide-react";
 
 export default function RequisitionDetailPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
-  const { user, isSuperAdmin, hasPermission } = useAuth();
+  const nav = useNavigate();
+  const { user, hasPermission } = useAuth();
   const { toast } = useToast();
   const [pr, setPr] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
-  const [productNames, setProductNames] = useState<Record<string, string>>({});
+  const canApprove = hasPermission("purchase", "can_edit");
 
   const load = async () => {
-    const { data } = await supabase.from("purchase_requisitions").select("*").eq("id", id).single();
-    setPr(data);
-    const { data: its } = await supabase.from("purchase_requisition_items").select("*").eq("pr_id", id);
-    setItems(its || []);
-    const pids = (its || []).map((x: any) => x.product_id);
-    if (pids.length) {
-      const { data: prods } = await supabase.from("item_master").select("id, item_name").in("id", pids);
-      const map: Record<string, string> = {};
-      (prods || []).forEach((p: any) => { map[p.id] = p.item_name; });
-      setProductNames(map);
-    }
+    const [p, it] = await Promise.all([
+      supabase.from("purchase_requisitions" as any).select("*").eq("id", id).single(),
+      supabase.from("purchase_requisition_items" as any).select("*, products(product_name, product_code)").eq("pr_id", id),
+    ]);
+    setPr(p.data); setItems((it.data as any) || []);
   };
-  useEffect(() => { load(); }, [id]);
-
-  const canApprove = isSuperAdmin || hasPermission("purchase", "can_edit");
+  useEffect(() => { if (id) load(); }, [id]);
 
   const setStatus = async (status: string) => {
-    const patch: any = { status };
-    if (status === "admin_approved") { patch.approved_by = user?.id; patch.approved_at = new Date().toISOString(); }
-    const { error } = await supabase.from("purchase_requisitions").update(patch).eq("id", id);
-    if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
-    toast({ title: `Status: ${status}` });
-    load();
+    const updates: any = { status };
+    if (status === "approved") { updates.approved_by = user?.id; updates.approved_at = new Date().toISOString(); }
+    const { error } = await supabase.from("purchase_requisitions" as any).update(updates).eq("id", id);
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else { toast({ title: `Marked ${status}` }); load(); }
   };
 
-  if (!pr) return <div className="p-6">Loading…</div>;
+  if (!pr) return <div className="p-6">Loading...</div>;
 
   return (
-    <div className="p-4 lg:p-6 max-w-[1100px] mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4" /></Button>
-          <h1 className="text-xl font-bold">{pr.pr_number}</h1>
-          <Badge>{pr.status}</Badge>
-        </div>
-        <div className="flex gap-2">
-          {pr.status === "pending_admin" && canApprove && (
-            <>
-              <Button size="sm" variant="outline" onClick={() => setStatus("rejected")}><X className="w-4 h-4 mr-1" />Reject</Button>
-              <Button size="sm" onClick={() => setStatus("admin_approved")}><Check className="w-4 h-4 mr-1" />Approve</Button>
-            </>
-          )}
-          {pr.status === "admin_approved" && (
-            <Button size="sm" onClick={() => navigate(`/purchase-workflow/po/new?pr=${pr.id}`)}><FileText className="w-4 h-4 mr-1" />Issue PO</Button>
-          )}
-        </div>
-      </div>
-      <Card><CardContent className="p-4 space-y-2">
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div><span className="text-muted-foreground">Date:</span> {pr.pr_date}</div>
-          <div><span className="text-muted-foreground">Notes:</span> {pr.notes || "—"}</div>
-        </div>
-      </CardContent></Card>
-      <Card><CardContent className="p-0">
-        <Table>
-          <TableHeader><TableRow><TableHead>Product</TableHead><TableHead className="text-right">Qty Required</TableHead><TableHead className="text-right">Qty Ordered</TableHead><TableHead className="text-right">Remaining</TableHead><TableHead>Remarks</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {items.map(it => (
-              <TableRow key={it.id}>
-                <TableCell>{productNames[it.product_id] || it.product_id.slice(0, 8)}</TableCell>
-                <TableCell className="text-right">{it.qty_required}</TableCell>
-                <TableCell className="text-right">{it.qty_ordered}</TableCell>
-                <TableCell className="text-right font-medium">{Number(it.qty_required) - Number(it.qty_ordered)}</TableCell>
-                <TableCell>{it.remarks || "—"}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent></Card>
+    <div className="p-6 space-y-4">
+      <Button variant="ghost" onClick={() => nav("/purchase-workflow/requisitions")}><ArrowLeft className="w-4 h-4 mr-2" />Back</Button>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>{pr.pr_number} <Badge className="ml-2">{pr.status}</Badge></CardTitle>
+          <div className="flex gap-2">
+            {pr.status === "draft" && canApprove && (
+              <>
+                <Button size="sm" onClick={() => setStatus("approved")}><Check className="w-4 h-4 mr-1" />Approve</Button>
+                <Button size="sm" variant="destructive" onClick={() => setStatus("rejected")}><X className="w-4 h-4 mr-1" />Reject</Button>
+              </>
+            )}
+            {pr.status === "approved" && (
+              <Button size="sm" onClick={() => nav(`/purchase-workflow/po/new?pr=${pr.id}`)}><ShoppingBag className="w-4 h-4 mr-1" />Issue PO</Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
+            <div><span className="text-muted-foreground">Date:</span> {pr.pr_date}</div>
+            <div><span className="text-muted-foreground">Notes:</span> {pr.notes || "-"}</div>
+          </div>
+          <Table>
+            <TableHeader><TableRow><TableHead>Product</TableHead><TableHead>Qty Required</TableHead><TableHead>Qty Ordered</TableHead><TableHead>Remarks</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {items.map(i => (
+                <TableRow key={i.id}>
+                  <TableCell>{i.products?.product_code} - {i.products?.product_name}</TableCell>
+                  <TableCell>{i.qty_required}</TableCell>
+                  <TableCell>{i.qty_ordered}</TableCell>
+                  <TableCell>{i.remarks || "-"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
