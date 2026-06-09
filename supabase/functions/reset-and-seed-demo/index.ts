@@ -376,27 +376,7 @@ Deno.serve(async (req) => {
         addV("receipt", ymd(pd), `Receipt ${ref}`, entries);
       }
     }
-    // Supplier payments
-    for (const p of pList) {
-      if (!p.credit) continue;
-      if (R() < 0.72) {
-        const pd = new Date(new Date(p.date).getTime() + RI(10,50)*86400000);
-        if (pd > end) continue;
-        const fullPay = R() < 0.8;
-        const settled = fullPay ? p.gross : round2(p.gross * 0.5);
-        const pid = U(); pmc++;
-        const ref = `PAY-${fyTag}-${String(pmc).padStart(5,"0")}`;
-        const method = pick(["cash","bank"]);
-        pays.push({ id:pid, party_id:p.sid, party_type:"supplier", payment_date:ymd(pd),
-          amount:settled, payment_method:method, reference:ref, created_by:UID });
-        allocs.push({ id:U(), payment_id:pid, invoice_type:"purchase", invoice_id:p.id, allocated_amount:settled });
-        const cashCr = method === "cash" ? Ac.cash : Ac.bank;
-        addV("payment", ymd(pd), `Payment ${ref}`, [
-          [Ac.ap, settled, 0, `AP settle ${p.num}`],
-          [cashCr, 0, settled, "Supplier payment"],
-        ]);
-      }
-    }
+    // Supplier payments removed with Purchase module
     await bulk("party_payments", pays);
     await bulk("payment_allocations", allocs);
 
