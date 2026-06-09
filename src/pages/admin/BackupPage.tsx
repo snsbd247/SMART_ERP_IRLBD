@@ -749,28 +749,67 @@ const BackupPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs text-muted-foreground space-y-1">
-                <p className="font-medium text-foreground">This will import:</p>
-                <ul className="list-disc list-inside space-y-0.5">
-                  <li>Chart of Accounts (Bangladesh standard, 59 accounts)</li>
-                  <li>IFRS Account Mapping (standard IFRS lines)</li>
-                  <li>Roles &amp; Permissions (Super Admin, Admin, Accountant, Sales Manager, Inventory Clerk, Viewer)</li>
-                  <li>Document Numbering (INV, PUR, JV, PV, RV, CV, PRD, INC, EXP)</li>
-                  <li>Page Shortcuts (118 quick-jump codes)</li>
-                </ul>
+              <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-foreground">Select sections to import (14 available)</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAllSections(true)}
+                      disabled={importingDemo}
+                      className="text-[11px] text-primary hover:underline disabled:opacity-50"
+                    >Select all</button>
+                    <span className="text-[11px] text-muted-foreground">·</span>
+                    <button
+                      type="button"
+                      onClick={() => setAllSections(false)}
+                      disabled={importingDemo}
+                      className="text-[11px] text-primary hover:underline disabled:opacity-50"
+                    >Clear</button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5">
+                  {DEMO_SECTIONS.map(s => (
+                    <label
+                      key={s.key}
+                      className="flex items-center gap-2 text-xs text-foreground cursor-pointer select-none"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!selectedSections[s.key]}
+                        onChange={() => toggleSection(s.key)}
+                        disabled={importingDemo}
+                        className="h-3.5 w-3.5 rounded border-border accent-primary"
+                      />
+                      <span>{s.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground pt-1">
+                  Selected: <strong className="text-foreground">{Object.values(selectedSections).filter(Boolean).length}</strong> / {DEMO_SECTIONS.length}
+                </p>
               </div>
               <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-700 dark:text-green-400">
                 <p className="font-medium">✔ Safe to run</p>
-                <p>Idempotent — existing records are kept untouched. Only missing rows are inserted. No transactional data (vouchers, invoices, stock) is touched.</p>
+                <p><strong>Import (keep existing)</strong> upserts the selected sections — existing rows are overwritten with seed values, missing rows are inserted. <strong>Preview (Dry Run)</strong> simulates the import in a rolled-back transaction so you can see exactly what would change without saving anything. No transactional data (vouchers, invoices, stock, payroll) is ever touched.</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => handleImportDemoConfig(false, true)}
+                  disabled={importingDemo || !isSuperAdmin}
+                  className="w-full"
+                >
+                  <FileJson className="w-4 h-4 mr-2" />
+                  {importingDemo && isDryRun ? "Previewing..." : "Preview (Dry Run)"}
+                </Button>
                 <Button
                   onClick={() => setConfirmDemo(true)}
                   disabled={importingDemo || !isSuperAdmin}
                   className="w-full"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
-                  {importingDemo ? "Working..." : "Import (keep existing)"}
+                  {importingDemo && !isDryRun ? "Working..." : "Import (keep existing)"}
                 </Button>
                 <Button
                   variant="destructive"
@@ -783,8 +822,9 @@ const BackupPage = () => {
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground -mt-2">
-                <strong>Reset &amp; Re-import</strong> wipes only the 5 configuration tables (CoA, IFRS, Roles, Numbering, Shortcuts) and re-seeds them fresh. Vouchers, invoices, stock and payroll are NOT touched.
+                <strong>Reset &amp; Re-import</strong> deletes only the selected configuration sections and re-seeds them fresh. Vouchers, invoices, stock and payroll are NOT touched.
               </p>
+
 
               <div className="pt-4 mt-2 border-t border-border space-y-2">
                 <p className="text-sm font-medium text-foreground">Full demo data (all modules, 2 branches)</p>
