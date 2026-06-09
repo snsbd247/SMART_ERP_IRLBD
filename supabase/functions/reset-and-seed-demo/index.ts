@@ -1050,6 +1050,8 @@ Deno.serve(async (req) => {
         stock_transfers: tc, boms: boms.length, production: prdc,
         products: products.length, customers: customers.length, suppliers: suppliers.length, employees: employees.length,
         purchase_orders: poc, vat_challans: vchc, delivery_challans: dcc,
+        purchase_orders_v2: poc2, purchase_requisitions: prq, grns: grnc,
+        supplier_bills: sbc, supplier_payments: spc, purchase_returns_v2: prc, lc_documents: lcc,
         invoices_v2: inv2c, invoice_payments: ipayc, tds_entries: tdsc,
         party_notes: partyNotes.length,
       },
