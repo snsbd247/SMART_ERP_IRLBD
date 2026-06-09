@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -213,6 +213,10 @@ const App = () => (
                 <Route path="/customers/:id" element={<P perm="customers.view,sales.view"><CustomerProfilePage /></P>} />
 
                 {/* ─── Purchase ─────────────────────────────────── */}
+                {/* Legacy routes — redirect to new workflow */}
+                <Route path="/purchase" element={<Navigate to="/purchase-workflow/bills" replace />} />
+                <Route path="/purchase/invoices/:id" element={<Navigate to="/purchase-workflow/bills" replace />} />
+                <Route path="/purchase/returns" element={<Navigate to="/purchase-workflow/returns" replace />} />
                 <Route path="/suppliers" element={<P perm="suppliers.view,purchase.view"><SuppliersPage /></P>} />
                 <Route path="/suppliers/:id" element={<P perm="suppliers.view,purchase.view"><SupplierProfilePage /></P>} />
 
