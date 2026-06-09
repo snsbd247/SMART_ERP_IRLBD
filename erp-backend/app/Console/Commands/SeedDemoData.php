@@ -269,6 +269,34 @@ class SeedDemoData extends Command
             'pur' => $coa['5101'], 'purRet' => $coa['5103'], 'sal' => $coa['5201'], 'rent' => $coa['5202'], 'util' => $coa['5203'], 'off' => $coa['5204'], 'tr' => $coa['5205'], 'pfExp' => $coa['5209'],
             'vatIn' => $coa['6101'], 'vatOut' => $coa['6102'],
         ];
+
+        // Ensure default child bank accounts exist (idempotent)
+        $bankChildren = [
+            ['1102-01', 'EBL Current A/C - 1234567890'],
+            ['1102-02', 'City Bank Current A/C - 9988776655'],
+            ['1102-03', 'BRAC Bank Savings A/C - 4455667788'],
+            ['1102-04', 'HSBC USD A/C - 0011223344'],
+        ];
+        $this->Ac['banks'] = [];
+        foreach ($bankChildren as [$code, $name]) {
+            $existing = DB::table('chart_of_accounts')->where('account_code', $code)->value('id');
+            if (!$existing) {
+                $existing = $this->U();
+                DB::table('chart_of_accounts')->insert([
+                    'id' => $existing,
+                    'account_code' => $code,
+                    'account_name' => $name,
+                    'account_type' => 'asset',
+                    'parent_id'    => $this->Ac['bank'],
+                    'opening_balance' => 0,
+                    'opening_balance_type' => 'debit',
+                    'is_active' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+            $this->Ac['banks'][$code] = $existing;
+        }
     }
 
     private function seedInventory(): void
@@ -447,13 +475,34 @@ class SeedDemoData extends Command
         $invOpen = array_reduce($this->products, fn($s,$p) => $s + $p['cp'] * $p['op'], 0.0);
         $cashOp = 200000; $bankOp = 800000; $apOp = 150000;
         $capital = $cashOp + $bankOp + $invOpen - $apOp;
-        $this->addV('journal', $this->ymd($this->fyStart), 'Opening Balance Entry', [
-            [$this->Ac['cash'],$cashOp,0,'Opening cash'],
-            [$this->Ac['bank'],$bankOp,0,'Opening bank'],
-            [$this->Ac['inv'],$invOpen,0,'Opening inventory'],
-            [$this->Ac['ap'],0,$apOp,'Opening payables'],
-            [$this->Ac['cap'],0,$capital,'Owner capital'],
-        ]);
+
+        $entries = [
+            [$this->Ac['cash'], $cashOp, 0, 'Opening cash'],
+        ];
+
+        // Distribute bank opening across the 4 child bank accounts
+        $banks = $this->Ac['banks'] ?? [];
+        if (!empty($banks)) {
+            $splits = [
+                '1102-01' => 300000,
+                '1102-02' => 250000,
+                '1102-03' => 150000,
+                '1102-04' => 100000,
+            ];
+            foreach ($splits as $code => $amt) {
+                if (isset($banks[$code])) {
+                    $entries[] = [$banks[$code], $amt, 0, "Opening balance ({$code})"];
+                }
+            }
+        } else {
+            $entries[] = [$this->Ac['bank'], $bankOp, 0, 'Opening bank'];
+        }
+
+        $entries[] = [$this->Ac['inv'], $invOpen, 0, 'Opening inventory'];
+        $entries[] = [$this->Ac['ap'], 0, $apOp, 'Opening payables'];
+        $entries[] = [$this->Ac['cap'], 0, $capital, 'Owner capital'];
+
+        $this->addV('journal', $this->ymd($this->fyStart), 'Opening Balance Entry', $entries);
     }
 
     private function seedDailySalesPurchases(): void
