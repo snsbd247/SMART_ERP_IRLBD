@@ -16,14 +16,21 @@ import { ArrowLeft, Wallet } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { newPaymentNumber, getActiveFinancialYearId } from "@/lib/purchase-workflow-utils";
 import { autoPostAccounting, findAccountByName } from "@/lib/accounting-utils";
+import { validatePurchaseAccounts } from "@/lib/purchase-validation";
+import { CoAWarning } from "@/components/purchase-workflow/CoAWarning";
+import { PurchaseStatusTracker } from "@/components/purchase-workflow/PurchaseStatusTracker";
+import { logCreate } from "@/lib/audit-utils";
+import { usePermission } from "@/hooks/usePermission";
 
 export default function BillDetailPage() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { userBranchId } = useBranch();
   const { toast } = useToast();
   const { fc } = useCurrency();
+  const { can, isSuperAdmin } = usePermission();
+  const canPay = isSuperAdmin || can("purchase.payment.create") || can("purchase.create");
   const [bill, setBill] = useState<any>(null);
   const [grns, setGrns] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
@@ -31,6 +38,7 @@ export default function BillDetailPage() {
   const [open, setOpen] = useState(false);
   const [pay, setPay] = useState({ date: new Date().toISOString().slice(0, 10), amount: 0, tds: 0, method: "cash", bankId: "", ref: "", notes: "" });
   const [saving, setSaving] = useState(false);
+  const [coaMissing, setCoaMissing] = useState<string[]>([]);
 
   const load = async () => {
     if (!id) return;
@@ -48,6 +56,7 @@ export default function BillDetailPage() {
   const outstanding = Number(bill.grand_total) - Number(bill.paid_amount) - Number(bill.tds_amount);
 
   const savePayment = async () => {
+    if (!canPay) return toast({ title: "Permission denied", description: "Requires purchase.payment.create", variant: "destructive" });
     if (pay.amount <= 0 && pay.tds <= 0) return toast({ title: "Enter amount", variant: "destructive" });
     if (pay.amount + pay.tds > outstanding + 0.01) return toast({ title: "Exceeds outstanding", variant: "destructive" });
     setSaving(true);
@@ -90,6 +99,12 @@ export default function BillDetailPage() {
       const status = remaining <= 0.01 ? "paid" : newPaid + newTds > 0 ? "partial" : "unpaid";
       await supabase.from("purchase_bills" as any).update({ paid_amount: newPaid, tds_amount: newTds, status }).eq("id", bill.id);
 
+      await logCreate({
+        userId: user?.id, userName: profile?.name,
+        module: "purchase_bill_payment", recordId: (p as any).id,
+        newData: { payment_number, amount: pay.amount, tds: pay.tds, method: pay.method, bill_id: bill.id },
+        details: `Payment ${payment_number} for Bill ${bill.bill_number}: amt=${pay.amount}, tds=${pay.tds}`,
+      });
       toast({ title: "Payment recorded", description: payment_number });
       setOpen(false); setPay({ date: new Date().toISOString().slice(0, 10), amount: 0, tds: 0, method: "cash", bankId: "", ref: "", notes: "" });
       load();
@@ -101,10 +116,17 @@ export default function BillDetailPage() {
   return (
     <div className="p-6 space-y-4">
       <Button variant="ghost" onClick={() => nav("/purchase-workflow/bills")}><ArrowLeft className="w-4 h-4 mr-2" />Back</Button>
+      <PurchaseStatusTracker
+        current={bill.status === "paid" ? "payment" : "bill"}
+        status={{
+          requisition: "done", po: "done", grn: "done", bill: "done",
+          payment: bill.status === "paid" ? "done" : bill.status === "partial" ? "active" : "pending",
+        }}
+      />
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{bill.bill_number} <Badge className="ml-2">{bill.status}</Badge></CardTitle>
-          {outstanding > 0.01 && <Button onClick={() => setOpen(true)}><Wallet className="w-4 h-4 mr-2" />Record Payment</Button>}
+          {outstanding > 0.01 && <Button onClick={async () => { const r = await validatePurchaseAccounts({ needTds: pay.tds > 0, needCash: true, needBank: true }); setCoaMissing(r.missing); setOpen(true); }}><Wallet className="w-4 h-4 mr-2" />Record Payment</Button>}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-4 gap-4 text-sm">
