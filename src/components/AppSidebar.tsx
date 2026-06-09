@@ -99,8 +99,6 @@ const navGroups: NavGroup[] = [
       { to: "/purchase-workflow/grn", label: "GRN (Goods Receipt)", icon: PackageCheck, permission: "purchase.view" },
       { to: "/purchase-workflow/bills", label: "Bills & Payments", icon: FileText, permission: "purchase.view" },
       { to: "/purchase-workflow/returns", label: "Purchase Returns", icon: ArrowLeftRight, permission: "purchase.view" },
-      { to: "/purchase", label: "Purchase Entry (Legacy)", icon: ShoppingCart, permission: "purchase.view" },
-      { to: "/purchase/returns", label: "Purchase Return (Legacy)", icon: ArrowLeftRight, permission: "purchase.view" },
       { to: "/reports/purchase", label: "Purchase Report", icon: ShoppingCart, permission: "purchase.view" },
       { to: "/reports/accounts-payable", label: "Accounts Payable", icon: Truck, permission: "purchase.view" },
       { to: "/reports/ap-aging", label: "AP Aging", icon: Clock, permission: "purchase.view" },

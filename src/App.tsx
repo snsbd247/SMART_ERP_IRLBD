@@ -29,10 +29,10 @@ import GithubDeploySyncPage from "./pages/admin/GithubDeploySyncPage";
 
 import ChartOfAccounts from "./pages/accounts/ChartOfAccounts";
 import AccountingVouchers from "./pages/accounts/AccountingVouchers";
-import PurchasesPage from "./pages/purchase/PurchasesPage";
+
 import SalesPage from "./pages/sales/SalesPage";
 import SalesInvoiceDetailPage from "./pages/sales/SalesInvoiceDetailPage";
-import PurchaseDetailPage from "./pages/purchase/PurchaseDetailPage";
+
 import RequisitionsPage from "./pages/purchase-workflow/RequisitionsPage";
 import RequisitionDetailPage from "./pages/purchase-workflow/RequisitionDetailPage";
 import PoListPage from "./pages/purchase-workflow/PoListPage";
@@ -213,9 +213,6 @@ const App = () => (
                 <Route path="/customers/:id" element={<P perm="customers.view,sales.view"><CustomerProfilePage /></P>} />
 
                 {/* ─── Purchase ─────────────────────────────────── */}
-                <Route path="/purchase" element={<P perm="purchase.view"><PurchasesPage /></P>} />
-                <Route path="/purchase/invoices/:id" element={<P perm="purchase.view"><PurchaseDetailPage /></P>} />
-                <Route path="/purchase/returns" element={<P perm="purchase.view"><PurchasesPage /></P>} />
                 <Route path="/suppliers" element={<P perm="suppliers.view,purchase.view"><SuppliersPage /></P>} />
                 <Route path="/suppliers/:id" element={<P perm="suppliers.view,purchase.view"><SupplierProfilePage /></P>} />
 
