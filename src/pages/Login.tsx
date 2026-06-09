@@ -89,7 +89,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-2xl border-0 rounded-2xl">
         <CardHeader className="text-center pb-2 pt-8">
           {branding.login_logo_url ? (
