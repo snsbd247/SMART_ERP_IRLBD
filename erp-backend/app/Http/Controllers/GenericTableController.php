@@ -46,7 +46,6 @@ class GenericTableController extends BaseController
         'role_permissions' => ['read' => ['roles.view'], 'write' => ['roles.create', 'roles.edit'], 'delete' => ['roles.edit']],
         'user_roles' => ['read' => ['users.view'], 'write' => ['users.create', 'users.edit'], 'delete' => ['users.edit']],
         'user_custom_roles' => ['read' => ['users.view'], 'write' => ['users.create', 'users.edit'], 'delete' => ['users.edit']],
-        'number_sequences' => ['read' => ['document_numbering.view', 'settings.view'], 'write' => ['document_numbering.edit', 'settings.edit'], 'delete' => ['document_numbering.delete', 'settings.edit']],
         'sms_logs' => ['read' => ['sms.view', 'settings.view'], 'write' => ['sms.edit', 'settings.edit'], 'delete' => ['sms.delete', 'settings.edit']],
         'login_logs' => ['read' => ['hrm.view', 'users.view'], 'write' => ['users.edit'], 'delete' => ['users.delete']],
     ];
