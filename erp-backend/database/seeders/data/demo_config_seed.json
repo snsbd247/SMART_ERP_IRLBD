@@ -412,6 +412,41 @@
       "account_type": "liability",
       "opening_balance_type": "debit",
       "parent_code": "6000"
+    },
+    {
+      "account_code": "1102.01",
+      "account_name": "DBBL Current A/C - 001",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1102"
+    },
+    {
+      "account_code": "1102.02",
+      "account_name": "City Bank Current A/C - 002",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1102"
+    },
+    {
+      "account_code": "1102.03",
+      "account_name": "BRAC Bank Savings A/C - 003",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1102"
+    },
+    {
+      "account_code": "1102.04",
+      "account_name": "Islami Bank Current A/C - 004",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1102"
+    },
+    {
+      "account_code": "1102.05",
+      "account_name": "Eastern Bank Current A/C - 005",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1102"
     }
   ],
   "ifrs": [
@@ -3062,5 +3097,175 @@
         }
       ]
     }
-  ]
+  ],
+  "branches": [
+    {
+      "code": "HO",
+      "name": "Head Office",
+      "phone": "+8801700000000",
+      "address": "Dhaka, Bangladesh",
+      "status": "active"
+    },
+    {
+      "code": "FAC",
+      "name": "Factory",
+      "phone": "+8801700000001",
+      "address": "Gazipur, Bangladesh",
+      "status": "active"
+    },
+    {
+      "code": "WH1",
+      "name": "Warehouse - Dhaka",
+      "phone": "+8801700000002",
+      "address": "Tejgaon, Dhaka",
+      "status": "active"
+    }
+  ],
+  "financial_years": [
+    {
+      "name": "FY 2024-2025",
+      "start_date": "2024-07-01",
+      "end_date": "2025-06-30",
+      "is_active": 0
+    },
+    {
+      "name": "FY 2025-2026",
+      "start_date": "2025-07-01",
+      "end_date": "2026-06-30",
+      "is_active": 1
+    }
+  ],
+  "purchase_types": [
+    {
+      "code": "LOCAL",
+      "name": "Local Purchase",
+      "description": "Standard local supplier purchase",
+      "is_lc": false,
+      "is_capex": false,
+      "is_service": false,
+      "requires_grn": true,
+      "requires_quality_check": false,
+      "default_approval_flow": "standard",
+      "is_active": true
+    },
+    {
+      "code": "IMPORT",
+      "name": "Import (LC)",
+      "description": "Import via Letter of Credit",
+      "is_lc": true,
+      "is_capex": false,
+      "is_service": false,
+      "requires_grn": true,
+      "requires_quality_check": true,
+      "default_approval_flow": "high_value",
+      "is_active": true
+    },
+    {
+      "code": "CAPEX",
+      "name": "Capital Expenditure",
+      "description": "Fixed asset purchase",
+      "is_lc": false,
+      "is_capex": true,
+      "is_service": false,
+      "requires_grn": true,
+      "requires_quality_check": false,
+      "default_approval_flow": "capex",
+      "is_active": true
+    },
+    {
+      "code": "SERVICE",
+      "name": "Service Purchase",
+      "description": "Service/contract purchase",
+      "is_lc": false,
+      "is_capex": false,
+      "is_service": true,
+      "requires_grn": false,
+      "requires_quality_check": false,
+      "default_approval_flow": "standard",
+      "is_active": true
+    },
+    {
+      "code": "CASH",
+      "name": "Cash Purchase",
+      "description": "Direct cash purchase",
+      "is_lc": false,
+      "is_capex": false,
+      "is_service": false,
+      "requires_grn": true,
+      "requires_quality_check": false,
+      "default_approval_flow": "fast",
+      "is_active": true
+    }
+  ],
+  "purchase_settings": {
+    "enable_pr_workflow": true,
+    "enable_po_amendment": true,
+    "enable_partial_grn": true,
+    "enable_3way_match": true,
+    "three_way_tolerance_pct": 2,
+    "enable_landed_cost": true,
+    "enable_lc": true,
+    "enable_supplier_advance": true,
+    "auto_post_grn": true,
+    "auto_post_bill": true,
+    "auto_post_payment": true,
+    "default_vat_pct": 15,
+    "default_ait_pct": 5,
+    "default_tds_pct": 3,
+    "po_default_currency": "BDT",
+    "require_pr_for_po": false,
+    "require_quote_attachment": false,
+    "budget_check_threshold": 0
+  },
+  "purchase_coa_mapping": [
+    {
+      "purchase_type_code": null,
+      "branch_code": null,
+      "inventory_account_code": "1105",
+      "grn_clearing_account_code": "2107",
+      "payable_account_code": "2101",
+      "advance_account_code": "1104",
+      "vat_input_account_code": "1203",
+      "ait_account_code": "1204",
+      "asset_account_code": "1201",
+      "expense_account_code": "5208",
+      "discount_account_code": "4104",
+      "freight_account_code": "5202",
+      "landed_cost_account_code": "5202",
+      "cash_account_code": "1101",
+      "bank_account_code": "1102",
+      "is_active": true
+    }
+  ],
+  "company_settings": {
+    "id": "default",
+    "company_name": "SmartERP Demo Co. Ltd.",
+    "email": "info@smarterp.demo",
+    "phone": "+8809600000000",
+    "address": "Plot 1, Demo Road, Dhaka 1212, Bangladesh",
+    "website": "https://smarterp.demo",
+    "currency_code": "BDT",
+    "currency_symbol": "৳",
+    "currency_name": "Bangladeshi Taka",
+    "currency_position": "before"
+  },
+  "sms_settings": {
+    "sms_api_key": "",
+    "sms_sender_id": "SmartERP",
+    "sms_enabled": "false"
+  },
+  "branding": {
+    "software_name": "SmartERP",
+    "software_version": "1.0",
+    "footer_text": "© 2026 SmartERP. All Rights Reserved.",
+    "developer_name": "Ismail Software Solutions",
+    "primary_color": "221 83% 53%"
+  },
+  "github_deploy_sync": {
+    "repos": [],
+    "branch": "main",
+    "pat": "",
+    "deploy_path": "/var/www/html",
+    "auto_pull": false
+  }
 }
