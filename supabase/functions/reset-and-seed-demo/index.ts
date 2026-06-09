@@ -328,7 +328,7 @@ Deno.serve(async (req) => {
         let subtotal = 0;
         const rows: [string,number,number,number,string][] = [];
         for (const p of items) {
-          const qty = RI(1,8), price = p.sp, tot = qty*price;
+          const qty = RI(qtyMin, qtyMax), price = p.sp, tot = qty*price;
           subtotal += tot;
           rows.push([p.id,qty,price,tot,p.iid]);
         }
