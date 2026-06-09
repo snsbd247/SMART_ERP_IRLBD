@@ -51,9 +51,9 @@ Deno.serve(async (req) => {
       ["sales_returns"],
       ["sales_invoices_v2","delivery_challans","vat_challans","purchase_orders"],
       ["acc_vouchers","party_payments","sales_invoices","production_entries","bill_of_materials","employees","conversations"],
-      ["sections","shifts","biometric_devices"],
+      ["sections","shifts","biometric_devices","stock_adjustments"],
       ["customers","suppliers","item_master","products","raw_materials"],
-      ["item_categories","units","warehouses","product_categories"],
+      ["item_categories","units","warehouses","product_categories","stock_groups"],
     ];
     for (const grp of resetGroups) {
       for (const t of grp) {
@@ -196,6 +196,19 @@ Deno.serve(async (req) => {
     await bulk("product_categories", catRows);
     await bulk("item_categories", catRows.map(c => ({ ...c, is_active:true })));
 
+    // Stock Groups (primary inventory classification)
+    const sgNames = ["Finished Goods","Raw Materials","Packaging","Additives"];
+    const sgIds: Record<string,string> = {};
+    const sgRows = sgNames.map(n => { const id=U(); sgIds[n]=id; return { id, name:n, is_default: n==="Finished Goods", is_active:true }; });
+    await bulk("stock_groups", sgRows);
+    // primary_group_id self-reference (top-level)
+    for (const r of sgRows) await db.from("stock_groups").update({ primary_group_id: r.id }).eq("id", r.id);
+    const catToGroup = (cat: string) =>
+      ["Bottles","Caps","Plugs","Discs"].includes(cat) ? sgIds["Finished Goods"]
+      : cat === "Raw Materials" ? sgIds["Raw Materials"]
+      : cat === "Additives" ? sgIds["Additives"]
+      : sgIds["Packaging"];
+
     // Products
     // Products — Plastic Bottle / Cap / Plug / Disc manufacturer
     // First 10 = FINISHED GOODS (PCS, used as BOM outputs); rest = RAW MATERIALS / PACKAGING
@@ -246,7 +259,7 @@ Deno.serve(async (req) => {
     })));
     await bulk("item_master", products.map(p => ({
       id:p.iid, item_code:p.code, item_name:p.name, item_type:"product", is_stock_item:true,
-      opening_stock:p.op, category_id:cIds[p.cat], unit_id:uIds[p.unit],
+      opening_stock:p.op, category_id:cIds[p.cat], unit_id:uIds[p.unit], stock_group_id: catToGroup(p.cat),
       cost_price:p.cp, selling_price:p.sp, min_stock_level:10, status:"active",
     })));
 
@@ -873,6 +886,52 @@ Deno.serve(async (req) => {
       }
     }
     await bulk("stock_transfers", transfers);
+
+    // ===== Stock Adjustments =====
+    const adjustments: any[] = [];
+    let adjc = 0;
+    for (const m of months) {
+      const n = RI(1, 3);
+      for (let i = 0; i < n; i++) {
+        const p = pick(products);
+        adjc++;
+        const isIncrease = R() < 0.5;
+        const qty = RI(5, 30);
+        adjustments.push({
+          id: U(), adjustment_number: `ADJ-${fyTag}-${String(adjc).padStart(5,"0")}`,
+          adjustment_date: ymd(new Date(m.getFullYear(), m.getMonth(), RI(5, 25))),
+          adjustment_type: isIncrease ? "increase" : "decrease",
+          product_id: p.id, warehouse_id: WH_DHK, branch_id: BR_DHK,
+          quantity: qty, unit_cost: p.cp, total_value: round2(qty * p.cp),
+          reason: pick(["Physical count variance","Damaged stock","Stock-take adjustment","Found stock"]),
+          notes: "Demo adjustment", created_by: UID,
+        });
+      }
+    }
+    await bulk("stock_adjustments", adjustments);
+
+    // ===== Stock Ledger (opening balance per item per warehouse) =====
+    const ledger: any[] = [];
+    const ledgerDate = ymd(fyStart);
+    for (const p of products) {
+      // Split opening between two warehouses (70/30)
+      const qDhk = Math.floor(p.op * 0.7), qCtg = p.op - qDhk;
+      if (qDhk > 0) ledger.push({
+        id: U(), transaction_type: "opening", item_id: p.iid,
+        branch_id: BR_DHK, warehouse_id: WH_DHK,
+        quantity_in: qDhk, quantity_out: 0, balance_quantity: qDhk,
+        unit_cost: p.cp, total_value: round2(qDhk * p.cp),
+        reference_number: "OPENING", transaction_date: ledgerDate,
+      });
+      if (qCtg > 0) ledger.push({
+        id: U(), transaction_type: "opening", item_id: p.iid,
+        branch_id: BR_CTG, warehouse_id: WH_CTG,
+        quantity_in: qCtg, quantity_out: 0, balance_quantity: qCtg,
+        unit_cost: p.cp, total_value: round2(qCtg * p.cp),
+        reference_number: "OPENING", transaction_date: ledgerDate,
+      });
+    }
+    await bulk("stock_ledger", ledger);
 
     // ===== Bill of Materials + Production =====
     const finished = products.slice(0, 10); // All 10 finished goods get BOMs
