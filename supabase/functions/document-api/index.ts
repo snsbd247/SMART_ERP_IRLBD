@@ -96,15 +96,7 @@ const DOC_CONFIG: Record<string, {
     hasStock: true,
     stockMovementType: "sales_return",
   },
-  purchase_return: {
-    table: "purchase_returns",
-    itemsTable: "purchase_return_items",
-    itemsFk: "purchase_return_id",
-    numberField: "return_number",
-    module: "purchase",
-    hasStock: true,
-    stockMovementType: "purchase_return",
-  },
+  // purchase_return doc type removed with Purchase module
   production: {
     table: "production_entries",
     itemsTable: "production_materials",
