@@ -1,54 +1,75 @@
-# Plan: Returns, Stock Adjustments, RBAC Seeding
+## Scope (confirmed)
+Remove Purchase module completely from frontend, Laravel backend, Supabase database, and edge functions. This includes Suppliers, Purchase Reports (AP/AP-Aging/Expense), legacy purchases, and the entire purchase workflow (PR → PO → GRN → Bill).
 
-Scope is large — four backend feature areas. I'll implement each as a focused, additive (Safe Extension) slice without modifying existing working controllers.
+## 1. Frontend (React)
 
-## 1. Sales Returns Backend
-- New `app/Http/Controllers/Sales/SalesReturnController.php` with `index/show/store/update/destroy/approve`.
-- `store` validates source `sales_invoice_id`, generates `SR-YY-#####` via `number_sequences`, inserts `sales_returns` + `sales_return_items` in a DB transaction.
-- `approve` posts:
-  - Reverse stock movement (`+qty` back into warehouse) via existing `StockMovement` model.
-  - Journal voucher (Dr Sales Return / Cr Customer Receivable) via `VoucherRepository`.
-- Add `PUT /sales-invoices/{id}` and `DELETE /sales-invoices/{id}` to `SalesInvoiceController` (block when paid/returned).
-- Routes under `Route::middleware('permission:sales.*')`.
+**Delete files**
+- `src/pages/purchase-workflow/` (entire folder — 12 files)
+- `src/pages/SuppliersPage.tsx`, `src/pages/SupplierProfilePage.tsx`
+- `src/pages/reports/PurchaseReport.tsx`
+- `src/pages/reports/accounting/AccountsPayableReport.tsx` and AP-Aging/Expense-Analysis report pages
+- `src/components/purchase-workflow/` folder
+- `src/components/help/ReturnsHelpPanel.tsx`
+- `src/components/dashboard/RecentReturnsWidget.tsx` (if purchase-returns specific)
+- `src/lib/purchase-validation.ts`, `purchase-workflow-utils.ts`, `purchase-workflow-transitions.test.ts`, `returns-permissions.test.ts`, `returns-workflow.test.ts`
 
-## 2. Purchase Returns Backend + Frontend Wiring
-- New `app/Http/Controllers/Purchase/PurchaseReturnController.php` mirroring sales returns (`approve` reverses stock and posts Dr Supplier Payable / Cr Purchase Returns).
-- Routes `/purchase-returns` with `purchase.create/edit/delete/approve` gates.
-- Frontend: add `/purchase-workflow/returns` route + a thin `PurchaseReturnsPage` (list + approve button) wired through existing `laravel-bridge`.
+**Edit**
+- `src/App.tsx` — drop all purchase imports + routes (`/purchase`, `/suppliers`, `/purchase-workflow/*`, `/reports/purchase`, `/reports/accounts-payable`, `/reports/ap-aging`, `/reports/expense-analysis`)
+- `src/components/AppSidebar.tsx` — remove the Purchase section + AP report entries
+- `src/contexts/ModuleContext.tsx` — remove `purchase` module
+- `src/components/Breadcrumbs.tsx` — drop purchase paths
+- `src/pages/Dashboard.tsx` — drop purchase widgets/cards
+- `src/pages/admin/DiagnosticsPage.tsx`, `RolesPage.tsx`, `GeneralSettingsPage.tsx` — drop purchase refs
+- `src/lib/ifrs-mapping.ts`, `soft-delete.ts`, `transaction-service.ts`, `document-api.ts` — drop purchase types/branches
+- `src/integrations/supabase/laravel-bridge.ts` — drop `/purchases` endpoints
+- `src/pages/inventory/StockLedgerPage.tsx`, `src/pages/reports/StockLedger.tsx`, `StockReportsPage.tsx`, `accounting/PartyLedgerReport.tsx`, `accounting/AgingReports.tsx`, `FinancialReports.tsx` — strip supplier/purchase columns/filters
+- `src/pages/CustomerProfilePage.tsx` — only if it references supplier (likely shared util)
 
-## 3. Stock Adjustments API + Approval
-- New `app/Http/Controllers/Inventory/StockAdjustmentController.php`:
-  - `index/show/store/approve/destroy`.
-  - On `approve`: write `stock_movements` row (±qty), write journal voucher (Dr/Cr Inventory ↔ Stock Adjustment), flip status to `posted`.
-- Add `status` enforcement: only `draft` rows are editable/deletable; `posted` rows are locked.
-- Frontend `StockAdjustmentPage.tsx`: add Approve button per row that calls the new endpoint (no change to existing direct-supabase create path — additive).
+## 2. Laravel backend (`erp-backend`)
 
-## 4. BD VAT Canonical Roles & Permissions
-- Extend `database/seeders/data/demo_config_seed.json` (or a new `bd_vat_roles_seed.json`) with 4 canonical roles needed by VAT approval flow:
-  - `VAT Officer`, `Store Manager`, `Procurement Officer`, `Accounts Manager` — each with explicit permissions for `purchase_workflow.*`, `sales_workflow.*`, `vat_challan.*`, `mushak_9_1.*`, `tds.*`, `bill.*`, `payment.*`.
-- Re-use existing `CanonicalRolesSeeder` (idempotent upsert) — just enrich the JSON.
-- Run via `db:seed --class=CanonicalRolesSeeder` (documented in commit, not auto-executed since cPanel deploy).
-- Also seed missing `role_permissions` rows for `purchase_returns`, `sales_returns`, `stock_adjustments` modules across all 7 existing canonical roles.
+**Delete**
+- `app/Http/Controllers/Purchase/` (Purchase, PurchaseReturn, Supplier, PurchaseOrder controllers)
+- `app/Models/`: Purchase, PurchaseItem, PurchaseReturn, PurchaseReturnItem, PurchaseOrder, PurchaseOrderItem, PoAmendment, Supplier
+- `app/Services/PurchaseService.php`, `PurchaseOrderService.php`, related services
+- Purchase migrations under `database/migrations/` (including `2024_01_01_000800_create_purchase_workflow_tables.php`)
+- `app/Console/Commands/CleanupLegacyPurchases.php`
 
-## Technical notes
-- Backend = Laravel only (`erp-backend/`). No Supabase migrations needed — `sales_returns`, `purchase_returns`, `stock_adjustments` tables already exist (MySQL).
-- All new endpoints use `Sanctum` auth + `permission:` middleware (already registered in `Http/Kernel`).
-- Voucher posting reuses `app/Repositories/VoucherRepository.php` to keep double-entry consistent.
-- Stock impact uses existing `StockMovement` model — no new ledger logic.
-- All controllers wrap multi-table writes in `DB::transaction(...)`.
+**Edit**
+- `routes/api.php` — remove purchase/supplier routes
+- `database/seeders/DatabaseSeeder.php` — drop purchase `number_sequences`, `page_shortcuts`, role permissions
+- `CanonicalRolesSeeder.php`, `NewModulesRbacSeeder.php` — drop `purchase.*` permissions
 
-## Files to be created
-- `erp-backend/app/Http/Controllers/Sales/SalesReturnController.php`
-- `erp-backend/app/Http/Controllers/Purchase/PurchaseReturnController.php`
-- `erp-backend/app/Http/Controllers/Inventory/StockAdjustmentController.php`
-- `erp-backend/app/Models/SalesReturnItem.php`, `PurchaseReturnItem.php` (if missing)
-- `src/pages/purchase-workflow/PurchaseReturnsPage.tsx`
+## 3. Database (Supabase migration)
 
-## Files to be modified
-- `erp-backend/app/Http/Controllers/Sales/SalesInvoiceController.php` (add update/destroy)
-- `erp-backend/routes/api.php` (register new routes)
-- `erp-backend/database/seeders/data/demo_config_seed.json` (BD VAT roles + new modules)
-- `src/App.tsx` + `src/components/AppSidebar.tsx` (Purchase Returns route)
-- `src/pages/inventory/StockAdjustmentPage.tsx` (Approve button)
+Drop in FK-safe order with `CASCADE`:
+```
+purchase_bill_payments, purchase_bill_grns, purchase_bills,
+grn_items, grns,
+purchase_order_items_v2, purchase_orders_v2,
+purchase_requisition_items, purchase_requisitions,
+po_amendments, purchase_order_items, purchase_orders,
+purchase_return_items, purchase_returns,
+purchase_items, purchases,
+payment_allocations (supplier portion), party_payments where party_type='supplier',
+suppliers
+```
+Also drop: related `number_sequences` rows (`purchase_*`, `grn`, `bill_*`), `page_shortcuts` PREQ/PPO/GRN/BILL, role_permissions `purchase.*`.
 
-No existing endpoints are renamed or removed. Strictly additive.
+## 4. Edge functions
+
+- `supabase/functions/create-backup/index.ts` — drop purchase tables from export list
+- `supabase/functions/reset-and-seed-demo/index.ts` — drop from reset groups + seeds
+- `supabase/functions/document-api/index.ts` — drop purchase doc types
+- `supabase/functions/import-demo-config/seed.json` — strip purchase seed rows
+
+## 5. Cleanup & verification
+- Run typecheck via build to surface dangling imports
+- Verify sidebar, dashboard, reports menu render without errors
+- Confirm sales-workflow, inventory, accounts modules still function (they share `chart_of_accounts`, `stock_ledger`, `acc_vouchers`)
+
+## Risks
+- **Supplier FK cascade**: `party_payments`, `payment_allocations`, `acc_vouchers` may have `supplier_id` references — those rows will be deleted by CASCADE. Any accounting history tied to suppliers is lost. **Irreversible.**
+- **Backups** of existing data should be downloaded before running the migration.
+- Once executed, restoring requires reverting migration + re-importing.
+
+Proceed?
