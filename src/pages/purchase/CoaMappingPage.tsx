@@ -139,7 +139,7 @@ const CoaMappingPage = () => {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="_none">— None —</SelectItem>
-                    {accounts.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.code} — {a.name}</SelectItem>)}
+                    {accounts.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.account_code} — {a.account_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
