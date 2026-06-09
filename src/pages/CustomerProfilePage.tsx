@@ -85,7 +85,7 @@ const CustomerProfilePage = () => {
     setPurchaseOrders(poRes.data || []);
     setVatChallans(vcRes.data || []);
     setDeliveryChallans(dcRes.data || []);
-    setSalesV2(invV2Res.data || []);
+    void invV2Res;
 
     setCustomer(custRes.data);
     const invs = invRes.data || [];
