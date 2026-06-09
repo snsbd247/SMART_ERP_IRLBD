@@ -2629,6 +2629,325 @@ export type Database = {
           },
         ]
       }
+      purchase_approval_history: {
+        Row: {
+          action_at: string | null
+          approver_name: string | null
+          approver_user_id: string | null
+          created_at: string
+          document_id: string
+          document_no: string | null
+          document_type: string
+          id: string
+          remarks: string | null
+          status: string
+          step_order: number
+        }
+        Insert: {
+          action_at?: string | null
+          approver_name?: string | null
+          approver_user_id?: string | null
+          created_at?: string
+          document_id: string
+          document_no?: string | null
+          document_type: string
+          id?: string
+          remarks?: string | null
+          status: string
+          step_order: number
+        }
+        Update: {
+          action_at?: string | null
+          approver_name?: string | null
+          approver_user_id?: string | null
+          created_at?: string
+          document_id?: string
+          document_no?: string | null
+          document_type?: string
+          id?: string
+          remarks?: string | null
+          status?: string
+          step_order?: number
+        }
+        Relationships: []
+      }
+      purchase_approval_matrix: {
+        Row: {
+          approver_role: string | null
+          approver_user_id: string | null
+          branch_id: string | null
+          created_at: string
+          document_type: string
+          id: string
+          is_active: boolean
+          max_amount: number | null
+          min_amount: number
+          purchase_type_id: string | null
+          step_order: number
+          updated_at: string
+        }
+        Insert: {
+          approver_role?: string | null
+          approver_user_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          document_type: string
+          id?: string
+          is_active?: boolean
+          max_amount?: number | null
+          min_amount?: number
+          purchase_type_id?: string | null
+          step_order?: number
+          updated_at?: string
+        }
+        Update: {
+          approver_role?: string | null
+          approver_user_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          document_type?: string
+          id?: string
+          is_active?: boolean
+          max_amount?: number | null
+          min_amount?: number
+          purchase_type_id?: string | null
+          step_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_approval_matrix_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_approval_matrix_purchase_type_id_fkey"
+            columns: ["purchase_type_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          document_id: string
+          document_no: string | null
+          document_type: string
+          id: string
+          ip_address: string | null
+          new_value: Json | null
+          notes: string | null
+          old_value: Json | null
+          performed_by: string | null
+          performed_by_name: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          document_id: string
+          document_no?: string | null
+          document_type: string
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          notes?: string | null
+          old_value?: Json | null
+          performed_by?: string | null
+          performed_by_name?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          document_id?: string
+          document_no?: string | null
+          document_type?: string
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          notes?: string | null
+          old_value?: Json | null
+          performed_by?: string | null
+          performed_by_name?: string | null
+        }
+        Relationships: []
+      }
+      purchase_coa_mapping: {
+        Row: {
+          advance_account_id: string | null
+          ait_account_id: string | null
+          asset_account_id: string | null
+          bank_account_id: string | null
+          branch_id: string | null
+          cash_account_id: string | null
+          created_at: string
+          discount_account_id: string | null
+          expense_account_id: string | null
+          freight_account_id: string | null
+          grn_clearing_account_id: string | null
+          id: string
+          inventory_account_id: string | null
+          is_active: boolean
+          landed_cost_account_id: string | null
+          payable_account_id: string | null
+          purchase_type_id: string | null
+          updated_at: string
+          vat_input_account_id: string | null
+        }
+        Insert: {
+          advance_account_id?: string | null
+          ait_account_id?: string | null
+          asset_account_id?: string | null
+          bank_account_id?: string | null
+          branch_id?: string | null
+          cash_account_id?: string | null
+          created_at?: string
+          discount_account_id?: string | null
+          expense_account_id?: string | null
+          freight_account_id?: string | null
+          grn_clearing_account_id?: string | null
+          id?: string
+          inventory_account_id?: string | null
+          is_active?: boolean
+          landed_cost_account_id?: string | null
+          payable_account_id?: string | null
+          purchase_type_id?: string | null
+          updated_at?: string
+          vat_input_account_id?: string | null
+        }
+        Update: {
+          advance_account_id?: string | null
+          ait_account_id?: string | null
+          asset_account_id?: string | null
+          bank_account_id?: string | null
+          branch_id?: string | null
+          cash_account_id?: string | null
+          created_at?: string
+          discount_account_id?: string | null
+          expense_account_id?: string | null
+          freight_account_id?: string | null
+          grn_clearing_account_id?: string | null
+          id?: string
+          inventory_account_id?: string | null
+          is_active?: boolean
+          landed_cost_account_id?: string | null
+          payable_account_id?: string | null
+          purchase_type_id?: string | null
+          updated_at?: string
+          vat_input_account_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_coa_mapping_advance_account_id_fkey"
+            columns: ["advance_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_ait_account_id_fkey"
+            columns: ["ait_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_asset_account_id_fkey"
+            columns: ["asset_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_cash_account_id_fkey"
+            columns: ["cash_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_discount_account_id_fkey"
+            columns: ["discount_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_expense_account_id_fkey"
+            columns: ["expense_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_freight_account_id_fkey"
+            columns: ["freight_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_grn_clearing_account_id_fkey"
+            columns: ["grn_clearing_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_inventory_account_id_fkey"
+            columns: ["inventory_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_landed_cost_account_id_fkey"
+            columns: ["landed_cost_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_payable_account_id_fkey"
+            columns: ["payable_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_purchase_type_id_fkey"
+            columns: ["purchase_type_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_coa_mapping_vat_input_account_id_fkey"
+            columns: ["vat_input_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_order_items: {
         Row: {
           id: string
@@ -2739,6 +3058,123 @@ export type Database = {
           subtotal?: number
           updated_at?: string
           vat_amount?: number
+        }
+        Relationships: []
+      }
+      purchase_settings: {
+        Row: {
+          allow_over_bill: boolean
+          allow_over_receive: boolean
+          auto_post_bill: boolean
+          auto_post_grn: boolean
+          auto_post_payment: boolean
+          bill_prefix: string | null
+          created_at: string
+          default_ait_percent: number | null
+          default_currency: string | null
+          default_vat_percent: number | null
+          enable_landed_cost: boolean
+          enable_lc_module: boolean
+          enable_multi_currency: boolean
+          enforce_grn_for_bill: boolean
+          grn_prefix: string | null
+          id: string
+          lc_prefix: string | null
+          pay_prefix: string | null
+          po_prefix: string | null
+          pr_prefix: string | null
+          updated_at: string
+        }
+        Insert: {
+          allow_over_bill?: boolean
+          allow_over_receive?: boolean
+          auto_post_bill?: boolean
+          auto_post_grn?: boolean
+          auto_post_payment?: boolean
+          bill_prefix?: string | null
+          created_at?: string
+          default_ait_percent?: number | null
+          default_currency?: string | null
+          default_vat_percent?: number | null
+          enable_landed_cost?: boolean
+          enable_lc_module?: boolean
+          enable_multi_currency?: boolean
+          enforce_grn_for_bill?: boolean
+          grn_prefix?: string | null
+          id?: string
+          lc_prefix?: string | null
+          pay_prefix?: string | null
+          po_prefix?: string | null
+          pr_prefix?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allow_over_bill?: boolean
+          allow_over_receive?: boolean
+          auto_post_bill?: boolean
+          auto_post_grn?: boolean
+          auto_post_payment?: boolean
+          bill_prefix?: string | null
+          created_at?: string
+          default_ait_percent?: number | null
+          default_currency?: string | null
+          default_vat_percent?: number | null
+          enable_landed_cost?: boolean
+          enable_lc_module?: boolean
+          enable_multi_currency?: boolean
+          enforce_grn_for_bill?: boolean
+          grn_prefix?: string | null
+          id?: string
+          lc_prefix?: string | null
+          pay_prefix?: string | null
+          po_prefix?: string | null
+          pr_prefix?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      purchase_types: {
+        Row: {
+          affects_asset: boolean
+          affects_inventory: boolean
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_system: boolean
+          name: string
+          requires_grn: boolean
+          requires_lc: boolean
+          updated_at: string
+        }
+        Insert: {
+          affects_asset?: boolean
+          affects_inventory?: boolean
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          requires_grn?: boolean
+          requires_lc?: boolean
+          updated_at?: string
+        }
+        Update: {
+          affects_asset?: boolean
+          affects_inventory?: boolean
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          requires_grn?: boolean
+          requires_lc?: boolean
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3804,6 +4240,127 @@ export type Database = {
           prefix?: string | null
         }
         Relationships: []
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          advance_account_id: string | null
+          bank_account: string | null
+          bank_branch: string | null
+          bank_name: string | null
+          bin_no: string | null
+          branch_id: string | null
+          city: string | null
+          code: string
+          contact_person: string | null
+          country: string | null
+          created_at: string
+          credit_days: number | null
+          credit_limit: number | null
+          currency: string | null
+          email: string | null
+          id: string
+          is_active: boolean
+          legal_name: string | null
+          name: string
+          notes: string | null
+          opening_balance: number | null
+          payable_account_id: string | null
+          payment_terms: string | null
+          phone: string | null
+          supplier_type: string
+          swift_code: string | null
+          tax_id: string | null
+          updated_at: string
+          vat_reg_no: string | null
+        }
+        Insert: {
+          address?: string | null
+          advance_account_id?: string | null
+          bank_account?: string | null
+          bank_branch?: string | null
+          bank_name?: string | null
+          bin_no?: string | null
+          branch_id?: string | null
+          city?: string | null
+          code: string
+          contact_person?: string | null
+          country?: string | null
+          created_at?: string
+          credit_days?: number | null
+          credit_limit?: number | null
+          currency?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          legal_name?: string | null
+          name: string
+          notes?: string | null
+          opening_balance?: number | null
+          payable_account_id?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          supplier_type?: string
+          swift_code?: string | null
+          tax_id?: string | null
+          updated_at?: string
+          vat_reg_no?: string | null
+        }
+        Update: {
+          address?: string | null
+          advance_account_id?: string | null
+          bank_account?: string | null
+          bank_branch?: string | null
+          bank_name?: string | null
+          bin_no?: string | null
+          branch_id?: string | null
+          city?: string | null
+          code?: string
+          contact_person?: string | null
+          country?: string | null
+          created_at?: string
+          credit_days?: number | null
+          credit_limit?: number | null
+          currency?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          legal_name?: string | null
+          name?: string
+          notes?: string | null
+          opening_balance?: number | null
+          payable_account_id?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          supplier_type?: string
+          swift_code?: string | null
+          tax_id?: string | null
+          updated_at?: string
+          vat_reg_no?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_advance_account_id_fkey"
+            columns: ["advance_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suppliers_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suppliers_payable_account_id_fkey"
+            columns: ["payable_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       system_settings: {
         Row: {
