@@ -1087,6 +1087,63 @@ const BackupPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!verifyResult} onOpenChange={(o) => !o && setVerifyResult(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {verifyResult?.passed
+                ? <><CheckCircle className="w-5 h-5 text-green-600" /> Restore Verification Passed</>
+                : <><AlertTriangle className="w-5 h-5 text-amber-600" /> Restore Verification — Issues Found</>}
+            </DialogTitle>
+            <DialogDescription>
+              Post-restore integrity check on Purchase v2 / LC tables and their FK relationships.
+            </DialogDescription>
+          </DialogHeader>
+          {verifyResult && (
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              <div>
+                <div className="font-semibold mb-2">Table row counts</div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {Object.entries(verifyResult.table_counts || {}).map(([t, c]: any) => (
+                    <div key={t} className="flex justify-between border rounded px-2 py-1">
+                      <span className="text-muted-foreground">{t}</span>
+                      <span className="font-mono">{c}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="font-semibold mb-2">Foreign-key checks</div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Child → Parent</TableHead>
+                      <TableHead className="text-right">Sampled</TableHead>
+                      <TableHead className="text-right">Orphans</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(verifyResult.fk_checks || []).map((c: any, i: number) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-xs">{c.child}.{c.fk} → {c.parent}</TableCell>
+                        <TableCell className="text-right font-mono">{c.sampled}</TableCell>
+                        <TableCell className={`text-right font-mono ${c.orphans ? "text-destructive font-bold" : ""}`}>{c.orphans}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className={`text-sm font-medium ${verifyResult.passed ? "text-green-600" : "text-amber-600"}`}>
+                Total orphans: {verifyResult.total_orphans}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setVerifyResult(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
