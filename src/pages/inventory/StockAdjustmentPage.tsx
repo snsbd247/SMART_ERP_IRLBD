@@ -25,7 +25,7 @@ interface StockGroup { id: string; name: string; }
 interface Adjustment {
   id: string; adjustment_number: string; adjustment_date: string; adjustment_type: string;
   product_id: string; quantity: number; unit_cost: number; total_value: number;
-  reason: string | null; created_at: string; product_name?: string;
+  reason: string | null; created_at: string; status?: string | null; product_name?: string;
 }
 
 const REASONS = [
