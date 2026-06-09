@@ -241,6 +241,88 @@ Deno.serve(async (req) => {
     }
     results.push(scRes);
 
+    // ── 6) Purchase CoA Mapping (per Purchase Type) ──
+    // Maps each Purchase Type to actual ledgers in the current Chart of Accounts
+    // so Purchase posting (GRN/Bill/Payment) lands on the right accounts.
+    // Also ensures Sales posting works because both modules read from the same CoA codes.
+    const pcmRes: SectionResult = { section: "purchase_coa_mapping", label: "Purchase ↔ CoA Mapping", attempted: 0, inserted: 0, skipped: 0, status: "ok" };
+    try {
+      // Resolve account ids by account_code from the live CoA
+      const { data: coaRows } = await admin.from("chart_of_accounts").select("id, account_code");
+      const byCode = new Map((coaRows ?? []).map((r: any) => [r.account_code, r.id]));
+      const pick = (...codes: string[]) => {
+        for (const c of codes) { const id = byCode.get(c); if (id) return id; }
+        return null;
+      };
+
+      // Resolve canonical ledgers (with sensible fallbacks for either CoA flavour)
+      const cash      = pick("1251", "1101");                 // Cash in Hand
+      const bank      = pick("1252", "1111", "1102");         // Primary bank
+      const inventory = pick("1211", "1105");                 // Raw Materials / Inventory
+      const advance   = pick("1104");                          // Advance to Supplier
+      const tdsRecv   = pick("1107", "1220");                  // TDS / AIT Receivable
+      const vatIn     = pick("1234", "6101");                  // VAT Input / Receivable
+      const payable   = pick("2102", "2210");                  // Supplier Payable
+      const grnClear  = pick("2210", "2102");                  // GRN clearing
+      const fixedAst  = pick("1101", "1201", "1200");          // Fixed Asset (PPE)
+      const freight   = pick("5205");                          // Transportation
+      const discount  = pick("4104");                          // Discount Received
+
+      const expenseByType: Record<string, string | null> = {
+        "Local Purchase":  pick("5101", "5100"),
+        "Import (LC)":     pick("5102", "5100"),
+        "Service":         pick("6115", "6100"),
+        "Capital / Asset": pick("1101", "1201"),
+      };
+
+      // Active purchase types
+      const { data: pts } = await admin
+        .from("purchase_types").select("id, name").eq("is_active", true);
+      const types = pts ?? [];
+      pcmRes.attempted = types.length;
+
+      // Wipe existing mappings then reinsert fresh (configuration-only data)
+      if (types.length > 0) {
+        await admin.from("purchase_coa_mapping").delete().not("id", "is", null);
+      }
+
+      const rows = types.map((pt: any) => ({
+        purchase_type_id: pt.id,
+        branch_id: null,
+        inventory_account_id: pt.name === "Service" ? null : inventory,
+        grn_clearing_account_id: grnClear,
+        payable_account_id: payable,
+        advance_account_id: advance,
+        vat_input_account_id: vatIn,
+        ait_account_id: tdsRecv,
+        asset_account_id: pt.name === "Capital / Asset" ? fixedAst : null,
+        expense_account_id: expenseByType[pt.name] ?? pick("6115"),
+        discount_account_id: discount,
+        freight_account_id: freight,
+        landed_cost_account_id: freight,
+        cash_account_id: cash,
+        bank_account_id: bank,
+        is_active: true,
+      }));
+
+      const missing = rows.filter((r) =>
+        !r.payable_account_id || !r.expense_account_id || (!r.cash_account_id && !r.bank_account_id));
+      if (missing.length > 0) {
+        pcmRes.status = "partial";
+        pcmRes.error = `Missing CoA codes for ${missing.length} mapping(s). Run Chart of Accounts seed first.`;
+      }
+      if (rows.length > 0) {
+        const { error } = await admin.from("purchase_coa_mapping").insert(rows);
+        if (error) throw error;
+        pcmRes.inserted = rows.length;
+      }
+    } catch (e) {
+      pcmRes.status = "failed";
+      pcmRes.error = e instanceof Error ? e.message : String(e);
+    }
+    results.push(pcmRes);
+
+
     const totalInserted = results.reduce((n, r) => n + r.inserted, 0);
     const anyFailed = results.some((r) => r.status === "failed");
     const overall = anyFailed ? "partial" : "success";
