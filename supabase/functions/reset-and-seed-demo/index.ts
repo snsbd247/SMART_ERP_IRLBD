@@ -217,8 +217,17 @@ Deno.serve(async (req) => {
       "Lambda Pharma","Mu Textiles","Nu Logistics","Xi Construction","Omicron Retail"];
     const customers = cn.map((n,i) => ({ id:U(), name:n, phone:`+8801${700000000+i*1111}`, email:n.toLowerCase().replace(/ /g,"")+"@example.com", address:"Dhaka, Bangladesh", status:"active" }));
     await bulk("customers", customers);
-    // Suppliers removed with Purchase module
-    const suppliers: any[] = [];
+    // Suppliers (re-enabled for Purchase v2 demo data)
+    const sn = ["Acme Imports","Bengal Suppliers","Capital Trading","Dhaka Wholesale",
+      "Eastern Stationers","Future Hardware","Global Electronics","Himalaya Distributors"];
+    const suppliers = sn.map((n,i) => ({
+      id: U(), code: `SUP-${String(i+1).padStart(4,"0")}`, name: n,
+      supplier_type: "regular", is_active: true,
+      mobile: `+8801${600000000+i*2222}`, email: n.toLowerCase().replace(/ /g,"")+"@example.com",
+      address_line1: "Dhaka, Bangladesh", city: "Dhaka", country: "Bangladesh",
+      currency: "BDT", payment_terms_days: pick([0,15,30,45]),
+    }));
+    await bulk("suppliers", suppliers);
 
     // Employees + salary structures
     const fns = ["Rahim","Karim","Salam","Hasan","Nasir","Jamil","Tarek","Imran","Farhad","Mizan","Fatema","Nasrin","Sumi","Ayesha","Rabeya"];
