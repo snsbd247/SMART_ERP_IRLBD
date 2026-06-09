@@ -322,6 +322,72 @@ Deno.serve(async (req) => {
     }
     results.push(pcmRes);
 
+    // ── 7) Party ↔ Ledger Backfill ──
+    // For every customer create a sub-ledger under "Accounts Receivable" (1240) if not linked.
+    // For every supplier create a sub-ledger under "Accounts & Other Payable" (2210) if not linked.
+    const partyRes: SectionResult = { section: "party_ledgers", label: "Customer/Supplier Ledger Backfill", attempted: 0, inserted: 0, skipped: 0, status: "ok" };
+    try {
+      const { data: coaAll } = await admin.from("chart_of_accounts").select("id, account_code, parent_id");
+      const all = coaAll ?? [];
+      const arParent = all.find((r: any) => r.account_code === "1240");
+      const apParent = all.find((r: any) => r.account_code === "2210");
+
+      const nextChildCode = (parentCode: string): string => {
+        const children = all.filter((r: any) => String(r.account_code).startsWith(parentCode) && r.account_code !== parentCode);
+        let max = 0;
+        for (const c of children) {
+          const tail = String(c.account_code).slice(parentCode.length);
+          const n = parseInt(tail, 10);
+          if (!isNaN(n) && n > max) max = n;
+        }
+        return `${parentCode}${String(max + 1).padStart(3, "0")}`;
+      };
+
+      const ensureLedger = async (name: string, parent: any, type: "asset" | "liability") => {
+        if (!parent) return null;
+        const { data: existing } = await admin
+          .from("chart_of_accounts").select("id").eq("account_name", name).eq("account_type", type).limit(1);
+        if (existing && existing.length > 0) return (existing[0] as any).id;
+        const code = nextChildCode(parent.account_code);
+        const { data: ins, error } = await admin.from("chart_of_accounts").insert({
+          account_code: code, account_name: name, account_type: type, parent_id: parent.id,
+          opening_balance: 0, opening_balance_type: type === "asset" ? "debit" : "credit", is_active: true,
+        }).select("id").single();
+        if (error) return null;
+        all.push({ id: (ins as any).id, account_code: code, parent_id: parent.id });
+        return (ins as any).id;
+      };
+
+      // Customers
+      const { data: customers } = await admin.from("customers").select("id, name, receivable_account_id");
+      for (const c of (customers ?? [])) {
+        partyRes.attempted++;
+        if ((c as any).receivable_account_id) { partyRes.skipped++; continue; }
+        const ledgerId = await ensureLedger(String(c.name).trim(), arParent, "asset");
+        if (ledgerId) {
+          await admin.from("customers").update({ receivable_account_id: ledgerId } as any).eq("id", c.id);
+          partyRes.inserted++;
+        }
+      }
+      // Suppliers
+      const { data: suppliers } = await admin.from("suppliers").select("id, name, payable_account_id");
+      for (const sp of (suppliers ?? [])) {
+        partyRes.attempted++;
+        if ((sp as any).payable_account_id) { partyRes.skipped++; continue; }
+        const ledgerId = await ensureLedger(String(sp.name).trim(), apParent, "liability");
+        if (ledgerId) {
+          await admin.from("suppliers").update({ payable_account_id: ledgerId } as any).eq("id", sp.id);
+          partyRes.inserted++;
+        }
+      }
+    } catch (e) {
+      partyRes.status = "failed";
+      partyRes.error = e instanceof Error ? e.message : String(e);
+    }
+    results.push(partyRes);
+
+
+
 
     const totalInserted = results.reduce((n, r) => n + r.inserted, 0);
     const anyFailed = results.some((r) => r.status === "failed");
