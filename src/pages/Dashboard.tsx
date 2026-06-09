@@ -88,7 +88,7 @@ const Dashboard = () => {
     const salesV2 = salesV2Res.data || [];
     const sales = [...salesV1, ...salesV2];
     const purchases = (billsV2Res.data || []).map((b: any) => ({
-      total_amount: Number(b.total_amount) || 0,
+      total_amount: Number(b.grand_total) || 0,
       purchase_date: b.bill_date,
       status: b.status,
     }));
