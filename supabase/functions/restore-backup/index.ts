@@ -21,7 +21,7 @@ const TABLES_ORDER = [
   "product_categories",
   "products",
   "raw_materials",
-  "suppliers",
+  
   "customers",
   "custom_roles",
   "role_permissions",
