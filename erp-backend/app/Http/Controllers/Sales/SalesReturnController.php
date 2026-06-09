@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Sales;
 
 use App\Http\Controllers\BaseController;
+use App\Models\AuditLog;
 use App\Models\SalesReturn;
 use App\Models\SalesReturnItem;
 use App\Services\AccountingService;
@@ -76,6 +77,7 @@ class SalesReturnController extends BaseController
                     'total'      => $it['quantity'] * $it['price'],
                 ]);
             }
+            $this->logAudit($r, 'create', $ret, ['return_number' => $number, 'total' => $total]);
             return $this->created($ret->load('items'));
         });
     }
@@ -116,8 +118,33 @@ class SalesReturnController extends BaseController
             );
 
             $ret->update(['status' => 'approved']);
+            $this->logAudit($r, 'approve', $ret, [
+                'return_number'     => $ret->return_number,
+                'total_amount'      => $ret->total_amount,
+                'sales_invoice_id'  => $ret->sales_invoice_id,
+                'item_count'        => $ret->items->count(),
+            ]);
         });
 
         return $this->success($ret->fresh('items'));
+    }
+
+    private function logAudit(Request $r, string $action, SalesReturn $ret, array $details = []): void
+    {
+        try {
+            AuditLog::create([
+                'user_id'   => optional($r->user())->id,
+                'user_name' => optional($r->user())->name,
+                'module'    => 'sales_returns',
+                'action'    => $action,
+                'record_id' => $ret->id,
+                'details'   => json_encode(array_merge(['return_id' => $ret->id, 'sales_invoice_id' => $ret->sales_invoice_id], $details)),
+                'new_data'  => $action === 'approve' ? ['status' => 'approved'] : null,
+                'ip_address' => $r->ip(),
+                'user_agent' => substr((string) $r->userAgent(), 0, 250),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('audit_log insert failed (sales_return): ' . $e->getMessage());
+        }
     }
 }
