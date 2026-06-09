@@ -14,11 +14,13 @@ class PartyPayment extends Model
     protected $fillable = [
         'party_id', 'party_type', 'amount', 'payment_date',
         'payment_method', 'reference', 'notes', 'created_by',
+        'deleted_at', 'deleted_by',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'payment_date' => 'date',
+        'deleted_at' => 'datetime',
     ];
 
     public function allocations()

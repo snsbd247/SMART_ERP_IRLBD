@@ -86,6 +86,10 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::post('vouchers/{id}/delete-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'deleteApproved']);
         Route::post('vouchers/{id}/restore', [\App\Http\Controllers\Accounting\VoucherController::class, 'restore']);
 
+        // ─── Generic Super-Admin soft delete / restore (sales, purchases, payments) ──
+        Route::post('soft-delete/{table}/{id}', [\App\Http\Controllers\SoftDeleteController::class, 'delete']);
+        Route::post('soft-delete/{table}/{id}/restore', [\App\Http\Controllers\SoftDeleteController::class, 'restore']);
+
         // ─── Reports ────────────────────────────────────────────
         Route::middleware('permission:reports.view')->prefix('reports')->group(function () {
             Route::get('trial-balance', [\App\Http\Controllers\Accounting\ReportController::class, 'trialBalance']);
