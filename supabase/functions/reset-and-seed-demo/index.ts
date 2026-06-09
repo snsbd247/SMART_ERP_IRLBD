@@ -166,34 +166,55 @@ Deno.serve(async (req) => {
     ]);
 
     // Units
-    const ud: [string,string][] = [["PCS","Pieces"],["KG","Kilogram"],["LTR","Litre"],["BOX","Box"],["MTR","Meter"]];
+    // Units (plastic manufacturing: PCS for finished, KG for resin, BAG/DRUM for bulk raw, BOX for packaging)
+    const ud: [string,string][] = [["PCS","Pieces"],["KG","Kilogram"],["BAG","Bag (25kg)"],["DRUM","Drum (200L)"],["BOX","Carton/Box"],["MTR","Meter"]];
     const uIds: Record<string,string> = {};
     await bulk("units", ud.map(([a,n]) => { const id=U(); uIds[a]=id; return {id,name:n,abbreviation:a}; }));
 
-    // Categories
-    const cd = ["Electronics","Office Supplies","Furniture","Stationery","Hardware"];
+    // Categories — plastic moulding products
+    const cd = ["Bottles","Caps","Plugs","Discs","Raw Materials","Additives","Packaging"];
     const cIds: Record<string,string> = {};
     const catRows = cd.map(n => { const id=U(); cIds[n]=id; return {id,name:n}; });
     await bulk("product_categories", catRows);
     await bulk("item_categories", catRows.map(c => ({ ...c, is_active:true })));
 
     // Products
+    // Products — Plastic Bottle / Cap / Plug / Disc manufacturer
+    // First 10 = FINISHED GOODS (PCS, used as BOM outputs); rest = RAW MATERIALS / PACKAGING
     const PD: [string,string,string,number,number][] = [
-      ["Laptop Pro 15","Electronics","PCS",65000,85000],["Wireless Mouse","Electronics","PCS",450,750],
-      ["Mechanical Keyboard","Electronics","PCS",2800,4500],["LED Monitor 24","Electronics","PCS",12000,17500],
-      ["USB Hub 4-Port","Electronics","PCS",650,1100],["External SSD 1TB","Electronics","PCS",7500,10500],
-      ["Printer Inkjet","Electronics","PCS",8500,12500],["Webcam HD","Electronics","PCS",2200,3500],
-      ["Headphones BT","Electronics","PCS",1800,2900],["Power Bank 20000mAh","Electronics","PCS",1500,2400],
-      ["A4 Paper Ream","Stationery","BOX",420,600],["Ballpoint Pen Box","Stationery","BOX",180,300],
-      ["Stapler Heavy Duty","Office Supplies","PCS",650,950],["File Folder","Stationery","PCS",45,80],
-      ["Notebook A5","Stationery","PCS",95,160],["Marker Set","Stationery","BOX",220,350],
-      ["Office Chair","Furniture","PCS",8500,13500],["Executive Desk","Furniture","PCS",18500,26000],
-      ["Filing Cabinet","Furniture","PCS",9500,14000],["Bookshelf","Furniture","PCS",7800,11500],
-      ["UPS 1200VA","Electronics","PCS",5500,7800],["Router WiFi 6","Electronics","PCS",4200,6200],
-      ["CAT6 Cable 305m","Hardware","BOX",6500,9200],["RJ45 Connector Pack","Hardware","BOX",350,550],
-      ["Toner Cartridge","Office Supplies","PCS",3800,5500],["Light Bulb LED","Hardware","PCS",180,280],
-      ["Drill Machine","Hardware","PCS",3800,5500],["Screwdriver Set","Hardware","BOX",850,1300],
-      ["CCTV Camera","Electronics","PCS",4500,6500],["Hard Disk 4TB","Electronics","PCS",8500,11800],
+      // ── Finished Goods (10) ──
+      ["PET Water Bottle 500ml","Bottles","PCS",4.5,8.5],
+      ["PET Water Bottle 1000ml","Bottles","PCS",7.0,13.0],
+      ["HDPE Oil Bottle 1L","Bottles","PCS",12.0,20.0],
+      ["PET Juice Bottle 250ml","Bottles","PCS",3.2,6.5],
+      ["Pharma Bottle Amber 100ml","Bottles","PCS",6.5,11.5],
+      ["Bottle Cap 28mm PCO","Caps","PCS",0.85,1.6],
+      ["Bottle Cap 38mm Flip-Top","Caps","PCS",1.4,2.8],
+      ["Pharma Plug 18mm LDPE","Plugs","PCS",0.55,1.1],
+      ["Tamper-Evident Plug 25mm","Plugs","PCS",0.95,1.9],
+      ["Plastic Disc 30mm Sealing","Discs","PCS",0.35,0.7],
+      // ── Raw Materials (used in BOMs) ──
+      ["PET Resin Bottle Grade","Raw Materials","KG",145,0],
+      ["HDPE Resin Blow-Mould Grade","Raw Materials","KG",135,0],
+      ["PP Resin Cap Grade","Raw Materials","KG",155,0],
+      ["LDPE Resin","Raw Materials","KG",148,0],
+      ["PET Preform 9.3g","Raw Materials","PCS",2.8,0],
+      ["PET Preform 16g","Raw Materials","PCS",4.6,0],
+      ["Master-batch Blue","Additives","KG",420,0],
+      ["Master-batch White","Additives","KG",380,0],
+      ["Master-batch Amber","Additives","KG",450,0],
+      ["UV Stabilizer Additive","Additives","KG",680,0],
+      ["Anti-Static Additive","Additives","KG",520,0],
+      ["Mould Release Agent","Additives","KG",350,0],
+      // ── Packaging ──
+      ["Carton Box Large","Packaging","BOX",35,0],
+      ["Carton Box Medium","Packaging","BOX",24,0],
+      ["Shrink Wrap Film","Packaging","KG",240,0],
+      ["BOPP Tape 48mm","Packaging","PCS",45,0],
+      ["Pallet Wooden 1.2m","Packaging","PCS",650,0],
+      ["Stretch Film 17mic","Packaging","KG",220,0],
+      ["Label Sticker Roll","Packaging","PCS",380,0],
+      ["Strapping Band PP","Packaging","PCS",1850,0],
     ];
     type P = { id:string; iid:string; code:string; name:string; cat:string; unit:string; cp:number; sp:number; op:number };
     const products: P[] = PD.map((p,i) => {
@@ -212,18 +233,21 @@ Deno.serve(async (req) => {
     })));
 
     // Customers / Suppliers
-    const cn = ["Alpha Trading","Beta Enterprises","Gamma Corp","Delta Industries","Epsilon Ltd",
-      "Zeta Solutions","Eta Holdings","Theta Group","Iota Tech","Kappa Foods",
-      "Lambda Pharma","Mu Textiles","Nu Logistics","Xi Construction","Omicron Retail"];
-    const customers = cn.map((n,i) => ({ id:U(), name:n, phone:`+8801${700000000+i*1111}`, email:n.toLowerCase().replace(/ /g,"")+"@example.com", address:"Dhaka, Bangladesh", status:"active" }));
+    // Customers — buyers of plastic bottles/caps/plugs/discs
+    const cn = ["Pran Beverages Ltd","Akij Food & Beverage","Mum Mineral Water","Fresh Drinks BD",
+      "Square Pharmaceuticals","Beximco Pharma","Incepta Pharma","Renata Limited",
+      "Marico Bangladesh","Unilever BD","Kohinoor Cosmetics","Keya Cosmetics",
+      "City Edible Oil","Teer Oil Mills","Rupchanda Foods"];
+    const customers = cn.map((n,i) => ({ id:U(), name:n, phone:`+8801${700000000+i*1111}`, email:n.toLowerCase().replace(/[^a-z0-9]/g,"")+"@example.com", address:"Dhaka, Bangladesh", status:"active" }));
     await bulk("customers", customers);
-    // Suppliers (re-enabled for Purchase v2 demo data)
-    const sn = ["Acme Imports","Bengal Suppliers","Capital Trading","Dhaka Wholesale",
-      "Eastern Stationers","Future Hardware","Global Electronics","Himalaya Distributors"];
+    // Suppliers — resin/additive/packaging suppliers
+    const sn = ["IRPC Polymer Ltd","Reliance Industries (PET)","SCG Chemicals BD",
+      "LG Chem Bangladesh","Clariant Masterbatch","Ampacet Colorants",
+      "BASF Additives BD","Star Packaging Industries"];
     const suppliers = sn.map((n,i) => ({
       id: U(), code: `SUP-${String(i+1).padStart(4,"0")}`, name: n,
       supplier_type: "regular", is_active: true,
-      mobile: `+8801${600000000+i*2222}`, email: n.toLowerCase().replace(/ /g,"")+"@example.com",
+      mobile: `+8801${600000000+i*2222}`, email: n.toLowerCase().replace(/[^a-z0-9]/g,"")+"@example.com",
       address_line1: "Dhaka, Bangladesh", city: "Dhaka", country: "Bangladesh",
       currency: "BDT", payment_terms_days: pick([0,15,30,45]),
     }));
@@ -301,12 +325,13 @@ Deno.serve(async (req) => {
       const dayCount = RI(2,4);
       for (let j = 0; j < dayCount; j++) {
         const cust = pick(customers);
-        const items = pickN(products, RI(1,4));
+        const items = pickN(products.slice(0, 10), RI(1,4)); // Sell only finished goods
+        const qtyMin = 100, qtyMax = 2000; // plastic items sold in bulk
         const invId = U();
         let subtotal = 0;
         const rows: [string,number,number,number,string][] = [];
         for (const p of items) {
-          const qty = RI(1,8), price = p.sp, tot = qty*price;
+          const qty = RI(qtyMin, qtyMax), price = p.sp, tot = qty*price;
           subtotal += tot;
           rows.push([p.id,qty,price,tot,p.iid]);
         }
@@ -376,11 +401,11 @@ Deno.serve(async (req) => {
     for (let d = new Date(start), wk = 0; d <= end; d.setDate(d.getDate() + 7), wk++) {
       const sup = suppliers[wk % suppliers.length];
       const ds = ymd(d);
-      const items = pickN(products, RI(2, 5));
+      const items = pickN(products.slice(10), RI(2, 5)); // Purchase only raw materials & packaging
       let subtotal = 0;
       const lines: { itemId: string; itemName: string; qty: number; price: number; total: number }[] = [];
       for (const p of items) {
-        const qty = RI(5, 30), price = p.cp;
+        const qty = RI(50, 500), price = p.cp; // bulk raw material purchases
         const total = qty * price;
         subtotal += total;
         lines.push({ itemId: p.iid, itemName: p.name, qty, price, total });
@@ -627,7 +652,7 @@ Deno.serve(async (req) => {
     await bulk("stock_transfers", transfers);
 
     // ===== Bill of Materials + Production =====
-    const finished = products.slice(0, 4); // First 4 products as finished goods
+    const finished = products.slice(0, 10); // All 10 finished goods get BOMs
     const rawPool = products.slice(10);
     const boms: any[] = [], bomItemsRows: any[] = [];
     for (let i = 0; i < finished.length; i++) {
@@ -642,7 +667,7 @@ Deno.serve(async (req) => {
       });
       for (const r of rms) {
         bomItemsRows.push({
-          id:U(), bom_id:bid, material_id:r.id, quantity:2, unit:"PCS",
+          id:U(), bom_id:bid, material_id:r.id, quantity:2, unit:r.unit,
           wastage_pct:5, unit_price:r.cp,
         });
       }
@@ -693,7 +718,7 @@ Deno.serve(async (req) => {
     for (let d = new Date(fyStart); d <= end; d.setDate(d.getDate()+7)) {
       const BR = (_swIdx++ % 2 === 0) ? BR_DHK : BR_CTG;
       const cust = pick(customers);
-      const its  = pickN(products, RI(2,4));
+      const its  = pickN(products.slice(0, 10), RI(2,4)); // Sell finished goods only
       const poDate = ymd(d);
       const delDate = ymd(new Date(d.getTime() + RI(2,7)*86400000));
       const poId = U(); poc++;
