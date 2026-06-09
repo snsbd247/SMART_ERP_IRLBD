@@ -62,6 +62,11 @@ import SupplierPaymentDetailPage from "./pages/purchase/SupplierPaymentDetailPag
 import LcsPage from "./pages/purchase/LcsPage";
 import LcFormPage from "./pages/purchase/LcFormPage";
 import LcDetailPage from "./pages/purchase/LcDetailPage";
+// Purchase module (Phase 5 Returns & Reports)
+import PurchaseReturnsPage from "./pages/purchase/PurchaseReturnsPage";
+import PurchaseReturnFormPage from "./pages/purchase/PurchaseReturnFormPage";
+import PurchaseReturnDetailPage from "./pages/purchase/PurchaseReturnDetailPage";
+import PurchaseReportsPage from "./pages/purchase/PurchaseReportsPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
