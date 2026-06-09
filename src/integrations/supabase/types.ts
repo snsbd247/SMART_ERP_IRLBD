@@ -5278,7 +5278,15 @@ export type Database = {
           vat_amount?: number | null
           voucher_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "supplier_bills_v2_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       supplier_payment_allocations: {
         Row: {
