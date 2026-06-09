@@ -355,9 +355,14 @@ const BackupPage = () => {
 
   const executeRestore = async () => {
     if (!restoreFile) return;
+    if (!isSuperAdmin) {
+      toast({ title: "Access denied", description: "Restore is restricted to Super Admins.", variant: "destructive" });
+      return;
+    }
     setConfirmRestore(false);
     setRestoring(true);
     setProgress(20);
+    setVerifyResult(null);
     try {
       if (USE_LARAVEL) {
         const formData = new FormData();
@@ -370,6 +375,7 @@ const BackupPage = () => {
         });
         const result = await res.json().catch(() => ({ message: `Restore failed (HTTP ${res.status})` }));
         if (!res.ok || !result.success) throw new Error(result.message || result.error || "Restore failed");
+        if (result.data?.verification) setVerifyResult(result.data.verification);
       } else {
         // Read file content and invoke edge function
         const content = await restoreFile.text();
@@ -379,9 +385,10 @@ const BackupPage = () => {
         });
         if (error) throw error;
         if (data && !data.success) throw new Error(data.error || "Restore failed");
+        if (data?.verification) setVerifyResult(data.verification);
       }
       setProgress(100);
-      toast({ title: "Restore completed", description: "Database has been restored successfully." });
+      toast({ title: "Restore completed", description: "Database has been restored. See verification report." });
       fetchHistory();
     } catch (err: any) {
       toast({ title: "Restore failed", description: err.message, variant: "destructive" });
