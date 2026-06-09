@@ -90,27 +90,28 @@ const navGroups: NavGroup[] = [
   {
     label: "Purchase",
     icon: ShoppingCart,
+    permission: "purchase.view",
     requiredModules: ["purchase"],
     children: [
-      { to: "/purchase", label: "Purchase Dashboard", icon: LayoutDashboard, end: true },
+      { to: "/purchase", label: "Purchase Dashboard", icon: LayoutDashboard, end: true, permission: "purchase.view" },
       // Setup / Masters
-      { to: "/purchase/suppliers", label: "Suppliers", icon: Users },
-      { to: "/purchase/types", label: "Purchase Types", icon: Layers },
+      { to: "/purchase/suppliers", label: "Suppliers", icon: Users, permission: "suppliers.view,purchase.view" },
+      { to: "/purchase/types", label: "Purchase Types", icon: Layers, permission: "purchase.view" },
       // Procure-to-Pay workflow
-      { to: "/purchase/requisitions", label: "Requisitions (PR)", icon: FileText },
-      { to: "/purchase/orders", label: "Purchase Orders (PO)", icon: ShoppingCart },
-      { to: "/purchase/grns", label: "Goods Receipts (GRN)", icon: ShoppingCart },
-      { to: "/purchase/bills", label: "Supplier Bills", icon: FileText },
-      { to: "/purchase/payments", label: "Supplier Payments", icon: BookOpen },
-      { to: "/purchase/returns", label: "Purchase Returns", icon: RotateCcw },
-      { to: "/purchase/lc", label: "LC / Import", icon: Layers },
+      { to: "/purchase/requisitions", label: "Requisitions (PR)", icon: FileText, permission: "purchase.view" },
+      { to: "/purchase/orders", label: "Purchase Orders (PO)", icon: ShoppingCart, permission: "purchase.view" },
+      { to: "/purchase/grns", label: "Goods Receipts (GRN)", icon: ShoppingCart, permission: "purchase.view" },
+      { to: "/purchase/bills", label: "Supplier Bills", icon: FileText, permission: "purchase.view" },
+      { to: "/purchase/payments", label: "Supplier Payments", icon: BookOpen, permission: "purchase.view" },
+      { to: "/purchase/returns", label: "Purchase Returns", icon: RotateCcw, permission: "purchase.view" },
+      { to: "/purchase/lc", label: "LC / Import", icon: Layers, permission: "purchase.view" },
       // Reports
-      { to: "/purchase/reports", label: "Purchase Reports", icon: BarChart3 },
+      { to: "/purchase/reports", label: "Purchase Reports", icon: BarChart3, permission: "purchase.view,reports.view" },
       // Configuration
-      { to: "/purchase/approval-matrix", label: "Approval Matrix", icon: Shield },
-      { to: "/purchase/coa-mapping", label: "COA Mapping", icon: BookOpen },
-      { to: "/purchase/settings", label: "Purchase Settings", icon: Settings2 },
-      { to: "/purchase/audit-log", label: "Audit Log", icon: ScrollText },
+      { to: "/purchase/approval-matrix", label: "Approval Matrix", icon: Shield, permission: "purchase.edit" },
+      { to: "/purchase/coa-mapping", label: "COA Mapping", icon: BookOpen, permission: "purchase.edit,accounts.view" },
+      { to: "/purchase/settings", label: "Purchase Settings", icon: Settings2, permission: "purchase.edit,settings.view" },
+      { to: "/purchase/audit-log", label: "Audit Log", icon: ScrollText, permission: "purchase.view,audit_log.view" },
     ],
   },
   {
