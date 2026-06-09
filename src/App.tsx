@@ -42,6 +42,13 @@ import PurchaseSettingsPage from "./pages/purchase/PurchaseSettingsPage";
 import PurchaseApprovalMatrixPage from "./pages/purchase/ApprovalMatrixPage";
 import PurchaseCoaMappingPage from "./pages/purchase/CoaMappingPage";
 import PurchaseAuditLogPage from "./pages/purchase/AuditLogPage";
+// Purchase module (Phase 2 PR & PO)
+import PurchaseRequisitionsPage from "./pages/purchase/RequisitionsPage";
+import PurchaseRequisitionFormPage from "./pages/purchase/RequisitionFormPage";
+import PurchaseRequisitionDetailPage from "./pages/purchase/RequisitionDetailPage";
+import PurchaseOrdersV2Page from "./pages/purchase/PurchaseOrdersPage";
+import PurchaseOrderV2FormPage from "./pages/purchase/PurchaseOrderFormPage";
+import PurchaseOrderV2DetailPage from "./pages/purchase/PurchaseOrderDetailPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
