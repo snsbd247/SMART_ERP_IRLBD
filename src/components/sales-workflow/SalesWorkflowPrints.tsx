@@ -80,89 +80,11 @@ export function PrintPO({ po }: { po: any }) {
   );
 }
 
-/* ---------------- VAT Challan (Mushak 6.3) ---------------- */
-export function PrintVatChallan({ v }: { v: any }) {
-  const { settings } = useCompanySettings();
-  const sellerBin = settings?.bin_number || "—";
-  const buyerBin = v.customer?.bin_number || v.customer?.bin || v.buyer_bin || "—";
-  return (
-    <PrintButton render={(close, open) => (
-      <PrintLayout open={open} onClose={close} title="VAT Challan — মূসক ৬.৩ (Mushak 6.3)"
-        docNumber={v.challan_number} docDate={v.challan_date}
-        partyLabel="Buyer / ক্রেতা" partyName={v.customer?.name} partyEmail={v.customer?.email}
-        notes={v.notes}>
-        <div style={{ fontSize: 11, marginBottom: 8, color: "#555" }}>
-          Issued under VAT and Supplementary Duty Act, 2012 — Rule 40(1)(b) /
-          মূল্য সংযোজন কর ও সম্পূরক শুল্ক আইন, ২০১২ — বিধি ৪০(১)(খ)
-        </div>
-        {/* Mushak 6.3 mandatory BIN block: seller (top-left) & buyer (top-right) */}
-        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 10 }}>
-          <tbody>
-            <tr>
-              <td style={{ ...td, width: "50%", verticalAlign: "top" }}>
-                <div style={{ fontWeight: 600 }}>{bi("Seller's Name", "বিক্রেতার নাম")}</div>
-                <div>{settings?.company_name || "—"}</div>
-                <div style={{ marginTop: 4, fontWeight: 600 }}>{bi("Seller's BIN", "বিক্রেতার বিআইএন")}</div>
-                <div style={{ fontFamily: "monospace", letterSpacing: "1px" }}>{sellerBin}</div>
-                {settings?.address && <div style={{ marginTop: 4, fontSize: 11, color: "#555" }}>{settings.address}</div>}
-              </td>
-              <td style={{ ...td, width: "50%", verticalAlign: "top" }}>
-                <div style={{ fontWeight: 600 }}>{bi("Buyer's Name", "ক্রেতার নাম")}</div>
-                <div>{v.customer?.name || "—"}</div>
-                <div style={{ marginTop: 4, fontWeight: 600 }}>{bi("Buyer's BIN", "ক্রেতার বিআইএন")}</div>
-                <div style={{ fontFamily: "monospace", letterSpacing: "1px" }}>{buyerBin}</div>
-                {v.customer?.address && <div style={{ marginTop: 4, fontSize: 11, color: "#555" }}>{v.customer.address}</div>}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead><tr>
-            <th style={th}>#</th>
-            <th style={th}>{bi("Description of Goods", "পণ্যের বিবরণ")}</th>
-            <th style={{ ...th, textAlign: "right" }}>{bi("Qty", "পরিমাণ", "right")}</th>
-            <th style={{ ...th, textAlign: "right" }}>{bi("Rate", "একক মূল্য", "right")}</th>
-            <th style={{ ...th, textAlign: "right" }}>{bi("Value", "মূল্য", "right")}</th>
-            <th style={{ ...th, textAlign: "right" }}>{bi("VAT %", "মূসক হার", "right")}</th>
-            <th style={{ ...th, textAlign: "right" }}>{bi("VAT Amt", "মূসকের পরিমাণ", "right")}</th>
-            <th style={{ ...th, textAlign: "right" }}>{bi("Total", "মোট", "right")}</th>
-          </tr></thead>
-          <tbody>
-            {v.items?.map((it: any, i: number) => (
-              <tr key={it.id}>
-                <td style={td}>{i + 1}</td>
-                <td style={td}>{it.product?.name}</td>
-                <td style={tdr}>{it.qty}</td>
-                <td style={tdr}>{num(it.rate)}</td>
-                <td style={tdr}>{num(Number(it.qty) * Number(it.rate))}</td>
-                <td style={tdr}>{it.vat_pct}</td>
-                <td style={tdr}>{num(it.vat_amount)}</td>
-                <td style={tdr}>{num(it.line_total)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {totalsBlock([
-          [bi("Taxable Value", "করযোগ্য মূল্য"), num(v.subtotal)],
-          [bi("VAT Payable", "প্রদেয় মূসক"), num(v.vat_amount)],
-          [bi("Grand Total (BDT)", "সর্বমোট (টাকা)"), num(v.grand_total)],
-        ])}
-        <div style={{ marginTop: 40, display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-          <div style={{ textAlign: "center", minWidth: 200 }}>
-            <div style={{ borderTop: "1px solid #666", paddingTop: 4 }}>
-              Authorised Signature<br /><span style={{ fontSize: 10, color: "#666" }}>অনুমোদিত স্বাক্ষর</span>
-            </div>
-          </div>
-          <div style={{ textAlign: "center", minWidth: 200 }}>
-            <div style={{ borderTop: "1px solid #666", paddingTop: 4 }}>
-              Buyer Signature & Seal<br /><span style={{ fontSize: 10, color: "#666" }}>ক্রেতার স্বাক্ষর ও সিল</span>
-            </div>
-          </div>
-        </div>
-      </PrintLayout>
-    )} label="Print Mushak 6.3" />
-  );
-}
+/* ---------------- VAT Challan (Mushak 6.3) ----------------
+ * Exact NBR-prescribed layout lives in Mushak63Print.tsx.
+ * Re-exported as PrintVatChallan so existing callers keep working unchanged.
+ */
+export { PrintMushak63 as PrintVatChallan } from "./Mushak63Print";
 
 /* ---------------- Delivery Challan ---------------- */
 export function PrintDeliveryChallan({ dc }: { dc: any }) {
