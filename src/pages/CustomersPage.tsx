@@ -65,17 +65,26 @@ const CustomersPage = () => {
   const loadAccounts = async () => {
     const { data } = await supabase
       .from("chart_of_accounts")
-      .select("id, account_code, account_name")
+      .select("id, account_code, account_name, parent_id")
       .eq("account_type", "asset")
       .eq("is_active", true)
       .order("account_code");
     setAssetAccounts(data || []);
+    // Receivable ledgers = direct/indirect children of "Accounts Receivable" (code 1240)
+    const ar = (data || []).find((a: any) => a.account_code === "1240");
+    if (ar) {
+      const arDescendants = (data || []).filter((a: any) => a.parent_id === ar.id);
+      setReceivableLedgers(arDescendants);
+    } else {
+      setReceivableLedgers([]);
+    }
   };
 
   const openCreate = () => {
     setEditingCustomer(null);
     setForm({ name: "", email: "", phone: "", address: "", bin_number: "" });
     setParentAccountId("");
+    setReceivableLedgerId("");
     setOpen(true);
   };
 
@@ -91,6 +100,7 @@ const CustomersPage = () => {
     }
     setEditingCustomer(c);
     setForm({ name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "" });
+    setReceivableLedgerId(c.receivable_account_id || "");
     setOpen(true);
   };
 
