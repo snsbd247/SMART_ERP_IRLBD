@@ -65,6 +65,11 @@ Deno.serve(async (req) => {
     if (MODE === "reset") {
       // Reset-only mode: protect Chart of Accounts, IFRS Mapping, Document Numbering,
       // Page Shortcuts, General Settings, SMS, Branding (untouched above).
+      await db.from("audit_log").insert({
+        user_id: UID, user_name: user.email,
+        action: "demo_reset", module: "backup",
+        details: `Demo reset (config preserved) completed in ${Date.now() - t0}ms`,
+      });
       return new Response(JSON.stringify({
         success: true,
         mode: "reset",
