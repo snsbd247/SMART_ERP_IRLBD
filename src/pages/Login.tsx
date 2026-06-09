@@ -101,9 +101,18 @@ const Login = () => {
               <Building2 className="w-8 h-8 text-primary" />
             </div>
           )}
-          <CardTitle className="text-2xl font-bold text-foreground">
-            {forgotMode ? "Forgot Password" : (branding.software_name || "SmartERP")}
-          </CardTitle>
+          {(() => {
+            const hasLogo = !!(branding.login_logo_url || branding.company_logo_url);
+            const title = forgotMode
+              ? "Forgot Password"
+              : (hasLogo ? "" : (branding.software_name || "SmartERP"));
+            if (!title) return null;
+            return (
+              <CardTitle className="text-2xl font-bold text-foreground">
+                {title}
+              </CardTitle>
+            );
+          })()}
           <CardDescription className="text-sm">
             {forgotMode ? "Enter your email to receive a reset link" : "Sign in to your account"}
           </CardDescription>
