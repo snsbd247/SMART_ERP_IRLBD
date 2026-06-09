@@ -286,9 +286,13 @@ Deno.serve(async (req) => {
     await bulk("employees", employees.map((e,i) => ({
       id:e.id, employee_code:e.code, first_name:fns[i], last_name:lns[i],
       mobile:`+8801${900000000+i*333}`, email:fns[i].toLowerCase()+i+"@erp.com",
-      department_id:DEPT, designation_id:DESIG, branch_id: i<10?BR_DHK:BR_CTG,
+      department_id:DEPT, designation_id:DESIG, section_id: sectionRows[i % sectionRows.length].id,
+      shift_id: shiftRows[i % shiftRows.length].id, branch_id: i<10?BR_DHK:BR_CTG,
       joining_date:e.join, salary:e.basic, employment_type:"permanent", status:"active",
       employee_category:"staff",
+      approval_status: i >= 13 ? "pending" : "approved",
+      approved_by: i >= 13 ? null : UID,
+      approved_at: i >= 13 ? null : new Date().toISOString(),
     })));
     await bulk("salary_structures", employees.map(e => {
       const hr = Math.floor(e.basic*0.4), med = Math.floor(e.basic*0.1), oth = Math.floor(e.basic*0.05);
