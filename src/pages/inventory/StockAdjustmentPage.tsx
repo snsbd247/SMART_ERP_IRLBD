@@ -196,13 +196,15 @@ const StockAdjustmentPage = () => {
             <TableHead>Product</TableHead>
             <TableHead className="text-right">Qty</TableHead>
             <TableHead className="text-right">Value</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead>Reason</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
             ) : adjustments.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No adjustments yet</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">No adjustments yet</TableCell></TableRow>
             ) : adjustments.map((a) => (
               <TableRow key={a.id}>
                 <TableCell className="font-mono text-xs font-medium">{a.adjustment_number}</TableCell>
@@ -215,7 +217,17 @@ const StockAdjustmentPage = () => {
                 <TableCell className="font-medium">{a.product_name || "—"}</TableCell>
                 <TableCell className="text-right tabular-nums">{a.quantity}</TableCell>
                 <TableCell className="text-right tabular-nums font-medium">{fc(a.total_value)}</TableCell>
+                <TableCell><Badge variant={(a.status ?? "posted") === "posted" ? "default" : "secondary"}>{a.status ?? "posted"}</Badge></TableCell>
                 <TableCell className="text-muted-foreground text-sm">{a.reason || "—"}</TableCell>
+                <TableCell className="text-right">
+                  {(a.status ?? "posted") === "draft" && (
+                    <Button size="sm" variant="outline" onClick={async () => {
+                      const { error } = await supabase.from("stock_adjustments" as any).update({ status: "posted" }).eq("id", a.id);
+                      if (error) toast({ title: "Approve failed", description: error.message, variant: "destructive" });
+                      else { toast({ title: `Adjustment ${a.adjustment_number} approved` }); fetchData(); }
+                    }}>Approve</Button>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
