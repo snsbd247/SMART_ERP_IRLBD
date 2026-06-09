@@ -1100,12 +1100,12 @@ const BackupPage = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" />Import demo configuration?</DialogTitle>
             <DialogDescription>
-              This will insert missing Chart of Accounts, IFRS Mapping, Roles &amp; Permissions, Document Numbering and Page Shortcuts. Existing rows are kept as-is. No transactional data is touched.
+              Selected sections will be <strong>upserted</strong>: existing rows are overwritten with seed values, missing rows are inserted. No transactional data (vouchers, invoices, stock, payroll) is touched.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDemo(false)}>Cancel</Button>
-            <Button onClick={() => handleImportDemoConfig(false)}><Sparkles className="w-4 h-4 mr-2" />Yes, import</Button>
+            <Button onClick={() => handleImportDemoConfig(false, false)}><Sparkles className="w-4 h-4 mr-2" />Yes, import</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1115,17 +1115,18 @@ const BackupPage = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="w-5 h-5" />Reset &amp; Re-import?</DialogTitle>
             <DialogDescription>
-              This will <strong>delete all rows</strong> from Chart of Accounts, IFRS Mapping, Roles &amp; Permissions, Document Numbering and Page Shortcuts, then re-seed them from the demo configuration. Users will be unassigned from their custom roles. Vouchers, invoices, stock and payroll are NOT touched.
+              This will <strong>delete all rows</strong> in the selected configuration sections and re-seed them fresh from the demo bundle. Users will be unassigned from their custom roles. Vouchers, invoices, stock and payroll are NOT touched.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmResetDemo(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => handleImportDemoConfig(true)}>
+            <Button variant="destructive" onClick={() => handleImportDemoConfig(true, false)}>
               <RefreshCw className="w-4 h-4 mr-2" />Yes, reset &amp; re-import
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       <Dialog open={!!verifyResult} onOpenChange={(o) => !o && setVerifyResult(null)}>
         <DialogContent className="max-w-2xl">
