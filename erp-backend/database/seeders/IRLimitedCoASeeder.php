@@ -13,13 +13,13 @@ use App\Models\ChartOfAccount;
  *  1xxx Assets   2xxx Liabilities   3xxx Equity   4xxx Income   5xxx COGS   6xxx Expenses
  *
  * Idempotent: uses account_code (unique) — re-run safe.
- * Opening balances reflect 30-Jun-2025 figures from the audit notes.
+ * Financial statement note heads are created as ledger heads; opening balances stay zero.
  */
 class IRLimitedCoASeeder extends Seeder
 {
     public function run(): void
     {
-        // [code, name, type, parent_code|null, opening_balance, opening_balance_type]
+        // [code, name, type, parent_code|null, note_balance, normal_balance_type]
         $accounts = [
             // ============ 1000 ASSETS ============
             ['1000', 'Assets', 'asset', null, 0, 'debit'],
@@ -202,7 +202,7 @@ class IRLimitedCoASeeder extends Seeder
         ];
 
         $codeToId = [];
-        foreach ($accounts as [$code, $name, $type, $parentCode, $ob, $obType]) {
+        foreach ($accounts as [$code, $name, $type, $parentCode, $_noteBalance, $obType]) {
             $parentId = $parentCode ? ($codeToId[$parentCode] ?? null) : null;
 
             $acc = ChartOfAccount::firstOrCreate(
@@ -211,7 +211,7 @@ class IRLimitedCoASeeder extends Seeder
                     'account_name' => $name,
                     'account_type' => $type,
                     'parent_id' => $parentId,
-                    'opening_balance' => $ob,
+                    'opening_balance' => 0,
                     'opening_balance_type' => $obType,
                     'is_active' => 1,
                 ]
@@ -223,6 +223,8 @@ class IRLimitedCoASeeder extends Seeder
                     'account_name' => $name,
                     'account_type' => $type,
                     'parent_id' => $parentId,
+                    'opening_balance' => 0,
+                    'opening_balance_type' => $obType,
                     'is_active' => 1,
                 ]);
             }
