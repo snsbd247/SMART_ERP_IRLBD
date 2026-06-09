@@ -55,61 +55,103 @@ class DemoConfigImportController extends BaseController
             return $this->error('Seed file is invalid JSON.', 500);
         }
 
-        $reset = (bool) $request->boolean('reset', false);
+        $reset   = (bool) $request->boolean('reset', false);
+        $dryRun  = (bool) $request->boolean('dry_run', false);
+        $only    = $request->input('sections');
+        $only    = is_array($only) && !empty($only) ? array_flip($only) : null; // null = all
         $startedAt = now()->toIso8601String();
         $results = [];
 
-        if ($reset) {
-            $this->resetConfigTables();
+        // Full plan of section runners (key => [label, runner closure])
+        $plan = [
+            'chart_of_accounts'    => ['Chart of Accounts',      fn() => $this->importCoa($seed['coa'] ?? [], $reset)],
+            'ifrs_account_mapping' => ['IFRS Account Mapping',   fn() => $this->importIfrs($seed['ifrs'] ?? [])],
+            'purchase_types'       => ['Purchase Types',         fn() => $this->importPurchaseTypes($seed['purchase_types'] ?? [])],
+            'purchase_coa_mapping' => ['Purchase COA Mapping',   fn() => $this->importPurchaseCoaMapping($seed['purchase_coa_mapping'] ?? [])],
+            'purchase_settings'    => ['Purchase Settings',      fn() => $this->importPurchaseSettings($seed['purchase_settings'] ?? null)],
+            'branches'             => ['Branch Management',      fn() => $this->importBranches($seed['branches'] ?? [])],
+            'financial_years'      => ['Financial Years',        fn() => $this->importFinancialYears($seed['financial_years'] ?? [])],
+            'roles_permissions'    => ['Roles & Permissions',    fn() => $this->importRoles($seed['roles'] ?? [], $reset)],
+            'github_deploy_sync'   => ['GitHub Deploy Sync',     fn() => $this->importKvJson('github_deploy_sync_settings', $seed['github_deploy_sync'] ?? null)],
+            'number_sequences'     => ['Document Numbering',     fn() => $this->importSequences($seed['sequences'] ?? [])],
+            'page_shortcuts'       => ['Page Shortcuts',         fn() => $this->importShortcuts($seed['shortcuts'] ?? [])],
+            'company_settings'     => ['General Settings',       fn() => $this->importCompanySettings($seed['company_settings'] ?? null)],
+            'sms_settings'         => ['SMS Integration',        fn() => $this->importKvMap($seed['sms_settings'] ?? [])],
+            'branding'             => ['Branding & White-Label', fn() => $this->importKvMap($seed['branding'] ?? [])],
+        ];
+
+        // Execute everything inside a transaction so dry-run can be rolled back.
+        // For real runs we commit. Reset is only honoured when not dry-run.
+        DB::beginTransaction();
+        try {
+            if ($reset && !$dryRun) {
+                $this->resetConfigTables();
+            }
+            foreach ($plan as $key => [$label, $fn]) {
+                if ($only !== null && !isset($only[$key])) continue;
+                $results[] = $this->runSection($key, $label, $fn);
+            }
+            if ($dryRun) {
+                DB::rollBack();
+            } else {
+                DB::commit();
+            }
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            throw $e;
         }
 
-        // Order matters: CoA → others that depend on CoA (IFRS, Purchase COA mapping)
-        $results[] = $this->runSection('chart_of_accounts',    'Chart of Accounts',         fn() => $this->importCoa($seed['coa'] ?? [], $reset));
-        $results[] = $this->runSection('ifrs_account_mapping', 'IFRS Account Mapping',      fn() => $this->importIfrs($seed['ifrs'] ?? []));
-        $results[] = $this->runSection('purchase_types',       'Purchase Types',            fn() => $this->importPurchaseTypes($seed['purchase_types'] ?? []));
-        $results[] = $this->runSection('purchase_coa_mapping', 'Purchase COA Mapping',      fn() => $this->importPurchaseCoaMapping($seed['purchase_coa_mapping'] ?? []));
-        $results[] = $this->runSection('purchase_settings',    'Purchase Settings',         fn() => $this->importPurchaseSettings($seed['purchase_settings'] ?? null));
-        $results[] = $this->runSection('branches',             'Branch Management',         fn() => $this->importBranches($seed['branches'] ?? []));
-        $results[] = $this->runSection('financial_years',      'Financial Years',           fn() => $this->importFinancialYears($seed['financial_years'] ?? []));
-        $results[] = $this->runSection('roles_permissions',    'Roles & Permissions',       fn() => $this->importRoles($seed['roles'] ?? [], $reset));
-        $results[] = $this->runSection('github_deploy_sync',   'GitHub Deploy Sync',        fn() => $this->importKvJson('github_deploy_sync_settings', $seed['github_deploy_sync'] ?? null));
-        $results[] = $this->runSection('number_sequences',     'Document Numbering',        fn() => $this->importSequences($seed['sequences'] ?? []));
-        $results[] = $this->runSection('page_shortcuts',       'Page Shortcuts',            fn() => $this->importShortcuts($seed['shortcuts'] ?? []));
-        $results[] = $this->runSection('company_settings',     'General Settings',          fn() => $this->importCompanySettings($seed['company_settings'] ?? null));
-        $results[] = $this->runSection('sms_settings',         'SMS Integration',           fn() => $this->importKvMap($seed['sms_settings'] ?? []));
-        $results[] = $this->runSection('branding',             'Branding & White-Label',    fn() => $this->importKvMap($seed['branding'] ?? []));
-
         $totalInserted = array_sum(array_column($results, 'inserted'));
+        $totalUpdated  = array_sum(array_column($results, 'skipped')); // "skipped" in our importers means "row already existed and was updated/overwritten"
         $anyFailed = collect($results)->contains(fn($r) => $r['status'] === 'failed');
         $overall = $anyFailed ? 'partial' : 'success';
 
-        try {
-            if (Schema::hasTable('audit_log')) {
-                DB::table('audit_log')->insert([
-                    'id'         => (string) Str::uuid(),
-                    'user_id'    => $user->id,
-                    'user_name'  => $user->name ?? $user->email ?? null,
-                    'module'     => 'backup',
-                    'action'     => $reset ? 'demo_config_reset_import' : 'demo_config_import',
-                    'details'    => "Demo import ($overall, " . ($reset ? 'reset' : 'keep') . "). $totalInserted rows written across " . count($results) . ' sections.',
-                    'new_data'   => json_encode(['mode' => $reset ? 'reset' : 'keep', 'started_at' => $startedAt, 'results' => $results]),
-                    'ip_address' => $request->ip(),
-                    'user_agent' => substr((string) $request->userAgent(), 0, 250),
-                    'created_at' => now(),
-                ]);
+        // Audit log — only on real runs (skip for dry-runs).
+        if (!$dryRun) {
+            try {
+                if (Schema::hasTable('audit_log')) {
+                    $importedSections = array_map(fn($r) => $r['section'], $results);
+                    DB::table('audit_log')->insert([
+                        'id'         => (string) Str::uuid(),
+                        'user_id'    => $user->id,
+                        'user_name'  => $user->name ?? $user->email ?? null,
+                        'module'     => 'backup',
+                        'action'     => $reset ? 'demo_config_reset_import' : 'demo_config_import',
+                        'details'    => sprintf(
+                            'Demo import (%s, mode=%s). %d inserted / %d updated across %d sections: %s',
+                            $overall, $reset ? 'reset' : 'keep',
+                            $totalInserted, $totalUpdated, count($results),
+                            implode(', ', $importedSections)
+                        ),
+                        'new_data'   => json_encode([
+                            'mode'              => $reset ? 'reset' : 'keep',
+                            'started_at'        => $startedAt,
+                            'finished_at'      => now()->toIso8601String(),
+                            'imported_sections' => $importedSections,
+                            'results'           => $results,
+                        ]),
+                        'ip_address' => $request->ip(),
+                        'user_agent' => substr((string) $request->userAgent(), 0, 250),
+                        'created_at' => now(),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('audit_log insert failed: ' . $e->getMessage());
             }
-        } catch (\Throwable $e) {
-            Log::warning('audit_log insert failed: ' . $e->getMessage());
         }
 
         return response()->json([
             'success'        => !$anyFailed,
             'overall'        => $overall,
             'mode'           => $reset ? 'reset' : 'keep',
+            'dry_run'        => $dryRun,
             'total_inserted' => $totalInserted,
+            'total_updated'  => $totalUpdated,
             'results'        => $results,
         ]);
     }
+
+
 
     /** Delete config rows for the 14 sections. Transactional data is untouched. */
     private function resetConfigTables(): void
@@ -136,12 +178,11 @@ class DemoConfigImportController extends BaseController
             'financial_years',
         ];
 
-        DB::beginTransaction();
+        $driver = DB::connection()->getDriverName();
+        $isMysql = $driver === 'mysql';
+
         try {
-            // Disable FK checks briefly to allow CoA truncation even when other modules
-            // hold UUID references that we will NOT clear (they will simply orphan-link
-            // until re-import resolves them — re-import will recreate the same codes).
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
+            if ($isMysql) DB::statement('SET FOREIGN_KEY_CHECKS=0');
             foreach ($cleanups as $tbl) {
                 if (Schema::hasTable($tbl)) {
                     DB::table($tbl)->delete();
@@ -163,11 +204,11 @@ class DemoConfigImportController extends BaseController
                     'github_deploy_sync_settings',
                 ])->delete();
             }
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
-            DB::commit();
+            if ($isMysql) DB::statement('SET FOREIGN_KEY_CHECKS=1');
         } catch (\Throwable $e) {
-            DB::rollBack();
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
+            if ($isMysql) {
+                try { DB::statement('SET FOREIGN_KEY_CHECKS=1'); } catch (\Throwable $ignored) {}
+            }
             throw $e;
         }
     }
