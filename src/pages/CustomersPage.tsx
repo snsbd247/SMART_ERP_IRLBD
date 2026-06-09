@@ -27,6 +27,7 @@ interface Customer {
   email: string | null;
   phone: string | null;
   address: string | null;
+  bin_number: string | null;
   status: string;
 }
 
@@ -38,7 +39,7 @@ const CustomersPage = () => {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", bin_number: "" });
   const [parentAccountId, setParentAccountId] = useState<string>("");
   const [assetAccounts, setAssetAccounts] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
@@ -70,7 +71,7 @@ const CustomersPage = () => {
 
   const openCreate = () => {
     setEditingCustomer(null);
-    setForm({ name: "", email: "", phone: "", address: "" });
+    setForm({ name: "", email: "", phone: "", address: "", bin_number: "" });
     setParentAccountId("");
     setOpen(true);
   };
@@ -86,7 +87,7 @@ const CustomersPage = () => {
       return;
     }
     setEditingCustomer(c);
-    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "" });
+    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "" });
     setOpen(true);
   };
 
@@ -98,11 +99,11 @@ const CustomersPage = () => {
         const isApprovedEdit = editingCustomer.status === "approved";
         if (isApprovedEdit && isSuperAdmin) {
           await documentApi.editApproved("customer", editingCustomer.id, {
-            name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null,
+            name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null,
           });
         } else {
-          const oldValues = { name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address };
-          const newValues = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null };
+          const oldValues = { name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address, bin_number: editingCustomer.bin_number };
+          const newValues = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null };
           const { error } = await supabase.from("customers").update(newValues).eq("id", editingCustomer.id);
           if (error) throw error;
           await logEditAudit({ userId: user?.id, userName: profile?.name, module: "Sales", action: "Edit Customer", recordId: editingCustomer.id, oldValues, newValues });
@@ -225,6 +226,7 @@ const CustomersPage = () => {
             <div><Label>Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
             <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+            <div><Label>BIN Number</Label><Input value={form.bin_number} onChange={(e) => setForm({ ...form, bin_number: e.target.value })} placeholder="e.g. 123456789-0101" /></div>
             {!editingCustomer && (
               <div>
                 <Label>Parent Ledger (Chart of Accounts)</Label>

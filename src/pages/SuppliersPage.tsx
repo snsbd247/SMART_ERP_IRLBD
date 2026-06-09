@@ -28,7 +28,7 @@ const SuppliersPage = () => {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", bin_number: "" });
   const [parentAccountId, setParentAccountId] = useState<string>("");
   const [liabAccounts, setLiabAccounts] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
@@ -60,7 +60,7 @@ const SuppliersPage = () => {
 
   const openCreate = () => {
     setEditingSupplier(null);
-    setForm({ name: "", email: "", phone: "", address: "" });
+    setForm({ name: "", email: "", phone: "", address: "", bin_number: "" });
     setParentAccountId("");
     setOpen(true);
   };
@@ -75,7 +75,7 @@ const SuppliersPage = () => {
       return;
     }
     setEditingSupplier(s);
-    setForm({ name: s.name, email: s.email || "", phone: s.phone || "", address: s.address || "" });
+    setForm({ name: s.name, email: s.email || "", phone: s.phone || "", address: s.address || "", bin_number: s.bin_number || "" });
     setOpen(true);
   };
 
@@ -87,11 +87,11 @@ const SuppliersPage = () => {
         const isApprovedEdit = editingSupplier.status === "approved";
         if (isApprovedEdit && isSuperAdmin) {
           await documentApi.editApproved("supplier", editingSupplier.id, {
-            name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null,
+            name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null,
           });
         } else {
-          const oldValues = { name: editingSupplier.name, email: editingSupplier.email, phone: editingSupplier.phone, address: editingSupplier.address };
-          const newValues = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null };
+          const oldValues = { name: editingSupplier.name, email: editingSupplier.email, phone: editingSupplier.phone, address: editingSupplier.address, bin_number: editingSupplier.bin_number };
+          const newValues = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null };
           const { error } = await supabase.from("suppliers").update(newValues).eq("id", editingSupplier.id);
           if (error) throw error;
           await logEditAudit({ userId: user?.id, userName: profile?.name, module: "Purchase", action: "Edit Supplier", recordId: editingSupplier.id, oldValues, newValues });
@@ -213,6 +213,7 @@ const SuppliersPage = () => {
             <div><Label>Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
             <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+            <div><Label>BIN Number</Label><Input value={form.bin_number} onChange={(e) => setForm({ ...form, bin_number: e.target.value })} placeholder="e.g. 123456789-0101" /></div>
             {!editingSupplier && (
               <div>
                 <Label>Parent Ledger (Chart of Accounts)</Label>

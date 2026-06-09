@@ -804,6 +804,7 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
+          bin_number: string | null
           created_at: string
           email: string | null
           id: string
@@ -813,6 +814,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          bin_number?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -822,6 +824,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          bin_number?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -3988,6 +3991,7 @@ export type Database = {
       suppliers: {
         Row: {
           address: string | null
+          bin_number: string | null
           created_at: string
           email: string | null
           id: string
@@ -3997,6 +4001,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          bin_number?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -4006,6 +4011,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          bin_number?: string | null
           created_at?: string
           email?: string | null
           id?: string
