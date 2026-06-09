@@ -73,13 +73,20 @@ serve(async (req) => {
     if (!authHeader) throw new Error("No authorization header");
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-    if (authErr || !user) throw new Error("Unauthorized");
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    let user: { id: string; email?: string };
 
-    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
-    const isSuperAdmin = roles?.some((r: any) => r.role === "super_admin");
-    if (!isSuperAdmin) throw new Error("Only Super Admin can perform cloud backups");
+    if (token === SUPABASE_SERVICE_ROLE_KEY) {
+      // Internal/scheduled invocation — bypass user role check.
+      user = { id: "00000000-0000-0000-0000-000000000000", email: "system@scheduled" };
+    } else {
+      const { data: { user: u }, error: authErr } = await supabase.auth.getUser(token);
+      if (authErr || !u) throw new Error("Unauthorized");
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", u.id);
+      const isSuperAdmin = roles?.some((r: any) => r.role === "super_admin");
+      if (!isSuperAdmin) throw new Error("Only Super Admin can perform cloud backups");
+      user = { id: u.id, email: u.email };
+    }
 
     const { action, backup_content, backup_file_name } = await req.json();
 
