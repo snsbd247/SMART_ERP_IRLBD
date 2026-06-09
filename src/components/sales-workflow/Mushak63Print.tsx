@@ -90,9 +90,9 @@ const MUSHAK_CSS = `
 
 interface Props { v: any; }
 
-export function PrintMushak63({ v }: Props) {
-  const [open, setOpen] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
+/** Renders just the Mushak 6.3 document body (no dialog/print chrome).
+ *  Use this for inline preview pages or embedding. */
+export function Mushak63Body({ v }: Props) {
   const { settings } = useCompanySettings();
 
   const sellerName = settings?.company_name || "—";
@@ -109,15 +109,144 @@ export function PrintMushak63({ v }: Props) {
   const issueTime = fmtTime(v.created_at || v.challan_date);
   const printDate = fmtDate(new Date());
   const printTime = fmtTime(new Date());
-  const entryUser = v.created_by_name || v.entry_user || (settings?.company_name ? "" : "");
+  const entryUser = v.created_by_name || v.entry_user || "";
 
   const items: any[] = v.items || [];
   const totalQty = items.reduce((s, it) => s + Number(it.qty || 0), 0);
   const totalValue = items.reduce((s, it) => s + Number(it.qty || 0) * Number(it.rate || 0), 0);
-  const totalSdBase = 0;
-  const totalSdAmt = 0;
   const totalVat = items.reduce((s, it) => s + Number(it.vat_amount || 0), 0);
   const grandTotal = items.reduce((s, it) => s + Number(it.line_total || 0), 0);
+
+  const subHdr: React.CSSProperties = { fontWeight: 400, fontSize: "6.5pt", display: "block", marginTop: "0.4mm" };
+
+  return (
+    <div className="mushak-doc">
+      <div className="gov-line">গণপ্রজাতন্ত্রী বাংলাদেশ সরকার, জাতীয় রাজস্ব বোর্ড, ঢাকা।</div>
+
+      <div className="title-row">
+        <div style={{ width: "20mm" }} />
+        <div className="title-center">
+          <h1>কর চালানপত্র</h1>
+          <div className="rule-ref">[বিধি ৪০ এর উপ-বিধি (১) এর দফা (গ) ও (চ) দ্রষ্টব্য]</div>
+        </div>
+        <div className="form-code">মূসক-৬.৩</div>
+      </div>
+
+      <div className="header-grid" style={{ marginTop: "4mm" }}>
+        <div className="kv">
+          <div className="k">নিবন্ধিত ব্যক্তির নাম</div><div>:</div><div className="v">{sellerName}</div>
+          <div className="k">নিবন্ধিত ব্যক্তির বিআইএন</div><div>:</div><div className="v">{sellerBin}</div>
+          <div className="k">চালানপত্র ইস্যুর ঠিকানা</div><div>:</div><div className="v">{sellerAddress}</div>
+        </div>
+        <div className="kv">
+          <div className="k">চালানপত্র নম্বর</div><div>:</div><div className="v">{challanNo}</div>
+          <div className="k">ইস্যুর তারিখ</div><div>:</div><div className="v">{issueDate}</div>
+          <div className="k">ইস্যুর সময়</div><div>:</div><div className="v">{issueTime}</div>
+          <div className="k">প্রিন্টের সময়</div><div>:</div><div className="v">{printDate} {printTime}</div>
+        </div>
+      </div>
+
+      <div className="header-grid" style={{ marginTop: "2mm" }}>
+        <div className="kv">
+          <div className="k">ক্রেতার নাম</div><div>:</div><div className="v">{buyerName}</div>
+          <div className="k">ক্রেতার বিআইএন</div><div>:</div><div className="v">{buyerBin}</div>
+          <div className="k">ক্রেতার ঠিকানা</div><div>:</div><div className="v">{buyerAddress}</div>
+          <div className="k">সরবরাহের গন্তব্যস্থল</div><div>:</div><div className="v">{destination}</div>
+        </div>
+        <div />
+      </div>
+
+      <div className="kv" style={{ marginTop: "1.5mm", gridTemplateColumns: "55mm 3mm 1fr" }}>
+        <div className="k">যানবাহনের প্রকৃতি ও নম্বর</div><div>:</div><div className="v">{vehicleNo}</div>
+      </div>
+
+      <table className="mushak-items">
+        <colgroup>
+          <col style={{ width: "4%" }} />
+          <col style={{ width: "20%" }} />
+          <col style={{ width: "6%" }} />
+          <col style={{ width: "7%" }} />
+          <col style={{ width: "8%" }} />
+          <col style={{ width: "10%" }} />
+          <col style={{ width: "9%" }} />
+          <col style={{ width: "8%" }} />
+          <col style={{ width: "7%" }} />
+          <col style={{ width: "10%" }} />
+          <col style={{ width: "11%" }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>ক্রমিক</th>
+            <th>পণ্য/সেবার বর্ণনা<span style={subHdr}>(প্রযোজ্য ক্ষেত্রে ব্র্যান্ড নামসহ)</span></th>
+            <th>সরবরাহের একক</th>
+            <th>পরিমাণ</th>
+            <th>একক মূল্য <sup>১</sup><span style={subHdr}>(টাকায়)</span></th>
+            <th>মোট মূল্য<span style={subHdr}>(টাকায়)</span></th>
+            <th>সম্পূরক শুল্কের ভিত্তি মূল্য<span style={subHdr}>(টাকায়)</span></th>
+            <th>সম্পূরক শুল্কের পরিমাণ / সুনির্দিষ্ট কর</th>
+            <th>মূল্য সংযোজন করের হার / সুনির্দিষ্ট কর</th>
+            <th>মূল্য সংযোজন কর / সুনির্দিষ্ট কর এর পরিমাণ</th>
+            <th>সকল প্রকার কর সহ মূল্য</th>
+          </tr>
+          <tr className="col-no">
+            {Array.from({ length: 11 }, (_, i) => (<td key={i}>{i + 1}</td>))}
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((it, i) => {
+            const lineValue = Number(it.qty || 0) * Number(it.rate || 0);
+            return (
+              <tr key={it.id || i}>
+                <td className="center">{i + 1}</td>
+                <td>{it.product?.name || it.description || "—"}</td>
+                <td className="center">{it.unit || it.product?.unit || "PCS"}</td>
+                <td className="num">{qty(it.qty)}</td>
+                <td className="num">{num(it.rate)}</td>
+                <td className="num">{num(lineValue)}</td>
+                <td className="num">{num(0)}</td>
+                <td className="num">{num(0)}</td>
+                <td className="num">{Number(it.vat_pct || 0).toFixed(2)}</td>
+                <td className="num">{num(it.vat_amount)}</td>
+                <td className="num">{num(it.line_total)}</td>
+              </tr>
+            );
+          })}
+          <tr className="total-row">
+            <td colSpan={3} className="label">সর্বমোট</td>
+            <td className="num">{qty(totalQty)}</td>
+            <td />
+            <td className="num">{num(totalValue)}</td>
+            <td className="num">{num(0)}</td>
+            <td className="num">{num(0)}</td>
+            <td />
+            <td className="num">{num(totalVat)}</td>
+            <td className="num">{num(grandTotal)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div className="signoff">
+        <div className="row" style={{ fontWeight: 700 }}>প্রতিষ্ঠান কর্তৃপক্ষের দায়িত্বপ্রাপ্ত ব্যক্তির নাম :</div>
+        <div className="row" style={{ paddingLeft: "4mm" }}>পদবী :</div>
+        <div className="row" style={{ paddingLeft: "4mm" }}>স্বাক্ষর :</div>
+        <div className="row" style={{ paddingLeft: "4mm" }}>সীল :</div>
+      </div>
+
+      <div className="footnote"><sup>১</sup> সকল প্রকার কর ব্যতীত মূল্য।</div>
+
+      {entryUser && <div className="entry-user">Entry User: {entryUser}</div>}
+    </div>
+  );
+}
+
+export function MushakStyles() {
+  return <style dangerouslySetInnerHTML={{ __html: MUSHAK_CSS }} />;
+}
+
+export function PrintMushak63({ v }: Props) {
+  const [open, setOpen] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
+  const challanNo = v.challan_number || "—";
 
   const getHtml = () => {
     if (!printRef.current) return "";
@@ -157,136 +286,13 @@ export function PrintMushak63({ v }: Props) {
             </DialogTitle>
           </DialogHeader>
 
-          <style>{MUSHAK_CSS}</style>
-          <div ref={printRef} className="bg-white p-4" style={{ color: "#000" }}>
-            <div className="mushak-doc">
-              {/* Top government line */}
-              <div className="gov-line">গণপ্রজাতন্ত্রী বাংলাদেশ সরকার, জাতীয় রাজস্ব বোর্ড, ঢাকা।</div>
-
-              {/* Title row */}
-              <div className="title-row">
-                <div style={{ width: 90 }} />
-                <div className="title-center">
-                  <h1>কর চালানপত্র</h1>
-                  <div className="rule-ref">[বিধি ৪০ এর উপ-বিধি (১) এর দফা (গ) ও (চ) দ্রষ্টব্য]</div>
-                </div>
-                <div className="form-code">মূসক-৬.৩</div>
-              </div>
-
-              {/* Seller header grid: seller info | issue info (logo removed) */}
-              <div className="header-grid" style={{ marginTop: 14 }}>
-                <div className="kv">
-                  <div className="k">নিবন্ধিত ব্যক্তির নাম</div><div>:</div><div className="v">{sellerName}</div>
-                  <div className="k">নিবন্ধিত ব্যক্তির বিআইএন</div><div>:</div><div className="v">{sellerBin}</div>
-                  <div className="k">চালানপত্র ইস্যুর ঠিকানা</div><div>:</div><div className="v">{sellerAddress}</div>
-                </div>
-                <div className="kv">
-                  <div className="k">চালানপত্র নম্বর</div><div>:</div><div className="v">{challanNo}</div>
-                  <div className="k">ইস্যুর তারিখ</div><div>:</div><div className="v">{issueDate}</div>
-                  <div className="k">ইস্যুর সময়</div><div>:</div><div className="v">{issueTime}</div>
-                  <div className="k">প্রিন্টের সময়</div><div>:</div><div className="v">{printDate} {printTime}</div>
-                </div>
-              </div>
-
-              {/* Buyer block */}
-              <div className="header-grid" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 6 }}>
-                <div className="kv">
-                  <div className="k">ক্রেতার নাম</div><div>:</div><div className="v">{buyerName}</div>
-                  <div className="k">ক্রেতার বিআইএন</div><div>:</div><div className="v">{buyerBin}</div>
-                  <div className="k">ক্রেতার ঠিকানা</div><div>:</div><div className="v">{buyerAddress}</div>
-                  <div className="k">সরবরাহের গন্তব্যস্থল</div><div>:</div><div className="v">{destination}</div>
-                </div>
-                <div />
-              </div>
-
-              <div className="kv" style={{ marginTop: 4, gridTemplateColumns: "180px 8px 1fr" }}>
-                <div className="k">যানবাহনের প্রকৃতি ও নম্বর</div><div>:</div><div className="v">{vehicleNo}</div>
-              </div>
-
-              {/* Items table (11 columns as per Mushak 6.3) */}
-              <table className="mushak-items">
-                {/* Locked column widths — sum = 100%, matches the official Mushak 6.3 form */}
-                <colgroup>
-                  <col style={{ width: "4%" }} />   {/* ক্রমিক */}
-                  <col style={{ width: "22%" }} />  {/* পণ্য/সেবার বর্ণনা */}
-                  <col style={{ width: "7%" }} />   {/* সরবরাহের একক */}
-                  <col style={{ width: "7%" }} />   {/* পরিমাণ */}
-                  <col style={{ width: "9%" }} />   {/* একক মূল্য */}
-                  <col style={{ width: "10%" }} />  {/* মোট মূল্য */}
-                  <col style={{ width: "9%" }} />   {/* সম্পূরক ভিত্তি */}
-                  <col style={{ width: "8%" }} />   {/* সম্পূরক পরিমাণ */}
-                  <col style={{ width: "7%" }} />   {/* মূসক হার */}
-                  <col style={{ width: "8%" }} />   {/* মূসক পরিমাণ */}
-                  <col style={{ width: "9%" }} />   {/* সকল কর সহ */}
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th rowSpan={2} style={{ width: 38 }}>ক্রমিক</th>
-                    <th rowSpan={2}>পণ্য/সেবার বর্ণনা<br /><span style={{ fontWeight: 400, fontSize: 9 }}>(প্রযোজ্য ক্ষেত্রে ব্র্যান্ড নামসহ)</span></th>
-                    <th rowSpan={2}>সরবরাহের একক</th>
-                    <th rowSpan={2}>পরিমাণ</th>
-                    <th rowSpan={2}>একক মূল্য (১)<br /><span style={{ fontWeight: 400, fontSize: 9 }}>(টাকায়)</span></th>
-                    <th rowSpan={2}>মোট মূল্য<br /><span style={{ fontWeight: 400, fontSize: 9 }}>(টাকায়)</span></th>
-                    <th rowSpan={2}>সম্পূরক শুল্কের ভিত্তি মূল্য<br /><span style={{ fontWeight: 400, fontSize: 9 }}>(টাকায়)</span></th>
-                    <th rowSpan={2}>সম্পূরক শুল্কের পরিমাণ /<br />সুনির্দিষ্ট কর</th>
-                    <th rowSpan={2}>মূল্য সংযোজন<br />করের হার /<br />সুনির্দিষ্ট কর</th>
-                    <th rowSpan={2}>মূল্য সংযোজন কর /<br />সুনির্দিষ্ট কর<br />এর পরিমাণ</th>
-                    <th rowSpan={2}>সকল প্রকার কর<br />সহ মূল্য</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="col-no" style={{ fontSize: 9 }}>
-                    {Array.from({ length: 11 }, (_, i) => (
-                      <td key={i} className="center" style={{ padding: 1, fontWeight: 600 }}>{i + 1}</td>
-                    ))}
-                  </tr>
-                  {items.map((it, i) => {
-                    const lineValue = Number(it.qty || 0) * Number(it.rate || 0);
-                    return (
-                      <tr key={it.id || i}>
-                        <td className="center">{i + 1}</td>
-                        <td>{it.product?.name || it.description || "—"}</td>
-                        <td className="center">{it.unit || it.product?.unit || "PCS"}</td>
-                        <td className="num">{qty(it.qty)}</td>
-                        <td className="num">{num(it.rate)}</td>
-                        <td className="num">{num(lineValue)}</td>
-                        <td className="num">{num(0)}</td>
-                        <td className="num">{num(0)}</td>
-                        <td className="num">{Number(it.vat_pct || 0).toFixed(2)}</td>
-                        <td className="num">{num(it.vat_amount)}</td>
-                        <td className="num">{num(it.line_total)}</td>
-                      </tr>
-                    );
-                  })}
-                  <tr className="total-row">
-                    <td colSpan={3} className="label">সর্বমোট</td>
-                    <td className="num">{qty(totalQty)}</td>
-                    <td />
-                    <td className="num">{num(totalValue)}</td>
-                    <td className="num">{num(totalSdBase)}</td>
-                    <td className="num">{num(totalSdAmt)}</td>
-                    <td />
-                    <td className="num">{num(totalVat)}</td>
-                    <td className="num">{num(grandTotal)}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Signature block */}
-              <div className="signoff">
-                <div className="row" style={{ fontWeight: 700 }}>প্রতিষ্ঠান কর্তৃপক্ষের দায়িত্বপ্রাপ্ত ব্যক্তির নাম :</div>
-                <div className="row" style={{ paddingLeft: 12 }}>পদবী :</div>
-                <div className="row" style={{ paddingLeft: 12 }}>স্বাক্ষর :</div>
-                <div className="row" style={{ paddingLeft: 12 }}>সীল :</div>
-              </div>
-
-              <div className="footnote"><sup>১</sup> সকল প্রকার কর ব্যতীত মূল্য।</div>
-
-              {entryUser && <div className="entry-user">Entry User: {entryUser}</div>}
-            </div>
+          <MushakStyles />
+          <div ref={printRef} className="bg-white" style={{ color: "#000" }}>
+            <Mushak63Body v={v} />
           </div>
         </DialogContent>
       </Dialog>
     </>
   );
 }
+

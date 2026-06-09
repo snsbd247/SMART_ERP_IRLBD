@@ -1,18 +1,15 @@
-import { PrintVatChallan } from "@/components/sales-workflow/SalesWorkflowPrints";
+import { PrintMushak63, Mushak63Body, MushakStyles } from "@/components/sales-workflow/Mushak63Print";
 
 /**
- * Mock-data preview for visual QA — compare side-by-side with the official
- * Mushak 6.3 reference image. Route: /sales-workflow/vat-challan/preview
+ * Mock-data preview for visual QA — renders the Mushak 6.3 body inline
+ * (in Lovable preview) plus a Print/PDF button to verify output.
+ * Route: /sales-workflow/vat-challan/preview
  */
 const MOCK_CHALLAN = {
   challan_number: "IRL-2025-2026-001591",
   challan_date: "2026-06-08",
   created_at: "2026-06-08T18:26:02",
   vehicle_no: "Dhaka-Metro-AU-11-3129",
-  notes: "",
-  subtotal: 35530,
-  vat_amount: 5329.5,
-  grand_total: 40859.5,
   customer: {
     name: "Marico Bangladesh Limited",
     bin_number: "000000539-0003",
@@ -28,16 +25,21 @@ const MOCK_CHALLAN = {
 export default function Mushak63PreviewPage() {
   return (
     <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Mushak 6.3 — Mock Preview</h1>
-        <p className="text-sm text-muted-foreground">
-          Verify visual parity with the official NBR Mushak 6.3 form using sample data.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">Mushak 6.3 — Mock Preview</h1>
+          <p className="text-sm text-muted-foreground">Inline preview matches print/PDF output 1:1.</p>
+        </div>
+        <PrintMushak63 v={MOCK_CHALLAN} />
       </div>
-      <PrintVatChallan v={MOCK_CHALLAN} />
-      <p className="text-xs text-muted-foreground">
-        Click "Print Mushak 6.3" above to open the print dialog, then use "PDF" / "Print" to verify output.
-      </p>
+
+      <MushakStyles />
+      <div
+        className="bg-white shadow-lg mx-auto"
+        style={{ width: "210mm", padding: "8mm 10mm", color: "#000" }}
+      >
+        <Mushak63Body v={MOCK_CHALLAN} />
+      </div>
     </div>
   );
 }
