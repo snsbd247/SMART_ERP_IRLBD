@@ -131,6 +131,7 @@ import PurchaseOrderDetailPage from "./pages/sales-workflow/PurchaseOrderDetailP
 import VatChallansPage from "./pages/sales-workflow/VatChallansPage";
 import VatChallanFormPage from "./pages/sales-workflow/VatChallanFormPage";
 import VatChallanDetailPage from "./pages/sales-workflow/VatChallanDetailPage";
+import Mushak63PreviewPage from "./pages/sales-workflow/Mushak63PreviewPage";
 import DeliveryChallansPage from "./pages/sales-workflow/DeliveryChallansPage";
 import CustomerReceivePage from "./pages/sales-workflow/CustomerReceivePage";
 import HoReceivePage from "./pages/sales-workflow/HoReceivePage";
@@ -316,6 +317,7 @@ const App = () => (
                 <Route path="/sales-workflow/po/:id" element={<P perm="sales.view"><PurchaseOrderDetailPage /></P>} />
                 <Route path="/sales-workflow/vat-challan" element={<P perm="sales.view"><VatChallansPage /></P>} />
                 <Route path="/sales-workflow/vat-challan/new" element={<P perm="sales.add"><VatChallanFormPage /></P>} />
+                <Route path="/sales-workflow/vat-challan/preview" element={<P perm="sales.view"><Mushak63PreviewPage /></P>} />
                 <Route path="/sales-workflow/vat-challan/:id" element={<P perm="sales.view"><VatChallanDetailPage /></P>} />
                 <Route path="/sales-workflow/delivery-challan" element={<P perm="sales.view"><DeliveryChallansPage /></P>} />
                 <Route path="/sales-workflow/customer-receive" element={<P perm="sales.edit"><CustomerReceivePage /></P>} />
