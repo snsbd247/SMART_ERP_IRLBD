@@ -367,7 +367,7 @@ const Dashboard = () => {
                       <p className="text-xs font-medium text-foreground truncate">{inv.invoice_number}</p>
                       <p className="text-[10px] text-muted-foreground">{(inv.customers as any)?.name || "—"}</p>
                     </div>
-                    <p className="text-xs font-semibold tabular-nums text-foreground">{fc(Number(inv.net_amount || inv.total_amount))}</p>
+                    <p className="text-xs font-semibold tabular-nums text-foreground">{fc(Number(inv._amount ?? inv.grand_total ?? inv.net_amount ?? inv.total_amount ?? 0))}</p>
                   </div>
                 ))}
               </div>
