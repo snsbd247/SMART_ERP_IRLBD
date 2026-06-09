@@ -272,10 +272,10 @@ class SeedDemoData extends Command
 
         // Ensure default child bank accounts exist (idempotent)
         $bankChildren = [
-            ['1102-01', 'EBL Current A/C - 1234567890'],
-            ['1102-02', 'City Bank Current A/C - 9988776655'],
-            ['1102-03', 'BRAC Bank Savings A/C - 4455667788'],
-            ['1102-04', 'HSBC USD A/C - 0011223344'],
+            ['1111', 'EBL Current A/C - 1234567890'],
+            ['1112', 'City Bank Current A/C - 9988776655'],
+            ['1113', 'BRAC Bank Savings A/C - 4455667788'],
+            ['1114', 'HSBC USD A/C - 0011223344'],
         ];
         $this->Ac['banks'] = [];
         foreach ($bankChildren as [$code, $name]) {
@@ -484,10 +484,10 @@ class SeedDemoData extends Command
         $banks = $this->Ac['banks'] ?? [];
         if (!empty($banks)) {
             $splits = [
-                '1102-01' => 300000,
-                '1102-02' => 250000,
-                '1102-03' => 150000,
-                '1102-04' => 100000,
+                '1111' => 300000,
+                '1112' => 250000,
+                '1113' => 150000,
+                '1114' => 100000,
             ];
             foreach ($splits as $code => $amt) {
                 if (isset($banks[$code])) {
