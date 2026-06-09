@@ -99,6 +99,8 @@ const navGroups: NavGroup[] = [
       { to: "/purchase/bills", label: "Supplier Bills", icon: FileText },
       { to: "/purchase/payments", label: "Supplier Payments", icon: BookOpen },
       { to: "/purchase/lc", label: "LC / Import", icon: Layers },
+      { to: "/purchase/returns", label: "Purchase Returns", icon: RotateCcw },
+      { to: "/purchase/reports", label: "Purchase Reports", icon: BarChart3 },
       { to: "/purchase/suppliers", label: "Suppliers", icon: Users },
       { to: "/purchase/types", label: "Purchase Types", icon: Layers },
       { to: "/purchase/approval-matrix", label: "Approval Matrix", icon: Shield },
