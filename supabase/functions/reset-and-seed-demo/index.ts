@@ -41,19 +41,13 @@ Deno.serve(async (req) => {
     // ===== RESET =====
     const resetGroups: string[][] = [
       // Leaf child rows first
-      ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","purchase_items","purchase_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","bom_items","fund_transactions","employee_fund_settings","overtime_records","leave_requests","attendance","employee_documents","employee_bank_info","employee_education","employee_experience","employee_emergency_contacts","salary_structures","face_data","biometric_logs","payroll","party_notes","audit_log","login_logs","backup_history","messages","conversation_participants",
+      ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","bom_items","fund_transactions","employee_fund_settings","overtime_records","leave_requests","attendance","employee_documents","employee_bank_info","employee_education","employee_experience","employee_emergency_contacts","salary_structures","face_data","biometric_logs","payroll","party_notes","audit_log","login_logs","backup_history","messages","conversation_participants",
         "tds_entries","invoice_payments","invoice_challans","sales_invoice_items_v2","customer_receives","ho_receives","vat_challan_items","purchase_order_items",
-        // New purchase workflow child rows
-        "purchase_bill_payments","purchase_bill_grns","grn_items","purchase_order_items_v2","purchase_requisition_items",
-        // Status logs / amendments — defensive (cascade would also handle these)
         "invoice_status_logs","po_amendments"],
-      // Returns must be deleted BEFORE their parent invoices/purchases
-      ["sales_returns","purchase_returns"],
-      // New workflow parents (bills → grns → POs v2 → requisitions)
-      ["purchase_bills","grns","purchase_orders_v2","purchase_requisitions"],
+      ["sales_returns"],
       ["sales_invoices_v2","delivery_challans","vat_challans","purchase_orders"],
-      ["acc_vouchers","party_payments","sales_invoices","purchases","production_entries","bill_of_materials","employees","conversations"],
-      ["customers","suppliers","item_master","products","raw_materials"],
+      ["acc_vouchers","party_payments","sales_invoices","production_entries","bill_of_materials","employees","conversations"],
+      ["customers","item_master","products","raw_materials"],
       ["item_categories","units","warehouses","product_categories"],
     ];
     for (const grp of resetGroups) {
@@ -214,11 +208,8 @@ Deno.serve(async (req) => {
       "Lambda Pharma","Mu Textiles","Nu Logistics","Xi Construction","Omicron Retail"];
     const customers = cn.map((n,i) => ({ id:U(), name:n, phone:`+8801${700000000+i*1111}`, email:n.toLowerCase().replace(/ /g,"")+"@example.com", address:"Dhaka, Bangladesh", status:"active" }));
     await bulk("customers", customers);
-    const sn = ["ABC Suppliers","XYZ Wholesale","PQR Distributors","LMN Trading","EFG Imports",
-      "HIJ Mfg","RST Enterprises","UVW Industries","BDS Tech","GreenLine Foods",
-      "Metro Hardware","Capital Stationers"];
-    const suppliers = sn.map((n,i) => ({ id:U(), name:n, phone:`+8801${800000000+i*2222}`, email:n.toLowerCase().replace(/ /g,"")+"@vendor.com", address:"Dhaka, Bangladesh", status:"active" }));
-    await bulk("suppliers", suppliers);
+    // Suppliers removed with Purchase module
+    const suppliers: any[] = [];
 
     // Employees + salary structures
     const fns = ["Rahim","Karim","Salam","Hasan","Nasir","Jamil","Tarek","Imran","Farhad","Mizan","Fatema","Nasrin","Sumi","Ayesha","Rabeya"];
@@ -323,43 +314,11 @@ Deno.serve(async (req) => {
         ]);
         sList.push({ id:invId, cid:cust.id, date:ds, net, vat, gross, cash, num: inum });
       }
-      if (R() < 0.7) {
-        const sup = pick(suppliers);
-        const items = pickN(products, RI(1,3));
-        const pId = U();
-        let subtotal = 0;
-        const rows: [string,number,number,number,string][] = [];
-        for (const p of items) {
-          const qty = RI(10,40), price = p.cp, tot = qty*price;
-          subtotal += tot;
-          rows.push([p.id,qty,price,tot,p.iid]);
-        }
-        const vat = round2(subtotal * VAT_RATE);
-        const gross = round2(subtotal + vat);
-        pc++;
-        const pnum = `PUR-${fyTag}-${String(pc).padStart(5,"0")}`;
-        const credit = R() < 0.6;
-        pinv.push({ id:pId, purchase_number:pnum, purchase_date:ds, supplier_id:sup.id, branch_id:BR_DHK,
-          total_amount:gross, payment_method:credit?"credit":"cash", status:"approved", created_by:UID });
-        for (const r of rows) {
-          pitems.push({ id:U(), purchase_id:pId, product_id:r[4], quantity:r[1], unit_price:r[2], total:r[3] });
-          smov.push({ id:U(), product_id:r[4], item_id:r[4], warehouse_id:WH_DHK, branch_id:BR_DHK,
-            movement_type:"purchase", reference_type:"purchase", reference_id:pId, quantity:r[1] });
-        }
-        const cr = credit ? Ac.ap : Ac.cash;
-        addV(credit?"journal":"payment", ds, `Purchase ${pnum}`, [
-          [Ac.pur, subtotal, 0, `Purchase from ${sup.name}`],
-          [Ac.vatIn, vat, 0, `Input VAT ${pnum}`],
-          [cr, 0, gross, `Purchase ${pnum}`],
-        ]);
-        pList.push({ id:pId, sid:sup.id, date:ds, subtotal, vat, gross, credit, num: pnum });
-      }
+      // Purchase generation removed with Purchase module
     }
 
     await bulk("sales_invoices", sinv);
     await bulk("sales_invoice_items", sitems);
-    await bulk("purchases", pinv);
-    await bulk("purchase_items", pitems);
     await bulk("stock_movements", smov);
 
     // ===== Sales Returns (random 3% of invoices) =====
@@ -389,32 +348,8 @@ Deno.serve(async (req) => {
     await bulk("sales_returns", sret);
     await bulk("sales_return_items", sretItems);
 
-    // ===== Purchase Returns (random 4% of purchases) =====
-    const pret: any[] = [], pretItems: any[] = [];
-    let prc = 0;
-    for (const p of pList) {
-      if (R() > 0.04) continue;
-      const items = pitems.filter(x => x.purchase_id === p.id);
-      if (!items.length) continue;
-      const rid = U(); prc++;
-      const rnum = `PRN-${fyTag}-${String(prc).padStart(5,"0")}`;
-      const retDate = ymd(new Date(new Date(p.date).getTime() + RI(3,12)*86400000));
-      if (new Date(retDate) > end) continue;
-      let retTotal = 0;
-      for (const it of items) {
-        const rqty = Math.max(1, Math.floor(it.quantity * 0.2));
-        const tot = round2(rqty * it.unit_price);
-        retTotal += tot;
-        pretItems.push({ id:U(), purchase_return_id:rid, product_id:it.product_id, quantity:rqty, unit_price:it.unit_price, total:tot });
-      }
-      pret.push({ id:rid, return_number:rnum, return_date:retDate, purchase_id:p.id, supplier_id:p.sid, branch_id:BR_DHK, total_amount:retTotal, reason:"Damaged", status:"approved", created_by:UID });
-      addV("journal", retDate, `Purchase Return ${rnum}`, [
-        [Ac.ap, retTotal, 0, "AP reduction"],
-        [Ac.purRet, 0, retTotal, "Purchase return"],
-      ]);
-    }
-    await bulk("purchase_returns", pret);
-    await bulk("purchase_return_items", pretItems);
+    // Purchase Returns removed with Purchase module
+    const prc = 0;
 
     // ===== Customer Payments (with optional TDS 5%) =====
     const pays: any[] = [], allocs: any[] = [];
@@ -441,27 +376,7 @@ Deno.serve(async (req) => {
         addV("receipt", ymd(pd), `Receipt ${ref}`, entries);
       }
     }
-    // Supplier payments
-    for (const p of pList) {
-      if (!p.credit) continue;
-      if (R() < 0.72) {
-        const pd = new Date(new Date(p.date).getTime() + RI(10,50)*86400000);
-        if (pd > end) continue;
-        const fullPay = R() < 0.8;
-        const settled = fullPay ? p.gross : round2(p.gross * 0.5);
-        const pid = U(); pmc++;
-        const ref = `PAY-${fyTag}-${String(pmc).padStart(5,"0")}`;
-        const method = pick(["cash","bank"]);
-        pays.push({ id:pid, party_id:p.sid, party_type:"supplier", payment_date:ymd(pd),
-          amount:settled, payment_method:method, reference:ref, created_by:UID });
-        allocs.push({ id:U(), payment_id:pid, invoice_type:"purchase", invoice_id:p.id, allocated_amount:settled });
-        const cashCr = method === "cash" ? Ac.cash : Ac.bank;
-        addV("payment", ymd(pd), `Payment ${ref}`, [
-          [Ac.ap, settled, 0, `AP settle ${p.num}`],
-          [cashCr, 0, settled, "Supplier payment"],
-        ]);
-      }
-    }
+    // Supplier payments removed with Purchase module
     await bulk("party_payments", pays);
     await bulk("payment_allocations", allocs);
 
@@ -793,9 +708,7 @@ Deno.serve(async (req) => {
     {
       const seqRows = [
         { id:"sales_invoice", prefix:"INV", current_number:sc, year: Number(fyTag), description:"Sales Invoice" },
-        { id:"purchase", prefix:"PUR", current_number:pc, year: Number(fyTag), description:"Purchase" },
         { id:"sales_return", prefix:"SRN", current_number:src, year: Number(fyTag), description:"Sales Return" },
-        { id:"purchase_return", prefix:"PRN", current_number:prc, year: Number(fyTag), description:"Purchase Return" },
         { id:"production", prefix:"PRD", current_number:prdc, year: Number(fyTag), description:"Production" },
         { id:"stock_transfer", prefix:"STR", current_number:tc, year: Number(fyTag), description:"Stock Transfer" },
         { id:"journal_voucher", prefix:"JV", current_number:vc.JV, year: Number(fyTag), description:"Journal Voucher" },

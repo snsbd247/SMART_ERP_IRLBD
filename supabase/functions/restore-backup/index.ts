@@ -21,7 +21,7 @@ const TABLES_ORDER = [
   "product_categories",
   "products",
   "raw_materials",
-  "suppliers",
+  
   "customers",
   "custom_roles",
   "role_permissions",
@@ -34,10 +34,7 @@ const TABLES_ORDER = [
   "salary_structures",
   "acc_vouchers",
   "voucher_entries",
-  "purchases",
-  "purchase_items",
-  "purchase_returns",
-  "purchase_return_items",
+  // purchase tables removed with Purchase module
   "sales_invoices",
   "sales_invoice_items",
   "sales_returns",
