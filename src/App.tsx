@@ -44,6 +44,7 @@ import GrnDetailPage from "./pages/purchase-workflow/GrnDetailPage";
 import BillsPage from "./pages/purchase-workflow/BillsPage";
 import BillFormPage from "./pages/purchase-workflow/BillFormPage";
 import BillDetailPage from "./pages/purchase-workflow/BillDetailPage";
+import PurchaseReturnsPage from "./pages/purchase-workflow/PurchaseReturnsPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
@@ -230,6 +231,9 @@ const App = () => (
                 <Route path="/purchase-workflow/bills" element={<P perm="purchase.view"><BillsPage /></P>} />
                 <Route path="/purchase-workflow/bills/new" element={<P perm="purchase.view"><BillFormPage /></P>} />
                 <Route path="/purchase-workflow/bills/:id" element={<P perm="purchase.view"><BillDetailPage /></P>} />
+                <Route path="/purchase-workflow/returns" element={<P perm="purchase.view"><PurchaseReturnsPage /></P>} />
+
+
 
                 {/* ─── Inventory ────────────────────────────────── */}
                 <Route path="/inventory" element={<P perm="inventory.view"><InventoryPage /></P>} />
