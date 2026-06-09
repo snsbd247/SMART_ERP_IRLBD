@@ -178,12 +178,11 @@ class DemoConfigImportController extends BaseController
             'financial_years',
         ];
 
-        DB::beginTransaction();
+        $driver = DB::connection()->getDriverName();
+        $isMysql = $driver === 'mysql';
+
         try {
-            // Disable FK checks briefly to allow CoA truncation even when other modules
-            // hold UUID references that we will NOT clear (they will simply orphan-link
-            // until re-import resolves them — re-import will recreate the same codes).
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
+            if ($isMysql) DB::statement('SET FOREIGN_KEY_CHECKS=0');
             foreach ($cleanups as $tbl) {
                 if (Schema::hasTable($tbl)) {
                     DB::table($tbl)->delete();
@@ -205,11 +204,11 @@ class DemoConfigImportController extends BaseController
                     'github_deploy_sync_settings',
                 ])->delete();
             }
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
-            DB::commit();
+            if ($isMysql) DB::statement('SET FOREIGN_KEY_CHECKS=1');
         } catch (\Throwable $e) {
-            DB::rollBack();
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
+            if ($isMysql) {
+                try { DB::statement('SET FOREIGN_KEY_CHECKS=1'); } catch (\Throwable $ignored) {}
+            }
             throw $e;
         }
     }
