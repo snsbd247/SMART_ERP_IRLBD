@@ -1484,6 +1484,215 @@ export type Database = {
         }
         Relationships: []
       }
+      grn_items_v2: {
+        Row: {
+          accepted_qty: number
+          batch_no: string | null
+          created_at: string
+          expiry_date: string | null
+          grn_id: string
+          id: string
+          item_description: string
+          item_id: string | null
+          line_no: number
+          line_value: number
+          ordered_qty: number
+          po_item_id: string | null
+          received_qty: number
+          rejected_qty: number
+          remarks: string | null
+          unit_cost: number
+          unit_id: string | null
+        }
+        Insert: {
+          accepted_qty?: number
+          batch_no?: string | null
+          created_at?: string
+          expiry_date?: string | null
+          grn_id: string
+          id?: string
+          item_description: string
+          item_id?: string | null
+          line_no: number
+          line_value?: number
+          ordered_qty?: number
+          po_item_id?: string | null
+          received_qty?: number
+          rejected_qty?: number
+          remarks?: string | null
+          unit_cost?: number
+          unit_id?: string | null
+        }
+        Update: {
+          accepted_qty?: number
+          batch_no?: string | null
+          created_at?: string
+          expiry_date?: string | null
+          grn_id?: string
+          id?: string
+          item_description?: string
+          item_id?: string | null
+          line_no?: number
+          line_value?: number
+          ordered_qty?: number
+          po_item_id?: string | null
+          received_qty?: number
+          rejected_qty?: number
+          remarks?: string | null
+          unit_cost?: number
+          unit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grn_items_v2_grn_id_fkey"
+            columns: ["grn_id"]
+            isOneToOne: false
+            referencedRelation: "grns_v2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_items_v2_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "item_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_items_v2_po_item_id_fkey"
+            columns: ["po_item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_order_items_v2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_items_v2_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grns_v2: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          auto_post: boolean
+          branch_id: string | null
+          challan_date: string | null
+          challan_no: string | null
+          created_at: string
+          created_by: string | null
+          freight_amount: number
+          grand_total: number
+          grn_date: string
+          grn_no: string
+          id: string
+          inspected_by_name: string | null
+          other_charges: number
+          po_id: string | null
+          received_by_name: string | null
+          remarks: string | null
+          status: string
+          subtotal: number
+          supplier_id: string
+          updated_at: string
+          vehicle_no: string | null
+          voucher_id: string | null
+          warehouse_id: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          auto_post?: boolean
+          branch_id?: string | null
+          challan_date?: string | null
+          challan_no?: string | null
+          created_at?: string
+          created_by?: string | null
+          freight_amount?: number
+          grand_total?: number
+          grn_date?: string
+          grn_no: string
+          id?: string
+          inspected_by_name?: string | null
+          other_charges?: number
+          po_id?: string | null
+          received_by_name?: string | null
+          remarks?: string | null
+          status?: string
+          subtotal?: number
+          supplier_id: string
+          updated_at?: string
+          vehicle_no?: string | null
+          voucher_id?: string | null
+          warehouse_id?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          auto_post?: boolean
+          branch_id?: string | null
+          challan_date?: string | null
+          challan_no?: string | null
+          created_at?: string
+          created_by?: string | null
+          freight_amount?: number
+          grand_total?: number
+          grn_date?: string
+          grn_no?: string
+          id?: string
+          inspected_by_name?: string | null
+          other_charges?: number
+          po_id?: string | null
+          received_by_name?: string | null
+          remarks?: string | null
+          status?: string
+          subtotal?: number
+          supplier_id?: string
+          updated_at?: string
+          vehicle_no?: string | null
+          voucher_id?: string | null
+          warehouse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grns_v2_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grns_v2_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders_v2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grns_v2_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grns_v2_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "acc_vouchers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grns_v2_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ho_receives: {
         Row: {
           created_at: string

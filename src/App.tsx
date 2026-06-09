@@ -49,6 +49,9 @@ import PurchaseRequisitionDetailPage from "./pages/purchase/RequisitionDetailPag
 import PurchaseOrdersV2Page from "./pages/purchase/PurchaseOrdersPage";
 import PurchaseOrderV2FormPage from "./pages/purchase/PurchaseOrderFormPage";
 import PurchaseOrderV2DetailPage from "./pages/purchase/PurchaseOrderDetailPage";
+import GrnsPage from "./pages/purchase/GrnsPage";
+import GrnFormPage from "./pages/purchase/GrnFormPage";
+import GrnDetailPage from "./pages/purchase/GrnDetailPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
@@ -229,6 +232,10 @@ const App = () => (
                 <Route path="/purchase/orders/new" element={<PurchaseOrderV2FormPage />} />
                 <Route path="/purchase/orders/:id" element={<PurchaseOrderV2DetailPage />} />
                 <Route path="/purchase/orders/:id/edit" element={<PurchaseOrderV2FormPage />} />
+                <Route path="/purchase/grns" element={<GrnsPage />} />
+                <Route path="/purchase/grns/new" element={<GrnFormPage />} />
+                <Route path="/purchase/grns/:id" element={<GrnDetailPage />} />
+                <Route path="/purchase/grns/:id/edit" element={<GrnFormPage />} />
 
 
 
