@@ -14,6 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Eye, Trash2 } from "lucide-react";
 import { newPRNumber } from "@/lib/purchase-workflow-utils";
+import { logCreate } from "@/lib/audit-utils";
+import { usePermission } from "@/hooks/usePermission";
 
 interface PR { id: string; pr_number: string; pr_date: string; status: string; notes: string | null; created_at: string; }
 interface Product { id: string; product_name: string; product_code: string; }
@@ -26,9 +28,11 @@ const statusBadge = (s: string) => {
 
 export default function RequisitionsPage() {
   const nav = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { userBranchId } = useBranch();
   const { toast } = useToast();
+  const { can, isSuperAdmin } = usePermission();
+  const canCreate = isSuperAdmin || can("purchase.requisition.create") || can("purchase.create");
   const [list, setList] = useState<PR[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [open, setOpen] = useState(false);
@@ -67,6 +71,12 @@ export default function RequisitionsPage() {
       }));
       const { error: e2 } = await supabase.from("purchase_requisition_items" as any).insert(items);
       if (e2) throw e2;
+      await logCreate({
+        userId: user?.id, userName: profile?.name,
+        module: "purchase_requisition", recordId: (pr as any).id,
+        newData: { pr_number, pr_date: date, items: items.length },
+        details: `Requisition ${pr_number} created with ${items.length} item(s)`,
+      });
       toast({ title: "Requisition created", description: pr_number });
       setOpen(false); setRows([{ id: "1", product_id: "", qty_required: 0, remarks: "" }]); setNotes("");
       load();
@@ -80,7 +90,7 @@ export default function RequisitionsPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Purchase Requisitions</CardTitle>
-          <Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" /> New Requisition</Button>
+          <Button onClick={() => setOpen(true)} disabled={!canCreate} title={canCreate ? "" : "Requires purchase.requisition.create permission"}><Plus className="w-4 h-4 mr-2" /> New Requisition</Button>
         </CardHeader>
         <CardContent>
           <Table>
