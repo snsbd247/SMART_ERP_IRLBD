@@ -869,22 +869,30 @@ const BackupPage = () => {
 
               {demoResults && (
                 <div className="space-y-2 pt-2">
+                  {isDryRun && (
+                    <div className="p-2 rounded border text-xs font-medium bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400">
+                      🔍 Dry-Run Preview — nothing has been saved. Numbers below show what <em>would</em> happen on a real import.
+                    </div>
+                  )}
                   <div className={`p-2 rounded border text-xs font-medium ${
                     demoOverall === "success"
                       ? "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400"
                       : "bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400"
                   }`}>
-                    {demoOverall === "success" ? "✔ Import complete" : "⚠ Import finished with warnings"}
+                    {demoOverall === "success"
+                      ? (isDryRun ? "✔ Preview ready" : "✔ Import complete")
+                      : (isDryRun ? "⚠ Preview finished with warnings" : "⚠ Import finished with warnings")}
                     {" — "}
-                    {demoResults.reduce((n, r) => n + r.inserted, 0)} new rows added.
+                    {demoResults.reduce((n, r) => n + r.inserted, 0)} {isDryRun ? "would be inserted" : "new rows added"},{" "}
+                    {demoResults.reduce((n, r) => n + r.skipped, 0)} {isDryRun ? "would be updated" : "existing rows overwritten"}.
                   </div>
                   <div className="rounded border border-border overflow-hidden">
                     <table className="w-full text-xs">
                       <thead className="bg-muted/50 text-muted-foreground">
                         <tr>
                           <th className="text-left px-2 py-1.5">Section</th>
-                          <th className="text-right px-2 py-1.5">Inserted</th>
-                          <th className="text-right px-2 py-1.5">Skipped</th>
+                          <th className="text-right px-2 py-1.5">{isDryRun ? "Would insert" : "Inserted"}</th>
+                          <th className="text-right px-2 py-1.5">{isDryRun ? "Would update" : "Updated"}</th>
                           <th className="text-right px-2 py-1.5">Attempted</th>
                           <th className="text-center px-2 py-1.5">Status</th>
                         </tr>
@@ -917,9 +925,14 @@ const BackupPage = () => {
                       ))}
                     </div>
                   )}
-                  <p className="text-[10px] text-muted-foreground pt-1">Audit log entry recorded under <code>module=backup</code>, <code>action=demo_config_import</code>.</p>
+                  {!isDryRun && (
+                    <p className="text-[10px] text-muted-foreground pt-1">
+                      Audit log entry recorded under <code>module=backup</code>, <code>action=demo_config_import</code> (or <code>demo_config_reset_import</code>) with timestamp, user, mode and the list of imported sections.
+                    </p>
+                  )}
                 </div>
               )}
+
             </CardContent>
           </Card>
         </TabsContent>
