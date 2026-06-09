@@ -146,7 +146,7 @@ const navGroups: NavGroup[] = [
       { to: "/sales-workflow/delivery-challan", label: "Delivery Challans", icon: FileText, permission: "sales.view" },
       { to: "/sales-workflow/customer-receive", label: "Customer Receive", icon: UserCheck, permission: "sales.edit" },
       { to: "/sales-workflow/ho-receive", label: "HO Receive", icon: Building2, permission: "sales.edit" },
-      { to: "/sales-workflow/invoice-queue", label: "Invoice Queue", icon: FileCheck, permission: "sales.add" },
+      { to: "/sales-workflow/invoice-queue", label: "Invoice Queue", icon: FileCheck, permission: "sales.create" },
       { to: "/sales-workflow/invoices", label: "Invoices (V2)", icon: Receipt, permission: "sales.view" },
       { to: "/sales-workflow/tds", label: "TDS Register", icon: DollarSign, permission: "sales.view" },
       { to: "/sales-workflow/reports", label: "Workflow Reports", icon: BarChart3, permission: "reports.view" },
