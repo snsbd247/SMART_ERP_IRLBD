@@ -75,7 +75,7 @@ const Dashboard = () => {
     const [salesV1Res, salesV2Res, billsV2Res, auditRes, recentInvV2Res, recentInvV1Res, recentPayRes, paymentsRes, voucherRes] = await Promise.all([
       supabase.from("sales_invoices").select("total_amount, net_amount, discount, invoice_date, status"),
       supabase.from("sales_invoices_v2").select("total_amount, net_amount, invoice_date, status"),
-      supabase.from("supplier_bills_v2").select("total_amount, bill_date, status"),
+      supabase.from("supplier_bills_v2").select("grand_total, bill_date, status"),
       supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(8),
       supabase.from("sales_invoices_v2").select("id, invoice_number, invoice_date, total_amount, net_amount, status, customers(name)").order("created_at", { ascending: false }).limit(5),
       supabase.from("sales_invoices").select("id, invoice_number, invoice_date, total_amount, net_amount, status, customers(name)").order("created_at", { ascending: false }).limit(5),
@@ -88,7 +88,7 @@ const Dashboard = () => {
     const salesV2 = salesV2Res.data || [];
     const sales = [...salesV1, ...salesV2];
     const purchases = (billsV2Res.data || []).map((b: any) => ({
-      total_amount: Number(b.total_amount) || 0,
+      total_amount: Number(b.grand_total) || 0,
       purchase_date: b.bill_date,
       status: b.status,
     }));
