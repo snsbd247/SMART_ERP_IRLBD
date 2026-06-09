@@ -1203,6 +1203,10 @@ export type Database = {
       employees: {
         Row: {
           address: string | null
+          approval_notes: string | null
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
           branch_id: string | null
           created_at: string
           department_id: string | null
@@ -1227,6 +1231,10 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          approval_notes?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           branch_id?: string | null
           created_at?: string
           department_id?: string | null
@@ -1251,6 +1259,10 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          approval_notes?: string | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           branch_id?: string | null
           created_at?: string
           department_id?: string | null
