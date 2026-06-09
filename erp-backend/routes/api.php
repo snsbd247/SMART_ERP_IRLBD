@@ -39,6 +39,9 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
 
     Route::prefix('v1')->group(function () {
 
+        // ─── Dashboard summary ──────────────────────────────────
+        Route::get('dashboard/summary', [\App\Http\Controllers\DashboardController::class, 'summary']);
+
         // ─── Accounting ─────────────────────────────────────────
         // Chart of Accounts
         Route::middleware('permission:accounts.view')->group(function () {
