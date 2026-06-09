@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +18,6 @@ const ACCOUNT_TYPES = ["asset", "liability", "income", "expense", "equity"] as c
 
 const ChartOfAccounts = () => {
   const { toast } = useToast();
-  const { isSuperAdmin } = useAuth();
 
   // Filters
   const [financialYears, setFinancialYears] = useState<{ id: string; name: string }[]>([]);
@@ -45,8 +43,6 @@ const ChartOfAccounts = () => {
   const [formCode, setFormCode] = useState("");
   const [formType, setFormType] = useState<string>("asset");
   const [formParent, setFormParent] = useState<string>("");
-  const [formBalance, setFormBalance] = useState("0");
-  const [formBalType, setFormBalType] = useState<string>("debit");
   const [saving, setSaving] = useState(false);
 
   // Ledger dialog
@@ -64,14 +60,14 @@ const ChartOfAccounts = () => {
 
   const openCreate = () => {
     setEditAcc(null);
-    setFormName(""); setFormCode(""); setFormType("asset"); setFormParent(""); setFormBalance("0"); setFormBalType("debit");
+    setFormName(""); setFormCode(""); setFormType("asset"); setFormParent("");
     setDialogOpen(true);
   };
 
   const openEdit = (a: AccountWithBalance) => {
     setEditAcc(a);
     setFormName(a.account_name); setFormCode(a.account_code); setFormType(a.account_type);
-    setFormParent(a.parent_id || ""); setFormBalance(String(a.opening_balance)); setFormBalType(a.opening_balance_type);
+    setFormParent(a.parent_id || "");
     setDialogOpen(true);
   };
 
@@ -139,20 +135,14 @@ const ChartOfAccounts = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Only Super Admin can set opening balance
-      if (isSuperAdmin) {
-        payload.opening_balance = parseFloat(formBalance) || 0;
-        payload.opening_balance_type = formBalType;
-      }
+      // Ledger opening balances are kept at zero; historical balances must be posted by voucher.
+      payload.opening_balance = 0;
+      payload.opening_balance_type = "debit";
 
       if (editAcc) {
         const { error } = await supabase.from("chart_of_accounts").update(payload).eq("id", editAcc.id);
         if (error) throw error;
       } else {
-        if (!isSuperAdmin) {
-          payload.opening_balance = 0;
-          payload.opening_balance_type = "debit";
-        }
         const { error } = await supabase.from("chart_of_accounts").insert(payload);
         if (error) throw error;
       }
@@ -284,27 +274,9 @@ const ChartOfAccounts = () => {
                 />
               </div>
             </div>
-            {/* Opening Balance - Super Admin Only */}
-            {isSuperAdmin && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Opening Balance</Label><Input type="number" value={formBalance} onChange={(e) => setFormBalance(e.target.value)} /></div>
-                <div className="space-y-2">
-                  <Label>Balance Type</Label>
-                  <Select value={formBalType} onValueChange={setFormBalType}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="debit">Debit</SelectItem>
-                      <SelectItem value="credit">Credit</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-            {!isSuperAdmin && (
-              <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                Opening balance can only be set by Super Admin.
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+              Opening balance is fixed at 0. Post any historical balance through an opening journal voucher.
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
