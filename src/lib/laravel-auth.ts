@@ -65,26 +65,37 @@ export function isSupabaseDisabledError(err: unknown): boolean {
   return code === 503 || /supabase is disabled|laravel[_ ]only/i.test(msg);
 }
 
-export function getLaravelToken(): string | null {
-  const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
-  if (!token) return null;
-  // Browser Headers only accept ISO-8859-1-safe values. If an old placeholder
-  // or copied Bengali text was stored as token, remove it before fetch().
-  if (!/^[\x20-\x7E]+$/.test(token)) {
+// Auth tokens are stored in sessionStorage so closing the browser/tab logs the
+// user out. Any legacy localStorage tokens are cleared on first read.
+function clearLegacyLocalTokens() {
+  try {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(LEGACY_TOKEN_KEY);
+  } catch { /* ignore */ }
+}
+
+export function getLaravelToken(): string | null {
+  if (typeof window === "undefined") return null;
+  clearLegacyLocalTokens();
+  const token = sessionStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(LEGACY_TOKEN_KEY);
+  if (!token) return null;
+  if (!/^[\x20-\x7E]+$/.test(token)) {
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(LEGACY_TOKEN_KEY);
     return null;
   }
   return token;
 }
 
 export function setLaravelToken(token: string | null) {
+  if (typeof window === "undefined") return;
+  clearLegacyLocalTokens();
   if (token) {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(LEGACY_TOKEN_KEY, token);
+    sessionStorage.setItem(TOKEN_KEY, token);
+    sessionStorage.setItem(LEGACY_TOKEN_KEY, token);
   } else {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(LEGACY_TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(LEGACY_TOKEN_KEY);
   }
 }
 
