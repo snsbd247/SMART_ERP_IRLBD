@@ -314,43 +314,11 @@ Deno.serve(async (req) => {
         ]);
         sList.push({ id:invId, cid:cust.id, date:ds, net, vat, gross, cash, num: inum });
       }
-      if (R() < 0.7) {
-        const sup = pick(suppliers);
-        const items = pickN(products, RI(1,3));
-        const pId = U();
-        let subtotal = 0;
-        const rows: [string,number,number,number,string][] = [];
-        for (const p of items) {
-          const qty = RI(10,40), price = p.cp, tot = qty*price;
-          subtotal += tot;
-          rows.push([p.id,qty,price,tot,p.iid]);
-        }
-        const vat = round2(subtotal * VAT_RATE);
-        const gross = round2(subtotal + vat);
-        pc++;
-        const pnum = `PUR-${fyTag}-${String(pc).padStart(5,"0")}`;
-        const credit = R() < 0.6;
-        pinv.push({ id:pId, purchase_number:pnum, purchase_date:ds, supplier_id:sup.id, branch_id:BR_DHK,
-          total_amount:gross, payment_method:credit?"credit":"cash", status:"approved", created_by:UID });
-        for (const r of rows) {
-          pitems.push({ id:U(), purchase_id:pId, product_id:r[4], quantity:r[1], unit_price:r[2], total:r[3] });
-          smov.push({ id:U(), product_id:r[4], item_id:r[4], warehouse_id:WH_DHK, branch_id:BR_DHK,
-            movement_type:"purchase", reference_type:"purchase", reference_id:pId, quantity:r[1] });
-        }
-        const cr = credit ? Ac.ap : Ac.cash;
-        addV(credit?"journal":"payment", ds, `Purchase ${pnum}`, [
-          [Ac.pur, subtotal, 0, `Purchase from ${sup.name}`],
-          [Ac.vatIn, vat, 0, `Input VAT ${pnum}`],
-          [cr, 0, gross, `Purchase ${pnum}`],
-        ]);
-        pList.push({ id:pId, sid:sup.id, date:ds, subtotal, vat, gross, credit, num: pnum });
-      }
+      // Purchase generation removed with Purchase module
     }
 
     await bulk("sales_invoices", sinv);
     await bulk("sales_invoice_items", sitems);
-    await bulk("purchases", pinv);
-    await bulk("purchase_items", pitems);
     await bulk("stock_movements", smov);
 
     // ===== Sales Returns (random 3% of invoices) =====
