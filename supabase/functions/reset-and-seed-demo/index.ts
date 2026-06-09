@@ -166,12 +166,13 @@ Deno.serve(async (req) => {
     ]);
 
     // Units
-    const ud: [string,string][] = [["PCS","Pieces"],["KG","Kilogram"],["LTR","Litre"],["BOX","Box"],["MTR","Meter"]];
+    // Units (plastic manufacturing: PCS for finished, KG for resin, BAG/DRUM for bulk raw, BOX for packaging)
+    const ud: [string,string][] = [["PCS","Pieces"],["KG","Kilogram"],["BAG","Bag (25kg)"],["DRUM","Drum (200L)"],["BOX","Carton/Box"],["MTR","Meter"]];
     const uIds: Record<string,string> = {};
     await bulk("units", ud.map(([a,n]) => { const id=U(); uIds[a]=id; return {id,name:n,abbreviation:a}; }));
 
-    // Categories
-    const cd = ["Electronics","Office Supplies","Furniture","Stationery","Hardware"];
+    // Categories — plastic moulding products
+    const cd = ["Bottles","Caps","Plugs","Discs","Raw Materials","Additives","Packaging"];
     const cIds: Record<string,string> = {};
     const catRows = cd.map(n => { const id=U(); cIds[n]=id; return {id,name:n}; });
     await bulk("product_categories", catRows);
