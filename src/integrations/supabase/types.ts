@@ -1533,6 +1533,13 @@ export type Database = {
             referencedRelation: "purchase_order_items_v2"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "grn_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
         ]
       }
       grns: {
@@ -1593,6 +1600,13 @@ export type Database = {
             columns: ["po_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders_v2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grns_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -2901,7 +2915,15 @@ export type Database = {
           vat_amount?: number
           voucher_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "purchase_bills_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       purchase_items: {
         Row: {
@@ -3044,6 +3066,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "poi_v2_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "purchase_order_items_v2_po_id_fkey"
             columns: ["po_id"]
             isOneToOne: false
@@ -3184,6 +3213,13 @@ export type Database = {
             referencedRelation: "purchase_requisitions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "purchase_orders_v2_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       purchase_requisition_items: {
@@ -3215,6 +3251,13 @@ export type Database = {
           remarks?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pr_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchase_requisition_items_pr_id_fkey"
             columns: ["pr_id"]
