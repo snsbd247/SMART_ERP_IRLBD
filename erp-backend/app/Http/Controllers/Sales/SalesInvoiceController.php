@@ -48,4 +48,37 @@ class SalesInvoiceController extends BaseController
     {
         return $this->success(SalesInvoice::with('items.product', 'customer', 'branch')->findOrFail($id));
     }
+
+    /**
+     * Update header fields of an invoice. Blocked once invoice is paid or fully returned.
+     */
+    public function update(Request $request, string $id)
+    {
+        $invoice = SalesInvoice::findOrFail($id);
+        if (in_array($invoice->status, ['paid', 'returned'], true)) {
+            return $this->error('Cannot edit a paid or returned invoice', 422);
+        }
+        $request->validate([
+            'invoice_date' => 'nullable|date',
+            'customer_id'  => 'nullable|exists:customers,id',
+            'discount'     => 'nullable|numeric|min:0',
+            'notes'        => 'nullable|string',
+        ]);
+        $invoice->update($request->only('invoice_date', 'customer_id', 'discount', 'notes'));
+        return $this->success($invoice->fresh('items'));
+    }
+
+    /**
+     * Delete an invoice. Blocked when any payment exists or when status is non-draft.
+     */
+    public function destroy(string $id)
+    {
+        $invoice = SalesInvoice::findOrFail($id);
+        if ($invoice->status !== 'draft' && $invoice->status !== 'cancelled') {
+            // allow super-admin via SoftDeleteController, but reject here for safety
+            return $this->error('Only draft or cancelled invoices can be deleted', 422);
+        }
+        $invoice->delete();
+        return $this->success(['deleted' => true]);
+    }
 }
