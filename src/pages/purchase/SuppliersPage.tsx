@@ -46,11 +46,19 @@ const SuppliersPage = () => {
     setLoading(true);
     const [s, a, b] = await Promise.all([
       supabase.from("suppliers" as any).select("*").order("name"),
-      supabase.from("chart_of_accounts").select("id,code,name").eq("is_active", true).order("code"),
+      supabase
+        .from("chart_of_accounts")
+        .select("id, account_code, account_name, parent_id, account_type")
+        .eq("is_active", true)
+        .eq("account_type", "liability")
+        .order("account_code"),
       supabase.from("branches").select("id,name").order("name"),
     ]);
     setItems((s.data || []) as any);
-    setAccounts(a.data || []);
+    // Restrict payable-account dropdown to descendants of "Accounts & Other Payable" (2210)
+    const all = (a.data || []) as any[];
+    const ap = all.find((x) => x.account_code === "2210");
+    setAccounts(ap ? all.filter((x) => x.parent_id === ap.id) : all);
     setBranches(b.data || []);
     setLoading(false);
   };
@@ -68,10 +76,15 @@ const SuppliersPage = () => {
         const { error } = await supabase.from("suppliers" as any).update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
+        // Auto-create a ledger under "Accounts & Other Payable" if none chosen
+        if (!payload.payable_account_id) {
+          const ledgerId = await createSupplierLedger(String(form.name).trim());
+          if (ledgerId) payload.payable_account_id = ledgerId;
+        }
         const { error } = await supabase.from("suppliers" as any).insert(payload);
         if (error) throw error;
       }
-      toast({ title: editing ? "Supplier updated" : "Supplier created" });
+      toast({ title: editing ? "Supplier updated" : "Supplier created", description: !editing && payload.payable_account_id ? "Linked ledger under Accounts & Other Payable" : undefined });
       setOpen(false); load();
     } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
     finally { setSaving(false); }
