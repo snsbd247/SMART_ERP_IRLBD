@@ -57,7 +57,6 @@ const CustomerProfilePage = () => {
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [vatChallans, setVatChallans] = useState<any[]>([]);
   const [deliveryChallans, setDeliveryChallans] = useState<any[]>([]);
-  const [salesV2, setSalesV2] = useState<any[]>([]);
   const [newNote, setNewNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState("");
