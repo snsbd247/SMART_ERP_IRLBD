@@ -540,6 +540,7 @@ export type Database = {
       company_settings: {
         Row: {
           address: string | null
+          bin_number: string | null
           company_logo_url: string | null
           company_name: string
           created_at: string
@@ -558,6 +559,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          bin_number?: string | null
           company_logo_url?: string | null
           company_name?: string
           created_at?: string
@@ -576,6 +578,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          bin_number?: string | null
           company_logo_url?: string | null
           company_name?: string
           created_at?: string
