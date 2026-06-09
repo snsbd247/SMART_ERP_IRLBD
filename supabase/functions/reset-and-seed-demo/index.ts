@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
       { id: U(), name: `${d.name} - Section A`, department_id: d.id, branch_id: BR_DHK, status: "active" },
       { id: U(), name: `${d.name} - Section B`, department_id: d.id, branch_id: BR_DHK, status: "active" },
     ]);
-    await bulk("sections", sectionRows);
+    await db.from("sections").insert(sectionRows);
     const SEC = sectionRows[0].id;
 
     const shiftRows = [
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
       { id: U(), shift_name: "Evening",   start_time: "14:00:00", end_time: "22:00:00", late_after_minutes: 10 },
       { id: U(), shift_name: "Night",     start_time: "22:00:00", end_time: "06:00:00", late_after_minutes: 15 },
     ];
-    await bulk("shifts", shiftRows);
+    await db.from("shifts").insert(shiftRows);
     const SHIFT = shiftRows[1].id;
 
     // Leave types
