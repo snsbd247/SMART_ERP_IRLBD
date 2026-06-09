@@ -324,8 +324,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Recent Returns (consolidated audit widget) */}
-      <RecentReturnsWidget />
 
       {/* Recent Activity */}
       <Card>
