@@ -44,7 +44,7 @@ const ROUTE_LABELS: Record<string, string> = {
 const PARENT_GROUPS: Record<string, { label: string; path?: string }> = {
   "/accounts": { label: "Accounts" },
   "/sales": { label: "Sales" },
-  "/purchase": { label: "Purchase" },
+  
   "/inventory": { label: "Inventory" },
   "/manufacturing": { label: "Manufacturing" },
   "/reports": { label: "Reports" },
