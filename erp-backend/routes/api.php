@@ -194,6 +194,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::get('employees/{id}/education', fn($id) => response()->json(['success' => true, 'data' => \App\Models\EmployeeEducation::where('employee_id', $id)->get()]));
             Route::get('employees/{id}/experience', fn($id) => response()->json(['success' => true, 'data' => \App\Models\EmployeeExperience::where('employee_id', $id)->get()]));
             Route::get('employees/{id}/emergency-contacts', fn($id) => response()->json(['success' => true, 'data' => \App\Models\EmployeeEmergencyContact::where('employee_id', $id)->get()]));
+            Route::get('employees/{id}/linked-user', [\App\Http\Controllers\HRM\EmployeeController::class, 'getLinkedUser']);
             Route::get('attendance', [\App\Http\Controllers\HRM\AttendanceController::class, 'index']);
             Route::get('departments', [\App\Http\Controllers\HRM\DepartmentController::class, 'index']);
             Route::get('departments/{id}', [\App\Http\Controllers\HRM\DepartmentController::class, 'show']);
@@ -219,7 +220,6 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:hrm.create')->group(function () {
             Route::post('employees', [\App\Http\Controllers\HRM\EmployeeController::class, 'store']);
             Route::post('employees/{id}/upload-photo', [\App\Http\Controllers\HRM\EmployeeController::class, 'uploadPhoto']);
-            Route::get('employees/{id}/linked-user', [\App\Http\Controllers\HRM\EmployeeController::class, 'getLinkedUser']);
             Route::post('attendance', [\App\Http\Controllers\HRM\AttendanceController::class, 'store']);
             Route::post('attendance/bulk', [\App\Http\Controllers\HRM\AttendanceController::class, 'bulkStore']);
             Route::post('departments', [\App\Http\Controllers\HRM\DepartmentController::class, 'store']);
