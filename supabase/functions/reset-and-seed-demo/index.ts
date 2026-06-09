@@ -667,7 +667,7 @@ Deno.serve(async (req) => {
       });
       for (const r of rms) {
         bomItemsRows.push({
-          id:U(), bom_id:bid, material_id:r.id, quantity:2, unit:"PCS",
+          id:U(), bom_id:bid, material_id:r.id, quantity:2, unit:r.unit,
           wastage_pct:5, unit_price:r.cp,
         });
       }
