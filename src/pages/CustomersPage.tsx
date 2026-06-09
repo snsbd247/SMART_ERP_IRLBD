@@ -27,6 +27,7 @@ interface Customer {
   email: string | null;
   phone: string | null;
   address: string | null;
+  bin_number: string | null;
   status: string;
 }
 
