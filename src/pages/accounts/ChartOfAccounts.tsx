@@ -75,13 +75,65 @@ const ChartOfAccounts = () => {
     setDialogOpen(true);
   };
 
+  // Filter accounts by search (name OR code). Always include ancestors of matches so the tree stays valid.
+  const filteredAccounts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return accounts;
+    const byId = new Map(accounts.map((a) => [a.id, a]));
+    const keep = new Set<string>();
+    accounts.forEach((a) => {
+      if (a.account_name.toLowerCase().includes(q) || a.account_code.toLowerCase().includes(q)) {
+        let cur: AccountWithBalance | undefined = a;
+        while (cur) {
+          keep.add(cur.id);
+          cur = cur.parent_id ? byId.get(cur.parent_id) : undefined;
+        }
+      }
+    });
+    return accounts.filter((a) => keep.has(a.id));
+  }, [accounts, search]);
+
   const handleSave = async () => {
-    if (!formName.trim() || !formCode.trim()) return;
+    const name = formName.trim();
+    const code = formCode.trim();
+    if (!name || !code) {
+      toast({ title: "Validation", description: "Account name and code are required.", variant: "destructive" });
+      return;
+    }
+    // Enforce 4-digit numeric code (Bangladesh CoA standard)
+    if (!/^\d{4}$/.test(code)) {
+      toast({ title: "Invalid code", description: "Account code must be exactly 4 digits (e.g. 1201).", variant: "destructive" });
+      return;
+    }
+    // Prevent duplicates (DB has unique constraint, but catch early)
+    const dup = accounts.find((a) => a.account_code === code && a.id !== editAcc?.id);
+    if (dup) {
+      toast({ title: "Duplicate code", description: `Code ${code} already used by "${dup.account_name}".`, variant: "destructive" });
+      return;
+    }
+    // Prevent self/cyclic parent
+    if (formParent && editAcc && formParent === editAcc.id) {
+      toast({ title: "Invalid parent", description: "An account cannot be its own parent.", variant: "destructive" });
+      return;
+    }
+    // Parent type must match (a 4-digit "1xxx" account belongs under an asset parent, etc.)
+    if (formParent) {
+      const parent = accounts.find((a) => a.id === formParent);
+      if (parent && parent.account_type !== formType) {
+        toast({
+          title: "Parent type mismatch",
+          description: `Parent "${parent.account_name}" is ${parent.account_type}; child must share the same type.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const payload: any = {
-        account_name: formName,
-        account_code: formCode,
+        account_name: name,
+        account_code: code,
         account_type: formType,
         parent_id: formParent || null,
         updated_at: new Date().toISOString(),
@@ -97,10 +149,7 @@ const ChartOfAccounts = () => {
         const { error } = await supabase.from("chart_of_accounts").update(payload).eq("id", editAcc.id);
         if (error) throw error;
       } else {
-        if (isSuperAdmin) {
-          payload.opening_balance = parseFloat(formBalance) || 0;
-          payload.opening_balance_type = formBalType;
-        } else {
+        if (!isSuperAdmin) {
           payload.opening_balance = 0;
           payload.opening_balance_type = "debit";
         }
