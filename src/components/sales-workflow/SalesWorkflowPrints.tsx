@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { PrintLayout } from "@/components/PrintLayout";
-import { useCompanySettings } from "@/hooks/useCompanySettings";
+
 
 const num = (n: any) => Number(n || 0).toFixed(2);
 const th: any = { background: "#f0f0f0", fontWeight: 600, textAlign: "left", padding: "8px 10px", border: "1px solid #ddd", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.3px" };
