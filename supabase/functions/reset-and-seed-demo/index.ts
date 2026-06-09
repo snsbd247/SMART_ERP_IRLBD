@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
     })));
     await bulk("item_master", products.map(p => ({
       id:p.iid, item_code:p.code, item_name:p.name, item_type:"product", is_stock_item:true,
-      opening_stock:p.op, category_id:cIds[p.cat], unit_id:uIds[p.unit],
+      opening_stock:p.op, category_id:cIds[p.cat], unit_id:uIds[p.unit], stock_group_id: catToGroup(p.cat),
       cost_price:p.cp, selling_price:p.sp, min_stock_level:10, status:"active",
     })));
 
