@@ -72,13 +72,21 @@ const CustomerProfilePage = () => {
     if (!id) return;
     setLoading(true);
 
-    const [custRes, invRes, retRes, notesRes, payRes] = await Promise.all([
+    const [custRes, invRes, retRes, notesRes, payRes, poRes, vcRes, dcRes, invV2Res] = await Promise.all([
       supabase.from("customers").select("*").eq("id", id).single(),
       supabase.from("sales_invoices").select("*").eq("customer_id", id).order("invoice_date", { ascending: true }),
       supabase.from("sales_returns").select("*").eq("customer_id", id).order("return_date", { ascending: true }),
       supabase.from("party_notes" as any).select("*").eq("party_type", "customer").eq("party_id", id).order("created_at", { ascending: false }),
       supabase.from("party_payments" as any).select("*").eq("party_type", "customer").eq("party_id", id).order("payment_date", { ascending: false }),
+      supabase.from("purchase_orders").select("*").eq("customer_id", id).order("po_date", { ascending: false }),
+      supabase.from("vat_challans").select("*").eq("customer_id", id).order("challan_date", { ascending: false }),
+      supabase.from("delivery_challans").select("*").eq("customer_id", id).order("dc_date", { ascending: false }),
+      supabase.from("sales_invoices_v2").select("*").eq("customer_id", id).order("invoice_date", { ascending: false }),
     ]);
+    setPurchaseOrders(poRes.data || []);
+    setVatChallans(vcRes.data || []);
+    setDeliveryChallans(dcRes.data || []);
+    setSalesV2(invV2Res.data || []);
 
     setCustomer(custRes.data);
     const invs = invRes.data || [];
