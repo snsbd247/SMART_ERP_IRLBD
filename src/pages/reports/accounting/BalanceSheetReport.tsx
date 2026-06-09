@@ -94,6 +94,7 @@ const BalanceSheetReport = () => {
               <CardHeader><CardTitle className="text-base">Equity</CardTitle></CardHeader>
               <CardContent className="p-0"><Table><TableBody>
                 {equity.map((e) => (<TableRow key={e.id}><TableCell>{e.account_name}</TableCell><TableCell className="text-right tabular-nums">{fc(e.balance)}</TableCell></TableRow>))}
+                <TableRow><TableCell className="text-muted-foreground">Net Profit / (Loss) for the period</TableCell><TableCell className={`text-right tabular-nums ${netProfit < 0 ? "text-destructive" : ""}`}>{fc(netProfit)}</TableCell></TableRow>
                 <TableRow className="bg-muted/50 font-bold"><TableCell>Total Equity</TableCell><TableCell className="text-right tabular-nums">{fc(totalEquity)}</TableCell></TableRow>
               </TableBody></Table></CardContent>
             </Card>
