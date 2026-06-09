@@ -168,6 +168,33 @@ Deno.serve(async (req) => {
       vatIn:A["6101"], vatOut:A["6102"],
     };
 
+    // Bank Accounts — sub-accounts under "Bank Account" (1102) so the Bank Accounts page is populated
+    const bankSubs = [
+      { code: "1102-01", name: "EBL Current A/C - 1234567890", opening: 500000 },
+      { code: "1102-02", name: "City Bank Current A/C - 9988776655", opening: 200000 },
+      { code: "1102-03", name: "BRAC Bank Savings A/C - 4455667788", opening: 80000 },
+      { code: "1102-04", name: "HSBC USD A/C - 0011223344", opening: 20000 },
+    ];
+    const existingBankCodes = new Set((coa || []).map((a: any) => a.account_code));
+    const bankRowsToInsert = bankSubs
+      .filter((b) => !existingBankCodes.has(b.code))
+      .map((b) => ({
+        id: U(),
+        account_code: b.code,
+        account_name: b.name,
+        account_type: "asset",
+        parent_id: Ac.bank,
+        opening_balance: b.opening,
+        opening_balance_type: "debit",
+        is_active: true,
+      }));
+    if (bankRowsToInsert.length > 0) {
+      const { error: bErr } = await db.from("chart_of_accounts").insert(bankRowsToInsert);
+      if (bErr) throw new Error(`bank accounts: ${bErr.message}`);
+    }
+
+
+
     const bulk = async (t: string, rows: any[], ch = 800) => {
       if (rows.length === 0) return;
       for (let i = 0; i < rows.length; i += ch) {
