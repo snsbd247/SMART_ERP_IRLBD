@@ -39,7 +39,7 @@ const CustomersPage = () => {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", bin_number: "", bin_number: "" });
   const [parentAccountId, setParentAccountId] = useState<string>("");
   const [assetAccounts, setAssetAccounts] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
@@ -71,7 +71,7 @@ const CustomersPage = () => {
 
   const openCreate = () => {
     setEditingCustomer(null);
-    setForm({ name: "", email: "", phone: "", address: "" });
+    setForm({ name: "", email: "", phone: "", address: "", bin_number: "", bin_number: "" });
     setParentAccountId("");
     setOpen(true);
   };
