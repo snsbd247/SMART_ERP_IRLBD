@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Users, Search } from "lucide-react";
+import { createSupplierLedger } from "@/lib/party-ledger-utils";
 
 interface Supplier {
   id: string; code: string; name: string; supplier_type: string;
