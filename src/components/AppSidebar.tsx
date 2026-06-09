@@ -12,7 +12,7 @@ import {
   ArrowLeftRight, Calendar, Activity, Menu, X, CircleDot, Truck, UserCheck,
   Briefcase, Clock, CalendarDays, DollarSign, FileCheck, BadgeCheck, User,
   Fingerprint, ScanFace, Timer, Gauge, Keyboard, Palette, MessageSquare,
-  Mail, Factory, Settings2, Github, PackageCheck,
+  Mail, Factory, Settings2, Github, PackageCheck, RotateCcw,
 } from "lucide-react";
 import { useBranding } from "@/contexts/BrandingContext";
 import { Button } from "@/components/ui/button";
