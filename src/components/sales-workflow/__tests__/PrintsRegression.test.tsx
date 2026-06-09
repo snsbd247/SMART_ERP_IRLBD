@@ -3,8 +3,16 @@
  * Each print renders its trigger button with unchanged sample data; no crash
  * and the expected label/heading must still appear.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
+
+// Mock hooks used by PrintLayout/Mushak63Print so we can render without providers
+vi.mock("@/hooks/useCompanySettings", () => ({
+  useCompanySettings: () => ({ settings: { company_name: "Test Co", bin_number: "000000001-0001", address: "Dhaka" }, loading: false, refetch: () => {} }),
+}));
+vi.mock("@/contexts/CurrencyContext", () => ({ useCurrency: () => ({ refetch: () => {} }) }));
+vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: () => {} }) }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: { invoke: async () => ({ data: null, error: null }) } } }));
 import {
   PrintPO,
   PrintTaxInvoice,
