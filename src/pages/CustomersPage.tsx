@@ -87,7 +87,7 @@ const CustomersPage = () => {
       return;
     }
     setEditingCustomer(c);
-    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "" });
+    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "" });
     setOpen(true);
   };
 
