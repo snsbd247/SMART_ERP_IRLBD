@@ -99,9 +99,18 @@ const BackupPage = () => {
   const DEMO_STEPS = [
     "Chart of Accounts",
     "IFRS Account Mapping",
+    "Purchase Types",
+    "Purchase COA Mapping",
+    "Purchase Settings",
+    "Branch Management",
+    "Financial Years",
     "Roles & Permissions",
+    "GitHub Deploy Sync",
     "Document Numbering",
     "Page Shortcuts",
+    "General Settings",
+    "SMS Integration",
+    "Branding & White-Label",
   ];
 
   const handleImportDemoConfig = async (reset = false) => {
@@ -152,7 +161,7 @@ const BackupPage = () => {
       const total = results ? results.reduce((n: number, r: any) => n + (r.inserted || 0), 0) : 0;
       toast({
         title: overall === "success" ? "Demo configuration imported" : "Demo import finished with warnings",
-        description: `${total} new rows added across ${results?.length ?? 5} sections.`,
+        description: `${total} new rows added across ${results?.length ?? 14} sections.`,
         variant: overall === "success" ? "default" : "destructive",
       });
     } catch (err: any) {
