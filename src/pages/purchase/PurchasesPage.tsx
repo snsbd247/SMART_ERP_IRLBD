@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
@@ -41,12 +41,13 @@ interface PurchaseReturn {
 
 const PurchasesPage = () => {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { user, profile, hasPermission, isSuperAdmin } = useAuth();
   const isAdmin = hasPermission("purchase", "can_edit");
   const { userBranchId } = useBranch();
   const { toast } = useToast();
   const { fc } = useCurrency();
-  const [tab, setTab] = useState("purchases");
+  const [tab, setTab] = useState(pathname.endsWith("/returns") ? "returns" : "purchases");
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [returns, setReturns] = useState<PurchaseReturn[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
