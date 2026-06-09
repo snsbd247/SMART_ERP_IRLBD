@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\BaseController;
 use App\Models\CompanySetting;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\Schema;
 class SettingsController extends BaseController
 {
     private const SINGLETON_ID = 'default';
+
+    public function __construct(private AuditService $auditService) {}
 
     public function show()
     {
@@ -33,11 +36,30 @@ class SettingsController extends BaseController
             'default_branch_id' => 'nullable|exists:branches,id',
             'default_financial_year_id' => 'nullable|exists:financial_years,id',
             'public_employee_registration_enabled' => 'sometimes|boolean',
-            'bin_number' => 'nullable|string|max:50',
+            'bin_number' => [
+                'nullable',
+                'string',
+                'max:50',
+                'regex:/^[\d\-\s]{9,20}$/',
+            ],
+        ], [
+            'bin_number.regex' => 'BIN must be 9-13 digits (hyphens/spaces allowed).',
         ]);
 
+        // Extra digit-count check (Bangladesh e-BIN = 9-13 digits)
+        if (array_key_exists('bin_number', $data) && $data['bin_number']) {
+            $digits = preg_replace('/\D/', '', $data['bin_number']);
+            if (strlen($digits) < 9 || strlen($digits) > 13) {
+                return response()->json([
+                    'message' => 'BIN must be between 9 and 13 digits.',
+                    'errors' => ['bin_number' => ['BIN must be between 9 and 13 digits.']],
+                ], 422);
+            }
+        }
+
+        $before = (array) ($this->singleton()->getAttributes());
+
         $settings = DB::transaction(function () use ($data) {
-            $this->singleton();
             $payload = $this->cleanPayload(array_merge($data, [
                 'id' => self::SINGLETON_ID,
                 'updated_at' => now(),
@@ -46,6 +68,30 @@ class SettingsController extends BaseController
             DB::table('company_settings')->where('id', '!=', self::SINGLETON_ID)->delete();
             return CompanySetting::where('id', self::SINGLETON_ID)->first();
         });
+
+        // Audit-log diff (only changed fields)
+        try {
+            $after = (array) $settings->getAttributes();
+            $changedKeys = [];
+            foreach ($data as $k => $v) {
+                $old = $before[$k] ?? null;
+                $new = $after[$k] ?? null;
+                if ((string) $old !== (string) $new) $changedKeys[] = $k;
+            }
+            if (!empty($changedKeys)) {
+                $oldDiff = array_intersect_key($before, array_flip($changedKeys));
+                $newDiff = array_intersect_key($after, array_flip($changedKeys));
+                $this->auditService->logUpdate(
+                    'company_settings',
+                    self::SINGLETON_ID,
+                    $oldDiff,
+                    $newDiff,
+                    $request
+                );
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('audit log failed for company_settings update: ' . $e->getMessage());
+        }
 
         return $this->success($settings);
     }
