@@ -42,7 +42,7 @@ const CoaMappingPage = () => {
       supabase.from("purchase_coa_mapping" as any).select("*"),
       supabase.from("purchase_types" as any).select("id,code,name").eq("is_active", true),
       supabase.from("branches").select("id,name"),
-      supabase.from("chart_of_accounts").select("id,code,name").eq("is_active", true).order("code"),
+      supabase.from("chart_of_accounts").select("id,account_code,account_name").eq("is_active", true).order("account_code"),
     ]);
     setRows((r.data || []) as any); setTypes(t.data || []); setBranches(b.data || []); setAccounts(a.data || []);
   };
@@ -51,8 +51,9 @@ const CoaMappingPage = () => {
   const acctLabel = (id: string | null) => {
     if (!id) return "—";
     const a = accounts.find((x: any) => x.id === id);
-    return a ? `${a.code}` : "—";
+    return a ? `${a.account_code} — ${a.account_name}` : "—";
   };
+
 
   const save = async () => {
     const payload: any = { ...form };
@@ -138,7 +139,7 @@ const CoaMappingPage = () => {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="_none">— None —</SelectItem>
-                    {accounts.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.code} — {a.name}</SelectItem>)}
+                    {accounts.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.account_code} — {a.account_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
