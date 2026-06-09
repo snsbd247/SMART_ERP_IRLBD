@@ -86,15 +86,7 @@ const DOC_CONFIG: Record<string, {
     hasStock: true,
     stockMovementType: "sale",
   },
-  purchase: {
-    table: "purchases",
-    itemsTable: "purchase_items",
-    itemsFk: "purchase_id",
-    numberField: "purchase_number",
-    module: "purchase",
-    hasStock: true,
-    stockMovementType: "purchase",
-  },
+  // purchase doc type removed with Purchase module
   sales_return: {
     table: "sales_returns",
     itemsTable: "sales_return_items",
@@ -104,15 +96,7 @@ const DOC_CONFIG: Record<string, {
     hasStock: true,
     stockMovementType: "sales_return",
   },
-  purchase_return: {
-    table: "purchase_returns",
-    itemsTable: "purchase_return_items",
-    itemsFk: "purchase_return_id",
-    numberField: "return_number",
-    module: "purchase",
-    hasStock: true,
-    stockMovementType: "purchase_return",
-  },
+  // purchase_return doc type removed with Purchase module
   production: {
     table: "production_entries",
     itemsTable: "production_materials",
@@ -143,12 +127,7 @@ const DOC_CONFIG: Record<string, {
     module: "sales",
     hasStock: false,
   },
-  supplier: {
-    table: "suppliers",
-    numberField: "name",
-    module: "purchase",
-    hasStock: false,
-  },
+  // supplier doc type removed with Purchase module
 };
 
 // ---------- main handler ----------

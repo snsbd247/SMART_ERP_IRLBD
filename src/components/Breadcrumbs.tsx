@@ -6,10 +6,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/accounts/chart": "Chart of Accounts",
   "/accounts/vouchers": "Accounting Vouchers",
   "/customers": "Customers",
-  "/suppliers": "Suppliers",
   "/products": "Products",
-  "/purchase": "Purchases",
-  "/purchase/returns": "Purchase Returns",
   "/sales": "Sales",
   "/sales/returns": "Sales Returns",
   "/inventory": "Stock Overview",
@@ -28,7 +25,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/reports/stock-reports": "Stock Reports",
   "/reports/low-stock": "Low Stock Alert",
   "/reports/sales": "Sales Report",
-  "/reports/purchase": "Purchase Report",
+  
   "/bank/accounts": "Bank Accounts",
   "/bank/cashbook": "Cash Book",
   "/admin/users": "Users",
@@ -47,7 +44,7 @@ const ROUTE_LABELS: Record<string, string> = {
 const PARENT_GROUPS: Record<string, { label: string; path?: string }> = {
   "/accounts": { label: "Accounts" },
   "/sales": { label: "Sales" },
-  "/purchase": { label: "Purchase" },
+  
   "/inventory": { label: "Inventory" },
   "/manufacturing": { label: "Manufacturing" },
   "/reports": { label: "Reports" },

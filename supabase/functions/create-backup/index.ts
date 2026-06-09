@@ -21,7 +21,7 @@ const TABLES = [
   "product_categories",
   "products",
   "raw_materials",
-  "suppliers",
+  
   "customers",
   "custom_roles",
   "role_permissions",
@@ -34,20 +34,7 @@ const TABLES = [
   "salary_structures",
   "acc_vouchers",
   "voucher_entries",
-  "purchases",
-  "purchase_items",
-  "purchase_returns",
-  "purchase_return_items",
-  // New purchase workflow (PR → PO → GRN → Bill → Payment)
-  "purchase_requisitions",
-  "purchase_requisition_items",
-  "purchase_orders_v2",
-  "purchase_order_items_v2",
-  "grns",
-  "grn_items",
-  "purchase_bills",
-  "purchase_bill_grns",
-  "purchase_bill_payments",
+  // Purchase tables removed with Purchase module
   "sales_invoices",
   "sales_invoice_items",
   // New sales workflow tables

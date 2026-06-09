@@ -118,15 +118,8 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:sales_returns.edit')->post('sales-returns/{id}/approve', [\App\Http\Controllers\Sales\SalesReturnController::class, 'approve']);
         Route::middleware('permission:sales_returns.delete')->delete('sales-returns/{id}', [\App\Http\Controllers\Sales\SalesReturnController::class, 'destroy']);
 
-        // Purchase Returns
-        Route::middleware('permission:purchase_returns.view')->group(function () {
-            Route::get('purchase-returns', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'index']);
-            Route::get('purchase-returns/{id}', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'show']);
-        });
-        Route::middleware('permission:purchase_returns.create')->post('purchase-returns', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'store']);
-        Route::middleware('permission:purchase_returns.edit')->put('purchase-returns/{id}', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'update']);
-        Route::middleware('permission:purchase_returns.edit')->post('purchase-returns/{id}/approve', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'approve']);
-        Route::middleware('permission:purchase_returns.delete')->delete('purchase-returns/{id}', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'destroy']);
+        // Purchase Returns — removed with Purchase module
+
 
         // Stock Adjustments
         Route::middleware('permission:stock_adjustments.view')->group(function () {
@@ -146,23 +139,8 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:customers.edit')->put('customers/{id}', [\App\Http\Controllers\Sales\CustomerController::class, 'update']);
         Route::middleware('permission:customers.delete')->delete('customers/{id}', [\App\Http\Controllers\Sales\CustomerController::class, 'destroy']);
 
-        // ─── Purchase ───────────────────────────────────────────
-        Route::middleware('permission:purchase.view')->group(function () {
-            Route::get('purchases', [\App\Http\Controllers\Purchase\PurchaseController::class, 'index']);
-            Route::get('purchases/{id}', [\App\Http\Controllers\Purchase\PurchaseController::class, 'show']);
-        });
-        Route::middleware('permission:purchase.create')->group(function () {
-            Route::post('purchases', [\App\Http\Controllers\Purchase\PurchaseController::class, 'store']);
-        });
+        // ─── Purchase / Suppliers — removed with Purchase module ───
 
-        // ─── Suppliers (separate permission key) ────────────────
-        Route::middleware('permission:suppliers.view')->group(function () {
-            Route::get('suppliers', [\App\Http\Controllers\Purchase\SupplierController::class, 'index']);
-            Route::get('suppliers/{id}', [\App\Http\Controllers\Purchase\SupplierController::class, 'show']);
-        });
-        Route::middleware('permission:suppliers.create')->post('suppliers', [\App\Http\Controllers\Purchase\SupplierController::class, 'store']);
-        Route::middleware('permission:suppliers.edit')->put('suppliers/{id}', [\App\Http\Controllers\Purchase\SupplierController::class, 'update']);
-        Route::middleware('permission:suppliers.delete')->delete('suppliers/{id}', [\App\Http\Controllers\Purchase\SupplierController::class, 'destroy']);
 
         // ─── Inventory ──────────────────────────────────────────
         Route::middleware('permission:inventory.view')->group(function () {

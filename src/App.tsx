@@ -34,18 +34,7 @@ import AccountingVouchers from "./pages/accounts/AccountingVouchers";
 import SalesPage from "./pages/sales/SalesPage";
 import SalesInvoiceDetailPage from "./pages/sales/SalesInvoiceDetailPage";
 
-import RequisitionsPage from "./pages/purchase-workflow/RequisitionsPage";
-import RequisitionDetailPage from "./pages/purchase-workflow/RequisitionDetailPage";
-import PoListPage from "./pages/purchase-workflow/PoListPage";
-import PoFormPage from "./pages/purchase-workflow/PoFormPage";
-import PoDetailPage from "./pages/purchase-workflow/PoDetailPage";
-import GrnsPage from "./pages/purchase-workflow/GrnsPage";
-import GrnFormPage from "./pages/purchase-workflow/GrnFormPage";
-import GrnDetailPage from "./pages/purchase-workflow/GrnDetailPage";
-import BillsPage from "./pages/purchase-workflow/BillsPage";
-import BillFormPage from "./pages/purchase-workflow/BillFormPage";
-import BillDetailPage from "./pages/purchase-workflow/BillDetailPage";
-import PurchaseReturnsPage from "./pages/purchase-workflow/PurchaseReturnsPage";
+// Purchase module removed
 import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
@@ -57,9 +46,7 @@ import StockTransferPage from "./pages/inventory/StockTransferPage";
 import FinancialReports from "./pages/reports/FinancialReports";
 import StockLedger from "./pages/reports/StockLedger";
 import CustomersPage from "./pages/CustomersPage";
-import SuppliersPage from "./pages/SuppliersPage";
 import CustomerProfilePage from "./pages/CustomerProfilePage";
-import SupplierProfilePage from "./pages/SupplierProfilePage";
 import FinancialYearsPage from "./pages/FinancialYearsPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import BankAccountsPage from "./pages/bank/BankAccountsPage";
@@ -126,16 +113,14 @@ import BankBookReport from "./pages/reports/accounting/BankBookReport";
 import BankReconciliationReport from "./pages/reports/accounting/BankReconciliationReport";
 import { JournalVoucherReport, PaymentVoucherReport, ReceiptVoucherReport, ContraVoucherReport } from "./pages/reports/accounting/VoucherReports";
 import AccountsReceivableReport from "./pages/reports/accounting/AccountsReceivableReport";
-import AccountsPayableReport from "./pages/reports/accounting/AccountsPayableReport";
-import { ARAgingReport, APAgingReport } from "./pages/reports/accounting/AgingReports";
-import { ExpenseAnalysisReport, IncomeAnalysisReport } from "./pages/reports/accounting/AnalysisReports";
+import { ARAgingReport } from "./pages/reports/accounting/AgingReports";
+import { IncomeAnalysisReport } from "./pages/reports/accounting/AnalysisReports";
 import FinancialSummaryDashboard from "./pages/reports/accounting/FinancialSummaryDashboard";
 import ChartOfAccountsVertical from "./pages/reports/accounting/ChartOfAccountsVertical";
 import IFRSFinancialStatements from "./pages/reports/accounting/IFRSFinancialStatements";
 import IFRSMappingPage from "./pages/admin/IFRSMappingPage";
 import CustomerStatementPage from "./pages/reports/CustomerStatementPage";
 import SalesReport from "./pages/reports/SalesReport";
-import PurchaseReport from "./pages/reports/PurchaseReport";
 
 // Sales (BD VAT)
 import PurchaseOrdersPage from "./pages/sales-workflow/PurchaseOrdersPage";
@@ -213,27 +198,7 @@ const App = () => (
                 <Route path="/customers" element={<P perm="customers.view,sales.view"><CustomersPage /></P>} />
                 <Route path="/customers/:id" element={<P perm="customers.view,sales.view"><CustomerProfilePage /></P>} />
 
-                {/* ─── Purchase ─────────────────────────────────── */}
-                {/* Legacy routes — friendly toast + redirect to new workflow */}
-                <Route path="/purchase" element={<LegacyRedirect to="/purchase-workflow/bills" label="Bills & Payments" />} />
-                <Route path="/purchase/invoices/:id" element={<LegacyRedirect to="/purchase-workflow/bills" label="Bills & Payments" />} />
-                <Route path="/purchase/returns" element={<LegacyRedirect to="/purchase-workflow/returns" label="Purchase Returns" />} />
-                <Route path="/suppliers" element={<P perm="suppliers.view,purchase.view"><SuppliersPage /></P>} />
-                <Route path="/suppliers/:id" element={<P perm="suppliers.view,purchase.view"><SupplierProfilePage /></P>} />
-
-                {/* ─── Purchase Workflow (new) ─────────────────── */}
-                <Route path="/purchase-workflow/requisitions" element={<P perm="purchase.view"><RequisitionsPage /></P>} />
-                <Route path="/purchase-workflow/requisitions/:id" element={<P perm="purchase.view"><RequisitionDetailPage /></P>} />
-                <Route path="/purchase-workflow/po" element={<P perm="purchase.view"><PoListPage /></P>} />
-                <Route path="/purchase-workflow/po/new" element={<P perm="purchase.view"><PoFormPage /></P>} />
-                <Route path="/purchase-workflow/po/:id" element={<P perm="purchase.view"><PoDetailPage /></P>} />
-                <Route path="/purchase-workflow/grn" element={<P perm="purchase.view"><GrnsPage /></P>} />
-                <Route path="/purchase-workflow/grn/new" element={<P perm="purchase.view"><GrnFormPage /></P>} />
-                <Route path="/purchase-workflow/grn/:id" element={<P perm="purchase.view"><GrnDetailPage /></P>} />
-                <Route path="/purchase-workflow/bills" element={<P perm="purchase.view"><BillsPage /></P>} />
-                <Route path="/purchase-workflow/bills/new" element={<P perm="purchase.view"><BillFormPage /></P>} />
-                <Route path="/purchase-workflow/bills/:id" element={<P perm="purchase.view"><BillDetailPage /></P>} />
-                <Route path="/purchase-workflow/returns" element={<P perm="purchase.view"><PurchaseReturnsPage /></P>} />
+                {/* ─── Purchase module removed ─────────────────── */}
 
 
 
@@ -313,16 +278,12 @@ const App = () => (
                 <Route path="/reports/accounts-receivable" element={<P perm="sales.view"><AccountsReceivableReport /></P>} />
                 <Route path="/reports/ar-aging" element={<P perm="sales.view"><ARAgingReport /></P>} />
                 <Route path="/reports/income-analysis" element={<P perm="sales.view"><IncomeAnalysisReport /></P>} />
-                <Route path="/reports/accounts-payable" element={<P perm="purchase.view"><AccountsPayableReport /></P>} />
-                <Route path="/reports/ap-aging" element={<P perm="purchase.view"><APAgingReport /></P>} />
-                <Route path="/reports/expense-analysis" element={<P perm="purchase.view"><ExpenseAnalysisReport /></P>} />
                 <Route path="/reports/stock-ledger" element={<P perm="inventory.view"><StockLedger /></P>} />
                 <Route path="/reports/stock-reports" element={<P perm="inventory.view"><StockReportsPage /></P>} />
                 <Route path="/reports/stock-by-group" element={<P perm="inventory.view"><StockByGroupPage /></P>} />
                 <Route path="/reports/low-stock" element={<P perm="inventory.view"><LowStockPage /></P>} />
                 <Route path="/reports/customer-statement" element={<P perm="sales.view"><CustomerStatementPage /></P>} />
                 <Route path="/reports/sales" element={<P perm="sales.view"><SalesReport /></P>} />
-                <Route path="/reports/purchase" element={<P perm="purchase.view"><PurchaseReport /></P>} />
 
                 {/* ─── Administration ──────────────────────────── */}
                 <Route path="/admin/users" element={<P perm="users.view"><UsersPage /></P>} />

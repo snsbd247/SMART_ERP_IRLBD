@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-type SoftDeletableTable = "sales_invoices_v2" | "purchases" | "party_payments";
+type SoftDeletableTable = "sales_invoices_v2" | "party_payments";
 
 interface Ctx {
   userId: string;

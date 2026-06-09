@@ -43,26 +43,8 @@ const AgingReport = ({ type }: AgingReportProps) => {
       });
       setData(Array.from(customerMap.values()));
     } else {
-      let query = supabase.from("purchases")
-        .select("*, suppliers(name)");
-      if (branch !== "all") query = query.eq("branch_id", branch);
-      const { data: purchases } = await query;
-
-      const supplierMap = new Map<string, { name: string; d0_30: number; d31_60: number; d61_90: number; d90plus: number; total: number }>();
-      (purchases || []).forEach((p: any) => {
-        const suppName = (p.suppliers as any)?.name || "Unknown";
-        const suppId = p.supplier_id || "unknown";
-        const days = Math.floor((today.getTime() - new Date(p.purchase_date).getTime()) / 86400000);
-        const amount = Number(p.total_amount || 0);
-        const cur = supplierMap.get(suppId) || { name: suppName, d0_30: 0, d31_60: 0, d61_90: 0, d90plus: 0, total: 0 };
-        if (days <= 30) cur.d0_30 += amount;
-        else if (days <= 60) cur.d31_60 += amount;
-        else if (days <= 90) cur.d61_90 += amount;
-        else cur.d90plus += amount;
-        cur.total += amount;
-        supplierMap.set(suppId, cur);
-      });
-      setData(Array.from(supplierMap.values()));
+      // Payable aging removed with Purchase module.
+      setData([]);
     }
     setLoading(false);
   };

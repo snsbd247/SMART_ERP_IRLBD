@@ -15,7 +15,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell,
   Legend,
 } from "recharts";
-import { RecentReturnsWidget } from "@/components/dashboard/RecentReturnsWidget";
+// Purchase module removed
 
 interface Stats {
   totalSales: number;
@@ -72,9 +72,8 @@ const Dashboard = () => {
   useEffect(() => { loadDashboardData(); }, []);
 
   const loadDashboardData = async () => {
-    const [salesRes, purchasesRes, auditRes, recentInvRes, recentPayRes, paymentsRes, voucherRes] = await Promise.all([
+    const [salesRes, auditRes, recentInvRes, recentPayRes, paymentsRes, voucherRes] = await Promise.all([
       supabase.from("sales_invoices").select("total_amount, net_amount, discount, invoice_date, status"),
-      supabase.from("purchases").select("total_amount, purchase_date, status"),
       supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(8),
       supabase.from("sales_invoices").select("id, invoice_number, invoice_date, total_amount, net_amount, status, customers(name)").order("created_at", { ascending: false }).limit(5),
       supabase.from("party_payments").select("id, payment_date, amount, payment_method, party_type, party_id").order("created_at", { ascending: false }).limit(5),
@@ -83,12 +82,12 @@ const Dashboard = () => {
     ]);
 
     const sales = salesRes.data || [];
-    const purchases = purchasesRes.data || [];
+    const purchases: Array<{ total_amount: number; purchase_date: string; status: string }> = [];
     const payments = paymentsRes.data || [];
     const vouchers = voucherRes.data || [];
 
     const totalSales = sales.reduce((s, r) => s + Number(r.total_amount), 0);
-    const totalPurchases = purchases.reduce((s, r) => s + Number(r.total_amount), 0);
+    const totalPurchases = 0;
 
     // Real receivable: total sales - payments received from customers
     const customerPayments = payments.filter(p => p.party_type === 'customer').reduce((s, p) => s + Number(p.amount), 0);
@@ -325,8 +324,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Recent Returns (consolidated audit widget) */}
-      <RecentReturnsWidget />
 
       {/* Recent Activity */}
       <Card>

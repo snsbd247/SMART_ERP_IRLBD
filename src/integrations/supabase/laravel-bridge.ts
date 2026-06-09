@@ -52,7 +52,7 @@ function relationForeignKey(parent: string): string | null {
   const map: Record<string, string> = {
     acc_vouchers: "voucher_id",
     sales_invoices: "invoice_id",
-    purchases: "purchase_id",
+    
     party_payments: "payment_id",
     employees: "employee_id",
     chart_of_accounts: "account_id",
