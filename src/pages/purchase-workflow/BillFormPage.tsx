@@ -14,14 +14,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft } from "lucide-react";
 import { newBillNumber, getActiveFinancialYearId } from "@/lib/purchase-workflow-utils";
 import { autoPostAccounting, findAccountByName } from "@/lib/accounting-utils";
+import { validatePurchaseAccounts } from "@/lib/purchase-validation";
+import { CoAWarning } from "@/components/purchase-workflow/CoAWarning";
+import { PurchaseStatusTracker } from "@/components/purchase-workflow/PurchaseStatusTracker";
+import { logCreate } from "@/lib/audit-utils";
+import { usePermission } from "@/hooks/usePermission";
 
 export default function BillFormPage() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
   const initialGrn = sp.get("grn") || "";
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { userBranchId } = useBranch();
   const { toast } = useToast();
+  const { can, isSuperAdmin } = usePermission();
+  const canCreate = isSuperAdmin || can("purchase.bill.create") || can("purchase.create");
 
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [supplierId, setSupplierId] = useState("");
@@ -33,9 +40,11 @@ export default function BillFormPage() {
   const [vatPct, setVatPct] = useState(0);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [coaMissing, setCoaMissing] = useState<string[]>([]);
 
   useEffect(() => {
     supabase.from("suppliers").select("id,name").order("name").then(({ data }) => setSuppliers((data as any) || []));
+    validatePurchaseAccounts({ needVat: true }).then(r => setCoaMissing(r.missing));
   }, []);
 
   // Initialize from GRN
@@ -59,6 +68,7 @@ export default function BillFormPage() {
   const grand = subtotal + vatAmt;
 
   const save = async () => {
+    if (!canCreate) return toast({ title: "Permission denied", description: "Requires purchase.bill.create", variant: "destructive" });
     if (!supplierId || !selectedGrns.length) return toast({ title: "Select supplier & GRNs", variant: "destructive" });
     setSaving(true);
     try {
@@ -102,6 +112,12 @@ export default function BillFormPage() {
         toast({ title: "Bill created — accounting skipped", description: e.message });
       }
 
+      await logCreate({
+        userId: user?.id, userName: profile?.name,
+        module: "purchase_bill", recordId: (bill as any).id,
+        newData: { bill_number, supplier_id: supplierId, grand_total: grand, grns: selectedGrns.length },
+        details: `Bill ${bill_number} created against ${selectedGrns.length} GRN(s) (grand ${grand.toFixed(2)})`,
+      });
       toast({ title: "Bill created", description: bill_number });
       nav(`/purchase-workflow/bills/${(bill as any).id}`);
     } catch (e: any) {
@@ -112,9 +128,11 @@ export default function BillFormPage() {
   return (
     <div className="p-6 space-y-4">
       <Button variant="ghost" onClick={() => nav(-1)}><ArrowLeft className="w-4 h-4 mr-2" />Back</Button>
+      <PurchaseStatusTracker current="bill" />
       <Card>
         <CardHeader><CardTitle>New Purchase Bill</CardTitle></CardHeader>
         <CardContent className="space-y-4">
+          <CoAWarning missing={coaMissing} />
           <div className="grid grid-cols-4 gap-4">
             <div>
               <Label>Supplier</Label>
