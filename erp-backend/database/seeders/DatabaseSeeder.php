@@ -271,6 +271,11 @@ class DatabaseSeeder extends Seeder
             // Purchase
             ['PUR', 'Purchases', '/purchase', 'purchase'],
             ['PR', 'Purchase Returns', '/purchase/returns', 'purchase'],
+            // New purchase workflow shortcuts
+            ['PREQ', 'Requisitions', '/purchase/requisitions', 'purchase'],
+            ['PPO',  'Purchase Orders', '/purchase/orders', 'purchase'],
+            ['GRN',  'Goods Receipts', '/purchase/grns', 'purchase'],
+            ['BILL', 'Purchase Bills', '/purchase/bills', 'purchase'],
             ['SUP', 'Suppliers', '/suppliers', 'suppliers'],
             // Inventory
             ['INV', 'Inventory', '/inventory', 'inventory'],
