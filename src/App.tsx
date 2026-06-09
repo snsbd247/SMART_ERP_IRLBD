@@ -198,27 +198,7 @@ const App = () => (
                 <Route path="/customers" element={<P perm="customers.view,sales.view"><CustomersPage /></P>} />
                 <Route path="/customers/:id" element={<P perm="customers.view,sales.view"><CustomerProfilePage /></P>} />
 
-                {/* ─── Purchase ─────────────────────────────────── */}
-                {/* Legacy routes — friendly toast + redirect to new workflow */}
-                <Route path="/purchase" element={<LegacyRedirect to="/purchase-workflow/bills" label="Bills & Payments" />} />
-                <Route path="/purchase/invoices/:id" element={<LegacyRedirect to="/purchase-workflow/bills" label="Bills & Payments" />} />
-                <Route path="/purchase/returns" element={<LegacyRedirect to="/purchase-workflow/returns" label="Purchase Returns" />} />
-                <Route path="/suppliers" element={<P perm="suppliers.view,purchase.view"><SuppliersPage /></P>} />
-                <Route path="/suppliers/:id" element={<P perm="suppliers.view,purchase.view"><SupplierProfilePage /></P>} />
-
-                {/* ─── Purchase Workflow (new) ─────────────────── */}
-                <Route path="/purchase-workflow/requisitions" element={<P perm="purchase.view"><RequisitionsPage /></P>} />
-                <Route path="/purchase-workflow/requisitions/:id" element={<P perm="purchase.view"><RequisitionDetailPage /></P>} />
-                <Route path="/purchase-workflow/po" element={<P perm="purchase.view"><PoListPage /></P>} />
-                <Route path="/purchase-workflow/po/new" element={<P perm="purchase.view"><PoFormPage /></P>} />
-                <Route path="/purchase-workflow/po/:id" element={<P perm="purchase.view"><PoDetailPage /></P>} />
-                <Route path="/purchase-workflow/grn" element={<P perm="purchase.view"><GrnsPage /></P>} />
-                <Route path="/purchase-workflow/grn/new" element={<P perm="purchase.view"><GrnFormPage /></P>} />
-                <Route path="/purchase-workflow/grn/:id" element={<P perm="purchase.view"><GrnDetailPage /></P>} />
-                <Route path="/purchase-workflow/bills" element={<P perm="purchase.view"><BillsPage /></P>} />
-                <Route path="/purchase-workflow/bills/new" element={<P perm="purchase.view"><BillFormPage /></P>} />
-                <Route path="/purchase-workflow/bills/:id" element={<P perm="purchase.view"><BillDetailPage /></P>} />
-                <Route path="/purchase-workflow/returns" element={<P perm="purchase.view"><PurchaseReturnsPage /></P>} />
+                {/* ─── Purchase module removed ─────────────────── */}
 
 
 
