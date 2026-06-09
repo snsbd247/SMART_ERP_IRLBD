@@ -282,9 +282,27 @@ if [[ -d "${APP_DIR}/erp-backend" ]]; then
 
   # ---------- PRODUCTION-SAFE migrations (additive ONLY) ----------
   CURRENT_STEP="migrate"
-  log "Running additive migrations (no seeders, no data reset)..."
+  log "Running additive migrations (no data reset)..."
   php artisan migrate --force --no-interaction
   step "migrate" ok
+
+  # ---------- Optional seeders (opt-in via RUN_SEEDERS=1) ----------
+  # Default OFF to preserve production safety. Set RUN_SEEDERS=1 to run
+  # idempotent master-data seeders (e.g. CoA, units, roles). Demo data
+  # should ONLY be loaded from the in-app "Reset & Seed Demo" panel.
+  CURRENT_STEP="db-seed"
+  if [[ "${RUN_SEEDERS:-0}" == "1" ]]; then
+    SEEDER_CLASS="${SEEDER_CLASS:-Database\\Seeders\\ProductionSeeder}"
+    log "Running seeders: ${SEEDER_CLASS} (opt-in)..."
+    if php artisan db:seed --class="${SEEDER_CLASS}" --force --no-interaction; then
+      step "db-seed" ok "${SEEDER_CLASS}"
+    else
+      warn "Seeder ${SEEDER_CLASS} failed (continuing)."
+      step "db-seed" warn "${SEEDER_CLASS} failed"
+    fi
+  else
+    step "db-seed" ok "skipped (RUN_SEEDERS!=1)"
+  fi
 
   CURRENT_STEP="env-fixups"
   log "Repairing VPS token-only auth/install flags..."
