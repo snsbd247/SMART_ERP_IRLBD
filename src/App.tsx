@@ -34,7 +34,14 @@ import AccountingVouchers from "./pages/accounts/AccountingVouchers";
 import SalesPage from "./pages/sales/SalesPage";
 import SalesInvoiceDetailPage from "./pages/sales/SalesInvoiceDetailPage";
 
-// Purchase module removed
+// Purchase module (Phase 1 Foundation)
+import PurchaseDashboardPage from "./pages/purchase/PurchaseDashboardPage";
+import PurchaseSuppliersPage from "./pages/purchase/SuppliersPage";
+import PurchaseTypesPage from "./pages/purchase/PurchaseTypesPage";
+import PurchaseSettingsPage from "./pages/purchase/PurchaseSettingsPage";
+import PurchaseApprovalMatrixPage from "./pages/purchase/ApprovalMatrixPage";
+import PurchaseCoaMappingPage from "./pages/purchase/CoaMappingPage";
+import PurchaseAuditLogPage from "./pages/purchase/AuditLogPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
@@ -198,7 +205,15 @@ const App = () => (
                 <Route path="/customers" element={<P perm="customers.view,sales.view"><CustomersPage /></P>} />
                 <Route path="/customers/:id" element={<P perm="customers.view,sales.view"><CustomerProfilePage /></P>} />
 
-                {/* ─── Purchase module removed ─────────────────── */}
+                {/* ─── Purchase (Phase 1 Foundation) ─────────────── */}
+                <Route path="/purchase" element={<PurchaseDashboardPage />} />
+                <Route path="/purchase/suppliers" element={<PurchaseSuppliersPage />} />
+                <Route path="/purchase/types" element={<PurchaseTypesPage />} />
+                <Route path="/purchase/settings" element={<PurchaseSettingsPage />} />
+                <Route path="/purchase/approval-matrix" element={<PurchaseApprovalMatrixPage />} />
+                <Route path="/purchase/coa-mapping" element={<PurchaseCoaMappingPage />} />
+                <Route path="/purchase/audit-log" element={<PurchaseAuditLogPage />} />
+
 
 
 

@@ -87,7 +87,20 @@ const navGroups: NavGroup[] = [
       { to: "/reports/low-stock", label: "Low Stock Alert", icon: CircleDot, permission: "inventory.view" },
     ],
   },
-  // Purchase module removed
+  {
+    label: "Purchase",
+    icon: ShoppingCart,
+    requiredModules: ["purchase"],
+    children: [
+      { to: "/purchase", label: "Purchase Dashboard", icon: LayoutDashboard, end: true },
+      { to: "/purchase/suppliers", label: "Suppliers", icon: Users },
+      { to: "/purchase/types", label: "Purchase Types", icon: Layers },
+      { to: "/purchase/approval-matrix", label: "Approval Matrix", icon: Shield },
+      { to: "/purchase/coa-mapping", label: "COA Mapping", icon: BookOpen },
+      { to: "/purchase/settings", label: "Purchase Settings", icon: Settings2 },
+      { to: "/purchase/audit-log", label: "Audit Log", icon: ScrollText },
+    ],
+  },
   {
     label: "Manufacturing",
     icon: Factory,
