@@ -94,6 +94,7 @@ const BackupPage = () => {
   const [gdriveTesting, setGdriveTesting] = useState(false);
   const [gdriveTestResult, setGdriveTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [verifyResult, setVerifyResult] = useState<any | null>(null);
 
   const DEMO_STEPS = [
     "Chart of Accounts",
