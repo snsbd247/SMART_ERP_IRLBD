@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Purchase;
 
 use App\Http\Controllers\BaseController;
+use App\Models\AuditLog;
 use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnItem;
 use App\Services\AccountingService;
@@ -75,6 +76,7 @@ class PurchaseReturnController extends BaseController
                     'total'      => $it['quantity'] * $it['unit_price'],
                 ]);
             }
+            $this->logAudit($r, 'create', $ret, ['return_number' => $number, 'total' => $total]);
             return $this->created($ret->load('items'));
         });
     }
@@ -115,8 +117,33 @@ class PurchaseReturnController extends BaseController
             );
 
             $ret->update(['status' => 'approved']);
+            $this->logAudit($r, 'approve', $ret, [
+                'return_number' => $ret->return_number,
+                'total_amount'  => $ret->total_amount,
+                'purchase_id'   => $ret->purchase_id,
+                'item_count'    => $ret->items->count(),
+            ]);
         });
 
         return $this->success($ret->fresh('items'));
+    }
+
+    private function logAudit(Request $r, string $action, PurchaseReturn $ret, array $details = []): void
+    {
+        try {
+            AuditLog::create([
+                'user_id'   => optional($r->user())->id,
+                'user_name' => optional($r->user())->name,
+                'module'    => 'purchase_returns',
+                'action'    => $action,
+                'record_id' => $ret->id,
+                'details'   => json_encode(array_merge(['return_id' => $ret->id, 'purchase_id' => $ret->purchase_id], $details)),
+                'new_data'  => $action === 'approve' ? ['status' => 'approved'] : null,
+                'ip_address' => $r->ip(),
+                'user_agent' => substr((string) $r->userAgent(), 0, 250),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('audit_log insert failed (purchase_return): ' . $e->getMessage());
+        }
     }
 }
