@@ -119,6 +119,12 @@ class DatabaseSeeder extends Seeder
             ['id' => 'payment_voucher',  'prefix' => 'PV',  'description' => 'Payment Voucher'],
             ['id' => 'receipt_voucher',  'prefix' => 'RV',  'description' => 'Receipt Voucher'],
             ['id' => 'contra_voucher',   'prefix' => 'CV',  'description' => 'Contra Voucher'],
+            // New purchase workflow (PR → PO → GRN → Bill → Payment)
+            ['id' => 'purchase_requisition', 'prefix' => 'PR',  'description' => 'Purchase Requisition'],
+            ['id' => 'purchase_order_v2',    'prefix' => 'PO',  'description' => 'Purchase Order (Workflow)'],
+            ['id' => 'grn',                  'prefix' => 'GRN', 'description' => 'Goods Receipt Note'],
+            ['id' => 'purchase_bill',        'prefix' => 'BILL','description' => 'Purchase Bill'],
+            ['id' => 'bill_payment',         'prefix' => 'BP',  'description' => 'Bill Payment'],
         ];
         foreach ($sequences as $s) {
             NumberSequence::create(array_merge($s, ['current_number' => 0, 'year' => 2026]));
@@ -265,6 +271,11 @@ class DatabaseSeeder extends Seeder
             // Purchase
             ['PUR', 'Purchases', '/purchase', 'purchase'],
             ['PR', 'Purchase Returns', '/purchase/returns', 'purchase'],
+            // New purchase workflow shortcuts
+            ['PREQ', 'Requisitions', '/purchase/requisitions', 'purchase'],
+            ['PPO',  'Purchase Orders', '/purchase/orders', 'purchase'],
+            ['GRN',  'Goods Receipts', '/purchase/grns', 'purchase'],
+            ['BILL', 'Purchase Bills', '/purchase/bills', 'purchase'],
             ['SUP', 'Suppliers', '/suppliers', 'suppliers'],
             // Inventory
             ['INV', 'Inventory', '/inventory', 'inventory'],
