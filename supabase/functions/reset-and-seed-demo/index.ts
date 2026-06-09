@@ -765,11 +765,6 @@ Deno.serve(async (req) => {
     });
 
 
-    await db.from("audit_log").insert({
-      user_id: UID, user_name: user.email,
-      action: "demo_reset_and_seed", module: "backup",
-      details: `Demo reset + full-year seed completed in ${Date.now() - t0}ms (FY ${fyName})`,
-    });
 
     return new Response(JSON.stringify({
       success: true,
