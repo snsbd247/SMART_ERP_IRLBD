@@ -453,7 +453,7 @@ Deno.serve(async (req) => {
         const credAc = mode === "cash" ? Ac.cash : Ac.bank;
         SPays.push({
           id: payId, payment_no: payNum, payment_date: payDate, amount: grand,
-          status: "Approved", supplier_id: sup.id, mode,
+          status: "Approved", supplier_id: sup.id, payment_method: mode,
           branch_id: BR_DHK, created_by: UID,
         });
         SPallocs.push({ id: U(), payment_id: payId, bill_id: billId, allocated_amount: grand });
