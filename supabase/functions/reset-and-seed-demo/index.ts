@@ -233,14 +233,17 @@ Deno.serve(async (req) => {
     })));
 
     // Customers / Suppliers
-    const cn = ["Alpha Trading","Beta Enterprises","Gamma Corp","Delta Industries","Epsilon Ltd",
-      "Zeta Solutions","Eta Holdings","Theta Group","Iota Tech","Kappa Foods",
-      "Lambda Pharma","Mu Textiles","Nu Logistics","Xi Construction","Omicron Retail"];
-    const customers = cn.map((n,i) => ({ id:U(), name:n, phone:`+8801${700000000+i*1111}`, email:n.toLowerCase().replace(/ /g,"")+"@example.com", address:"Dhaka, Bangladesh", status:"active" }));
+    // Customers — buyers of plastic bottles/caps/plugs/discs
+    const cn = ["Pran Beverages Ltd","Akij Food & Beverage","Mum Mineral Water","Fresh Drinks BD",
+      "Square Pharmaceuticals","Beximco Pharma","Incepta Pharma","Renata Limited",
+      "Marico Bangladesh","Unilever BD","Kohinoor Cosmetics","Keya Cosmetics",
+      "City Edible Oil","Teer Oil Mills","Rupchanda Foods"];
+    const customers = cn.map((n,i) => ({ id:U(), name:n, phone:`+8801${700000000+i*1111}`, email:n.toLowerCase().replace(/[^a-z0-9]/g,"")+"@example.com", address:"Dhaka, Bangladesh", status:"active" }));
     await bulk("customers", customers);
-    // Suppliers (re-enabled for Purchase v2 demo data)
-    const sn = ["Acme Imports","Bengal Suppliers","Capital Trading","Dhaka Wholesale",
-      "Eastern Stationers","Future Hardware","Global Electronics","Himalaya Distributors"];
+    // Suppliers — resin/additive/packaging suppliers
+    const sn = ["IRPC Polymer Ltd","Reliance Industries (PET)","SCG Chemicals BD",
+      "LG Chem Bangladesh","Clariant Masterbatch","Ampacet Colorants",
+      "BASF Additives BD","Star Packaging Industries"];
     const suppliers = sn.map((n,i) => ({
       id: U(), code: `SUP-${String(i+1).padStart(4,"0")}`, name: n,
       supplier_type: "regular", is_active: true,
