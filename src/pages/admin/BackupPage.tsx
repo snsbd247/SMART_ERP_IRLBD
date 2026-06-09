@@ -271,6 +271,10 @@ const BackupPage = () => {
   }, [fetchHistory, fetchSettings]);
 
   const handleCreateBackup = async () => {
+    if (!isSuperAdmin) {
+      toast({ title: "Access denied", description: "Backup is restricted to Super Admins.", variant: "destructive" });
+      return;
+    }
     setExporting(true);
     setProgress(20);
     try {
