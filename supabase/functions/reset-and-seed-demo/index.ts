@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
       ["sales_returns"],
       ["sales_invoices_v2","delivery_challans","vat_challans","purchase_orders"],
       ["acc_vouchers","party_payments","sales_invoices","production_entries","bill_of_materials","employees","conversations"],
+      ["sections","shifts","biometric_devices"],
       ["customers","suppliers","item_master","products","raw_materials"],
       ["item_categories","units","warehouses","product_categories"],
     ];
@@ -127,6 +128,23 @@ Deno.serve(async (req) => {
       await db.from("designations").insert(ins); desigs = ins;
     }
     const DEPT = depts![0].id, DESIG = desigs![0].id;
+
+    // Sections (per department) + Shifts
+    const sectionRows = depts!.flatMap((d:any) => [
+      { id: U(), name: `${d.name} - Section A`, department_id: d.id, branch_id: BR_DHK, status: "active" },
+      { id: U(), name: `${d.name} - Section B`, department_id: d.id, branch_id: BR_DHK, status: "active" },
+    ]);
+    await bulk("sections", sectionRows);
+    const SEC = sectionRows[0].id;
+
+    const shiftRows = [
+      { id: U(), shift_name: "Morning",   start_time: "08:00:00", end_time: "16:00:00", late_after_minutes: 10 },
+      { id: U(), shift_name: "General",   start_time: "09:00:00", end_time: "18:00:00", late_after_minutes: 15 },
+      { id: U(), shift_name: "Evening",   start_time: "14:00:00", end_time: "22:00:00", late_after_minutes: 10 },
+      { id: U(), shift_name: "Night",     start_time: "22:00:00", end_time: "06:00:00", late_after_minutes: 15 },
+    ];
+    await bulk("shifts", shiftRows);
+    const SHIFT = shiftRows[1].id;
 
     // Leave types
     let { data: lts } = await db.from("leave_types").select("id,name");
@@ -268,9 +286,13 @@ Deno.serve(async (req) => {
     await bulk("employees", employees.map((e,i) => ({
       id:e.id, employee_code:e.code, first_name:fns[i], last_name:lns[i],
       mobile:`+8801${900000000+i*333}`, email:fns[i].toLowerCase()+i+"@erp.com",
-      department_id:DEPT, designation_id:DESIG, branch_id: i<10?BR_DHK:BR_CTG,
+      department_id:DEPT, designation_id:DESIG, section_id: sectionRows[i % sectionRows.length].id,
+      shift_id: shiftRows[i % shiftRows.length].id, branch_id: i<10?BR_DHK:BR_CTG,
       joining_date:e.join, salary:e.basic, employment_type:"permanent", status:"active",
       employee_category:"staff",
+      approval_status: i >= 13 ? "pending" : "approved",
+      approved_by: i >= 13 ? null : UID,
+      approved_at: i >= 13 ? null : new Date().toISOString(),
     })));
     await bulk("salary_structures", employees.map(e => {
       const hr = Math.floor(e.basic*0.4), med = Math.floor(e.basic*0.1), oth = Math.floor(e.basic*0.05);
@@ -764,6 +786,74 @@ Deno.serve(async (req) => {
       }
     }
     await bulk("leave_requests", leaves);
+
+    // ===== Overtime Records =====
+    const overtime: any[] = [];
+    for (const e of employees) {
+      const n = RI(2, 5);
+      for (let i = 0; i < n; i++) {
+        const offsetDays = RI(15, 330);
+        const d = new Date(fyStart.getTime() + offsetDays * 86400000);
+        if (d > end) continue;
+        overtime.push({
+          id: U(), employee_id: e.id, date: ymd(d),
+          hours: pick([1, 1.5, 2, 2.5, 3, 4]),
+          status: pick(["approved","approved","pending"]),
+          approved_by: UID,
+        });
+      }
+    }
+    await bulk("overtime_records", overtime);
+
+    // ===== Biometric Devices + Logs =====
+    const bioDevices = [
+      { id: U(), device_name: "ZKTeco F18 - Main Gate", ip_address: "192.168.1.201", port: 4370, location: "Head Office Entrance", status: "online", last_sync_at: new Date().toISOString() },
+      { id: U(), device_name: "ZKTeco K40 - Factory",   ip_address: "192.168.1.202", port: 4370, location: "Factory Floor",        status: "online", last_sync_at: new Date().toISOString() },
+    ];
+    await bulk("biometric_devices", bioDevices);
+    const bioLogs: any[] = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(end.getTime() - i * 86400000);
+      if (d < start) break;
+      for (const e of employees.slice(0, 10)) {
+        bioLogs.push({
+          id: U(), device_id: bioDevices[0].id, device_name: bioDevices[0].device_name,
+          employee_code: e.code, date: ymd(d),
+          check_in_time: `09:${String(RI(0,30)).padStart(2,"0")}:00`,
+          check_out_time: `18:${String(RI(0,45)).padStart(2,"0")}:00`,
+          processed: true,
+        });
+      }
+    }
+    await bulk("biometric_logs", bioLogs);
+
+    // ===== Face Data =====
+    await bulk("face_data", employees.slice(0, 10).map(e => ({
+      id: U(), employee_id: e.id,
+      face_encoding: Array.from({length: 16}, () => Math.random().toFixed(4)).join(","),
+      photo_url: null,
+    })));
+
+    // ===== Employee Documents =====
+    const docTypes: [string,string][] = [
+      ["appointment_letter", "Appointment Letter"],
+      ["nda", "Non-Disclosure Agreement"],
+      ["salary_certificate", "Salary Certificate"],
+      ["experience_letter", "Experience Letter"],
+    ];
+    const empDocs: any[] = [];
+    for (const e of employees) {
+      const picks = pickN(docTypes, RI(1, 3));
+      for (const [dt, dtitle] of picks) {
+        empDocs.push({
+          id: U(), employee_id: e.id, document_type: dt,
+          document_title: `${dtitle} - ${e.name}`,
+          document_html: `<h2>${dtitle}</h2><p>This document certifies ${e.name} (${e.code}).</p>`,
+          generated_by: UID,
+        });
+      }
+    }
+    await bulk("employee_documents", empDocs);
 
     // ===== Stock Transfers (monthly between warehouses) =====
     const transfers: any[] = [];
