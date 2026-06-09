@@ -93,16 +93,20 @@ const navGroups: NavGroup[] = [
     requiredModules: ["purchase"],
     children: [
       { to: "/purchase", label: "Purchase Dashboard", icon: LayoutDashboard, end: true },
+      // Setup / Masters
+      { to: "/purchase/suppliers", label: "Suppliers", icon: Users },
+      { to: "/purchase/types", label: "Purchase Types", icon: Layers },
+      // Procure-to-Pay workflow
       { to: "/purchase/requisitions", label: "Requisitions (PR)", icon: FileText },
       { to: "/purchase/orders", label: "Purchase Orders (PO)", icon: ShoppingCart },
       { to: "/purchase/grns", label: "Goods Receipts (GRN)", icon: ShoppingCart },
       { to: "/purchase/bills", label: "Supplier Bills", icon: FileText },
       { to: "/purchase/payments", label: "Supplier Payments", icon: BookOpen },
-      { to: "/purchase/lc", label: "LC / Import", icon: Layers },
       { to: "/purchase/returns", label: "Purchase Returns", icon: RotateCcw },
+      { to: "/purchase/lc", label: "LC / Import", icon: Layers },
+      // Reports
       { to: "/purchase/reports", label: "Purchase Reports", icon: BarChart3 },
-      { to: "/purchase/suppliers", label: "Suppliers", icon: Users },
-      { to: "/purchase/types", label: "Purchase Types", icon: Layers },
+      // Configuration
       { to: "/purchase/approval-matrix", label: "Approval Matrix", icon: Shield },
       { to: "/purchase/coa-mapping", label: "COA Mapping", icon: BookOpen },
       { to: "/purchase/settings", label: "Purchase Settings", icon: Settings2 },
