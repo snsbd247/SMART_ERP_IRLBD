@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, BookOpen, Filter } from "lucide-react";
+import { Plus, BookOpen, Filter, Search, X } from "lucide-react";
 import { useAccountBalances, AccountWithBalance } from "@/hooks/useAccountBalances";
+import { useMemo } from "react";
 import { AccountTreeTable } from "@/components/accounts/AccountTreeTable";
 import { AccountLedgerDialog } from "@/components/accounts/AccountLedgerDialog";
 import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
