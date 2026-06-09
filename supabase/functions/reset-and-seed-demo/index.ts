@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
       { id: U(), name: `${d.name} - Section A`, department_id: d.id, branch_id: BR_DHK, status: "active" },
       { id: U(), name: `${d.name} - Section B`, department_id: d.id, branch_id: BR_DHK, status: "active" },
     ]);
-    await bulk("sections", sectionRows);
+    await db.from("sections").insert(sectionRows);
     const SEC = sectionRows[0].id;
 
     const shiftRows = [
