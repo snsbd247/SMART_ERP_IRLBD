@@ -58,14 +58,14 @@ const MUSHAK_CSS = `
   table.mushak-items { width: 100%; border-collapse: collapse; margin-top: 3mm; table-layout: fixed; }
   table.mushak-items th, table.mushak-items td {
     border: 0.25mm solid #000;
-    padding: 1mm 1.2mm;
-    font-size: 9pt;
+    padding: 0.6mm 0.8mm;
+    font-size: 7.5pt;
     vertical-align: middle;
     word-wrap: break-word;
     overflow-wrap: anywhere;
     word-break: break-word;
     hyphens: auto;
-    line-height: 1.2;
+    line-height: 1.1;
   }
   table.mushak-items thead th { background:#fff !important; font-weight: 700; text-align: center; line-height: 1.15; }
   table.mushak-items tr.col-no td { font-size: 8pt; font-weight: 600; text-align: center; padding: 0.4mm; }
