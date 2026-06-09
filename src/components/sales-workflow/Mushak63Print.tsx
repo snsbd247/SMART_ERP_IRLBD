@@ -29,35 +29,64 @@ const fmtTime = (d: any) => {
   return x.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
 };
 
+/* Locked A4 layout — identical across Chrome / Firefox / Safari / Edge.
+ * Uses mm units for print, fixed table-layout with explicit colgroup widths,
+ * forced color rendering, and antialiased font smoothing. */
 const MUSHAK_CSS = `
-  * { box-sizing: border-box; }
-  body { margin: 0; padding: 18px; font-family: "SolaimanLipi","Nikosh","Noto Sans Bengali","Siyam Rupali",Arial,sans-serif; color: #000; font-size: 11px; background:#fff; }
-  .mushak-doc { width: 100%; max-width: 1000px; margin: 0 auto; }
-  .gov-line { text-align:center; font-size: 12px; padding: 2px 0; }
-  .title-row { display:flex; align-items:flex-start; justify-content:space-between; margin-top: 4px; }
+  *, *::before, *::after { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  body {
+    font-family: "SolaimanLipi","Nikosh","Noto Sans Bengali","Siyam Rupali",Arial,sans-serif;
+    color: #000;
+    font-size: 10.5pt;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: geometricPrecision;
+  }
+  .mushak-doc { width: 190mm; margin: 0 auto; padding: 5mm 5mm; }
+  .gov-line { text-align:center; font-size: 11pt; padding: 1mm 0; }
+  .title-row { display:flex; align-items:flex-start; justify-content:space-between; margin-top: 1mm; }
   .title-center { flex:1; text-align:center; }
-  .title-center h1 { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: 2px; }
-  .title-center .rule-ref { font-size: 11px; margin-top: 2px; }
-  .form-code { font-size: 14px; font-weight: 700; border: 1px solid #000; padding: 2px 10px; white-space: nowrap; }
-  .header-grid { display:grid; grid-template-columns: 70px 1fr 1fr; gap: 8px; margin-top: 8px; align-items: flex-start; }
-  .logo-cell img { width: 60px; height: 60px; object-fit: contain; }
-  .kv { display:grid; grid-template-columns: 170px 8px 1fr; column-gap: 4px; row-gap: 3px; font-size: 11px; }
+  .title-center h1 { font-size: 20pt; font-weight: 700; margin: 0; letter-spacing: 1.5pt; }
+  .title-center .rule-ref { font-size: 10pt; margin-top: 1mm; }
+  .form-code { font-size: 12pt; font-weight: 700; border: 0.4mm solid #000; padding: 1mm 3mm; white-space: nowrap; }
+  .header-grid { display:grid; grid-template-columns: 18mm 1fr 1fr; gap: 3mm; margin-top: 3mm; align-items: flex-start; }
+  .logo-cell img { width: 16mm; height: 16mm; object-fit: contain; }
+  .kv { display:grid; grid-template-columns: 45mm 3mm 1fr; column-gap: 1mm; row-gap: 0.8mm; font-size: 10pt; }
   .kv .k { font-weight: 600; }
-  .kv .v { font-weight: 600; }
-  table.mushak-items { width: 100%; border-collapse: collapse; margin-top: 10px; }
-  table.mushak-items th, table.mushak-items td { border: 1px solid #000; padding: 4px 5px; font-size: 10.5px; vertical-align: middle; }
-  table.mushak-items thead th { background:#fff; font-weight: 700; text-align: center; line-height: 1.15; }
-  table.mushak-items thead .col-no { font-size: 10px; font-weight: 600; padding: 2px; }
-  table.mushak-items td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .kv .v { font-weight: 600; word-wrap: break-word; overflow-wrap: anywhere; }
+  table.mushak-items { width: 100%; border-collapse: collapse; margin-top: 3mm; table-layout: fixed; }
+  table.mushak-items th, table.mushak-items td {
+    border: 0.25mm solid #000;
+    padding: 1mm 1.2mm;
+    font-size: 9pt;
+    vertical-align: middle;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
+    line-height: 1.2;
+  }
+  table.mushak-items thead th { background:#fff !important; font-weight: 700; text-align: center; line-height: 1.15; }
+  table.mushak-items tr.col-no td { font-size: 8pt; font-weight: 600; text-align: center; padding: 0.4mm; }
+  table.mushak-items td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   table.mushak-items td.center { text-align: center; }
   table.mushak-items tr.total-row td { font-weight: 700; text-align: right; }
   table.mushak-items tr.total-row td.label { text-align: center; }
-  .signoff { margin-top: 60px; font-size: 11px; }
-  .signoff .row { margin: 4px 0; }
-  .footnote { font-size: 10px; margin-top: 30px; }
-  .entry-user { text-align:right; font-size: 10px; margin-top: 24px; font-weight: 600; }
-  @media print { body { padding: 10px; } @page { size: A4; margin: 10mm; } }
+  .signoff { margin-top: 18mm; font-size: 10pt; }
+  .signoff .row { margin: 1mm 0; }
+  .footnote { font-size: 9pt; margin-top: 8mm; }
+  .entry-user { text-align:right; font-size: 9pt; margin-top: 6mm; font-weight: 600; }
+  @page { size: A4 portrait; margin: 8mm 10mm; }
+  @media print {
+    html, body { width: 210mm; height: 297mm; }
+    .mushak-doc { width: 190mm; padding: 0; }
+    table.mushak-items { page-break-inside: auto; }
+    table.mushak-items tr { page-break-inside: avoid; page-break-after: auto; }
+    table.mushak-items thead { display: table-header-group; }
+  }
 `;
+
 
 interface Props { v: any; }
 
@@ -181,6 +210,20 @@ export function PrintMushak63({ v }: Props) {
 
               {/* Items table (11 columns as per Mushak 6.3) */}
               <table className="mushak-items">
+                {/* Locked column widths — sum = 100%, matches the official Mushak 6.3 form */}
+                <colgroup>
+                  <col style={{ width: "4%" }} />   {/* ক্রমিক */}
+                  <col style={{ width: "22%" }} />  {/* পণ্য/সেবার বর্ণনা */}
+                  <col style={{ width: "7%" }} />   {/* সরবরাহের একক */}
+                  <col style={{ width: "7%" }} />   {/* পরিমাণ */}
+                  <col style={{ width: "9%" }} />   {/* একক মূল্য */}
+                  <col style={{ width: "10%" }} />  {/* মোট মূল্য */}
+                  <col style={{ width: "9%" }} />   {/* সম্পূরক ভিত্তি */}
+                  <col style={{ width: "8%" }} />   {/* সম্পূরক পরিমাণ */}
+                  <col style={{ width: "7%" }} />   {/* মূসক হার */}
+                  <col style={{ width: "8%" }} />   {/* মূসক পরিমাণ */}
+                  <col style={{ width: "9%" }} />   {/* সকল কর সহ */}
+                </colgroup>
                 <thead>
                   <tr>
                     <th rowSpan={2} style={{ width: 38 }}>ক্রমিক</th>
