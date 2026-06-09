@@ -96,6 +96,31 @@ for bin in git php composer node npm rsync mysqldump; do
 done
 step "tooling" ok "git/php/composer/node/npm/rsync/mysqldump present"
 
+# ---------- PHP extensions auto-install ----------
+CURRENT_STEP="php-extensions"
+REQUIRED_PHP_EXT=(bcmath ctype curl dom fileinfo gd intl mbstring mysql openssl pdo tokenizer xml zip)
+MISSING_EXT=()
+for ext in "${REQUIRED_PHP_EXT[@]}"; do
+  if ! php -m 2>/dev/null | grep -qi "^${ext}$"; then
+    MISSING_EXT+=("php${PHP_VERSION}-${ext}")
+  fi
+done
+if (( ${#MISSING_EXT[@]} > 0 )); then
+  log "Installing missing PHP extensions: ${MISSING_EXT[*]}"
+  if command -v apt-get >/dev/null 2>&1; then
+    DEBIAN_FRONTEND=noninteractive apt-get update -y >/dev/null 2>&1 || true
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${MISSING_EXT[@]}" \
+      || warn "Some PHP extensions failed to install (continuing)."
+    systemctl reload "php${PHP_VERSION}-fpm" 2>/dev/null || true
+    step "php-extensions" ok "installed: ${MISSING_EXT[*]}"
+  else
+    warn "apt-get not available; skipping auto-install of: ${MISSING_EXT[*]}"
+    step "php-extensions" warn "apt-get unavailable"
+  fi
+else
+  step "php-extensions" ok "all required extensions present"
+fi
+
 # Record current SHA (used for rollback)
 cd "${APP_DIR}"
 PREV_SHA=$(git rev-parse HEAD 2>/dev/null || echo "")
@@ -257,9 +282,27 @@ if [[ -d "${APP_DIR}/erp-backend" ]]; then
 
   # ---------- PRODUCTION-SAFE migrations (additive ONLY) ----------
   CURRENT_STEP="migrate"
-  log "Running additive migrations (no seeders, no data reset)..."
+  log "Running additive migrations (no data reset)..."
   php artisan migrate --force --no-interaction
   step "migrate" ok
+
+  # ---------- Optional seeders (opt-in via RUN_SEEDERS=1) ----------
+  # Default OFF to preserve production safety. Set RUN_SEEDERS=1 to run
+  # idempotent master-data seeders (e.g. CoA, units, roles). Demo data
+  # should ONLY be loaded from the in-app "Reset & Seed Demo" panel.
+  CURRENT_STEP="db-seed"
+  if [[ "${RUN_SEEDERS:-0}" == "1" ]]; then
+    SEEDER_CLASS="${SEEDER_CLASS:-Database\\Seeders\\ProductionSeeder}"
+    log "Running seeders: ${SEEDER_CLASS} (opt-in)..."
+    if php artisan db:seed --class="${SEEDER_CLASS}" --force --no-interaction; then
+      step "db-seed" ok "${SEEDER_CLASS}"
+    else
+      warn "Seeder ${SEEDER_CLASS} failed (continuing)."
+      step "db-seed" warn "${SEEDER_CLASS} failed"
+    fi
+  else
+    step "db-seed" ok "skipped (RUN_SEEDERS!=1)"
+  fi
 
   CURRENT_STEP="env-fixups"
   log "Repairing VPS token-only auth/install flags..."
