@@ -136,6 +136,7 @@ const navGroups: NavGroup[] = [
     permission: "sales.view",
     requiredModules: ["sales_vat"],
     children: [
+      { to: "/customers", label: "Customer List", icon: UserCheck, permission: "customers.view,sales.view" },
       { to: "/sales-workflow/po", label: "Purchase Orders", icon: ClipboardList, permission: "sales.view" },
       { to: "/sales-workflow/vat-challan", label: "VAT Challans", icon: Receipt, permission: "sales.view" },
       { to: "/sales-workflow/delivery-challan", label: "Delivery Challans", icon: FileText, permission: "sales.view" },
