@@ -510,18 +510,76 @@ Deno.serve(async (req) => {
         status: "Approved", auto_post: true, created_by: UID,
         approved_by: UID, approved_at: grnDate,
       });
-      lines.forEach((l, i) => GRNitems.push({
-        id: U(), grn_id: grnId, line_no: i + 1, item_id: l.itemId,
-        item_description: l.itemName, ordered_qty: l.qty,
-        received_qty: l.qty, accepted_qty: l.qty, rejected_qty: 0,
-        unit_cost: l.price, line_value: l.total,
-      }));
+      const grnItemIds: string[] = [];
+      lines.forEach((l, i) => {
+        const gid = U(); grnItemIds.push(gid);
+        GRNitems.push({
+          id: gid, grn_id: grnId, line_no: i + 1, item_id: l.itemId,
+          item_description: l.itemName, ordered_qty: l.qty,
+          received_qty: l.qty, accepted_qty: l.qty, rejected_qty: 0,
+          unit_cost: l.price, line_value: l.total,
+        });
+      });
       // GRN posting: Dr Inventory + VAT Input, Cr AP
       addV("journal", grnDate, `GRN ${grnNum} (${sup.name})`, [
         [Ac.inv, subtotal, 0, `Inventory in (${sup.name})`],
         [Ac.vatIn, vat, 0, `Input VAT ${grnNum}`],
         [Ac.ap, 0, grand, `Payable to ${sup.name}`],
       ]);
+      // Purchase Return (~8% of GRNs — first line, partial qty)
+      if (R() < 0.08 && lines.length > 0) {
+        const retDate = ymd(new Date(new Date(grnDate).getTime() + RI(2, 10) * 86400000));
+        if (new Date(retDate) <= end) {
+          prc++;
+          const retId = U();
+          const retNum = `PRET-${fyTag}-${String(prc).padStart(5, "0")}`;
+          const rl = lines[0];
+          const rqty = Math.max(1, Math.floor(rl.qty * 0.1));
+          const rSub = round2(rqty * rl.price);
+          const rVat = round2(rSub * VAT_RATE);
+          const rGrand = round2(rSub + rVat);
+          PRets.push({
+            id: retId, return_no: retNum, return_date: retDate,
+            supplier_id: sup.id, grn_id: grnId, branch_id: BR_DHK, warehouse_id: WH_DHK,
+            reason: pick(["Damaged in transit","Quality issue","Wrong specification"]),
+            subtotal: rSub, vat_amount: rVat, grand_total: rGrand,
+            status: "Approved", created_by: UID,
+          });
+          PRetItems.push({
+            id: U(), return_id: retId, item_id: rl.itemId, grn_item_id: grnItemIds[0],
+            description: rl.itemName, quantity: rqty, unit_cost: rl.price,
+            vat_rate: 15, line_total: rGrand, sort_order: 1,
+          });
+          addV("journal", retDate, `Purchase Return ${retNum}`, [
+            [Ac.ap, rGrand, 0, `AP reversal ${retNum}`],
+            [Ac.inv, 0, rSub, "Inventory reversal"],
+            [Ac.vatIn, 0, rVat, "Input VAT reversal"],
+          ]);
+        }
+      }
+      // LC document for IMPORT POs
+      if (isImport) {
+        lcc++;
+        const lcId = U();
+        const lcNum = `LC-${fyTag}-${String(lcc).padStart(5, "0")}`;
+        const lcDate = ymd(new Date(d.getTime() - 15 * 86400000));
+        const expDate = ymd(new Date(d.getTime() + 90 * 86400000));
+        const charges = round2(grand * 0.04);
+        LCs.push({
+          id: lcId, lc_no: lcNum, lc_date: lcDate, expiry_date: expDate,
+          supplier_id: sup.id, branch_id: BR_DHK, bank_name: pick(["EBL","HSBC BD","BRAC Bank","City Bank"]),
+          lc_type: pick(["Sight","Usance"]), currency: "USD", exchange_rate: 110,
+          lc_amount: round2(grand / 110), margin_pct: 10, margin_amount: round2(grand * 0.10),
+          total_charges: charges, landed_cost: round2(grand + charges),
+          po_id: poId, grn_id: grnId, status: "Closed",
+          notes: "Demo LC", created_by: UID,
+        });
+        LCcharges.push(
+          { id: U(), lc_id: lcId, charge_type: "Bank Charge", charge_date: lcDate, description: "LC opening commission", amount: round2(charges * 0.4), currency: "BDT", account_id: Ac.bank, reference_no: lcNum },
+          { id: U(), lc_id: lcId, charge_type: "Freight",      charge_date: grnDate, description: "Sea freight",            amount: round2(charges * 0.5), currency: "BDT", account_id: Ac.bank, reference_no: lcNum },
+          { id: U(), lc_id: lcId, charge_type: "Duty",         charge_date: grnDate, description: "Customs duty",           amount: round2(charges * 0.1), currency: "BDT", account_id: Ac.bank, reference_no: lcNum },
+        );
+      }
       // Supplier Bill (5 days after GRN)
       const billDate = ymd(new Date(new Date(grnDate).getTime() + 5 * 86400000));
       if (new Date(billDate) > end) continue;
