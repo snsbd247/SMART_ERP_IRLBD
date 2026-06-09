@@ -96,56 +96,78 @@ const BackupPage = () => {
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [verifyResult, setVerifyResult] = useState<any | null>(null);
 
-  const DEMO_STEPS = [
-    "Chart of Accounts",
-    "IFRS Account Mapping",
-    "Purchase Types",
-    "Purchase COA Mapping",
-    "Purchase Settings",
-    "Branch Management",
-    "Financial Years",
-    "Roles & Permissions",
-    "GitHub Deploy Sync",
-    "Document Numbering",
-    "Page Shortcuts",
-    "General Settings",
-    "SMS Integration",
-    "Branding & White-Label",
+  // Section key MUST match backend keys returned by DemoConfigImportController.
+  const DEMO_SECTIONS: Array<{ key: string; label: string }> = [
+    { key: "chart_of_accounts",    label: "Chart of Accounts" },
+    { key: "ifrs_account_mapping", label: "IFRS Account Mapping" },
+    { key: "purchase_types",       label: "Purchase Types" },
+    { key: "purchase_coa_mapping", label: "Purchase COA Mapping" },
+    { key: "purchase_settings",    label: "Purchase Settings" },
+    { key: "branches",             label: "Branch Management" },
+    { key: "financial_years",      label: "Financial Years" },
+    { key: "roles_permissions",    label: "Roles & Permissions" },
+    { key: "github_deploy_sync",   label: "GitHub Deploy Sync" },
+    { key: "number_sequences",     label: "Document Numbering" },
+    { key: "page_shortcuts",       label: "Page Shortcuts" },
+    { key: "company_settings",     label: "General Settings" },
+    { key: "sms_settings",         label: "SMS Integration" },
+    { key: "branding",             label: "Branding & White-Label" },
   ];
+  const DEMO_STEPS = DEMO_SECTIONS.map(s => s.label);
 
-  const handleImportDemoConfig = async (reset = false) => {
+  const [selectedSections, setSelectedSections] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(DEMO_SECTIONS.map(s => [s.key, true]))
+  );
+  const [isDryRun, setIsDryRun] = useState(false);
+
+  const toggleSection = (key: string) =>
+    setSelectedSections(prev => ({ ...prev, [key]: !prev[key] }));
+  const setAllSections = (val: boolean) =>
+    setSelectedSections(Object.fromEntries(DEMO_SECTIONS.map(s => [s.key, val])));
+
+  const handleImportDemoConfig = async (reset = false, dryRun = false) => {
     if (!isSuperAdmin) {
       toast({ title: "Access Denied", description: "Only Super Admins can run demo import.", variant: "destructive" });
+      return;
+    }
+    const sections = DEMO_SECTIONS.filter(s => selectedSections[s.key]).map(s => s.key);
+    if (sections.length === 0) {
+      toast({ title: "No sections selected", description: "Please tick at least one section.", variant: "destructive" });
       return;
     }
     setConfirmDemo(false);
     setConfirmResetDemo(false);
     setImportingDemo(true);
+    setIsDryRun(dryRun);
     setDemoResults(null);
     setDemoOverall(null);
     setDemoProgress(5);
-    setDemoStatus(reset ? "Resetting configuration tables..." : "Validating Super Admin access...");
+    setDemoStatus(
+      dryRun ? "Running dry-run preview (no changes will be saved)..."
+             : reset ? "Resetting configuration tables..." : "Validating Super Admin access..."
+    );
 
-    // Simulated step progress (the server runs the full import in one call).
+    const labels = DEMO_SECTIONS.filter(s => selectedSections[s.key]).map(s => s.label);
     let step = 0;
     const stepTimer = window.setInterval(() => {
-      step = Math.min(step + 1, DEMO_STEPS.length - 1);
-      setDemoStatus(`Importing: ${DEMO_STEPS[step]}...`);
-      setDemoProgress(Math.min(15 + step * 15, 85));
-    }, 700);
+      step = Math.min(step + 1, labels.length - 1);
+      setDemoStatus(`${dryRun ? "Previewing" : "Importing"}: ${labels[step]}...`);
+      setDemoProgress(Math.min(15 + Math.round((step / Math.max(labels.length - 1, 1)) * 70), 85));
+    }, 500);
 
     try {
+      const body = { reset, dry_run: dryRun, sections };
       let payload: any = null;
       if (USE_LARAVEL) {
         const res = await fetch(`${API_BASE}/v1/admin/demo/import-config`, {
           method: "POST",
           headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-          body: JSON.stringify({ reset }),
+          body: JSON.stringify(body),
         });
         payload = await res.json().catch(() => ({ message: `Failed (HTTP ${res.status})` }));
         if (!res.ok) throw new Error(payload.message || payload.error || `HTTP ${res.status}`);
       } else {
-        const { data, error } = await supabase.functions.invoke("import-demo-config", { body: { reset } });
+        const { data, error } = await supabase.functions.invoke("import-demo-config", { body });
         if (error) throw error;
         payload = data;
         if (payload && payload.success === false && !payload.results) throw new Error(payload.error || "Import failed");
@@ -156,18 +178,26 @@ const BackupPage = () => {
       setDemoResults(results);
       setDemoOverall(overall);
       setDemoProgress(100);
-      setDemoStatus(overall === "success" ? "Import completed successfully." : "Import completed with warnings.");
+      setDemoStatus(
+        dryRun ? "Dry-run preview ready. Review the table below; nothing has been saved."
+               : overall === "success" ? "Import completed successfully." : "Import completed with warnings."
+      );
 
-      const total = results ? results.reduce((n: number, r: any) => n + (r.inserted || 0), 0) : 0;
+      const totalIns = results ? results.reduce((n: number, r: any) => n + (r.inserted || 0), 0) : 0;
+      const totalUpd = results ? results.reduce((n: number, r: any) => n + (r.skipped || 0), 0) : 0;
       toast({
-        title: overall === "success" ? "Demo configuration imported" : "Demo import finished with warnings",
-        description: `${total} new rows added across ${results?.length ?? 14} sections.`,
+        title: dryRun
+          ? "Dry-run preview complete"
+          : overall === "success" ? "Demo configuration imported" : "Demo import finished with warnings",
+        description: dryRun
+          ? `Would insert ${totalIns} new rows, update ${totalUpd} existing across ${results?.length ?? sections.length} sections.`
+          : `${totalIns} new / ${totalUpd} updated across ${results?.length ?? sections.length} sections.`,
         variant: overall === "success" ? "default" : "destructive",
       });
     } catch (err: any) {
       setDemoProgress(100);
-      setDemoStatus("Import failed.");
-      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+      setDemoStatus(dryRun ? "Dry-run failed." : "Import failed.");
+      toast({ title: dryRun ? "Preview failed" : "Import failed", description: err.message, variant: "destructive" });
     } finally {
       window.clearInterval(stepTimer);
       setImportingDemo(false);
