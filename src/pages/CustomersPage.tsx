@@ -29,6 +29,7 @@ interface Customer {
   address: string | null;
   bin_number: string | null;
   status: string;
+  receivable_account_id?: string | null;
 }
 
 const CustomersPage = () => {
@@ -41,7 +42,9 @@ const CustomersPage = () => {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", bin_number: "" });
   const [parentAccountId, setParentAccountId] = useState<string>("");
+  const [receivableLedgerId, setReceivableLedgerId] = useState<string>("");
   const [assetAccounts, setAssetAccounts] = useState<any[]>([]);
+  const [receivableLedgers, setReceivableLedgers] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -62,17 +65,26 @@ const CustomersPage = () => {
   const loadAccounts = async () => {
     const { data } = await supabase
       .from("chart_of_accounts")
-      .select("id, account_code, account_name")
+      .select("id, account_code, account_name, parent_id")
       .eq("account_type", "asset")
       .eq("is_active", true)
       .order("account_code");
     setAssetAccounts(data || []);
+    // Receivable ledgers = direct/indirect children of "Accounts Receivable" (code 1240)
+    const ar = (data || []).find((a: any) => a.account_code === "1240");
+    if (ar) {
+      const arDescendants = (data || []).filter((a: any) => a.parent_id === ar.id);
+      setReceivableLedgers(arDescendants);
+    } else {
+      setReceivableLedgers([]);
+    }
   };
 
   const openCreate = () => {
     setEditingCustomer(null);
     setForm({ name: "", email: "", phone: "", address: "", bin_number: "" });
     setParentAccountId("");
+    setReceivableLedgerId("");
     setOpen(true);
   };
 
@@ -88,6 +100,7 @@ const CustomersPage = () => {
     }
     setEditingCustomer(c);
     setForm({ name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "" });
+    setReceivableLedgerId(c.receivable_account_id || "");
     setOpen(true);
   };
 
@@ -97,22 +110,25 @@ const CustomersPage = () => {
     try {
       if (editingCustomer) {
         const isApprovedEdit = editingCustomer.status === "approved";
+        const baseFields = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null };
+        const newValues: any = { ...baseFields, receivable_account_id: receivableLedgerId || null };
         if (isApprovedEdit && isSuperAdmin) {
-          await documentApi.editApproved("customer", editingCustomer.id, {
-            name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null,
-          });
+          await documentApi.editApproved("customer", editingCustomer.id, newValues);
         } else {
-          const oldValues = { name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address, bin_number: editingCustomer.bin_number };
-          const newValues = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null };
+          const oldValues = { ...baseFields, receivable_account_id: editingCustomer.receivable_account_id ?? null,
+            name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address, bin_number: editingCustomer.bin_number };
           const { error } = await supabase.from("customers").update(newValues).eq("id", editingCustomer.id);
           if (error) throw error;
           await logEditAudit({ userId: user?.id, userName: profile?.name, module: "Sales", action: "Edit Customer", recordId: editingCustomer.id, oldValues, newValues });
         }
         toast({ title: "Customer updated" });
       } else {
-        const { error } = await supabase.from("customers").insert({ ...form, status: "active" });
+        const { data: inserted, error } = await supabase.from("customers").insert({ ...form, status: "active" }).select("id").single();
         if (error) throw error;
-        await createCustomerLedger(form.name.trim(), parentAccountId || undefined);
+        const ledgerId = await createCustomerLedger(form.name.trim(), parentAccountId || undefined);
+        if (ledgerId && inserted?.id) {
+          await supabase.from("customers").update({ receivable_account_id: ledgerId } as any).eq("id", inserted.id);
+        }
         const parentName = parentAccountId ? assetAccounts.find((a) => a.id === parentAccountId)?.account_name : "Accounts Receivable";
         toast({ title: "Customer added", description: `Ledger created under ${parentName}` });
       }
@@ -231,7 +247,7 @@ const CustomersPage = () => {
             <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
             <div><Label>BIN Number</Label><Input value={form.bin_number} onChange={(e) => setForm({ ...form, bin_number: e.target.value })} placeholder="e.g. 123456789-0101" /></div>
-            {!editingCustomer && (
+            {!editingCustomer ? (
               <div>
                 <Label>Parent Ledger (Chart of Accounts)</Label>
                 <SearchableAccountSelect
@@ -243,7 +259,21 @@ const CustomersPage = () => {
                   allValue="__auto__"
                   placeholder="Auto (Accounts Receivable)"
                 />
-                <p className="text-xs text-muted-foreground mt-1">Leave as Auto to place under Accounts Receivable.</p>
+                <p className="text-xs text-muted-foreground mt-1">A dedicated sub-ledger will be created under Accounts Receivable and linked to this customer.</p>
+              </div>
+            ) : (
+              <div>
+                <Label>Receivable Ledger</Label>
+                <SearchableAccountSelect
+                  accounts={receivableLedgers.length > 0 ? receivableLedgers : assetAccounts}
+                  value={receivableLedgerId || "__none__"}
+                  onChange={(v) => setReceivableLedgerId(v === "__none__" ? "" : v)}
+                  allowAll
+                  allLabel="— Not linked —"
+                  allValue="__none__"
+                  placeholder="Select receivable ledger"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Change the ledger linked to this customer (under Accounts Receivable).</p>
               </div>
             )}
           </div>

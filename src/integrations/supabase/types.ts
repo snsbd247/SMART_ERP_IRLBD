@@ -810,6 +810,7 @@ export type Database = {
           id: string
           name: string
           phone: string | null
+          receivable_account_id: string | null
           status: string
         }
         Insert: {
@@ -820,6 +821,7 @@ export type Database = {
           id?: string
           name: string
           phone?: string | null
+          receivable_account_id?: string | null
           status?: string
         }
         Update: {
@@ -830,9 +832,18 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
+          receivable_account_id?: string | null
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_receivable_account_id_fkey"
+            columns: ["receivable_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       delivery_challans: {
         Row: {

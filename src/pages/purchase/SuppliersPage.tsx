@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Users, Search } from "lucide-react";
+import { createSupplierLedger } from "@/lib/party-ledger-utils";
 
 interface Supplier {
   id: string; code: string; name: string; supplier_type: string;
@@ -45,11 +46,19 @@ const SuppliersPage = () => {
     setLoading(true);
     const [s, a, b] = await Promise.all([
       supabase.from("suppliers" as any).select("*").order("name"),
-      supabase.from("chart_of_accounts").select("id,code,name").eq("is_active", true).order("code"),
+      supabase
+        .from("chart_of_accounts")
+        .select("id, account_code, account_name, parent_id, account_type")
+        .eq("is_active", true)
+        .eq("account_type", "liability")
+        .order("account_code"),
       supabase.from("branches").select("id,name").order("name"),
     ]);
     setItems((s.data || []) as any);
-    setAccounts(a.data || []);
+    // Restrict payable-account dropdown to descendants of "Accounts & Other Payable" (2210)
+    const all = (a.data || []) as any[];
+    const ap = all.find((x) => x.account_code === "2210");
+    setAccounts(ap ? all.filter((x) => x.parent_id === ap.id) : all);
     setBranches(b.data || []);
     setLoading(false);
   };
@@ -67,10 +76,15 @@ const SuppliersPage = () => {
         const { error } = await supabase.from("suppliers" as any).update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
+        // Auto-create a ledger under "Accounts & Other Payable" if none chosen
+        if (!payload.payable_account_id) {
+          const ledgerId = await createSupplierLedger(String(form.name).trim());
+          if (ledgerId) payload.payable_account_id = ledgerId;
+        }
         const { error } = await supabase.from("suppliers" as any).insert(payload);
         if (error) throw error;
       }
-      toast({ title: editing ? "Supplier updated" : "Supplier created" });
+      toast({ title: editing ? "Supplier updated" : "Supplier created", description: !editing && payload.payable_account_id ? "Linked ledger under Accounts & Other Payable" : undefined });
       setOpen(false); load();
     } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
     finally { setSaving(false); }
@@ -161,14 +175,15 @@ const SuppliersPage = () => {
             <div className="space-y-1"><Label>Credit Limit</Label><Input type="number" value={form.credit_limit ?? 0} onChange={(e) => setForm({ ...form, credit_limit: parseFloat(e.target.value) || 0 })} /></div>
             <div className="space-y-1"><Label>Credit Days</Label><Input type="number" value={form.credit_days ?? 0} onChange={(e) => setForm({ ...form, credit_days: parseInt(e.target.value) || 0 })} /></div>
             <div className="col-span-2 space-y-1"><Label>Address</Label><Input value={form.address || ""} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
-            <div className="col-span-2 space-y-1"><Label>Payable Account (COA)</Label>
-              <Select value={form.payable_account_id || "_none"} onValueChange={(v) => setForm({ ...form, payable_account_id: v === "_none" ? null : v })}>
-                <SelectTrigger><SelectValue placeholder="Select payable account" /></SelectTrigger>
+            <div className="col-span-2 space-y-1"><Label>Payable Ledger (under Accounts & Other Payable)</Label>
+              <Select value={form.payable_account_id || "_auto"} onValueChange={(v) => setForm({ ...form, payable_account_id: v === "_auto" ? null : v })}>
+                <SelectTrigger><SelectValue placeholder="Auto — create new ledger" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_none">— None —</SelectItem>
-                  {accounts.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.code} — {a.name}</SelectItem>)}
+                  <SelectItem value="_auto">{editing ? "— Not linked —" : "Auto (create new ledger)"}</SelectItem>
+                  {accounts.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.account_code} — {a.account_name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {!editing && <p className="text-xs text-muted-foreground">A dedicated ledger will be auto-created under "Accounts & Other Payable" if none chosen.</p>}
             </div>
             <div className="col-span-2 flex items-center gap-2">
               <input id="active" type="checkbox" checked={!!form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
