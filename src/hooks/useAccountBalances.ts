@@ -92,16 +92,30 @@ export function useAccountBalances(filters: Filters = {}) {
     }
 
     try {
-      // 1. Get all accounts
-      const { data: accs, error: accsErr } = await supabase
-        .from("chart_of_accounts")
-        .select("*")
-        .order("account_code");
+      // 1. Get all accounts (paginated to bypass 1000-row default cap)
+      const accs: AccountRow[] = [];
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from("chart_of_accounts")
+          .select("*")
+          .order("account_code")
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        accs.push(...((data || []) as AccountRow[]));
+        if (!data || data.length < PAGE_SIZE) break;
+      }
 
-      if (accsErr) throw accsErr;
-      if (!accs) { setAccounts([]); return; }
+      // Show accounts immediately with opening-only balances, then refine.
+      setAccounts(accs.map((a) => ({
+        ...a,
+        total_debit: 0,
+        total_credit: 0,
+        closing_balance: Math.abs(Number(a.opening_balance) || 0),
+        closing_balance_type: (a.opening_balance_type === "credit" ? "credit" : "debit") as "debit" | "credit",
+      })));
+      setLoading(false);
 
-      // 2. Fetch approved voucher IDs that match the filters first (no relation join).
+      // 2. Fetch approved voucher IDs that match the filters first.
       let vq = supabase
         .from("acc_vouchers")
         .select("id")
@@ -114,7 +128,7 @@ export function useAccountBalances(filters: Filters = {}) {
       const { data: vouchers } = await vq;
       const voucherIds = (vouchers || []).map((v: any) => v.id);
 
-      // 3. Fetch entries for those vouchers, batched in chunks to avoid huge IN() clauses.
+      // 3. Fetch entries for those vouchers, batched in chunks.
       const entries: VoucherEntryBalanceRow[] = [];
       const CHUNK = 500;
       for (let i = 0; i < voucherIds.length; i += CHUNK) {
@@ -141,7 +155,7 @@ export function useAccountBalances(filters: Filters = {}) {
       });
 
       // 5. Compute leaf balances
-      const result: AccountWithBalance[] = (accs as AccountRow[]).map((a) => {
+      const result: AccountWithBalance[] = accs.map((a) => {
         const txn = balMap.get(a.id) || { debit: 0, credit: 0 };
         const openSigned = a.opening_balance_type === "debit" ? a.opening_balance : -a.opening_balance;
         const closing = openSigned + txn.debit - txn.credit;
