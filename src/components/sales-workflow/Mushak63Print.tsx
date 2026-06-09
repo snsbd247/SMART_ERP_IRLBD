@@ -50,8 +50,8 @@ const MUSHAK_CSS = `
   .title-center h1 { font-size: 20pt; font-weight: 700; margin: 0; letter-spacing: 1.5pt; }
   .title-center .rule-ref { font-size: 10pt; margin-top: 1mm; }
   .form-code { font-size: 12pt; font-weight: 700; border: 0.4mm solid #000; padding: 1mm 3mm; white-space: nowrap; }
-  .header-grid { display:grid; grid-template-columns: 18mm 1fr 1fr; gap: 3mm; margin-top: 3mm; align-items: flex-start; }
-  .logo-cell img { width: 16mm; height: 16mm; object-fit: contain; }
+  .header-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin-top: 3mm; align-items: flex-start; }
+
   .kv { display:grid; grid-template-columns: 45mm 3mm 1fr; column-gap: 1mm; row-gap: 0.8mm; font-size: 10pt; }
   .kv .k { font-weight: 600; }
   .kv .v { font-weight: 600; word-wrap: break-word; overflow-wrap: anywhere; }
