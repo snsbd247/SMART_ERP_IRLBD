@@ -787,6 +787,74 @@ Deno.serve(async (req) => {
     }
     await bulk("leave_requests", leaves);
 
+    // ===== Overtime Records =====
+    const overtime: any[] = [];
+    for (const e of employees) {
+      const n = RI(2, 5);
+      for (let i = 0; i < n; i++) {
+        const offsetDays = RI(15, 330);
+        const d = new Date(fyStart.getTime() + offsetDays * 86400000);
+        if (d > end) continue;
+        overtime.push({
+          id: U(), employee_id: e.id, date: ymd(d),
+          hours: pick([1, 1.5, 2, 2.5, 3, 4]),
+          status: pick(["approved","approved","pending"]),
+          approved_by: UID,
+        });
+      }
+    }
+    await bulk("overtime_records", overtime);
+
+    // ===== Biometric Devices + Logs =====
+    const bioDevices = [
+      { id: U(), device_name: "ZKTeco F18 - Main Gate", ip_address: "192.168.1.201", port: 4370, location: "Head Office Entrance", status: "online", last_sync_at: new Date().toISOString() },
+      { id: U(), device_name: "ZKTeco K40 - Factory",   ip_address: "192.168.1.202", port: 4370, location: "Factory Floor",        status: "online", last_sync_at: new Date().toISOString() },
+    ];
+    await bulk("biometric_devices", bioDevices);
+    const bioLogs: any[] = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(end.getTime() - i * 86400000);
+      if (d < start) break;
+      for (const e of employees.slice(0, 10)) {
+        bioLogs.push({
+          id: U(), device_id: bioDevices[0].id, device_name: bioDevices[0].device_name,
+          employee_code: e.code, date: ymd(d),
+          check_in_time: `09:${String(RI(0,30)).padStart(2,"0")}:00`,
+          check_out_time: `18:${String(RI(0,45)).padStart(2,"0")}:00`,
+          processed: true,
+        });
+      }
+    }
+    await bulk("biometric_logs", bioLogs);
+
+    // ===== Face Data =====
+    await bulk("face_data", employees.slice(0, 10).map(e => ({
+      id: U(), employee_id: e.id,
+      face_encoding: Array.from({length: 16}, () => Math.random().toFixed(4)).join(","),
+      photo_url: null,
+    })));
+
+    // ===== Employee Documents =====
+    const docTypes: [string,string][] = [
+      ["appointment_letter", "Appointment Letter"],
+      ["nda", "Non-Disclosure Agreement"],
+      ["salary_certificate", "Salary Certificate"],
+      ["experience_letter", "Experience Letter"],
+    ];
+    const empDocs: any[] = [];
+    for (const e of employees) {
+      const picks = pickN(docTypes, RI(1, 3));
+      for (const [dt, dtitle] of picks) {
+        empDocs.push({
+          id: U(), employee_id: e.id, document_type: dt,
+          document_title: `${dtitle} - ${e.name}`,
+          document_html: `<h2>${dtitle}</h2><p>This document certifies ${e.name} (${e.code}).</p>`,
+          generated_by: UID,
+        });
+      }
+    }
+    await bulk("employee_documents", empDocs);
+
     // ===== Stock Transfers (monthly between warehouses) =====
     const transfers: any[] = [];
     let tc = 0;
