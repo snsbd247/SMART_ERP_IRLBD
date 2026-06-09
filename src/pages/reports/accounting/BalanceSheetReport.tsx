@@ -48,6 +48,10 @@ const BalanceSheetReport = () => {
     setLoading(false);
   };
 
+  const totalAssets = assets.reduce((s, a) => s + a.balance, 0);
+  const totalLiabilities = liabilities.reduce((s, l) => s + l.balance, 0);
+  const totalEquityAccounts = equity.reduce((s, e) => s + e.balance, 0);
+  const totalEquity = totalEquityAccounts + netProfit; // Roll period P&L into equity so BS balances
 
   return (
     <div className="p-4 lg:p-6 space-y-4 max-w-[1600px] mx-auto">
