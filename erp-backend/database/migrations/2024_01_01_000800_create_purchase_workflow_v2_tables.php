@@ -60,7 +60,7 @@ return new class extends Migration
         });
 
         // ───────── 2. Configuration & meta ─────────
-        Schema::create('purchase_types', function (Blueprint $t) {
+        if (!Schema::hasTable('purchase_types')) Schema::create('purchase_types', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->string('code', 30)->unique();
             $t->string('name', 120);
@@ -75,7 +75,7 @@ return new class extends Migration
             $t->timestamps();
         });
 
-        Schema::create('purchase_settings', function (Blueprint $t) {
+        if (!Schema::hasTable('purchase_settings')) Schema::create('purchase_settings', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->boolean('enable_pr_workflow')->default(true);
             $t->boolean('enable_po_amendment')->default(true);
@@ -98,7 +98,7 @@ return new class extends Migration
             $t->timestamps();
         });
 
-        Schema::create('purchase_approval_matrix', function (Blueprint $t) {
+        if (!Schema::hasTable('purchase_approval_matrix')) Schema::create('purchase_approval_matrix', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->string('document_type', 20);
             $t->uuid('purchase_type_id')->nullable();
@@ -113,7 +113,7 @@ return new class extends Migration
             $t->index(['document_type', 'step_order']);
         });
 
-        Schema::create('purchase_audit_log', function (Blueprint $t) {
+        if (!Schema::hasTable('purchase_audit_log')) Schema::create('purchase_audit_log', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->string('document_type', 30);
             $t->uuid('document_id');
@@ -129,7 +129,7 @@ return new class extends Migration
             $t->index(['document_type', 'document_id']);
         });
 
-        Schema::create('purchase_approval_history', function (Blueprint $t) {
+        if (!Schema::hasTable('purchase_approval_history')) Schema::create('purchase_approval_history', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->string('document_type', 30);
             $t->uuid('document_id');
@@ -144,7 +144,7 @@ return new class extends Migration
             $t->index(['document_type', 'document_id']);
         });
 
-        Schema::create('purchase_coa_mapping', function (Blueprint $t) {
+        if (!Schema::hasTable('purchase_coa_mapping')) Schema::create('purchase_coa_mapping', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->uuid('purchase_type_id')->nullable();
             $t->uuid('branch_id')->nullable();
@@ -166,7 +166,7 @@ return new class extends Migration
         });
 
         // ───────── 3. Purchase Requisitions ─────────
-        Schema::create('purchase_requisitions', function (Blueprint $t) {
+        if (!Schema::hasTable('purchase_requisitions')) Schema::create('purchase_requisitions', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->string('pr_no', 50)->unique();
             $t->date('pr_date');
@@ -189,7 +189,7 @@ return new class extends Migration
             $t->index(['status', 'pr_date']);
         });
 
-        Schema::create('purchase_requisition_items', function (Blueprint $t) {
+        if (!Schema::hasTable('purchase_requisition_items')) Schema::create('purchase_requisition_items', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->uuid('pr_id');
             $t->integer('line_no')->default(1);
@@ -207,7 +207,7 @@ return new class extends Migration
         });
 
         // ───────── 4. Purchase Orders v2 ─────────
-        Schema::create('purchase_orders_v2', function (Blueprint $t) {
+        if (!Schema::hasTable('purchase_orders_v2')) Schema::create('purchase_orders_v2', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->string('po_no', 50)->unique();
             $t->date('po_date');
@@ -244,7 +244,7 @@ return new class extends Migration
             $t->index('supplier_id');
         });
 
-        Schema::create('purchase_order_items_v2', function (Blueprint $t) {
+        if (!Schema::hasTable('purchase_order_items_v2')) Schema::create('purchase_order_items_v2', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->uuid('po_id');
             $t->integer('line_no')->default(1);
@@ -265,7 +265,7 @@ return new class extends Migration
             $t->index('po_id');
         });
 
-        Schema::create('po_pr_links', function (Blueprint $t) {
+        if (!Schema::hasTable('po_pr_links')) Schema::create('po_pr_links', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->uuid('po_item_id');
             $t->uuid('pr_item_id');
@@ -274,7 +274,7 @@ return new class extends Migration
             $t->index(['po_item_id', 'pr_item_id']);
         });
 
-        Schema::create('po_amendments_v2', function (Blueprint $t) {
+        if (!Schema::hasTable('po_amendments_v2')) Schema::create('po_amendments_v2', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->uuid('po_id');
             $t->integer('revision_no');
@@ -287,7 +287,7 @@ return new class extends Migration
         });
 
         // ───────── 5. GRN v2 ─────────
-        Schema::create('grns_v2', function (Blueprint $t) {
+        if (!Schema::hasTable('grns_v2')) Schema::create('grns_v2', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->string('grn_no', 50)->unique();
             $t->date('grn_date');
@@ -316,7 +316,7 @@ return new class extends Migration
             $t->index('po_id');
         });
 
-        Schema::create('grn_items_v2', function (Blueprint $t) {
+        if (!Schema::hasTable('grn_items_v2')) Schema::create('grn_items_v2', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->uuid('grn_id');
             $t->uuid('po_item_id')->nullable();
@@ -338,7 +338,7 @@ return new class extends Migration
         });
 
         // ───────── 6. Supplier Bills + Payments + Allocations ─────────
-        Schema::create('supplier_bills_v2', function (Blueprint $t) {
+        if (!Schema::hasTable('supplier_bills_v2')) Schema::create('supplier_bills_v2', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->string('bill_no', 50)->unique();
             $t->string('supplier_invoice_no', 60)->nullable();
@@ -369,7 +369,7 @@ return new class extends Migration
             $t->index('supplier_id');
         });
 
-        Schema::create('supplier_bill_items_v2', function (Blueprint $t) {
+        if (!Schema::hasTable('supplier_bill_items_v2')) Schema::create('supplier_bill_items_v2', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->uuid('bill_id');
             $t->uuid('grn_item_id')->nullable();
@@ -387,7 +387,7 @@ return new class extends Migration
             $t->index('bill_id');
         });
 
-        Schema::create('supplier_payments_v2', function (Blueprint $t) {
+        if (!Schema::hasTable('supplier_payments_v2')) Schema::create('supplier_payments_v2', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->string('payment_no', 50)->unique();
             $t->date('payment_date');
@@ -413,7 +413,7 @@ return new class extends Migration
             $t->index('supplier_id');
         });
 
-        Schema::create('supplier_payment_allocations', function (Blueprint $t) {
+        if (!Schema::hasTable('supplier_payment_allocations')) Schema::create('supplier_payment_allocations', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->uuid('payment_id');
             $t->uuid('bill_id');
@@ -423,7 +423,7 @@ return new class extends Migration
         });
 
         // ───────── 7. LC ─────────
-        Schema::create('lc_documents', function (Blueprint $t) {
+        if (!Schema::hasTable('lc_documents')) Schema::create('lc_documents', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->string('lc_no', 60)->unique();
             $t->date('lc_date');
@@ -449,7 +449,7 @@ return new class extends Migration
             $t->index(['status', 'lc_date']);
         });
 
-        Schema::create('lc_charges', function (Blueprint $t) {
+        if (!Schema::hasTable('lc_charges')) Schema::create('lc_charges', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->uuid('lc_id');
             $t->string('charge_type', 50);
@@ -464,7 +464,7 @@ return new class extends Migration
         });
 
         // ───────── 8. Purchase Returns v2 ─────────
-        Schema::create('purchase_returns_v2', function (Blueprint $t) {
+        if (!Schema::hasTable('purchase_returns_v2')) Schema::create('purchase_returns_v2', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->string('return_no', 50)->unique();
             $t->date('return_date');
@@ -487,7 +487,7 @@ return new class extends Migration
             $t->index('supplier_id');
         });
 
-        Schema::create('purchase_return_items_v2', function (Blueprint $t) {
+        if (!Schema::hasTable('purchase_return_items_v2')) Schema::create('purchase_return_items_v2', function (Blueprint $t) {
             $t->uuid('id')->primary();
             $t->uuid('return_id');
             $t->uuid('grn_item_id')->nullable();
