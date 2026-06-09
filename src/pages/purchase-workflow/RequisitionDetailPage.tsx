@@ -49,6 +49,7 @@ export default function RequisitionDetailPage() {
   return (
     <div className="p-6 space-y-4">
       <Button variant="ghost" onClick={() => nav("/purchase-workflow/requisitions")}><ArrowLeft className="w-4 h-4 mr-2" />Back</Button>
+      <PurchaseStatusTracker current="requisition" status={{ requisition: pr.status === "approved" ? "done" : "active" }} />
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{pr.pr_number} <Badge className="ml-2">{pr.status}</Badge></CardTitle>
