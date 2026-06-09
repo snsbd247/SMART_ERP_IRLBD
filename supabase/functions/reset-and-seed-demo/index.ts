@@ -40,6 +40,10 @@ Deno.serve(async (req) => {
 
     // ===== RESET =====
     const resetGroups: string[][] = [
+      // Purchase v2 child rows first (must precede suppliers / items)
+      ["lc_charges","purchase_return_items_v2","supplier_payment_allocations","supplier_bill_items_v2","grn_items_v2","po_amendments_v2","po_pr_links","purchase_order_items_v2","purchase_requisition_items","purchase_approval_history","purchase_audit_log"],
+      ["purchase_returns_v2","supplier_payments_v2","supplier_bills_v2","grns_v2","lc_documents"],
+      ["purchase_orders_v2","purchase_requisitions"],
       // Leaf child rows first
       ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","bom_items","fund_transactions","employee_fund_settings","overtime_records","leave_requests","attendance","employee_documents","employee_bank_info","employee_education","employee_experience","employee_emergency_contacts","salary_structures","face_data","biometric_logs","payroll","party_notes","audit_log","login_logs","backup_history","messages","conversation_participants",
         "tds_entries","invoice_payments","invoice_challans","sales_invoice_items_v2","customer_receives","ho_receives","vat_challan_items","purchase_order_items",
@@ -47,7 +51,7 @@ Deno.serve(async (req) => {
       ["sales_returns"],
       ["sales_invoices_v2","delivery_challans","vat_challans","purchase_orders"],
       ["acc_vouchers","party_payments","sales_invoices","production_entries","bill_of_materials","employees","conversations"],
-      ["customers","item_master","products","raw_materials"],
+      ["customers","suppliers","item_master","products","raw_materials"],
       ["item_categories","units","warehouses","product_categories"],
     ];
     for (const grp of resetGroups) {
