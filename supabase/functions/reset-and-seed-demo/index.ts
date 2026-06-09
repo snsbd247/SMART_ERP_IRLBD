@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
       ["sales_returns"],
       ["sales_invoices_v2","delivery_challans","vat_challans","purchase_orders"],
       ["acc_vouchers","party_payments","sales_invoices","production_entries","bill_of_materials","employees","conversations"],
+      ["sections","shifts","biometric_devices"],
       ["customers","suppliers","item_master","products","raw_materials"],
       ["item_categories","units","warehouses","product_categories"],
     ];
