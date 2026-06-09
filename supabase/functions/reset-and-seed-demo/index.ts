@@ -196,6 +196,19 @@ Deno.serve(async (req) => {
     await bulk("product_categories", catRows);
     await bulk("item_categories", catRows.map(c => ({ ...c, is_active:true })));
 
+    // Stock Groups (primary inventory classification)
+    const sgNames = ["Finished Goods","Raw Materials","Packaging","Additives"];
+    const sgIds: Record<string,string> = {};
+    const sgRows = sgNames.map(n => { const id=U(); sgIds[n]=id; return { id, name:n, is_default: n==="Finished Goods", is_active:true }; });
+    await bulk("stock_groups", sgRows);
+    // primary_group_id self-reference (top-level)
+    for (const r of sgRows) await db.from("stock_groups").update({ primary_group_id: r.id }).eq("id", r.id);
+    const catToGroup = (cat: string) =>
+      ["Bottles","Caps","Plugs","Discs"].includes(cat) ? sgIds["Finished Goods"]
+      : cat === "Raw Materials" ? sgIds["Raw Materials"]
+      : cat === "Additives" ? sgIds["Additives"]
+      : sgIds["Packaging"];
+
     // Products
     // Products — Plastic Bottle / Cap / Plug / Disc manufacturer
     // First 10 = FINISHED GOODS (PCS, used as BOM outputs); rest = RAW MATERIALS / PACKAGING
