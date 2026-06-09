@@ -69,8 +69,11 @@ const BOMPage = () => {
   useEffect(() => { fetchAll(); }, []);
 
   const computeNextBomNumber = async () => {
-    const { data } = await supabase.from("number_sequences").select("prefix, current_number, year").eq("id", "bom").maybeSingle();
-    if (!data) return "BOM-2425-00001";
+    const { data } = await supabase.from("number_sequences").select("id, prefix, current_number, year").eq("id", "bom").maybeSingle();
+    if (!data) {
+      const year = new Date().getFullYear().toString().slice(-2) + String(new Date().getFullYear() + 1).slice(-2);
+      return `BOM-${year}-00001`;
+    }
     const next = (data.current_number || 0) + 1;
     return `${data.prefix}-${data.year}-${String(next).padStart(5, "0")}`;
   };
@@ -183,9 +186,11 @@ const BOMPage = () => {
         await (supabase.from as any)("bom_expenses").insert(expenses.filter((e) => e.account_id).map((e) => ({ bom_id: newId, account_id: e.account_id, rate: e.rate })));
       }
       // bump number sequence
-      const seq = await supabase.from("number_sequences").select("current_number").eq("id", "bom").maybeSingle();
-      const cur = (seq.data?.current_number || 0) + 1;
-      await (supabase.from("number_sequences") as any).update({ current_number: cur }).eq("id", "bom");
+      const seq = await supabase.from("number_sequences").select("id, current_number").eq("id", "bom").maybeSingle();
+      if (seq.data?.id) {
+        const cur = (seq.data.current_number || 0) + 1;
+        await (supabase.from("number_sequences") as any).update({ current_number: cur }).eq("id", seq.data.id);
+      }
       toast.success(`BOM created: ${form.bom_number}`);
     }
     setDialogOpen(false);
