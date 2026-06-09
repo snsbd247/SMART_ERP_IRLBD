@@ -54,6 +54,10 @@ const CustomerProfilePage = () => {
   const [notes, setNotes] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [allocations, setAllocations] = useState<any[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
+  const [vatChallans, setVatChallans] = useState<any[]>([]);
+  const [deliveryChallans, setDeliveryChallans] = useState<any[]>([]);
+  const [salesV2, setSalesV2] = useState<any[]>([]);
   const [newNote, setNewNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState("");
