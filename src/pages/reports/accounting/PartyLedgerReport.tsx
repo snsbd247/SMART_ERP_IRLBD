@@ -69,7 +69,7 @@ const PartyLedgerReport = () => {
   ];
 
   // Load parties on mount
-  useState(() => { fetchParties("customer"); });
+  useState(() => { fetchParties(); });
 
   return (
     <div className="p-4 lg:p-6 space-y-4 max-w-[1600px] mx-auto">
