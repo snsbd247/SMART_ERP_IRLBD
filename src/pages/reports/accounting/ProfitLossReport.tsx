@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
 import { TrendingUp } from "lucide-react";
 
 const ProfitLossReport = () => {
@@ -16,32 +16,28 @@ const ProfitLossReport = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    let query = supabase.from("voucher_entries")
-      .select("account_id, debit, credit, acc_vouchers!inner(status, voucher_date, branch_id)")
-      .eq("acc_vouchers.status", "approved")
-      .gte("acc_vouchers.voucher_date", dateFrom)
-      .lte("acc_vouchers.voucher_date", dateTo);
-    if (branch !== "all") query = query.eq("acc_vouchers.branch_id", branch);
-
-    const { data: entries } = await query;
+    const entries = await fetchAllVoucherEntries({ dateFrom, dateTo, branchId: branch });
     const balMap = new Map<string, number>();
-    (entries || []).forEach((e: any) => {
+    entries.forEach((e: any) => {
       const cur = balMap.get(e.account_id) || 0;
-      balMap.set(e.account_id, cur + Number(e.credit) - Number(e.debit));
+      // Natural balance: credit - debit (income normally positive, expense negative)
+      balMap.set(e.account_id, cur + num(e.credit) - num(e.debit));
     });
 
     const incomeAccounts = accounts.filter((a) => a.account_type === "income").map((a) => ({
-      ...a, balance: Math.abs(balMap.get(a.id) || 0),
-    })).filter((a) => a.balance > 0);
+      ...a, balance: balMap.get(a.id) || 0,
+    })).filter((a) => Math.abs(a.balance) > 0);
 
+    // For expenses, flip the sign so debit-heavy accounts show positive.
     const expenseAccounts = accounts.filter((a) => a.account_type === "expense").map((a) => ({
-      ...a, balance: Math.abs(balMap.get(a.id) || 0),
-    })).filter((a) => a.balance > 0);
+      ...a, balance: -(balMap.get(a.id) || 0),
+    })).filter((a) => Math.abs(a.balance) > 0);
 
     setIncome(incomeAccounts);
     setExpense(expenseAccounts);
     setLoading(false);
   };
+
 
   const totalIncome = income.reduce((s, i) => s + i.balance, 0);
   const totalExpense = expense.reduce((s, e) => s + e.balance, 0);

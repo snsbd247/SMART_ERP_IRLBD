@@ -5,6 +5,7 @@ import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
 import { ScrollText } from "lucide-react";
 
 const AccountLedgerReport = () => {
@@ -15,39 +16,36 @@ const AccountLedgerReport = () => {
   const fetchData = async () => {
     if (!selectedAccount || selectedAccount === "all") return;
     setLoading(true);
-    let query = supabase.from("voucher_entries")
-      .select("*, acc_vouchers!inner(id, voucher_number, voucher_date, status, description, branch_id)")
-      .eq("account_id", selectedAccount)
-      .eq("acc_vouchers.status", "approved")
-      .gte("acc_vouchers.voucher_date", dateFrom)
-      .lte("acc_vouchers.voucher_date", dateTo);
-    if (branch !== "all") query = query.eq("acc_vouchers.branch_id", branch);
-    query = query.order("acc_vouchers(voucher_date)");
-
-    const { data: entries } = await query;
+    const entries = await fetchAllVoucherEntries({
+      dateFrom, dateTo, branchId: branch, accountId: selectedAccount,
+    });
     const acc = accounts.find((a) => a.id === selectedAccount);
-    let runBal = acc ? (acc.opening_balance_type === "debit" ? acc.opening_balance : -acc.opening_balance) : 0;
+    let runBal = acc ? (acc.opening_balance_type === "debit" ? num(acc.opening_balance) : -num(acc.opening_balance)) : 0;
 
-    // Fetch counter-accounts (other ledger names in the same vouchers)
-    const voucherIds = Array.from(new Set((entries || []).map((e: any) => e.acc_vouchers?.id).filter(Boolean)));
+    // Fetch counter-accounts (other ledger names in the same vouchers), chunked
+    const voucherIds = Array.from(new Set(entries.map((e: any) => e.acc_vouchers?.id).filter(Boolean)));
     const counterMap: Record<string, string[]> = {};
     if (voucherIds.length > 0) {
-      const { data: allEntries } = await supabase
-        .from("voucher_entries")
-        .select("voucher_id, account_id")
-        .in("voucher_id", voucherIds);
       const accNameMap = new Map(accounts.map((a: any) => [a.id, a.account_name]));
-      (allEntries || []).forEach((r: any) => {
-        if (r.account_id === selectedAccount) return;
-        const name = accNameMap.get(r.account_id);
-        if (!name) return;
-        if (!counterMap[r.voucher_id]) counterMap[r.voucher_id] = [];
-        if (!counterMap[r.voucher_id].includes(name)) counterMap[r.voucher_id].push(name);
-      });
+      const CHUNK = 500;
+      for (let i = 0; i < voucherIds.length; i += CHUNK) {
+        const slice = voucherIds.slice(i, i + CHUNK);
+        const { data: allEntries } = await supabase
+          .from("voucher_entries")
+          .select("voucher_id, account_id")
+          .in("voucher_id", slice as any);
+        (allEntries || []).forEach((r: any) => {
+          if (r.account_id === selectedAccount) return;
+          const name = accNameMap.get(r.account_id);
+          if (!name) return;
+          if (!counterMap[r.voucher_id]) counterMap[r.voucher_id] = [];
+          if (!counterMap[r.voucher_id].includes(name)) counterMap[r.voucher_id].push(name);
+        });
+      }
     }
 
-    const result = (entries || []).map((e: any) => {
-      runBal += Number(e.debit) - Number(e.credit);
+    const result = entries.map((e: any) => {
+      runBal += num(e.debit) - num(e.credit);
       const vid = e.acc_vouchers?.id;
       const particulars = vid && counterMap[vid]?.length ? counterMap[vid].join(", ") : "—";
       return {
@@ -62,6 +60,7 @@ const AccountLedgerReport = () => {
     setData(result);
     setLoading(false);
   };
+
 
   const selectedAcc = accounts.find((a) => a.id === selectedAccount);
   const title = selectedAcc ? `${selectedAcc.account_name} Ledger` : "Account Ledger";
@@ -94,7 +93,7 @@ const AccountLedgerReport = () => {
         {selectedAcc && (
           <div className="mb-3 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">{selectedAcc.account_code}</span> — {selectedAcc.account_name} ({selectedAcc.account_type})
-            {" | Opening: "}{fc(selectedAcc.opening_balance_type === "debit" ? selectedAcc.opening_balance : -selectedAcc.opening_balance)}
+            {" | Opening: "}{fc(selectedAcc.opening_balance_type === "debit" ? num(selectedAcc.opening_balance) : -num(selectedAcc.opening_balance))}
           </div>
         )}
         <Card><CardContent className="p-0">

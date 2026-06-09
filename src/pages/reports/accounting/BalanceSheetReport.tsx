@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
 import { Scale } from "lucide-react";
 
 const BalanceSheetReport = () => {
@@ -12,37 +12,46 @@ const BalanceSheetReport = () => {
   const [assets, setAssets] = useState<any[]>([]);
   const [liabilities, setLiabilities] = useState<any[]>([]);
   const [equity, setEquity] = useState<any[]>([]);
+  const [netProfit, setNetProfit] = useState(0);
 
   const fetchData = async () => {
     setLoading(true);
-    let query = supabase.from("voucher_entries")
-      .select("account_id, debit, credit, acc_vouchers!inner(status, voucher_date, branch_id)")
-      .eq("acc_vouchers.status", "approved")
-      .lte("acc_vouchers.voucher_date", dateTo);
-    if (branch !== "all") query = query.eq("acc_vouchers.branch_id", branch);
-
-    const { data: entries } = await query;
+    // "As of" report → fetch from the very beginning of records up to dateTo
+    const entries = await fetchAllVoucherEntries({ dateFrom: "1900-01-01", dateTo, branchId: branch });
     const balMap = new Map<string, number>();
-    (entries || []).forEach((e: any) => {
+    entries.forEach((e: any) => {
       const cur = balMap.get(e.account_id) || 0;
-      balMap.set(e.account_id, cur + Number(e.debit) - Number(e.credit));
+      balMap.set(e.account_id, cur + num(e.debit) - num(e.credit));
     });
 
     const getBalance = (a: any) => {
       const txn = balMap.get(a.id) || 0;
-      const open = a.opening_balance_type === "debit" ? a.opening_balance : -a.opening_balance;
+      const open = a.opening_balance_type === "debit" ? num(a.opening_balance) : -num(a.opening_balance);
       return open + txn;
     };
 
     setAssets(accounts.filter((a) => a.account_type === "asset").map((a) => ({ ...a, balance: getBalance(a) })).filter((a) => a.balance !== 0));
-    setLiabilities(accounts.filter((a) => a.account_type === "liability").map((a) => ({ ...a, balance: Math.abs(getBalance(a)) })).filter((a) => a.balance !== 0));
-    setEquity(accounts.filter((a) => a.account_type === "equity").map((a) => ({ ...a, balance: Math.abs(getBalance(a)) })).filter((a) => a.balance !== 0));
+    setLiabilities(accounts.filter((a) => a.account_type === "liability").map((a) => ({ ...a, balance: -getBalance(a) })).filter((a) => a.balance !== 0));
+    setEquity(accounts.filter((a) => a.account_type === "equity").map((a) => ({ ...a, balance: -getBalance(a) })).filter((a) => a.balance !== 0));
+
+    // Compute period Net Profit/(Loss) and roll into equity total so BS balances
+    const incomeTotal = accounts.filter((a) => a.account_type === "income")
+      .reduce((s, a) => s + -(balMap.get(a.id) || 0) * -1, 0); // credit-balance = income
+    // Simpler: income natural = credit - debit; expense natural = debit - credit
+    let income = 0, expense = 0;
+    accounts.forEach((a) => {
+      const txn = balMap.get(a.id) || 0; // debit - credit
+      if (a.account_type === "income") income += -txn; // flip to credit-positive
+      if (a.account_type === "expense") expense += txn;
+    });
+    setNetProfit(income - expense);
     setLoading(false);
   };
 
   const totalAssets = assets.reduce((s, a) => s + a.balance, 0);
   const totalLiabilities = liabilities.reduce((s, l) => s + l.balance, 0);
-  const totalEquity = equity.reduce((s, e) => s + e.balance, 0);
+  const totalEquityAccounts = equity.reduce((s, e) => s + e.balance, 0);
+  const totalEquity = totalEquityAccounts + netProfit; // Roll period P&L into equity so BS balances
 
   return (
     <div className="p-4 lg:p-6 space-y-4 max-w-[1600px] mx-auto">
@@ -85,6 +94,7 @@ const BalanceSheetReport = () => {
               <CardHeader><CardTitle className="text-base">Equity</CardTitle></CardHeader>
               <CardContent className="p-0"><Table><TableBody>
                 {equity.map((e) => (<TableRow key={e.id}><TableCell>{e.account_name}</TableCell><TableCell className="text-right tabular-nums">{fc(e.balance)}</TableCell></TableRow>))}
+                <TableRow><TableCell className="text-muted-foreground">Net Profit / (Loss) for the period</TableCell><TableCell className={`text-right tabular-nums ${netProfit < 0 ? "text-destructive" : ""}`}>{fc(netProfit)}</TableCell></TableRow>
                 <TableRow className="bg-muted/50 font-bold"><TableCell>Total Equity</TableCell><TableCell className="text-right tabular-nums">{fc(totalEquity)}</TableCell></TableRow>
               </TableBody></Table></CardContent>
             </Card>
