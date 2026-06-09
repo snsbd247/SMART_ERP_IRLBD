@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
       { id: U(), shift_name: "Evening",   start_time: "14:00:00", end_time: "22:00:00", late_after_minutes: 10 },
       { id: U(), shift_name: "Night",     start_time: "22:00:00", end_time: "06:00:00", late_after_minutes: 15 },
     ];
-    await bulk("shifts", shiftRows);
+    await db.from("shifts").insert(shiftRows);
     const SHIFT = shiftRows[1].id;
 
     // Leave types
