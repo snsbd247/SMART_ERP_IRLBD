@@ -91,70 +91,76 @@ export function useAccountBalances(filters: Filters = {}) {
       return;
     }
 
-    // 1. Get all accounts
-    const { data: accs } = await supabase
-      .from("chart_of_accounts")
-      .select("*")
-      .order("account_code");
+    try {
+      // 1. Get all accounts
+      const { data: accs, error: accsErr } = await supabase
+        .from("chart_of_accounts")
+        .select("*")
+        .order("account_code");
 
-    if (!accs) { setLoading(false); return; }
+      if (accsErr) throw accsErr;
+      if (!accs) { setAccounts([]); return; }
 
-    // 2. Fetch approved voucher IDs that match the filters first (no relation join).
-    let vq = supabase
-      .from("acc_vouchers")
-      .select("id")
-      .eq("status", "approved");
-    if (filters.branchId) vq = vq.eq("branch_id", filters.branchId);
-    if (filters.financialYearId) vq = vq.eq("financial_year_id", filters.financialYearId);
-    if (filters.dateFrom) vq = vq.gte("voucher_date", filters.dateFrom);
-    if (filters.dateTo) vq = vq.lte("voucher_date", filters.dateTo);
+      // 2. Fetch approved voucher IDs that match the filters first (no relation join).
+      let vq = supabase
+        .from("acc_vouchers")
+        .select("id")
+        .eq("status", "approved");
+      if (filters.branchId) vq = vq.eq("branch_id", filters.branchId);
+      if (filters.financialYearId) vq = vq.eq("financial_year_id", filters.financialYearId);
+      if (filters.dateFrom) vq = vq.gte("voucher_date", filters.dateFrom);
+      if (filters.dateTo) vq = vq.lte("voucher_date", filters.dateTo);
 
-    const { data: vouchers } = await vq;
-    const voucherIds = (vouchers || []).map((v: any) => v.id);
+      const { data: vouchers } = await vq;
+      const voucherIds = (vouchers || []).map((v: any) => v.id);
 
-    // 3. Fetch entries for those vouchers, batched in chunks to avoid huge IN() clauses.
-    const entries: VoucherEntryBalanceRow[] = [];
-    const CHUNK = 500;
-    for (let i = 0; i < voucherIds.length; i += CHUNK) {
-      const chunk = voucherIds.slice(i, i + CHUNK);
-      // page through results in case a single voucher set returns >1000 rows
-      for (let from = 0; ; from += PAGE_SIZE) {
-        const { data, error } = await supabase
-          .from("voucher_entries")
-          .select("account_id, debit, credit")
-          .in("voucher_id", chunk)
-          .range(from, from + PAGE_SIZE - 1);
-        if (error) break;
-        entries.push(...((data || []) as VoucherEntryBalanceRow[]));
-        if (!data || data.length < PAGE_SIZE) break;
+      // 3. Fetch entries for those vouchers, batched in chunks to avoid huge IN() clauses.
+      const entries: VoucherEntryBalanceRow[] = [];
+      const CHUNK = 500;
+      for (let i = 0; i < voucherIds.length; i += CHUNK) {
+        const chunk = voucherIds.slice(i, i + CHUNK);
+        for (let from = 0; ; from += PAGE_SIZE) {
+          const { data, error } = await supabase
+            .from("voucher_entries")
+            .select("account_id, debit, credit")
+            .in("voucher_id", chunk)
+            .range(from, from + PAGE_SIZE - 1);
+          if (error) break;
+          entries.push(...((data || []) as VoucherEntryBalanceRow[]));
+          if (!data || data.length < PAGE_SIZE) break;
+        }
       }
+
+      // 4. Aggregate by account
+      const balMap = new Map<string, { debit: number; credit: number }>();
+      entries.forEach((e) => {
+        const cur = balMap.get(e.account_id) || { debit: 0, credit: 0 };
+        cur.debit += Number(e.debit) || 0;
+        cur.credit += Number(e.credit) || 0;
+        balMap.set(e.account_id, cur);
+      });
+
+      // 5. Compute leaf balances
+      const result: AccountWithBalance[] = (accs as AccountRow[]).map((a) => {
+        const txn = balMap.get(a.id) || { debit: 0, credit: 0 };
+        const openSigned = a.opening_balance_type === "debit" ? a.opening_balance : -a.opening_balance;
+        const closing = openSigned + txn.debit - txn.credit;
+        return {
+          ...a,
+          total_debit: txn.debit,
+          total_credit: txn.credit,
+          closing_balance: Math.abs(closing),
+          closing_balance_type: (closing >= 0 ? "debit" : "credit") as "debit" | "credit",
+        };
+      });
+
+      setAccounts(result);
+    } catch (err) {
+      console.error("useAccountBalances failed:", err);
+      setAccounts([]);
+    } finally {
+      setLoading(false);
     }
-
-    // 4. Aggregate by account
-    const balMap = new Map<string, { debit: number; credit: number }>();
-    entries.forEach((e) => {
-      const cur = balMap.get(e.account_id) || { debit: 0, credit: 0 };
-      cur.debit += Number(e.debit) || 0;
-      cur.credit += Number(e.credit) || 0;
-      balMap.set(e.account_id, cur);
-    });
-
-    // 5. Compute leaf balances
-    const result: AccountWithBalance[] = (accs as AccountRow[]).map((a) => {
-      const txn = balMap.get(a.id) || { debit: 0, credit: 0 };
-      const openSigned = a.opening_balance_type === "debit" ? a.opening_balance : -a.opening_balance;
-      const closing = openSigned + txn.debit - txn.credit;
-      return {
-        ...a,
-        total_debit: txn.debit,
-        total_credit: txn.credit,
-        closing_balance: Math.abs(closing),
-        closing_balance_type: (closing >= 0 ? "debit" : "credit") as "debit" | "credit",
-      };
-    });
-
-    setAccounts(result);
-    setLoading(false);
   }, [filters.financialYearId, filters.branchId, filters.dateFrom, filters.dateTo]);
 
   useEffect(() => { fetch(); }, [fetch]);
