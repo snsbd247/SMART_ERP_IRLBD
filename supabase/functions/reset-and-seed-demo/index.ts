@@ -322,7 +322,8 @@ Deno.serve(async (req) => {
       const dayCount = RI(2,4);
       for (let j = 0; j < dayCount; j++) {
         const cust = pick(customers);
-        const items = pickN(products, RI(1,4));
+        const items = pickN(products.slice(0, 10), RI(1,4)); // Sell only finished goods
+        const qtyMin = 100, qtyMax = 2000; // plastic items sold in bulk
         const invId = U();
         let subtotal = 0;
         const rows: [string,number,number,number,string][] = [];
