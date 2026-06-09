@@ -40,12 +40,17 @@ Deno.serve(async (req) => {
 
     // ===== RESET =====
     const resetGroups: string[][] = [
+      // Leaf child rows first
       ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","purchase_items","purchase_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","bom_items","fund_transactions","employee_fund_settings","overtime_records","leave_requests","attendance","employee_documents","employee_bank_info","employee_education","employee_experience","employee_emergency_contacts","salary_structures","face_data","biometric_logs","payroll","party_notes","audit_log","login_logs","backup_history","messages","conversation_participants",
         "tds_entries","invoice_payments","invoice_challans","sales_invoice_items_v2","customer_receives","ho_receives","vat_challan_items","purchase_order_items",
+        // New purchase workflow child rows
+        "purchase_bill_payments","purchase_bill_grns","grn_items","purchase_order_items_v2","purchase_requisition_items",
         // Status logs / amendments — defensive (cascade would also handle these)
         "invoice_status_logs","po_amendments"],
       // Returns must be deleted BEFORE their parent invoices/purchases
       ["sales_returns","purchase_returns"],
+      // New workflow parents (bills → grns → POs v2 → requisitions)
+      ["purchase_bills","grns","purchase_orders_v2","purchase_requisitions"],
       ["sales_invoices_v2","delivery_challans","vat_challans","purchase_orders"],
       ["acc_vouchers","party_payments","sales_invoices","purchases","production_entries","bill_of_materials","employees","conversations"],
       ["customers","suppliers","item_master","products","raw_materials"],
