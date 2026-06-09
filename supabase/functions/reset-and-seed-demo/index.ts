@@ -348,32 +348,8 @@ Deno.serve(async (req) => {
     await bulk("sales_returns", sret);
     await bulk("sales_return_items", sretItems);
 
-    // ===== Purchase Returns (random 4% of purchases) =====
-    const pret: any[] = [], pretItems: any[] = [];
-    let prc = 0;
-    for (const p of pList) {
-      if (R() > 0.04) continue;
-      const items = pitems.filter(x => x.purchase_id === p.id);
-      if (!items.length) continue;
-      const rid = U(); prc++;
-      const rnum = `PRN-${fyTag}-${String(prc).padStart(5,"0")}`;
-      const retDate = ymd(new Date(new Date(p.date).getTime() + RI(3,12)*86400000));
-      if (new Date(retDate) > end) continue;
-      let retTotal = 0;
-      for (const it of items) {
-        const rqty = Math.max(1, Math.floor(it.quantity * 0.2));
-        const tot = round2(rqty * it.unit_price);
-        retTotal += tot;
-        pretItems.push({ id:U(), purchase_return_id:rid, product_id:it.product_id, quantity:rqty, unit_price:it.unit_price, total:tot });
-      }
-      pret.push({ id:rid, return_number:rnum, return_date:retDate, purchase_id:p.id, supplier_id:p.sid, branch_id:BR_DHK, total_amount:retTotal, reason:"Damaged", status:"approved", created_by:UID });
-      addV("journal", retDate, `Purchase Return ${rnum}`, [
-        [Ac.ap, retTotal, 0, "AP reduction"],
-        [Ac.purRet, 0, retTotal, "Purchase return"],
-      ]);
-    }
-    await bulk("purchase_returns", pret);
-    await bulk("purchase_return_items", pretItems);
+    // Purchase Returns removed with Purchase module
+    const prc = 0;
 
     // ===== Customer Payments (with optional TDS 5%) =====
     const pays: any[] = [], allocs: any[] = [];
