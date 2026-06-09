@@ -97,26 +97,40 @@ Deno.serve(async (req) => {
       const { data: before } = await admin.from("chart_of_accounts").select("account_code");
       const existing = new Set((before ?? []).map((r: any) => r.account_code));
       const toInsert = s.coa.filter((r) => !existing.has(r.account_code));
-      coaRes.skipped = s.coa.length - toInsert.length;
+      const toUpdate = s.coa.filter((r) => existing.has(r.account_code));
       if (toInsert.length > 0) {
         const { error } = await admin.from("chart_of_accounts").insert(
           toInsert.map((r) => ({
             account_code: r.account_code, account_name: r.account_name,
             account_type: r.account_type, opening_balance_type: r.opening_balance_type,
+            opening_balance: 0, is_active: true,
           })),
         );
         if (error) throw error;
         coaRes.inserted = toInsert.length;
       }
-      // patch parent links
+      // Refresh existing ledgers to canonical values (name/type/opening balance reset to 0)
+      let updated = 0;
+      for (const r of toUpdate) {
+        const { error } = await admin.from("chart_of_accounts").update({
+          account_name: r.account_name,
+          account_type: r.account_type,
+          opening_balance_type: r.opening_balance_type,
+          opening_balance: 0,
+          is_active: true,
+        }).eq("account_code", r.account_code);
+        if (!error) updated++;
+      }
+      coaRes.skipped = toUpdate.length - updated;
+      coaRes.inserted += updated;
+      // patch parent links (always sync to seed)
       const { data: coaIds } = await admin.from("chart_of_accounts").select("id, account_code");
       const codeToId = new Map((coaIds ?? []).map((r: any) => [r.account_code, r.id]));
       for (const r of s.coa) {
-        if (!r.parent_code) continue;
         const id = codeToId.get(r.account_code);
-        const parentId = codeToId.get(r.parent_code);
-        if (!id || !parentId) continue;
-        await admin.from("chart_of_accounts").update({ parent_id: parentId }).eq("id", id).is("parent_id", null);
+        if (!id) continue;
+        const parentId = r.parent_code ? codeToId.get(r.parent_code) ?? null : null;
+        await admin.from("chart_of_accounts").update({ parent_id: parentId }).eq("id", id);
       }
     } catch (e) {
       coaRes.status = "failed";
