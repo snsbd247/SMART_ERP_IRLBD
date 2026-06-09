@@ -179,22 +179,42 @@ Deno.serve(async (req) => {
     await bulk("item_categories", catRows.map(c => ({ ...c, is_active:true })));
 
     // Products
+    // Products — Plastic Bottle / Cap / Plug / Disc manufacturer
+    // First 10 = FINISHED GOODS (PCS, used as BOM outputs); rest = RAW MATERIALS / PACKAGING
     const PD: [string,string,string,number,number][] = [
-      ["Laptop Pro 15","Electronics","PCS",65000,85000],["Wireless Mouse","Electronics","PCS",450,750],
-      ["Mechanical Keyboard","Electronics","PCS",2800,4500],["LED Monitor 24","Electronics","PCS",12000,17500],
-      ["USB Hub 4-Port","Electronics","PCS",650,1100],["External SSD 1TB","Electronics","PCS",7500,10500],
-      ["Printer Inkjet","Electronics","PCS",8500,12500],["Webcam HD","Electronics","PCS",2200,3500],
-      ["Headphones BT","Electronics","PCS",1800,2900],["Power Bank 20000mAh","Electronics","PCS",1500,2400],
-      ["A4 Paper Ream","Stationery","BOX",420,600],["Ballpoint Pen Box","Stationery","BOX",180,300],
-      ["Stapler Heavy Duty","Office Supplies","PCS",650,950],["File Folder","Stationery","PCS",45,80],
-      ["Notebook A5","Stationery","PCS",95,160],["Marker Set","Stationery","BOX",220,350],
-      ["Office Chair","Furniture","PCS",8500,13500],["Executive Desk","Furniture","PCS",18500,26000],
-      ["Filing Cabinet","Furniture","PCS",9500,14000],["Bookshelf","Furniture","PCS",7800,11500],
-      ["UPS 1200VA","Electronics","PCS",5500,7800],["Router WiFi 6","Electronics","PCS",4200,6200],
-      ["CAT6 Cable 305m","Hardware","BOX",6500,9200],["RJ45 Connector Pack","Hardware","BOX",350,550],
-      ["Toner Cartridge","Office Supplies","PCS",3800,5500],["Light Bulb LED","Hardware","PCS",180,280],
-      ["Drill Machine","Hardware","PCS",3800,5500],["Screwdriver Set","Hardware","BOX",850,1300],
-      ["CCTV Camera","Electronics","PCS",4500,6500],["Hard Disk 4TB","Electronics","PCS",8500,11800],
+      // ── Finished Goods (10) ──
+      ["PET Water Bottle 500ml","Bottles","PCS",4.5,8.5],
+      ["PET Water Bottle 1000ml","Bottles","PCS",7.0,13.0],
+      ["HDPE Oil Bottle 1L","Bottles","PCS",12.0,20.0],
+      ["PET Juice Bottle 250ml","Bottles","PCS",3.2,6.5],
+      ["Pharma Bottle Amber 100ml","Bottles","PCS",6.5,11.5],
+      ["Bottle Cap 28mm PCO","Caps","PCS",0.85,1.6],
+      ["Bottle Cap 38mm Flip-Top","Caps","PCS",1.4,2.8],
+      ["Pharma Plug 18mm LDPE","Plugs","PCS",0.55,1.1],
+      ["Tamper-Evident Plug 25mm","Plugs","PCS",0.95,1.9],
+      ["Plastic Disc 30mm Sealing","Discs","PCS",0.35,0.7],
+      // ── Raw Materials (used in BOMs) ──
+      ["PET Resin Bottle Grade","Raw Materials","KG",145,0],
+      ["HDPE Resin Blow-Mould Grade","Raw Materials","KG",135,0],
+      ["PP Resin Cap Grade","Raw Materials","KG",155,0],
+      ["LDPE Resin","Raw Materials","KG",148,0],
+      ["PET Preform 9.3g","Raw Materials","PCS",2.8,0],
+      ["PET Preform 16g","Raw Materials","PCS",4.6,0],
+      ["Master-batch Blue","Additives","KG",420,0],
+      ["Master-batch White","Additives","KG",380,0],
+      ["Master-batch Amber","Additives","KG",450,0],
+      ["UV Stabilizer Additive","Additives","KG",680,0],
+      ["Anti-Static Additive","Additives","KG",520,0],
+      ["Mould Release Agent","Additives","KG",350,0],
+      // ── Packaging ──
+      ["Carton Box Large","Packaging","BOX",35,0],
+      ["Carton Box Medium","Packaging","BOX",24,0],
+      ["Shrink Wrap Film","Packaging","KG",240,0],
+      ["BOPP Tape 48mm","Packaging","PCS",45,0],
+      ["Pallet Wooden 1.2m","Packaging","PCS",650,0],
+      ["Stretch Film 17mic","Packaging","KG",220,0],
+      ["Label Sticker Roll","Packaging","PCS",380,0],
+      ["Strapping Band PP","Packaging","PCS",1850,0],
     ];
     type P = { id:string; iid:string; code:string; name:string; cat:string; unit:string; cp:number; sp:number; op:number };
     const products: P[] = PD.map((p,i) => {
