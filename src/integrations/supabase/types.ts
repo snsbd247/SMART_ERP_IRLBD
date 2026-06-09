@@ -2342,6 +2342,44 @@ export type Database = {
           },
         ]
       }
+      po_amendments: {
+        Row: {
+          amended_by: string | null
+          created_at: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          po_id: string
+          reason: string | null
+        }
+        Insert: {
+          amended_by?: string | null
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          po_id: string
+          reason?: string | null
+        }
+        Update: {
+          amended_by?: string | null
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          po_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_amendments_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_categories: {
         Row: {
           created_at: string
@@ -2590,6 +2628,119 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      purchase_order_items: {
+        Row: {
+          id: string
+          line_subtotal: number
+          line_total: number
+          line_vat: number
+          po_id: string
+          product_id: string
+          qty_delivered: number
+          qty_ordered: number
+          qty_remaining: number
+          rate: number
+          sort_order: number
+          vat_pct: number
+        }
+        Insert: {
+          id?: string
+          line_subtotal?: number
+          line_total?: number
+          line_vat?: number
+          po_id: string
+          product_id: string
+          qty_delivered?: number
+          qty_ordered?: number
+          qty_remaining?: number
+          rate?: number
+          sort_order?: number
+          vat_pct?: number
+        }
+        Update: {
+          id?: string
+          line_subtotal?: number
+          line_total?: number
+          line_vat?: number
+          po_id?: string
+          product_id?: string
+          qty_delivered?: number
+          qty_ordered?: number
+          qty_remaining?: number
+          rate?: number
+          sort_order?: number
+          vat_pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          attachment_url: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          deleted_at: string | null
+          delivery_date: string | null
+          financial_year_id: string | null
+          grand_total: number
+          id: string
+          notes: string | null
+          po_date: string
+          po_number: string
+          status: string
+          subtotal: number
+          updated_at: string
+          vat_amount: number
+        }
+        Insert: {
+          attachment_url?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          deleted_at?: string | null
+          delivery_date?: string | null
+          financial_year_id?: string | null
+          grand_total?: number
+          id?: string
+          notes?: string | null
+          po_date?: string
+          po_number: string
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          vat_amount?: number
+        }
+        Update: {
+          attachment_url?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          deleted_at?: string | null
+          delivery_date?: string | null
+          financial_year_id?: string | null
+          grand_total?: number
+          id?: string
+          notes?: string | null
+          po_date?: string
+          po_number?: string
+          status?: string
+          subtotal?: number
+          updated_at?: string
+          vat_amount?: number
+        }
+        Relationships: []
       }
       raw_materials: {
         Row: {
