@@ -190,7 +190,7 @@ const Dashboard = () => {
   const summaryCards = [
     { label: "Total Sales", value: stats.totalSales, icon: TrendingUp, color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10", trend: stats.salesCount > 0 ? `${stats.salesCount} invoices` : null, up: true },
     { label: "Total Purchases", value: stats.totalPurchases, icon: ShoppingCart, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10", trend: stats.purchaseCount > 0 ? `${stats.purchaseCount} orders` : null, up: false },
-    { label: "Total Income", value: stats.totalIncome, icon: DollarSign, color: "text-primary", bg: "bg-primary/10", trend: null, up: true },
+    { label: "Total Income", value: stats.totalIncome, icon: Wallet, color: "text-primary", bg: "bg-primary/10", trend: null, up: true },
     { label: "Total Expenses", value: stats.totalExpenses, icon: TrendingDown, color: "text-destructive", bg: "bg-destructive/10", trend: null, up: false },
     { label: "Cash Balance", value: stats.cashBalance, icon: PiggyBank, color: "text-green-600 dark:text-green-400", bg: "bg-green-500/10", trend: null, up: stats.cashBalance >= 0 },
     { label: "Bank Balance", value: stats.bankBalance, icon: Landmark, color: "text-primary", bg: "bg-primary/10", trend: null, up: true },
