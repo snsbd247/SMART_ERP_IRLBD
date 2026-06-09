@@ -247,7 +247,7 @@ const CustomersPage = () => {
             <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
             <div><Label>BIN Number</Label><Input value={form.bin_number} onChange={(e) => setForm({ ...form, bin_number: e.target.value })} placeholder="e.g. 123456789-0101" /></div>
-            {!editingCustomer && (
+            {!editingCustomer ? (
               <div>
                 <Label>Parent Ledger (Chart of Accounts)</Label>
                 <SearchableAccountSelect
@@ -259,7 +259,21 @@ const CustomersPage = () => {
                   allValue="__auto__"
                   placeholder="Auto (Accounts Receivable)"
                 />
-                <p className="text-xs text-muted-foreground mt-1">Leave as Auto to place under Accounts Receivable.</p>
+                <p className="text-xs text-muted-foreground mt-1">A dedicated sub-ledger will be created under Accounts Receivable and linked to this customer.</p>
+              </div>
+            ) : (
+              <div>
+                <Label>Receivable Ledger</Label>
+                <SearchableAccountSelect
+                  accounts={receivableLedgers.length > 0 ? receivableLedgers : assetAccounts}
+                  value={receivableLedgerId || "__none__"}
+                  onChange={(v) => setReceivableLedgerId(v === "__none__" ? "" : v)}
+                  allowAll
+                  allLabel="— Not linked —"
+                  allValue="__none__"
+                  placeholder="Select receivable ledger"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Change the ledger linked to this customer (under Accounts Receivable).</p>
               </div>
             )}
           </div>
