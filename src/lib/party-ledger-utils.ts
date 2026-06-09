@@ -63,16 +63,16 @@ async function createPartyLedger(
   accountType: "asset" | "liability",
   fallbackParentCode: string,
   parentId?: string,
-): Promise<void> {
+): Promise<string | null> {
   try {
-    // Avoid duplicates by exact name
+    // Avoid duplicates by exact name — return existing id if present
     const { data: existing } = await supabase
       .from("chart_of_accounts")
       .select("id")
       .eq("account_name", partyName)
       .eq("account_type", accountType)
       .limit(1);
-    if (existing && existing.length > 0) return;
+    if (existing && existing.length > 0) return (existing[0] as any).id;
 
     let parent: { id: string; account_code: string } | null = null;
     if (parentId) {
@@ -86,11 +86,11 @@ async function createPartyLedger(
     if (!parent) {
       parent = await findOrCreateParent(candidateNames, accountType, fallbackParentCode);
     }
-    if (!parent) return;
+    if (!parent) return null;
 
     const code = await nextChildCode(parent.account_code);
 
-    const { error } = await supabase.from("chart_of_accounts").insert({
+    const { data: inserted, error } = await supabase.from("chart_of_accounts").insert({
       account_code: code,
       account_name: partyName,
       account_type: accountType,
@@ -98,16 +98,25 @@ async function createPartyLedger(
       opening_balance: 0,
       opening_balance_type: accountType === "asset" ? "debit" : "credit",
       is_active: true,
-    });
-    if (error) console.error("[party-ledger] failed to create ledger", error);
+    }).select("id").single();
+    if (error) {
+      console.error("[party-ledger] failed to create ledger", error);
+      return null;
+    }
+    return (inserted as any).id;
   } catch (e) {
     console.error("[party-ledger] unexpected error", e);
+    return null;
   }
 }
 
+// Parent codes match the Bangladesh standard CoA:
+//   1240 = Accounts Receivable (customers)
+//   2210 = Accounts & Other Payable (suppliers/vendors)
 export const createSupplierLedger = (name: string, parentId?: string) =>
-  createPartyLedger(name, SUPPLIER_PARENT_NAMES, "liability", "2100", parentId);
+  createPartyLedger(name, SUPPLIER_PARENT_NAMES, "liability", "2210", parentId);
 
 export const createCustomerLedger = (name: string, parentId?: string) =>
-  createPartyLedger(name, CUSTOMER_PARENT_NAMES, "asset", "1200", parentId);
+  createPartyLedger(name, CUSTOMER_PARENT_NAMES, "asset", "1240", parentId);
+
 
