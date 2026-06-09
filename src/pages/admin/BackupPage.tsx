@@ -161,7 +161,7 @@ const BackupPage = () => {
       const total = results ? results.reduce((n: number, r: any) => n + (r.inserted || 0), 0) : 0;
       toast({
         title: overall === "success" ? "Demo configuration imported" : "Demo import finished with warnings",
-        description: `${total} new rows added across ${results?.length ?? 5} sections.`,
+        description: `${total} new rows added across ${results?.length ?? 14} sections.`,
         variant: overall === "success" ? "default" : "destructive",
       });
     } catch (err: any) {
