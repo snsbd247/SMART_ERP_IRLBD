@@ -75,30 +75,36 @@ const Dashboard = () => {
 
   const loadDashboardData = async () => {
     const [salesV1Res, salesV2Res, billsV2Res, auditRes, recentInvV2Res, recentInvV1Res, recentPayRes, paymentsRes, voucherRes] = await Promise.all([
-      supabase.from("sales_invoices").select("total_amount, net_amount, discount, invoice_date, status"),
-      supabase.from("sales_invoices_v2").select("total_amount, net_amount, invoice_date, status"),
+  const loadDashboardData = async () => {
+    const [
+      salesV1Res, salesV2Res, billsV2Res, auditRes,
+      recentInvV2Res, recentInvV1Res, recentBillRes, recentVatRes,
+      recentPayRes, paymentsRes, voucherRes, coaRes,
+    ] = await Promise.all([
+      supabase.from("sales_invoices").select("total_amount, net_amount, invoice_date, status"),
+      supabase.from("sales_invoices_v2").select("grand_total, invoice_date, status"),
       supabase.from("supplier_bills_v2").select("grand_total, bill_date, status"),
       supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(8),
-      supabase.from("sales_invoices_v2").select("id, invoice_number, invoice_date, total_amount, net_amount, status, customers(name)").order("created_at", { ascending: false }).limit(5),
+      supabase.from("sales_invoices_v2").select("id, invoice_number, invoice_date, grand_total, status, customers(name)").order("created_at", { ascending: false }).limit(5),
       supabase.from("sales_invoices").select("id, invoice_number, invoice_date, total_amount, net_amount, status, customers(name)").order("created_at", { ascending: false }).limit(5),
+      supabase.from("supplier_bills_v2").select("id, bill_no, bill_date, grand_total, status, suppliers(name)").order("created_at", { ascending: false }).limit(5),
+      supabase.from("vat_challans").select("id, challan_number, challan_date, grand_total, status, customers(name)").order("created_at", { ascending: false }).limit(5),
       supabase.from("party_payments").select("id, payment_date, amount, payment_method, party_type, party_id").order("created_at", { ascending: false }).limit(5),
       supabase.from("party_payments").select("amount, party_type"),
-      supabase.from("acc_vouchers").select("voucher_type, total_amount, status").neq("status", "cancelled"),
+      supabase.from("acc_vouchers").select("id, voucher_type, total_amount, status").neq("status", "cancelled"),
+      supabase.from("chart_of_accounts").select("id, account_name, account_type, opening_balance, opening_balance_type"),
     ]);
 
-    const salesV1 = salesV1Res.data || [];
-    const salesV2 = salesV2Res.data || [];
+    const salesV1 = (salesV1Res.data || []).map((s: any) => ({ amount: Number(s.net_amount ?? s.total_amount ?? 0), invoice_date: s.invoice_date }));
+    const salesV2 = (salesV2Res.data || []).map((s: any) => ({ amount: Number(s.grand_total ?? 0), invoice_date: s.invoice_date }));
     const sales = [...salesV1, ...salesV2];
-    const purchases = (billsV2Res.data || []).map((b: any) => ({
-      total_amount: Number(b.grand_total) || 0,
-      purchase_date: b.bill_date,
-      status: b.status,
-    }));
+    const purchases = (billsV2Res.data || []).map((b: any) => ({ amount: Number(b.grand_total) || 0, purchase_date: b.bill_date }));
     const payments = paymentsRes.data || [];
     const vouchers = voucherRes.data || [];
+    const coa = coaRes.data || [];
 
-    const totalSales = sales.reduce((s, r: any) => s + Number(r.total_amount || 0), 0);
-    const totalPurchases = purchases.reduce((s, r) => s + Number(r.total_amount || 0), 0);
+    const totalSales = sales.reduce((s, r) => s + r.amount, 0);
+    const totalPurchases = purchases.reduce((s, r) => s + r.amount, 0);
 
     const customerPayments = payments.filter(p => p.party_type === 'customer').reduce((s, p) => s + Number(p.amount), 0);
     const supplierPayments = payments.filter(p => p.party_type === 'supplier').reduce((s, p) => s + Number(p.amount), 0);
@@ -106,33 +112,72 @@ const Dashboard = () => {
     const totalReceivable = Math.max(0, totalSales - customerPayments);
     const totalPayable = Math.max(0, totalPurchases - supplierPayments);
 
-    const receiptVouchers = vouchers.filter(v => v.voucher_type === 'receipt').reduce((s, v) => s + Number(v.total_amount), 0);
-    const paymentVouchers = vouchers.filter(v => v.voucher_type === 'payment').reduce((s, v) => s + Number(v.total_amount), 0);
+    const receiptVouchers = vouchers.filter((v: any) => v.voucher_type === 'receipt').reduce((s, v: any) => s + Number(v.total_amount || 0), 0);
+    const paymentVouchers = vouchers.filter((v: any) => v.voucher_type === 'payment').reduce((s, v: any) => s + Number(v.total_amount || 0), 0);
 
     const totalIncome = totalSales + receiptVouchers;
     const totalExpenses = totalPurchases + paymentVouchers;
 
+    // Cash & Bank balances from CoA + voucher_entries (debit - credit + opening signed)
+    const cashAccountIds = coa.filter((a: any) => /cash/i.test(a.account_name || '')).map((a: any) => a.id);
+    const bankAccountIds = coa.filter((a: any) => /bank/i.test(a.account_name || '')).map((a: any) => a.id);
+    const accountIds = [...new Set([...cashAccountIds, ...bankAccountIds])];
+
+    let cashBalance = 0;
+    let bankBalance = 0;
+    if (accountIds.length > 0) {
+      const validVoucherIds = vouchers.map((v: any) => v.id);
+      const { data: entries } = await supabase
+        .from("voucher_entries")
+        .select("account_id, debit, credit, voucher_id")
+        .in("account_id", accountIds);
+
+      const filtered = (entries || []).filter((e: any) => validVoucherIds.includes(e.voucher_id));
+      const sumFor = (ids: string[]) => filtered
+        .filter((e: any) => ids.includes(e.account_id))
+        .reduce((s: number, e: any) => s + (Number(e.debit || 0) - Number(e.credit || 0)), 0);
+
+      const openingFor = (ids: string[]) => coa
+        .filter((a: any) => ids.includes(a.id))
+        .reduce((s: number, a: any) => {
+          const ob = Number(a.opening_balance || 0);
+          return s + (a.opening_balance_type === 'credit' ? -ob : ob);
+        }, 0);
+
+      cashBalance = openingFor(cashAccountIds) + sumFor(cashAccountIds);
+      bankBalance = openingFor(bankAccountIds) + sumFor(bankAccountIds);
+    } else {
+      // Fallback when no CoA mapping yet
+      cashBalance = totalIncome - totalExpenses;
+      bankBalance = 0;
+    }
+
     setStats({
       totalSales, totalPurchases,
       totalIncome, totalExpenses,
-      cashBalance: totalIncome - totalExpenses,
-      bankBalance: 0,
+      cashBalance, bankBalance,
       totalReceivable, totalPayable,
       salesCount: sales.length, purchaseCount: purchases.length,
     });
     setRecentActivities(auditRes.data || []);
-    const recentInv = [...(recentInvV2Res.data || []), ...(recentInvV1Res.data || [])]
+
+    const recentInv = [
+      ...((recentInvV2Res.data || []).map((i: any) => ({ ...i, _amount: Number(i.grand_total || 0) }))),
+      ...((recentInvV1Res.data || []).map((i: any) => ({ ...i, _amount: Number(i.net_amount || i.total_amount || 0) }))),
+    ]
       .sort((a: any, b: any) => new Date(b.invoice_date).getTime() - new Date(a.invoice_date).getTime())
       .slice(0, 5);
     setRecentInvoices(recentInv);
     setRecentPayments(recentPayRes.data || []);
+    setRecentVatChallans(recentVatRes.data || []);
+    setRecentPurchaseBills(recentBillRes.data || []);
 
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const currentYear = new Date().getFullYear();
 
     const monthlyData = months.map((m, i) => {
-      const mSales = sales.filter((s: any) => { const d = new Date(s.invoice_date); return d.getMonth() === i && d.getFullYear() === currentYear; }).reduce((a, b: any) => a + Number(b.total_amount || 0), 0);
-      const mPurchases = purchases.filter(p => { const d = new Date(p.purchase_date); return d.getMonth() === i && d.getFullYear() === currentYear; }).reduce((a, b) => a + Number(b.total_amount || 0), 0);
+      const mSales = sales.filter(s => { const d = new Date(s.invoice_date); return d.getMonth() === i && d.getFullYear() === currentYear; }).reduce((a, b) => a + b.amount, 0);
+      const mPurchases = purchases.filter(p => { const d = new Date(p.purchase_date); return d.getMonth() === i && d.getFullYear() === currentYear; }).reduce((a, b) => a + b.amount, 0);
       return { month: m, sales: mSales, purchases: mPurchases, profit: mSales - mPurchases };
     });
     setMonthlySales(monthlyData);
