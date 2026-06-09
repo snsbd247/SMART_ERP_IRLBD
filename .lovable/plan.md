@@ -1,90 +1,123 @@
-# Sales Workflow (BD VAT) — Rebuild Plan
+# Purchase Workflow Rebuild Plan
 
-আগের Sales Workflow সিস্টেম রিমোভ করে নতুন করে বানানো হবে। মূল পরিবর্তন: একটা PO এর বিপরীতে **partial multiple VAT Challan** support, প্রতি PO item-এর `delivered_qty` / `remaining_qty` ট্র্যাকিং, এবং পুরো cycle (PO → VAT Challan → DC → Customer Receive → HO Receive → Invoice → Bill Submit → Payment+TDS → CoA Ledger)।
+ফ্যাক্টরি থেকে রিকুইজিশন শুরু করে পেমেন্ট পর্যন্ত পুরো পারচেজ সাইকেল একটা ইউনিফায়েড workflow হিসেবে বানানো হবে। অন্য মডিউল (Sales Workflow, Inventory, HRM, Accounts existing pages) এ কোনো breaking change হবে না — শুধু `purchase-workflow` namespace-এ নতুন tables, services, controllers, এবং pages যোগ হবে। বিদ্যমান `purchases` / `purchase_items` table-গুলো backward-compatible থাকবে।
 
-অন্য মডিউল (Accounts, Inventory, HRM, Reports) এ কোনো breaking change হবে না — শুধু `sales-workflow` namespace-এর tables, services, controllers, এবং pages রিবিল্ড হবে।
-
-## Process Flow (Confirmed)
+## Process Flow
 
 ```text
-Purchase Order (5 products × 500 pcs)
-   │
-   ├── VAT Challan #1 (3 products × 300 pcs)   ← partial
-   │      └── Delivery Challan per product (3 DCs)
-   │      └── 2 sets sent with vehicle (1 → customer, 1 → signed copy back)
-   │      └── Customer Receive (sealed/signed) → Factory → HO Receive
-   │
-   ├── VAT Challan #2 (remaining qty)          ← partial
-   │      └── ... same flow
-   │
-   └── Invoice (1 invoice per challan OR consolidated multi-challan)
-          └── Bill Submit to Customer HO (start of 30-day clock)
-                └── Payment (after 30 days) − TDS deduction
-                      └── CoA Ledger posting
+Store Department (Factory)
+   └── Purchase Requisition (PR)  [product + qty]
+        │
+        ▼  Approve
+Factory Admin
+        │
+        ▼  Forward
+Commercial Department
+   └── Purchase Order (PO)
+        ├── Full PR → 1 PO
+        └── OR partial: PR items → multiple POs
+        │
+        ▼  Print → Send to Supplier
+Supplier
+   └── Delivers goods + Invoice / Delivery Challan
+        │
+        ▼  Receive
+Store Department
+   └── GRN (Goods Receipt Note)  [posts stock IN]
+        │
+        ▼  Forward physical bill
+Accounts Department
+   └── Bill Entry against GRN  [DR Purchase, CR Accounts Payable]
+        │
+        ▼  Due date tracked
+   └── Payment  [DR AP, CR Bank/Cash]  (− TDS if applicable)
+        │
+        ▼  CoA Ledger auto-post (every accounting step)
 ```
 
 ## Scope
 
-### Remove (old system)
-- Drop old service/controller logic that didn't support partial PO consumption.
-- Keep table data but **add columns** rather than dropping tables (data preservation).
-- Remove confusing UI bits; rebuild pages around the new flow.
+### New Module: `purchase-workflow`
+Routes under `/purchase-workflow/*`, sidebar group "Purchase Workflow".
 
-### Database changes
-1. `purchase_order_items` — add `delivered_qty` (default 0), computed `remaining_qty` via view/accessor.
-2. `vat_challan_items` — add `purchase_order_item_id` (nullable FK), `po_qty_consumed`.
-3. `vat_challans` — add `purchase_order_id` (nullable FK, since a challan is now PO-linked).
-4. `sales_invoices_v2` — already has `bill_submitted_at`, `bill_due_date`, `payment_terms_days` ✓.
-5. `tds_entries` — verify posts to **TDS Receivable (Asset)** account.
-6. Migration applied to **both** Laravel (MySQL) and Supabase (Postgres).
+### Database (new tables — additive only)
 
-### Backend (Laravel)
-- **`PurchaseOrderService`** — add `availableQtyPerItem(poId)` helper.
-- **`VatChallanService`** — rebuild:
-  - require `purchase_order_id`
-  - validate each item: `qty ≤ po_item.remaining_qty`
-  - on create: increment `po_item.delivered_qty`, auto-create one DC per product
-  - on delete: decrement `po_item.delivered_qty`
-- **`DeliveryChallanService`** — status transitions: `issued → dispatched → customer_received → ho_received → invoiced`.
-- **`InvoiceProcessingService`** — already supports single / same_day / custom multi-challan. Keep as-is; tighten eligibility check (all DCs `ho_received`).
-- **`InvoicePaymentService`** — verify TDS posts to `TDS Receivable`. Fix account name lookup if needed.
-- **`AccountingService`** ledger entries:
-  - Invoice posted: DR AR, CR Sales, CR VAT Payable
-  - Payment received: DR Bank/Cash, DR TDS Receivable, CR AR
+1. `purchase_requisitions` — pr_number, pr_date, branch_id, requested_by (employee), notes, status (draft/pending_admin/admin_approved/commercial_processed/closed/rejected).
+2. `purchase_requisition_items` — pr_id, product_id, qty_required, qty_ordered (running counter), remarks.
+3. `purchase_orders_v2` — po_number, po_date, supplier_id, pr_id (nullable), branch_id, subtotal/vat/grand_total, status (draft/sent/partial_received/received/closed), notes.
+4. `purchase_order_items_v2` — po_id, pr_item_id (nullable), product_id, qty_ordered, qty_received, rate, vat_pct, line_total.
+5. `grns` — grn_number, grn_date, po_id, supplier_id, supplier_invoice_no, supplier_invoice_date, branch_id, received_by, status (draft/posted), total_amount.
+6. `grn_items` — grn_id, po_item_id, product_id, qty_received, rate, line_total.
+7. `purchase_bills` — bill_number, bill_date, supplier_id, supplier_bill_no, due_date, branch_id, subtotal/vat/grand_total, paid_amount, status (unpaid/partial/paid).
+8. `purchase_bill_grns` — bill_id, grn_id (M:N — multiple GRNs can be billed together).
+9. `purchase_bill_payments` — bill_id, payment_date, amount, tds_amount, payment_method, bank_account_id, voucher_id (link to acc_vouchers).
+
+All tables: standard `id uuid`, timestamps, soft-delete columns, RLS policies + GRANTs per project rules.
+
+### Backend (Laravel — Service Layer)
+
+- `PurchaseRequisitionService` — create / approve / reject / close.
+- `PurchaseOrderV2Service` — create from PR (full or partial items), validate qty ≤ pr_item.remaining.
+- `GrnService` — receive against PO (partial allowed), increments stock via existing `StockService`, updates `po_item.qty_received`.
+- `PurchaseBillService` — create bill linked to one or more GRNs, auto-post: DR Purchase, CR Accounts Payable.
+- `PurchaseBillPaymentService` — post payment: DR AP, [DR TDS Receivable], CR Bank/Cash. Uses existing `AccountingService::createVoucher`.
+
+Controllers under `App\Http\Controllers\PurchaseWorkflow\*`. Routes prefixed `/api/purchase-workflow/*`.
 
 ### Frontend (React)
-- `PurchaseOrderDetailPage` — show per-item delivered/remaining qty + "Issue VAT Challan" button.
-- `VatChallanFormPage` (new) — pick PO → load items with `remaining_qty` → enter delivery qty per product.
-- `VatChallansPage`, `DeliveryChallansPage`, `CustomerReceivePage`, `HoReceivePage` — keep current shape, refine status flow.
-- `InvoiceQueuePage` — already supports multi-pick; keep.
-- `InvoiceDetailPage` — already has Bill Submit section ✓.
-- Remove dead components from old confusing workflow.
 
-### Routes & Sidebar
-- No new top-level routes; existing `/sales-workflow/*` paths retained.
-- Sidebar items unchanged → no impact on other modules.
+New pages under `src/pages/purchase-workflow/`:
+- `RequisitionsPage` (list) + `RequisitionFormPage` + `RequisitionDetailPage` (approve/reject).
+- `PoListPage` + `PoFormPage` (pick PR, pick items) + `PoDetailPage` (print).
+- `GrnListPage` + `GrnFormPage` (pick PO, enter received qty) + `GrnDetailPage`.
+- `BillListPage` + `BillFormPage` (pick supplier + GRNs) + `BillDetailPage` (with payment section).
+- `PaymentFormPage` (against bill, TDS field).
 
-## Technical Details (for review)
+Shared API client: `src/lib/purchase-workflow-api.ts`.
+Sidebar: add "Purchase Workflow" group with 5 items.
 
-**Migration files**
-- `erp-backend/database/migrations/2024_01_01_000700_partial_po_vat_challan.php` — adds the 3 columns above.
-- `supabase/migrations/<timestamp>_partial_po_vat_challan.sql` — same schema for Postgres with GRANTs.
+### Accounting Integration (CoA hits)
 
-**New / rebuilt files**
-- `erp-backend/app/Services/VatChallanService.php` (rebuild with PO consumption)
-- `erp-backend/app/Services/PurchaseOrderService.php` (add availability helper)
-- `erp-backend/app/Http/Controllers/SalesWorkflow/VatChallanController.php` (accept `purchase_order_id`)
-- `src/pages/sales-workflow/VatChallanFormPage.tsx` (new — PO-driven form)
-- `src/lib/sales-workflow-api.ts` (add `getPoAvailability(poId)`)
+| Step | Debit | Credit |
+|---|---|---|
+| GRN | (no JV — only stock movement) | — |
+| Bill Entry | Purchase / Inventory | Accounts Payable |
+| Payment | Accounts Payable | Bank/Cash |
+| Payment with TDS | AP + TDS Payable | Bank/Cash |
 
-**Backward compatibility**
-- `purchase_order_id` on `vat_challans` is **nullable** → existing rows unaffected.
-- Old challans without PO link still display/edit/delete normally.
+Uses existing `AccountingService::autoPost` and `ChartOfAccounts` — no changes to accounting module.
 
-**Other modules**
-- Accounting, Inventory, HRM, Reports — no schema or code touched outside `sales-workflow`. Voucher/Ledger posting uses existing `AccountingService` API.
+### Permissions (RBAC)
+New module keys: `purchase_requisition`, `purchase_order_v2`, `grn`, `purchase_bill`, `purchase_payment` — each with view/create/edit/delete/approve.
+
+### Backward compatibility
+- Old `purchases` / `purchase_items` tables untouched — existing `PurchasesPage` keeps working.
+- Old `purchase_orders` table untouched (used by sales workflow's mirror? No — that's customer PO; leave as-is).
+- No changes to Sales Workflow, Inventory, HRM, Accounts pages.
+
+## Technical Details
+
+**Migrations**
+- `supabase/migrations/<ts>_purchase_workflow_tables.sql` — 9 new tables with GRANTs + RLS.
+- `erp-backend/database/migrations/2024_01_01_001000_purchase_workflow.php` — same schema for MySQL.
+
+**New backend files**
+- `erp-backend/app/Models/{PurchaseRequisition,PurchaseRequisitionItem,PurchaseOrderV2,PurchaseOrderItemV2,Grn,GrnItem,PurchaseBill,PurchaseBillPayment}.php`
+- `erp-backend/app/Services/PurchaseWorkflow/*Service.php` (5 services above)
+- `erp-backend/app/Http/Controllers/PurchaseWorkflow/*Controller.php` (5 controllers)
+- Routes appended to `erp-backend/routes/api.php`.
+
+**New frontend files** (~15 files under `src/pages/purchase-workflow/` + 1 API lib).
+
+**Document numbering** — uses existing `number_sequences` table: PRQ-YYYY-####, POV-YYYY-####, GRN-YYYY-####, PBL-YYYY-####, PPM-YYYY-####.
 
 ## Out of scope
-- Mushak 6.3 print template tweaks (already exists).
-- Customer/Supplier master changes.
-- New report types beyond existing TDS Register & Sales reports.
+- Purchase Return (handled by existing `purchase_returns` table — separate feature).
+- Supplier rating / vendor evaluation.
+- Multi-currency purchases.
+- Approval matrix beyond single admin step (can be extended later).
+
+## Confirm before build
+1. PR → PO step: **শুধু Commercial Department** PO ইস্যু করতে পারবে — RBAC দিয়ে control হবে (permission `purchase_order_v2.create`)। ঠিক আছে?
+2. GRN ছাড়া Bill এন্ট্রি করা যাবে না (strict)। ঠিক আছে?
+3. TDS payment-এ deduct হবে, Bill-এ নয়। ঠিক আছে?

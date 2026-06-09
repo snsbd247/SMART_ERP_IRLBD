@@ -12,7 +12,7 @@ import {
   ArrowLeftRight, Calendar, Activity, Menu, X, CircleDot, Truck, UserCheck,
   Briefcase, Clock, CalendarDays, DollarSign, FileCheck, BadgeCheck, User,
   Fingerprint, ScanFace, Timer, Gauge, Keyboard, Palette, MessageSquare,
-  Mail, Factory, Settings2, Github,
+  Mail, Factory, Settings2, Github, PackageCheck,
 } from "lucide-react";
 import { useBranding } from "@/contexts/BrandingContext";
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,11 @@ const navGroups: NavGroup[] = [
     permission: "purchase.view",
     requiredModules: ["purchase"],
     children: [
-      { to: "/purchase", label: "Purchase Entry", icon: ShoppingCart, permission: "purchase.view" },
+      { to: "/purchase-workflow/requisitions", label: "Requisitions", icon: ClipboardList, permission: "purchase.view" },
+      { to: "/purchase-workflow/po", label: "Purchase Orders", icon: FileText, permission: "purchase.view" },
+      { to: "/purchase-workflow/grn", label: "GRN (Goods Receipt)", icon: PackageCheck, permission: "purchase.view" },
+      { to: "/purchase-workflow/bills", label: "Purchase Bills", icon: Receipt, permission: "purchase.view" },
+      { to: "/purchase", label: "Purchase Entry (Legacy)", icon: ShoppingCart, permission: "purchase.view" },
       { to: "/purchase/returns", label: "Purchase Return", icon: ArrowLeftRight, permission: "purchase.view" },
       { to: "/suppliers", label: "Suppliers", icon: Truck, permission: "suppliers.view,purchase.view" },
       { to: "/reports/accounts-payable", label: "Accounts Payable", icon: Truck, permission: "purchase.view" },
