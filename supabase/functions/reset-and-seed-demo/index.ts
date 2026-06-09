@@ -391,12 +391,50 @@ Deno.serve(async (req) => {
     await bulk("sales_returns", sret);
     await bulk("sales_return_items", sretItems);
 
-    // ===== Purchase Orders v2 + GRNs + Supplier Bills + Payments =====
+    // ===== Purchase configuration (Types, Settings, Approval Matrix, CoA Mapping) =====
+    const PT_LOCAL = U(), PT_IMPORT = U(), PT_SERVICE = U(), PT_ASSET = U();
+    await db.from("purchase_types").delete().not("id","is",null);
+    await bulk("purchase_types", [
+      { id: PT_LOCAL,   code: "LOCAL",   name: "Local Purchase",  description: "Domestic supplier purchases", is_system: true, is_active: true, requires_grn: true,  requires_lc: false, affects_inventory: true,  affects_asset: false },
+      { id: PT_IMPORT,  code: "IMPORT",  name: "Import (LC)",     description: "Imported goods via LC",       is_system: true, is_active: true, requires_grn: true,  requires_lc: true,  affects_inventory: true,  affects_asset: false },
+      { id: PT_SERVICE, code: "SERVICE", name: "Service",         description: "Non-stock service purchase",  is_system: true, is_active: true, requires_grn: false, requires_lc: false, affects_inventory: false, affects_asset: false },
+      { id: PT_ASSET,   code: "ASSET",   name: "Capital / Asset", description: "Fixed asset acquisition",     is_system: true, is_active: true, requires_grn: true,  requires_lc: false, affects_inventory: false, affects_asset: true  },
+    ]);
+    await db.from("purchase_settings").delete().not("id","is",null);
+    await db.from("purchase_settings").insert({
+      id: U(), enforce_grn_for_bill: true, allow_over_receive: false, allow_over_bill: false,
+      default_currency: "BDT", default_vat_percent: 15, default_ait_percent: 0,
+      pr_prefix: "PR", po_prefix: "PO2", grn_prefix: "GRN", bill_prefix: "SB", pay_prefix: "SP", lc_prefix: "LC",
+      auto_post_grn: true, auto_post_bill: true, auto_post_payment: true,
+      enable_multi_currency: false, enable_landed_cost: false, enable_lc_module: true,
+    });
+    await db.from("purchase_coa_mapping").delete().not("id","is",null);
+    await bulk("purchase_coa_mapping", [PT_LOCAL, PT_IMPORT, PT_SERVICE, PT_ASSET].map(ptid => ({
+      id: U(), purchase_type_id: ptid, branch_id: BR_DHK,
+      inventory_account_id: Ac.inv, payable_account_id: Ac.ap,
+      vat_input_account_id: Ac.vatIn, cash_account_id: Ac.cash, bank_account_id: Ac.bank,
+      expense_account_id: Ac.pur, discount_account_id: Ac.pur, freight_account_id: Ac.pur,
+      is_active: true,
+    })));
+    await db.from("purchase_approval_matrix").delete().not("id","is",null);
+    await bulk("purchase_approval_matrix", [
+      { id: U(), document_type: "PR", purchase_type_id: PT_LOCAL,  branch_id: BR_DHK, min_amount: 0,      max_amount: 50000,     step_order: 1, approver_role: "manager",  is_active: true },
+      { id: U(), document_type: "PR", purchase_type_id: PT_LOCAL,  branch_id: BR_DHK, min_amount: 50000,  max_amount: 999999999, step_order: 1, approver_role: "director", is_active: true },
+      { id: U(), document_type: "PO", purchase_type_id: PT_LOCAL,  branch_id: BR_DHK, min_amount: 0,      max_amount: 100000,    step_order: 1, approver_role: "manager",  is_active: true },
+      { id: U(), document_type: "PO", purchase_type_id: PT_LOCAL,  branch_id: BR_DHK, min_amount: 100000, max_amount: 999999999, step_order: 1, approver_role: "director", is_active: true },
+      { id: U(), document_type: "PO", purchase_type_id: PT_IMPORT, branch_id: BR_DHK, min_amount: 0,      max_amount: 999999999, step_order: 1, approver_role: "director", is_active: true },
+      { id: U(), document_type: "BILL", purchase_type_id: PT_LOCAL, branch_id: BR_DHK, min_amount: 0,     max_amount: 999999999, step_order: 1, approver_role: "manager",  is_active: true },
+    ]);
+
+    // ===== Purchase Orders v2 + GRNs + Supplier Bills + Payments + PRs + Returns + LC =====
     const POs2: any[] = [], POitems2: any[] = [];
     const GRNs: any[] = [], GRNitems: any[] = [];
     const SBills: any[] = [], SBitems: any[] = [];
     const SPays: any[] = [], SPallocs: any[] = [];
-    let poc2 = 0, grnc = 0, sbc = 0, spc = 0, prc = 0;
+    const PRs: any[] = [], PRitems: any[] = [], PRPOlinks: any[] = [];
+    const PRets: any[] = [], PRetItems: any[] = [];
+    const LCs: any[] = [], LCcharges: any[] = [];
+    let poc2 = 0, grnc = 0, sbc = 0, spc = 0, prc = 0, prq = 0, lcc = 0;
     // Weekly cadence — one PO per business week per rotating supplier
     for (let d = new Date(start), wk = 0; d <= end; d.setDate(d.getDate() + 7), wk++) {
       const sup = suppliers[wk % suppliers.length];
@@ -412,23 +450,53 @@ Deno.serve(async (req) => {
       }
       const vat = round2(subtotal * VAT_RATE);
       const grand = round2(subtotal + vat);
+      const isImport = (wk % 8 === 0); // ~1 in 8 POs is an Import/LC
+      const ptId = isImport ? PT_IMPORT : PT_LOCAL;
+      // PR (created 5 days before PO)
+      prq++;
+      const prId = U();
+      const prNum = `PR-${fyTag}-${String(prq).padStart(5, "0")}`;
+      const prDate = ymd(new Date(d.getTime() - 5 * 86400000));
+      PRs.push({
+        id: prId, pr_no: prNum, pr_date: prDate, required_date: ds,
+        purchase_type_id: ptId, branch_id: BR_DHK, warehouse_id: WH_DHK,
+        requested_by: UID, requested_by_name: "Demo Requester",
+        priority: pick(["normal","normal","high"]), status: "Closed",
+        total_estimated: subtotal, remarks: "Auto-generated demo PR",
+        created_by: UID,
+      });
+      const prItemIds: string[] = [];
+      lines.forEach((l, i) => {
+        const prItemId = U(); prItemIds.push(prItemId);
+        PRitems.push({
+          id: prItemId, pr_id: prId, line_no: i + 1, item_id: l.itemId,
+          item_description: l.itemName, quantity: l.qty,
+          estimated_price: l.price, estimated_amount: l.total,
+          ordered_qty: l.qty, status: "Closed",
+        });
+      });
       // PO
       poc2++;
       const poId = U();
       const poNum = `PO2-${fyTag}-${String(poc2).padStart(5, "0")}`;
       POs2.push({
-        id: poId, po_no: poNum, po_date: ds, supplier_id: sup.id,
+        id: poId, po_no: poNum, po_date: ds, supplier_id: sup.id, purchase_type_id: ptId,
         branch_id: BR_DHK, warehouse_id: WH_DHK, exchange_rate: 1,
         subtotal, discount_amount: 0, freight_amount: 0, vat_amount: vat,
         ait_amount: 0, other_charges: 0, grand_total: grand, received_total: grand,
         status: "Approved", revision_no: 0, created_by: UID, currency: "BDT",
       });
-      lines.forEach((l, i) => POitems2.push({
-        id: U(), po_id: poId, line_no: i + 1, item_id: l.itemId,
-        item_description: l.itemName, quantity: l.qty, unit_price: l.price,
-        discount_percent: 0, vat_percent: 15, ait_percent: 0,
-        line_total: l.total, received_qty: l.qty, billed_qty: l.qty,
-      }));
+      const poItemIds: string[] = [];
+      lines.forEach((l, i) => {
+        const poItemId = U(); poItemIds.push(poItemId);
+        POitems2.push({
+          id: poItemId, po_id: poId, line_no: i + 1, item_id: l.itemId,
+          item_description: l.itemName, quantity: l.qty, unit_price: l.price,
+          discount_percent: 0, vat_percent: 15, ait_percent: 0,
+          line_total: l.total, received_qty: l.qty, billed_qty: l.qty,
+        });
+        PRPOlinks.push({ id: U(), po_item_id: poItemId, pr_item_id: prItemIds[i], linked_qty: l.qty });
+      });
       // GRN (received 3 days after PO)
       const grnDate = ymd(new Date(d.getTime() + 3 * 86400000));
       if (new Date(grnDate) > end) continue;
@@ -442,18 +510,76 @@ Deno.serve(async (req) => {
         status: "Approved", auto_post: true, created_by: UID,
         approved_by: UID, approved_at: grnDate,
       });
-      lines.forEach((l, i) => GRNitems.push({
-        id: U(), grn_id: grnId, line_no: i + 1, item_id: l.itemId,
-        item_description: l.itemName, ordered_qty: l.qty,
-        received_qty: l.qty, accepted_qty: l.qty, rejected_qty: 0,
-        unit_cost: l.price, line_value: l.total,
-      }));
+      const grnItemIds: string[] = [];
+      lines.forEach((l, i) => {
+        const gid = U(); grnItemIds.push(gid);
+        GRNitems.push({
+          id: gid, grn_id: grnId, line_no: i + 1, item_id: l.itemId,
+          item_description: l.itemName, ordered_qty: l.qty,
+          received_qty: l.qty, accepted_qty: l.qty, rejected_qty: 0,
+          unit_cost: l.price, line_value: l.total,
+        });
+      });
       // GRN posting: Dr Inventory + VAT Input, Cr AP
       addV("journal", grnDate, `GRN ${grnNum} (${sup.name})`, [
         [Ac.inv, subtotal, 0, `Inventory in (${sup.name})`],
         [Ac.vatIn, vat, 0, `Input VAT ${grnNum}`],
         [Ac.ap, 0, grand, `Payable to ${sup.name}`],
       ]);
+      // Purchase Return (~8% of GRNs — first line, partial qty)
+      if (R() < 0.08 && lines.length > 0) {
+        const retDate = ymd(new Date(new Date(grnDate).getTime() + RI(2, 10) * 86400000));
+        if (new Date(retDate) <= end) {
+          prc++;
+          const retId = U();
+          const retNum = `PRET-${fyTag}-${String(prc).padStart(5, "0")}`;
+          const rl = lines[0];
+          const rqty = Math.max(1, Math.floor(rl.qty * 0.1));
+          const rSub = round2(rqty * rl.price);
+          const rVat = round2(rSub * VAT_RATE);
+          const rGrand = round2(rSub + rVat);
+          PRets.push({
+            id: retId, return_no: retNum, return_date: retDate,
+            supplier_id: sup.id, grn_id: grnId, branch_id: BR_DHK, warehouse_id: WH_DHK,
+            reason: pick(["Damaged in transit","Quality issue","Wrong specification"]),
+            subtotal: rSub, vat_amount: rVat, grand_total: rGrand,
+            status: "Approved", created_by: UID,
+          });
+          PRetItems.push({
+            id: U(), return_id: retId, item_id: rl.itemId, grn_item_id: grnItemIds[0],
+            description: rl.itemName, quantity: rqty, unit_cost: rl.price,
+            vat_rate: 15, line_total: rGrand, sort_order: 1,
+          });
+          addV("journal", retDate, `Purchase Return ${retNum}`, [
+            [Ac.ap, rGrand, 0, `AP reversal ${retNum}`],
+            [Ac.inv, 0, rSub, "Inventory reversal"],
+            [Ac.vatIn, 0, rVat, "Input VAT reversal"],
+          ]);
+        }
+      }
+      // LC document for IMPORT POs
+      if (isImport) {
+        lcc++;
+        const lcId = U();
+        const lcNum = `LC-${fyTag}-${String(lcc).padStart(5, "0")}`;
+        const lcDate = ymd(new Date(d.getTime() - 15 * 86400000));
+        const expDate = ymd(new Date(d.getTime() + 90 * 86400000));
+        const charges = round2(grand * 0.04);
+        LCs.push({
+          id: lcId, lc_no: lcNum, lc_date: lcDate, expiry_date: expDate,
+          supplier_id: sup.id, branch_id: BR_DHK, bank_name: pick(["EBL","HSBC BD","BRAC Bank","City Bank"]),
+          lc_type: pick(["Sight","Usance"]), currency: "USD", exchange_rate: 110,
+          lc_amount: round2(grand / 110), margin_pct: 10, margin_amount: round2(grand * 0.10),
+          total_charges: charges, landed_cost: round2(grand + charges),
+          po_id: poId, grn_id: grnId, status: "Closed",
+          notes: "Demo LC", created_by: UID,
+        });
+        LCcharges.push(
+          { id: U(), lc_id: lcId, charge_type: "Bank Charge", charge_date: lcDate, description: "LC opening commission", amount: round2(charges * 0.4), currency: "BDT", account_id: Ac.bank, reference_no: lcNum },
+          { id: U(), lc_id: lcId, charge_type: "Freight",      charge_date: grnDate, description: "Sea freight",            amount: round2(charges * 0.5), currency: "BDT", account_id: Ac.bank, reference_no: lcNum },
+          { id: U(), lc_id: lcId, charge_type: "Duty",         charge_date: grnDate, description: "Customs duty",           amount: round2(charges * 0.1), currency: "BDT", account_id: Ac.bank, reference_no: lcNum },
+        );
+      }
       // Supplier Bill (5 days after GRN)
       const billDate = ymd(new Date(new Date(grnDate).getTime() + 5 * 86400000));
       if (new Date(billDate) > end) continue;
@@ -489,14 +615,21 @@ Deno.serve(async (req) => {
       }
       pc++;
     }
+    await bulk("purchase_requisitions", PRs);
+    await bulk("purchase_requisition_items", PRitems);
     await bulk("purchase_orders_v2", POs2);
     await bulk("purchase_order_items_v2", POitems2);
+    await bulk("po_pr_links", PRPOlinks);
     await bulk("grns_v2", GRNs);
     await bulk("grn_items_v2", GRNitems);
     await bulk("supplier_bills_v2", SBills);
     await bulk("supplier_bill_items_v2", SBitems);
     await bulk("supplier_payments_v2", SPays);
     await bulk("supplier_payment_allocations", SPallocs);
+    await bulk("purchase_returns_v2", PRets);
+    await bulk("purchase_return_items_v2", PRetItems);
+    await bulk("lc_documents", LCs);
+    await bulk("lc_charges", LCcharges);
 
 
     // ===== Customer Payments (with optional TDS 5%) =====
@@ -917,6 +1050,8 @@ Deno.serve(async (req) => {
         stock_transfers: tc, boms: boms.length, production: prdc,
         products: products.length, customers: customers.length, suppliers: suppliers.length, employees: employees.length,
         purchase_orders: poc, vat_challans: vchc, delivery_challans: dcc,
+        purchase_orders_v2: poc2, purchase_requisitions: prq, grns: grnc,
+        supplier_bills: sbc, supplier_payments: spc, purchase_returns_v2: prc, lc_documents: lcc,
         invoices_v2: inv2c, invoice_payments: ipayc, tds_entries: tdsc,
         party_notes: partyNotes.length,
       },
