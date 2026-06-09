@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, BookOpen, Filter } from "lucide-react";
+import { Plus, BookOpen, Filter, Search, X } from "lucide-react";
 import { useAccountBalances, AccountWithBalance } from "@/hooks/useAccountBalances";
+
 import { AccountTreeTable } from "@/components/accounts/AccountTreeTable";
 import { AccountLedgerDialog } from "@/components/accounts/AccountLedgerDialog";
 import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
@@ -28,6 +29,7 @@ const ChartOfAccounts = () => {
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [search, setSearch] = useState("");
 
   const { accounts, loading, refetch } = useAccountBalances({
     financialYearId: filterFY || undefined,
@@ -73,13 +75,65 @@ const ChartOfAccounts = () => {
     setDialogOpen(true);
   };
 
+  // Filter accounts by search (name OR code). Always include ancestors of matches so the tree stays valid.
+  const filteredAccounts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return accounts;
+    const byId = new Map(accounts.map((a) => [a.id, a]));
+    const keep = new Set<string>();
+    accounts.forEach((a) => {
+      if (a.account_name.toLowerCase().includes(q) || a.account_code.toLowerCase().includes(q)) {
+        let cur: AccountWithBalance | undefined = a;
+        while (cur) {
+          keep.add(cur.id);
+          cur = cur.parent_id ? byId.get(cur.parent_id) : undefined;
+        }
+      }
+    });
+    return accounts.filter((a) => keep.has(a.id));
+  }, [accounts, search]);
+
   const handleSave = async () => {
-    if (!formName.trim() || !formCode.trim()) return;
+    const name = formName.trim();
+    const code = formCode.trim();
+    if (!name || !code) {
+      toast({ title: "Validation", description: "Account name and code are required.", variant: "destructive" });
+      return;
+    }
+    // Enforce 4-digit numeric code (Bangladesh CoA standard)
+    if (!/^\d{4}$/.test(code)) {
+      toast({ title: "Invalid code", description: "Account code must be exactly 4 digits (e.g. 1201).", variant: "destructive" });
+      return;
+    }
+    // Prevent duplicates (DB has unique constraint, but catch early)
+    const dup = accounts.find((a) => a.account_code === code && a.id !== editAcc?.id);
+    if (dup) {
+      toast({ title: "Duplicate code", description: `Code ${code} already used by "${dup.account_name}".`, variant: "destructive" });
+      return;
+    }
+    // Prevent self/cyclic parent
+    if (formParent && editAcc && formParent === editAcc.id) {
+      toast({ title: "Invalid parent", description: "An account cannot be its own parent.", variant: "destructive" });
+      return;
+    }
+    // Parent type must match (a 4-digit "1xxx" account belongs under an asset parent, etc.)
+    if (formParent) {
+      const parent = accounts.find((a) => a.id === formParent);
+      if (parent && parent.account_type !== formType) {
+        toast({
+          title: "Parent type mismatch",
+          description: `Parent "${parent.account_name}" is ${parent.account_type}; child must share the same type.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const payload: any = {
-        account_name: formName,
-        account_code: formCode,
+        account_name: name,
+        account_code: code,
         account_type: formType,
         parent_id: formParent || null,
         updated_at: new Date().toISOString(),
@@ -95,10 +149,7 @@ const ChartOfAccounts = () => {
         const { error } = await supabase.from("chart_of_accounts").update(payload).eq("id", editAcc.id);
         if (error) throw error;
       } else {
-        if (isSuperAdmin) {
-          payload.opening_balance = parseFloat(formBalance) || 0;
-          payload.opening_balance_type = formBalType;
-        } else {
+        if (!isSuperAdmin) {
           payload.opening_balance = 0;
           payload.opening_balance_type = "debit";
         }
@@ -170,10 +221,33 @@ const ChartOfAccounts = () => {
 
       <Card>
         <CardContent className="p-0">
+          <div className="p-3 border-b flex items-center gap-2">
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name or code (e.g. 1201, Marico, Bank)..."
+                className="pl-8 pr-8 h-9"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {filteredAccounts.length} of {accounts.length} accounts
+            </span>
+          </div>
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Loading accounts...</div>
           ) : (
-            <AccountTreeTable accounts={accounts} onEdit={openEdit} onDrillDown={(a) => setLedgerAccount(a)} />
+            <AccountTreeTable accounts={filteredAccounts} onEdit={openEdit} onDrillDown={(a) => setLedgerAccount(a)} />
           )}
         </CardContent>
       </Card>
