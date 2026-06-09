@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  TrendingUp, TrendingDown, DollarSign, CreditCard, Landmark, PiggyBank,
+  TrendingUp, TrendingDown, DollarSign, Wallet, CreditCard, Landmark, PiggyBank,
   FileText, ShoppingCart, Receipt, UserPlus, Truck, ArrowUpRight, ArrowDownRight,
   Activity, Clock, Zap,
 } from "lucide-react";
