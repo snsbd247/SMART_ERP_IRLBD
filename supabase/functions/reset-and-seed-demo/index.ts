@@ -450,23 +450,53 @@ Deno.serve(async (req) => {
       }
       const vat = round2(subtotal * VAT_RATE);
       const grand = round2(subtotal + vat);
+      const isImport = (wk % 8 === 0); // ~1 in 8 POs is an Import/LC
+      const ptId = isImport ? PT_IMPORT : PT_LOCAL;
+      // PR (created 5 days before PO)
+      prq++;
+      const prId = U();
+      const prNum = `PR-${fyTag}-${String(prq).padStart(5, "0")}`;
+      const prDate = ymd(new Date(d.getTime() - 5 * 86400000));
+      PRs.push({
+        id: prId, pr_no: prNum, pr_date: prDate, required_date: ds,
+        purchase_type_id: ptId, branch_id: BR_DHK, warehouse_id: WH_DHK,
+        requested_by: UID, requested_by_name: "Demo Requester",
+        priority: pick(["normal","normal","high"]), status: "Closed",
+        total_estimated: subtotal, remarks: "Auto-generated demo PR",
+        created_by: UID,
+      });
+      const prItemIds: string[] = [];
+      lines.forEach((l, i) => {
+        const prItemId = U(); prItemIds.push(prItemId);
+        PRitems.push({
+          id: prItemId, pr_id: prId, line_no: i + 1, item_id: l.itemId,
+          item_description: l.itemName, quantity: l.qty,
+          estimated_price: l.price, estimated_amount: l.total,
+          ordered_qty: l.qty, status: "Closed",
+        });
+      });
       // PO
       poc2++;
       const poId = U();
       const poNum = `PO2-${fyTag}-${String(poc2).padStart(5, "0")}`;
       POs2.push({
-        id: poId, po_no: poNum, po_date: ds, supplier_id: sup.id,
+        id: poId, po_no: poNum, po_date: ds, supplier_id: sup.id, purchase_type_id: ptId,
         branch_id: BR_DHK, warehouse_id: WH_DHK, exchange_rate: 1,
         subtotal, discount_amount: 0, freight_amount: 0, vat_amount: vat,
         ait_amount: 0, other_charges: 0, grand_total: grand, received_total: grand,
         status: "Approved", revision_no: 0, created_by: UID, currency: "BDT",
       });
-      lines.forEach((l, i) => POitems2.push({
-        id: U(), po_id: poId, line_no: i + 1, item_id: l.itemId,
-        item_description: l.itemName, quantity: l.qty, unit_price: l.price,
-        discount_percent: 0, vat_percent: 15, ait_percent: 0,
-        line_total: l.total, received_qty: l.qty, billed_qty: l.qty,
-      }));
+      const poItemIds: string[] = [];
+      lines.forEach((l, i) => {
+        const poItemId = U(); poItemIds.push(poItemId);
+        POitems2.push({
+          id: poItemId, po_id: poId, line_no: i + 1, item_id: l.itemId,
+          item_description: l.itemName, quantity: l.qty, unit_price: l.price,
+          discount_percent: 0, vat_percent: 15, ait_percent: 0,
+          line_total: l.total, received_qty: l.qty, billed_qty: l.qty,
+        });
+        PRPOlinks.push({ id: U(), po_item_id: poItemId, pr_item_id: prItemIds[i], linked_qty: l.qty });
+      });
       // GRN (received 3 days after PO)
       const grnDate = ymd(new Date(d.getTime() + 3 * 86400000));
       if (new Date(grnDate) > end) continue;
