@@ -763,6 +763,19 @@ Deno.serve(async (req) => {
       duration_ms: Date.now() - t0,
       stats: {
         financial_year: fyName,
+    await bulk("party_notes", partyNotes);
+
+    await db.from("audit_log").insert({
+      user_id: UID, user_name: user.email,
+      action: "demo_reset_and_seed", module: "backup",
+      details: `Demo reset + full-year seed completed in ${Date.now() - t0}ms (FY ${fyName})`,
+    });
+
+    return new Response(JSON.stringify({
+      success: true,
+      duration_ms: Date.now() - t0,
+      stats: {
+        financial_year: fyName,
         sales: sc, purchases: pc, sales_returns: src, purchase_returns: prc,
         payments: pays.length, vouchers: vouchers.length, voucher_entries: ventries.length,
         payroll: payroll.length, fund_transactions: fundTx.length,
