@@ -441,7 +441,7 @@ Deno.serve(async (req) => {
         subtotal, vat_amount: vat, grand_total: grand,
         branch_id: BR_DHK, created_by: UID,
       });
-      SBitems.push({ id: U(), bill_id: billId, item_description: "Per GRN " + grnNum, quantity: 1, unit_price: subtotal, line_total: subtotal });
+      SBitems.push({ id: U(), bill_id: billId, description: "Per GRN " + grnNum, quantity: 1, unit_price: subtotal, line_total: subtotal });
       // Supplier Payment (15-30 days after bill, 70% of bills)
       if (R() < 0.7) {
         const payDate = ymd(new Date(new Date(billDate).getTime() + RI(15, 30) * 86400000));
