@@ -3850,6 +3850,119 @@ export type Database = {
           },
         ]
       }
+      purchase_return_items_v2: {
+        Row: {
+          created_at: string
+          description: string | null
+          grn_item_id: string | null
+          id: string
+          item_id: string | null
+          line_total: number | null
+          quantity: number | null
+          return_id: string
+          sort_order: number | null
+          unit_cost: number | null
+          vat_rate: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          grn_item_id?: string | null
+          id?: string
+          item_id?: string | null
+          line_total?: number | null
+          quantity?: number | null
+          return_id: string
+          sort_order?: number | null
+          unit_cost?: number | null
+          vat_rate?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          grn_item_id?: string | null
+          id?: string
+          item_id?: string | null
+          line_total?: number | null
+          quantity?: number | null
+          return_id?: string
+          sort_order?: number | null
+          unit_cost?: number | null
+          vat_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_return_items_v2_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_returns_v2"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_returns_v2: {
+        Row: {
+          bill_id: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          grand_total: number | null
+          grn_id: string | null
+          id: string
+          notes: string | null
+          reason: string | null
+          return_date: string
+          return_no: string
+          status: string
+          subtotal: number | null
+          supplier_id: string | null
+          updated_at: string
+          vat_amount: number | null
+          voucher_id: string | null
+          warehouse_id: string | null
+        }
+        Insert: {
+          bill_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number | null
+          grn_id?: string | null
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          return_date?: string
+          return_no: string
+          status?: string
+          subtotal?: number | null
+          supplier_id?: string | null
+          updated_at?: string
+          vat_amount?: number | null
+          voucher_id?: string | null
+          warehouse_id?: string | null
+        }
+        Update: {
+          bill_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          grand_total?: number | null
+          grn_id?: string | null
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          return_date?: string
+          return_no?: string
+          status?: string
+          subtotal?: number | null
+          supplier_id?: string | null
+          updated_at?: string
+          vat_amount?: number | null
+          voucher_id?: string | null
+          warehouse_id?: string | null
+        }
+        Relationships: []
+      }
       purchase_settings: {
         Row: {
           allow_over_bill: boolean

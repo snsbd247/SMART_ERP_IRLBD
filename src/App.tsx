@@ -62,6 +62,11 @@ import SupplierPaymentDetailPage from "./pages/purchase/SupplierPaymentDetailPag
 import LcsPage from "./pages/purchase/LcsPage";
 import LcFormPage from "./pages/purchase/LcFormPage";
 import LcDetailPage from "./pages/purchase/LcDetailPage";
+// Purchase module (Phase 5 Returns & Reports)
+import PurchaseReturnsPage from "./pages/purchase/PurchaseReturnsPage";
+import PurchaseReturnFormPage from "./pages/purchase/PurchaseReturnFormPage";
+import PurchaseReturnDetailPage from "./pages/purchase/PurchaseReturnDetailPage";
+import PurchaseReportsPage from "./pages/purchase/PurchaseReportsPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
@@ -258,6 +263,12 @@ const App = () => (
                 <Route path="/purchase/lc/new" element={<LcFormPage />} />
                 <Route path="/purchase/lc/:id" element={<LcDetailPage />} />
                 <Route path="/purchase/lc/:id/edit" element={<LcFormPage />} />
+                {/* ─── Purchase (Phase 5 Returns & Reports) ─── */}
+                <Route path="/purchase/returns" element={<PurchaseReturnsPage />} />
+                <Route path="/purchase/returns/new" element={<PurchaseReturnFormPage />} />
+                <Route path="/purchase/returns/:id" element={<PurchaseReturnDetailPage />} />
+                <Route path="/purchase/returns/:id/edit" element={<PurchaseReturnFormPage />} />
+                <Route path="/purchase/reports" element={<PurchaseReportsPage />} />
 
 
 
