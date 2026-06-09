@@ -61,10 +61,13 @@ const ProductionPage = () => {
     const totalCost = rawCost + Number(form.labor_cost) + Number(form.electricity_cost);
 
     // Generate production number
-    const { data: seq } = await supabase.from("number_sequences").select("*").eq("id", "production").single();
+    const { data: seq } = await supabase.from("number_sequences").select("*").eq("id", "production").maybeSingle();
     const nextNum = ((seq as any)?.current_number || 0) + 1;
-    const prodNumber = `${(seq as any)?.prefix || "PRD"}-${String(nextNum).padStart(5, "0")}`;
-    await supabase.from("number_sequences").update({ current_number: nextNum } as any).eq("id", "production");
+    const year = (seq as any)?.year ? `-${(seq as any).year}` : "";
+    const prodNumber = `${(seq as any)?.prefix || "PRD"}${year}-${String(nextNum).padStart(5, "0")}`;
+    if ((seq as any)?.id) {
+      await supabase.from("number_sequences").update({ current_number: nextNum } as any).eq("id", (seq as any).id);
+    }
 
     const { data: entry, error } = await supabase.from("production_entries").insert({
       production_number: prodNumber,
