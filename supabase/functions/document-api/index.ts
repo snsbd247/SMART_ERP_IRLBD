@@ -127,12 +127,7 @@ const DOC_CONFIG: Record<string, {
     module: "sales",
     hasStock: false,
   },
-  supplier: {
-    table: "suppliers",
-    numberField: "name",
-    module: "purchase",
-    hasStock: false,
-  },
+  // supplier doc type removed with Purchase module
 };
 
 // ---------- main handler ----------
