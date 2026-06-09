@@ -4061,6 +4061,60 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_adjustments: {
+        Row: {
+          adjustment_date: string
+          adjustment_number: string
+          adjustment_type: string
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+          reason: string | null
+          total_value: number
+          unit_cost: number
+          updated_at: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          adjustment_date?: string
+          adjustment_number: string
+          adjustment_type: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          product_id: string
+          quantity?: number
+          reason?: string | null
+          total_value?: number
+          unit_cost?: number
+          updated_at?: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          adjustment_date?: string
+          adjustment_number?: string
+          adjustment_type?: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          reason?: string | null
+          total_value?: number
+          unit_cost?: number
+          updated_at?: string
+          warehouse_id?: string | null
+        }
+        Relationships: []
+      }
       stock_batches: {
         Row: {
           batch_no: string
