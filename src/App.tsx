@@ -341,6 +341,7 @@ const App = () => (
                 <Route path="/sales-workflow/po/:id" element={<P perm="sales.view"><PurchaseOrderDetailPage /></P>} />
                 <Route path="/sales-workflow/vat-challan" element={<P perm="sales.view"><VatChallansPage /></P>} />
                 <Route path="/sales-workflow/vat-challan/new" element={<P perm="sales.create"><VatChallanFormPage /></P>} />
+                <Route path="/sales-workflow/vat-challan/:id/edit" element={<P perm="sales.edit"><VatChallanFormPage /></P>} />
                 <Route path="/sales-workflow/vat-challan/preview" element={<P perm="sales.view"><Mushak63PreviewPage /></P>} />
                 <Route path="/sales-workflow/vat-challan/:id" element={<P perm="sales.view"><VatChallanDetailPage /></P>} />
                 <Route path="/sales-workflow/delivery-challan" element={<P perm="sales.view"><DeliveryChallansPage /></P>} />
