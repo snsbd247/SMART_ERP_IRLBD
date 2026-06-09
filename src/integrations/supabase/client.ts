@@ -51,9 +51,20 @@ function makeSupabaseClient() {
     (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6d3NydHNxaXVtaHh1a3dnaW91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzcxMzksImV4cCI6MjA4OTIxMzEzOX0.NFasz7XQPa3pmyTkzRRsozGXHWoHSldARGuyde6q-iE";
 
+  // Clear any old persistent (localStorage) Supabase sessions so users get
+  // logged out when they close the browser. Going forward sessions live in
+  // sessionStorage only.
+  if (typeof window !== "undefined") {
+    try {
+      Object.keys(window.localStorage)
+        .filter((key) => key.startsWith("sb-") || key.includes("supabase.auth.token"))
+        .forEach((key) => window.localStorage.removeItem(key));
+    } catch { /* ignore */ }
+  }
+
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: {
-      storage: typeof window === "undefined" ? undefined : window.localStorage,
+      storage: typeof window === "undefined" ? undefined : window.sessionStorage,
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
