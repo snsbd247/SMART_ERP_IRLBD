@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +18,6 @@ const ACCOUNT_TYPES = ["asset", "liability", "income", "expense", "equity"] as c
 
 const ChartOfAccounts = () => {
   const { toast } = useToast();
-  const { isSuperAdmin } = useAuth();
 
   // Filters
   const [financialYears, setFinancialYears] = useState<{ id: string; name: string }[]>([]);
@@ -45,8 +43,6 @@ const ChartOfAccounts = () => {
   const [formCode, setFormCode] = useState("");
   const [formType, setFormType] = useState<string>("asset");
   const [formParent, setFormParent] = useState<string>("");
-  const [formBalance, setFormBalance] = useState("0");
-  const [formBalType, setFormBalType] = useState<string>("debit");
   const [saving, setSaving] = useState(false);
 
   // Ledger dialog
@@ -64,14 +60,14 @@ const ChartOfAccounts = () => {
 
   const openCreate = () => {
     setEditAcc(null);
-    setFormName(""); setFormCode(""); setFormType("asset"); setFormParent(""); setFormBalance("0"); setFormBalType("debit");
+    setFormName(""); setFormCode(""); setFormType("asset"); setFormParent("");
     setDialogOpen(true);
   };
 
   const openEdit = (a: AccountWithBalance) => {
     setEditAcc(a);
     setFormName(a.account_name); setFormCode(a.account_code); setFormType(a.account_type);
-    setFormParent(a.parent_id || ""); setFormBalance("0"); setFormBalType("debit");
+    setFormParent(a.parent_id || "");
     setDialogOpen(true);
   };
 
