@@ -366,8 +366,113 @@ Deno.serve(async (req) => {
     await bulk("sales_returns", sret);
     await bulk("sales_return_items", sretItems);
 
-    // Purchase Returns removed with Purchase module
-    const prc = 0;
+    // ===== Purchase Orders v2 + GRNs + Supplier Bills + Payments =====
+    const POs2: any[] = [], POitems2: any[] = [];
+    const GRNs: any[] = [], GRNitems: any[] = [];
+    const SBills: any[] = [], SBitems: any[] = [];
+    const SPays: any[] = [], SPallocs: any[] = [];
+    let poc2 = 0, grnc = 0, sbc = 0, spc = 0, prc = 0;
+    // Weekly cadence — one PO per business week per rotating supplier
+    for (let d = new Date(start), wk = 0; d <= end; d.setDate(d.getDate() + 7), wk++) {
+      const sup = suppliers[wk % suppliers.length];
+      const ds = ymd(d);
+      const items = pickN(products, RI(2, 5));
+      let subtotal = 0;
+      const lines: { itemId: string; itemName: string; qty: number; price: number; total: number }[] = [];
+      for (const p of items) {
+        const qty = RI(5, 30), price = p.cp;
+        const total = qty * price;
+        subtotal += total;
+        lines.push({ itemId: p.iid, itemName: p.name, qty, price, total });
+      }
+      const vat = round2(subtotal * VAT_RATE);
+      const grand = round2(subtotal + vat);
+      // PO
+      poc2++;
+      const poId = U();
+      const poNum = `PO2-${fyTag}-${String(poc2).padStart(5, "0")}`;
+      POs2.push({
+        id: poId, po_no: poNum, po_date: ds, supplier_id: sup.id,
+        branch_id: BR_DHK, warehouse_id: WH_DHK, exchange_rate: 1,
+        subtotal, discount_amount: 0, freight_amount: 0, vat_amount: vat,
+        ait_amount: 0, other_charges: 0, grand_total: grand, received_total: grand,
+        status: "Approved", revision_no: 0, created_by: UID, currency: "BDT",
+      });
+      lines.forEach((l, i) => POitems2.push({
+        id: U(), po_id: poId, line_no: i + 1, item_id: l.itemId,
+        item_description: l.itemName, quantity: l.qty, unit_price: l.price,
+        discount_percent: 0, vat_percent: 15, ait_percent: 0,
+        line_total: l.total, received_qty: l.qty, billed_qty: l.qty,
+      }));
+      // GRN (received 3 days after PO)
+      const grnDate = ymd(new Date(d.getTime() + 3 * 86400000));
+      if (new Date(grnDate) > end) continue;
+      grnc++;
+      const grnId = U();
+      const grnNum = `GRN-${fyTag}-${String(grnc).padStart(5, "0")}`;
+      GRNs.push({
+        id: grnId, grn_no: grnNum, grn_date: grnDate, po_id: poId,
+        supplier_id: sup.id, branch_id: BR_DHK, warehouse_id: WH_DHK,
+        subtotal, freight_amount: 0, other_charges: 0, grand_total: grand,
+        status: "Approved", auto_post: true, created_by: UID,
+        approved_by: UID, approved_at: grnDate,
+      });
+      lines.forEach((l, i) => GRNitems.push({
+        id: U(), grn_id: grnId, line_no: i + 1, item_id: l.itemId,
+        item_description: l.itemName, ordered_qty: l.qty,
+        received_qty: l.qty, accepted_qty: l.qty, rejected_qty: 0,
+        unit_cost: l.price, line_value: l.total,
+      }));
+      // GRN posting: Dr Inventory + VAT Input, Cr AP
+      addV("journal", grnDate, `GRN ${grnNum} (${sup.name})`, [
+        [Ac.inv, subtotal, 0, `Inventory in (${sup.name})`],
+        [Ac.vatIn, vat, 0, `Input VAT ${grnNum}`],
+        [Ac.ap, 0, grand, `Payable to ${sup.name}`],
+      ]);
+      // Supplier Bill (5 days after GRN)
+      const billDate = ymd(new Date(new Date(grnDate).getTime() + 5 * 86400000));
+      if (new Date(billDate) > end) continue;
+      sbc++;
+      const billId = U();
+      const billNum = `SB-${fyTag}-${String(sbc).padStart(5, "0")}`;
+      SBills.push({
+        id: billId, bill_no: billNum, bill_date: billDate, status: "Approved",
+        supplier_id: sup.id, po_id: poId, grn_id: grnId,
+        subtotal, vat_amount: vat, grand_total: grand,
+        branch_id: BR_DHK, created_by: UID,
+      });
+      SBitems.push({ id: U(), bill_id: billId, item_description: "Per GRN " + grnNum, quantity: 1, unit_price: subtotal, line_total: subtotal });
+      // Supplier Payment (15-30 days after bill, 70% of bills)
+      if (R() < 0.7) {
+        const payDate = ymd(new Date(new Date(billDate).getTime() + RI(15, 30) * 86400000));
+        if (new Date(payDate) > end) continue;
+        spc++;
+        const payId = U();
+        const payNum = `SP-${fyTag}-${String(spc).padStart(5, "0")}`;
+        const mode = pick(["bank", "cash", "cheque"]);
+        const credAc = mode === "cash" ? Ac.cash : Ac.bank;
+        SPays.push({
+          id: payId, payment_no: payNum, payment_date: payDate, amount: grand,
+          status: "Approved", supplier_id: sup.id, mode,
+          branch_id: BR_DHK, created_by: UID,
+        });
+        SPallocs.push({ id: U(), payment_id: payId, bill_id: billId, allocated_amount: grand });
+        addV("payment", payDate, `Supplier Payment ${payNum} (${sup.name})`, [
+          [Ac.ap, grand, 0, `Settle ${billNum}`],
+          [credAc, 0, grand, `Paid to ${sup.name}`],
+        ]);
+      }
+      pc++;
+    }
+    await bulk("purchase_orders_v2", POs2);
+    await bulk("purchase_order_items_v2", POitems2);
+    await bulk("grns_v2", GRNs);
+    await bulk("grn_items_v2", GRNitems);
+    await bulk("supplier_bills_v2", SBills);
+    await bulk("supplier_bill_items_v2", SBitems);
+    await bulk("supplier_payments_v2", SPays);
+    await bulk("supplier_payment_allocations", SPallocs);
+
 
     // ===== Customer Payments (with optional TDS 5%) =====
     const pays: any[] = [], allocs: any[] = [];
