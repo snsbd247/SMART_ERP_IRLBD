@@ -50,25 +50,25 @@ const MUSHAK_CSS = `
   .title-center h1 { font-size: 20pt; font-weight: 700; margin: 0; letter-spacing: 1.5pt; }
   .title-center .rule-ref { font-size: 10pt; margin-top: 1mm; }
   .form-code { font-size: 12pt; font-weight: 700; border: 0.4mm solid #000; padding: 1mm 3mm; white-space: nowrap; }
-  .header-grid { display:grid; grid-template-columns: 18mm 1fr 1fr; gap: 3mm; margin-top: 3mm; align-items: flex-start; }
-  .logo-cell img { width: 16mm; height: 16mm; object-fit: contain; }
+  .header-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin-top: 3mm; align-items: flex-start; }
+
   .kv { display:grid; grid-template-columns: 45mm 3mm 1fr; column-gap: 1mm; row-gap: 0.8mm; font-size: 10pt; }
   .kv .k { font-weight: 600; }
   .kv .v { font-weight: 600; word-wrap: break-word; overflow-wrap: anywhere; }
   table.mushak-items { width: 100%; border-collapse: collapse; margin-top: 3mm; table-layout: fixed; }
   table.mushak-items th, table.mushak-items td {
     border: 0.25mm solid #000;
-    padding: 1mm 1.2mm;
-    font-size: 9pt;
+    padding: 0.6mm 0.8mm;
+    font-size: 7.5pt;
     vertical-align: middle;
     word-wrap: break-word;
     overflow-wrap: anywhere;
     word-break: break-word;
     hyphens: auto;
-    line-height: 1.2;
+    line-height: 1.1;
   }
-  table.mushak-items thead th { background:#fff !important; font-weight: 700; text-align: center; line-height: 1.15; }
-  table.mushak-items tr.col-no td { font-size: 8pt; font-weight: 600; text-align: center; padding: 0.4mm; }
+  table.mushak-items thead th { background:#fff !important; font-weight: 700; text-align: center; line-height: 1.1; font-size: 7.5pt; }
+  table.mushak-items tr.col-no td { font-size: 7pt; font-weight: 600; text-align: center; padding: 0.3mm; }
   table.mushak-items td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   table.mushak-items td.center { text-align: center; }
   table.mushak-items tr.total-row td { font-weight: 700; text-align: right; }
@@ -173,13 +173,8 @@ export function PrintMushak63({ v }: Props) {
                 <div className="form-code">মূসক-৬.৩</div>
               </div>
 
-              {/* Seller header grid: logo | seller info | issue info */}
+              {/* Seller header grid: seller info | issue info (logo removed) */}
               <div className="header-grid" style={{ marginTop: 14 }}>
-                <div className="logo-cell">
-                  {settings?.company_logo_url
-                    ? <img src={settings.company_logo_url} alt="logo" />
-                    : <div style={{ width: 60, height: 60, border: "1px solid #ccc" }} />}
-                </div>
                 <div className="kv">
                   <div className="k">নিবন্ধিত ব্যক্তির নাম</div><div>:</div><div className="v">{sellerName}</div>
                   <div className="k">নিবন্ধিত ব্যক্তির বিআইএন</div><div>:</div><div className="v">{sellerBin}</div>
