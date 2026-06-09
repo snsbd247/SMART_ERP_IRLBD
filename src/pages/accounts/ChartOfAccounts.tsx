@@ -221,10 +221,33 @@ const ChartOfAccounts = () => {
 
       <Card>
         <CardContent className="p-0">
+          <div className="p-3 border-b flex items-center gap-2">
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name or code (e.g. 1201, Marico, Bank)..."
+                className="pl-8 pr-8 h-9"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {filteredAccounts.length} of {accounts.length} accounts
+            </span>
+          </div>
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Loading accounts...</div>
           ) : (
-            <AccountTreeTable accounts={accounts} onEdit={openEdit} onDrillDown={(a) => setLedgerAccount(a)} />
+            <AccountTreeTable accounts={filteredAccounts} onEdit={openEdit} onDrillDown={(a) => setLedgerAccount(a)} />
           )}
         </CardContent>
       </Card>
