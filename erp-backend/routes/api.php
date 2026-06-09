@@ -60,10 +60,10 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:payment.view')->get('admin/vouchers/payment', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::middleware('permission:receipt.view')->get('admin/vouchers/receipt', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::middleware('permission:contra.view')->get('admin/vouchers/contra', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
-        Route::get('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show']);
-        Route::get('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show']);
-        Route::put('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update']);
-        Route::put('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update']);
+        Route::middleware('permission:accounts.view')->get('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show']);
+        Route::middleware('permission:accounts.view')->get('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show']);
+        Route::middleware('permission:accounts.edit')->put('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update']);
+        Route::middleware('permission:accounts.edit')->put('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update']);
 
         Route::middleware('permission:journal.create')->post('vouchers/journal', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
         Route::middleware('permission:payment.create')->post('vouchers/payment', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
@@ -83,12 +83,12 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::post('vouchers/{id}/reopen', [\App\Http\Controllers\Accounting\VoucherController::class, 'reopen']);
             Route::post('vouchers/{id}/reverse', [\App\Http\Controllers\Accounting\VoucherController::class, 'reverse']);
         });
-        Route::post('vouchers/{id}/delete-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'deleteApproved']);
-        Route::post('vouchers/{id}/restore', [\App\Http\Controllers\Accounting\VoucherController::class, 'restore']);
+        Route::middleware('permission:accounts.delete')->post('vouchers/{id}/delete-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'deleteApproved']);
+        Route::middleware('permission:accounts.edit')->post('vouchers/{id}/restore', [\App\Http\Controllers\Accounting\VoucherController::class, 'restore']);
 
         // ─── Generic Super-Admin soft delete / restore (sales, purchases, payments) ──
-        Route::post('soft-delete/{table}/{id}', [\App\Http\Controllers\SoftDeleteController::class, 'delete']);
-        Route::post('soft-delete/{table}/{id}/restore', [\App\Http\Controllers\SoftDeleteController::class, 'restore']);
+        Route::middleware('permission:accounts.delete')->post('soft-delete/{table}/{id}', [\App\Http\Controllers\SoftDeleteController::class, 'delete']);
+        Route::middleware('permission:accounts.edit')->post('soft-delete/{table}/{id}/restore', [\App\Http\Controllers\SoftDeleteController::class, 'restore']);
 
         // ─── Reports ────────────────────────────────────────────
         Route::middleware('permission:reports.view')->prefix('reports')->group(function () {
@@ -194,6 +194,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::get('employees/{id}/education', fn($id) => response()->json(['success' => true, 'data' => \App\Models\EmployeeEducation::where('employee_id', $id)->get()]));
             Route::get('employees/{id}/experience', fn($id) => response()->json(['success' => true, 'data' => \App\Models\EmployeeExperience::where('employee_id', $id)->get()]));
             Route::get('employees/{id}/emergency-contacts', fn($id) => response()->json(['success' => true, 'data' => \App\Models\EmployeeEmergencyContact::where('employee_id', $id)->get()]));
+            Route::get('employees/{id}/linked-user', [\App\Http\Controllers\HRM\EmployeeController::class, 'getLinkedUser']);
             Route::get('attendance', [\App\Http\Controllers\HRM\AttendanceController::class, 'index']);
             Route::get('departments', [\App\Http\Controllers\HRM\DepartmentController::class, 'index']);
             Route::get('departments/{id}', [\App\Http\Controllers\HRM\DepartmentController::class, 'show']);
@@ -219,7 +220,6 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:hrm.create')->group(function () {
             Route::post('employees', [\App\Http\Controllers\HRM\EmployeeController::class, 'store']);
             Route::post('employees/{id}/upload-photo', [\App\Http\Controllers\HRM\EmployeeController::class, 'uploadPhoto']);
-            Route::get('employees/{id}/linked-user', [\App\Http\Controllers\HRM\EmployeeController::class, 'getLinkedUser']);
             Route::post('attendance', [\App\Http\Controllers\HRM\AttendanceController::class, 'store']);
             Route::post('attendance/bulk', [\App\Http\Controllers\HRM\AttendanceController::class, 'bulkStore']);
             Route::post('departments', [\App\Http\Controllers\HRM\DepartmentController::class, 'store']);
@@ -421,11 +421,13 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         // ─── Internal Messaging ─────────────────────────────────
         Route::middleware('permission:messaging.view')->prefix('messaging')->group(function () {
             Route::get('conversations', [\App\Http\Controllers\Messaging\MessageController::class, 'conversations']);
-            Route::post('conversations', [\App\Http\Controllers\Messaging\MessageController::class, 'createConversation']);
             Route::get('conversations/{id}/messages', [\App\Http\Controllers\Messaging\MessageController::class, 'messages']);
-            Route::post('conversations/{id}/messages', [\App\Http\Controllers\Messaging\MessageController::class, 'sendMessage']);
             Route::post('messages/{id}/read', [\App\Http\Controllers\Messaging\MessageController::class, 'markRead']);
             Route::get('unread-count', [\App\Http\Controllers\Messaging\MessageController::class, 'unreadCount']);
+        });
+        Route::middleware('permission:messaging.create')->prefix('messaging')->group(function () {
+            Route::post('conversations', [\App\Http\Controllers\Messaging\MessageController::class, 'createConversation']);
+            Route::post('conversations/{id}/messages', [\App\Http\Controllers\Messaging\MessageController::class, 'sendMessage']);
         });
 
         // ─── Bangladesh VAT Sales Workflow ──────────────────────
@@ -465,7 +467,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         });
         Route::middleware('permission:invoice_processing.create')->post('invoices-v2', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'store']);
         Route::middleware('permission:invoice_payment.create')->post('invoices-v2/{id}/payments', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'payment']);
-        Route::middleware('permission:invoice_processing.update')->post('invoices-v2/{id}/submit-bill', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'submitBill']);
+        Route::middleware('permission:invoice_processing.edit')->post('invoices-v2/{id}/submit-bill', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'submitBill']);
         Route::middleware('permission:invoice_processing.delete')->delete('invoices-v2/{id}', [\App\Http\Controllers\SalesWorkflow\InvoiceV2Controller::class, 'destroy']);
 
         // GitHub Deploy Sync — Super Admin only (enforced inside controller).

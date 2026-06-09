@@ -53,6 +53,12 @@ $body = json_decode(file_get_contents('php://input'), true) ?? [];
 // Parse query params
 $query = $_GET;
 
+function getTableColumns(PDO $db, string $table): array {
+    $stmt = $db->prepare("SHOW COLUMNS FROM `$table`");
+    $stmt->execute();
+    return array_column($stmt->fetchAll(), 'Field');
+}
+
 // ============================================================
 // AUTH ROUTES
 // ============================================================
@@ -320,11 +326,14 @@ switch ($method) {
             // List with filtering
             $where = [];
             $params = [];
+            $columns = getTableColumns($db, $table);
 
             foreach ($query as $key => $value) {
                 if (in_array($key, ['limit', 'offset', 'order', 'select'])) continue;
                 // Support eq filter: ?status=active
-                $where[] = "`$key` = ?";
+                $safeKey = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $key);
+                if (!$safeKey || !in_array($safeKey, $columns, true)) continue;
+                $where[] = "`$safeKey` = ?";
                 $params[] = $value;
             }
 
@@ -334,9 +343,11 @@ switch ($method) {
             $order = $query['order'] ?? 'created_at.desc';
             if ($order) {
                 $parts = explode('.', $order);
-                $col = preg_replace('/[^a-z_]/', '', $parts[0]);
+                $col = preg_replace('/[^a-zA-Z0-9_]/', '', $parts[0]);
                 $dir = (isset($parts[1]) && strtolower($parts[1]) === 'asc') ? 'ASC' : 'DESC';
-                $sql .= " ORDER BY `$col` $dir";
+                if ($col && in_array($col, $columns, true)) {
+                    $sql .= " ORDER BY `$col` $dir";
+                }
             }
 
             $limit = min((int)($query['limit'] ?? 1000), 1000);

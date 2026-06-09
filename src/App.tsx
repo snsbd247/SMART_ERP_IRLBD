@@ -336,17 +336,18 @@ const App = () => (
 
                 {/* ─── Sales (BD VAT) ─────────────────── */}
                 <Route path="/sales-workflow/po" element={<P perm="sales.view"><PurchaseOrdersPage /></P>} />
-                <Route path="/sales-workflow/po/new" element={<P perm="sales.add"><PurchaseOrderFormPage /></P>} />
+                <Route path="/sales-workflow/po/new" element={<P perm="sales.create"><PurchaseOrderFormPage /></P>} />
                 <Route path="/sales-workflow/po/:id/edit" element={<P perm="sales.edit"><PurchaseOrderFormPage /></P>} />
                 <Route path="/sales-workflow/po/:id" element={<P perm="sales.view"><PurchaseOrderDetailPage /></P>} />
                 <Route path="/sales-workflow/vat-challan" element={<P perm="sales.view"><VatChallansPage /></P>} />
-                <Route path="/sales-workflow/vat-challan/new" element={<P perm="sales.add"><VatChallanFormPage /></P>} />
+                <Route path="/sales-workflow/vat-challan/new" element={<P perm="sales.create"><VatChallanFormPage /></P>} />
+                <Route path="/sales-workflow/vat-challan/:id/edit" element={<P perm="sales.edit"><VatChallanFormPage /></P>} />
                 <Route path="/sales-workflow/vat-challan/preview" element={<P perm="sales.view"><Mushak63PreviewPage /></P>} />
                 <Route path="/sales-workflow/vat-challan/:id" element={<P perm="sales.view"><VatChallanDetailPage /></P>} />
                 <Route path="/sales-workflow/delivery-challan" element={<P perm="sales.view"><DeliveryChallansPage /></P>} />
                 <Route path="/sales-workflow/customer-receive" element={<P perm="sales.edit"><CustomerReceivePage /></P>} />
                 <Route path="/sales-workflow/ho-receive" element={<P perm="sales.edit"><HoReceivePage /></P>} />
-                <Route path="/sales-workflow/invoice-queue" element={<P perm="sales.add"><InvoiceQueuePage /></P>} />
+                <Route path="/sales-workflow/invoice-queue" element={<P perm="sales.create"><InvoiceQueuePage /></P>} />
                 <Route path="/sales-workflow/invoices" element={<P perm="sales.view"><InvoicesPage /></P>} />
                 <Route path="/sales-workflow/invoice/:id" element={<P perm="sales.view"><InvoiceDetailPage /></P>} />
                 <Route path="/sales-workflow/tds" element={<P perm="sales.view"><TdsRegisterPage /></P>} />
