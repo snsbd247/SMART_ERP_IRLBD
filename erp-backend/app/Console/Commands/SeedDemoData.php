@@ -269,6 +269,34 @@ class SeedDemoData extends Command
             'pur' => $coa['5101'], 'purRet' => $coa['5103'], 'sal' => $coa['5201'], 'rent' => $coa['5202'], 'util' => $coa['5203'], 'off' => $coa['5204'], 'tr' => $coa['5205'], 'pfExp' => $coa['5209'],
             'vatIn' => $coa['6101'], 'vatOut' => $coa['6102'],
         ];
+
+        // Ensure default child bank accounts exist (idempotent)
+        $bankChildren = [
+            ['1102-01', 'EBL Current A/C - 1234567890'],
+            ['1102-02', 'City Bank Current A/C - 9988776655'],
+            ['1102-03', 'BRAC Bank Savings A/C - 4455667788'],
+            ['1102-04', 'HSBC USD A/C - 0011223344'],
+        ];
+        $this->Ac['banks'] = [];
+        foreach ($bankChildren as [$code, $name]) {
+            $existing = DB::table('chart_of_accounts')->where('account_code', $code)->value('id');
+            if (!$existing) {
+                $existing = $this->U();
+                DB::table('chart_of_accounts')->insert([
+                    'id' => $existing,
+                    'account_code' => $code,
+                    'account_name' => $name,
+                    'account_type' => 'asset',
+                    'parent_id'    => $this->Ac['bank'],
+                    'opening_balance' => 0,
+                    'opening_balance_type' => 'debit',
+                    'is_active' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+            $this->Ac['banks'][$code] = $existing;
+        }
     }
 
     private function seedInventory(): void
