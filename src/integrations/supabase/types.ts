@@ -2380,6 +2380,86 @@ export type Database = {
           },
         ]
       }
+      po_amendments_v2: {
+        Row: {
+          amended_by: string | null
+          amended_by_name: string | null
+          created_at: string
+          id: string
+          po_id: string
+          reason: string
+          revision_no: number
+          snapshot: Json
+        }
+        Insert: {
+          amended_by?: string | null
+          amended_by_name?: string | null
+          created_at?: string
+          id?: string
+          po_id: string
+          reason: string
+          revision_no: number
+          snapshot: Json
+        }
+        Update: {
+          amended_by?: string | null
+          amended_by_name?: string | null
+          created_at?: string
+          id?: string
+          po_id?: string
+          reason?: string
+          revision_no?: number
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_amendments_v2_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders_v2"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      po_pr_links: {
+        Row: {
+          created_at: string
+          id: string
+          linked_qty: number
+          po_item_id: string
+          pr_item_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          linked_qty?: number
+          po_item_id: string
+          pr_item_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          linked_qty?: number
+          po_item_id?: string
+          pr_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_pr_links_po_item_id_fkey"
+            columns: ["po_item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_order_items_v2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_pr_links_pr_item_id_fkey"
+            columns: ["pr_item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requisition_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_categories: {
         Row: {
           created_at: string
@@ -3001,6 +3081,85 @@ export type Database = {
           },
         ]
       }
+      purchase_order_items_v2: {
+        Row: {
+          ait_percent: number
+          billed_qty: number
+          created_at: string
+          discount_percent: number
+          id: string
+          item_description: string
+          item_id: string | null
+          line_no: number
+          line_total: number
+          po_id: string
+          quantity: number
+          received_qty: number
+          remarks: string | null
+          unit_id: string | null
+          unit_price: number
+          vat_percent: number
+        }
+        Insert: {
+          ait_percent?: number
+          billed_qty?: number
+          created_at?: string
+          discount_percent?: number
+          id?: string
+          item_description: string
+          item_id?: string | null
+          line_no?: number
+          line_total?: number
+          po_id: string
+          quantity?: number
+          received_qty?: number
+          remarks?: string | null
+          unit_id?: string | null
+          unit_price?: number
+          vat_percent?: number
+        }
+        Update: {
+          ait_percent?: number
+          billed_qty?: number
+          created_at?: string
+          discount_percent?: number
+          id?: string
+          item_description?: string
+          item_id?: string | null
+          line_no?: number
+          line_total?: number
+          po_id?: string
+          quantity?: number
+          received_qty?: number
+          remarks?: string | null
+          unit_id?: string | null
+          unit_price?: number
+          vat_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_v2_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "item_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_v2_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders_v2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_v2_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_orders: {
         Row: {
           attachment_url: string | null
@@ -3060,6 +3219,302 @@ export type Database = {
           vat_amount?: number
         }
         Relationships: []
+      }
+      purchase_orders_v2: {
+        Row: {
+          ait_amount: number
+          approved_at: string | null
+          approved_by: string | null
+          branch_id: string | null
+          cancelled_reason: string | null
+          closed_reason: string | null
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          delivery_terms: string | null
+          discount_amount: number
+          exchange_rate: number
+          expected_date: string | null
+          freight_amount: number
+          grand_total: number
+          id: string
+          other_charges: number
+          payment_terms: string | null
+          po_date: string
+          po_no: string
+          purchase_type_id: string | null
+          received_total: number
+          remarks: string | null
+          revision_no: number
+          shipping_address: string | null
+          status: string
+          subtotal: number
+          supplier_id: string
+          updated_at: string
+          vat_amount: number
+          warehouse_id: string | null
+        }
+        Insert: {
+          ait_amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          branch_id?: string | null
+          cancelled_reason?: string | null
+          closed_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          delivery_terms?: string | null
+          discount_amount?: number
+          exchange_rate?: number
+          expected_date?: string | null
+          freight_amount?: number
+          grand_total?: number
+          id?: string
+          other_charges?: number
+          payment_terms?: string | null
+          po_date?: string
+          po_no: string
+          purchase_type_id?: string | null
+          received_total?: number
+          remarks?: string | null
+          revision_no?: number
+          shipping_address?: string | null
+          status?: string
+          subtotal?: number
+          supplier_id: string
+          updated_at?: string
+          vat_amount?: number
+          warehouse_id?: string | null
+        }
+        Update: {
+          ait_amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          branch_id?: string | null
+          cancelled_reason?: string | null
+          closed_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          delivery_terms?: string | null
+          discount_amount?: number
+          exchange_rate?: number
+          expected_date?: string | null
+          freight_amount?: number
+          grand_total?: number
+          id?: string
+          other_charges?: number
+          payment_terms?: string | null
+          po_date?: string
+          po_no?: string
+          purchase_type_id?: string | null
+          received_total?: number
+          remarks?: string | null
+          revision_no?: number
+          shipping_address?: string | null
+          status?: string
+          subtotal?: number
+          supplier_id?: string
+          updated_at?: string
+          vat_amount?: number
+          warehouse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_v2_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_v2_purchase_type_id_fkey"
+            columns: ["purchase_type_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_v2_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_v2_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_requisition_items: {
+        Row: {
+          created_at: string
+          estimated_amount: number
+          estimated_price: number
+          id: string
+          item_description: string
+          item_id: string | null
+          line_no: number
+          ordered_qty: number
+          pr_id: string
+          quantity: number
+          remarks: string | null
+          status: string
+          unit_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          estimated_amount?: number
+          estimated_price?: number
+          id?: string
+          item_description: string
+          item_id?: string | null
+          line_no?: number
+          ordered_qty?: number
+          pr_id: string
+          quantity?: number
+          remarks?: string | null
+          status?: string
+          unit_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          estimated_amount?: number
+          estimated_price?: number
+          id?: string
+          item_description?: string
+          item_id?: string | null
+          line_no?: number
+          ordered_qty?: number
+          pr_id?: string
+          quantity?: number
+          remarks?: string | null
+          status?: string
+          unit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_requisition_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "item_master"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisition_items_pr_id_fkey"
+            columns: ["pr_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requisitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisition_items_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_requisitions: {
+        Row: {
+          branch_id: string | null
+          closed_reason: string | null
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          id: string
+          pr_date: string
+          pr_no: string
+          priority: string
+          purchase_type_id: string | null
+          rejected_reason: string | null
+          remarks: string | null
+          requested_by: string | null
+          requested_by_name: string | null
+          required_date: string | null
+          status: string
+          total_estimated: number
+          updated_at: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          closed_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          id?: string
+          pr_date?: string
+          pr_no: string
+          priority?: string
+          purchase_type_id?: string | null
+          rejected_reason?: string | null
+          remarks?: string | null
+          requested_by?: string | null
+          requested_by_name?: string | null
+          required_date?: string | null
+          status?: string
+          total_estimated?: number
+          updated_at?: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          closed_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          id?: string
+          pr_date?: string
+          pr_no?: string
+          priority?: string
+          purchase_type_id?: string | null
+          rejected_reason?: string | null
+          remarks?: string | null
+          requested_by?: string | null
+          requested_by_name?: string | null
+          required_date?: string | null
+          status?: string
+          total_estimated?: number
+          updated_at?: string
+          warehouse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_requisitions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisitions_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisitions_purchase_type_id_fkey"
+            columns: ["purchase_type_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requisitions_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       purchase_settings: {
         Row: {
