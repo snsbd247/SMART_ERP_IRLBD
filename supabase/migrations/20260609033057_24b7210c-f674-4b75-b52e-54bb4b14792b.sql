@@ -1,0 +1,1 @@
+INSERT INTO number_sequences (id, prefix, current_number, year, description) VALUES ('purchase_payment', 'PPM', 0, '2526', 'Purchase Payment') ON CONFLICT (id) DO NOTHING;
