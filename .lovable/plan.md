@@ -1,90 +1,54 @@
-# Sales Workflow (BD VAT) — Rebuild Plan
+# Plan: Returns, Stock Adjustments, RBAC Seeding
 
-আগের Sales Workflow সিস্টেম রিমোভ করে নতুন করে বানানো হবে। মূল পরিবর্তন: একটা PO এর বিপরীতে **partial multiple VAT Challan** support, প্রতি PO item-এর `delivered_qty` / `remaining_qty` ট্র্যাকিং, এবং পুরো cycle (PO → VAT Challan → DC → Customer Receive → HO Receive → Invoice → Bill Submit → Payment+TDS → CoA Ledger)।
+Scope is large — four backend feature areas. I'll implement each as a focused, additive (Safe Extension) slice without modifying existing working controllers.
 
-অন্য মডিউল (Accounts, Inventory, HRM, Reports) এ কোনো breaking change হবে না — শুধু `sales-workflow` namespace-এর tables, services, controllers, এবং pages রিবিল্ড হবে।
+## 1. Sales Returns Backend
+- New `app/Http/Controllers/Sales/SalesReturnController.php` with `index/show/store/update/destroy/approve`.
+- `store` validates source `sales_invoice_id`, generates `SR-YY-#####` via `number_sequences`, inserts `sales_returns` + `sales_return_items` in a DB transaction.
+- `approve` posts:
+  - Reverse stock movement (`+qty` back into warehouse) via existing `StockMovement` model.
+  - Journal voucher (Dr Sales Return / Cr Customer Receivable) via `VoucherRepository`.
+- Add `PUT /sales-invoices/{id}` and `DELETE /sales-invoices/{id}` to `SalesInvoiceController` (block when paid/returned).
+- Routes under `Route::middleware('permission:sales.*')`.
 
-## Process Flow (Confirmed)
+## 2. Purchase Returns Backend + Frontend Wiring
+- New `app/Http/Controllers/Purchase/PurchaseReturnController.php` mirroring sales returns (`approve` reverses stock and posts Dr Supplier Payable / Cr Purchase Returns).
+- Routes `/purchase-returns` with `purchase.create/edit/delete/approve` gates.
+- Frontend: add `/purchase-workflow/returns` route + a thin `PurchaseReturnsPage` (list + approve button) wired through existing `laravel-bridge`.
 
-```text
-Purchase Order (5 products × 500 pcs)
-   │
-   ├── VAT Challan #1 (3 products × 300 pcs)   ← partial
-   │      └── Delivery Challan per product (3 DCs)
-   │      └── 2 sets sent with vehicle (1 → customer, 1 → signed copy back)
-   │      └── Customer Receive (sealed/signed) → Factory → HO Receive
-   │
-   ├── VAT Challan #2 (remaining qty)          ← partial
-   │      └── ... same flow
-   │
-   └── Invoice (1 invoice per challan OR consolidated multi-challan)
-          └── Bill Submit to Customer HO (start of 30-day clock)
-                └── Payment (after 30 days) − TDS deduction
-                      └── CoA Ledger posting
-```
+## 3. Stock Adjustments API + Approval
+- New `app/Http/Controllers/Inventory/StockAdjustmentController.php`:
+  - `index/show/store/approve/destroy`.
+  - On `approve`: write `stock_movements` row (±qty), write journal voucher (Dr/Cr Inventory ↔ Stock Adjustment), flip status to `posted`.
+- Add `status` enforcement: only `draft` rows are editable/deletable; `posted` rows are locked.
+- Frontend `StockAdjustmentPage.tsx`: add Approve button per row that calls the new endpoint (no change to existing direct-supabase create path — additive).
 
-## Scope
+## 4. BD VAT Canonical Roles & Permissions
+- Extend `database/seeders/data/demo_config_seed.json` (or a new `bd_vat_roles_seed.json`) with 4 canonical roles needed by VAT approval flow:
+  - `VAT Officer`, `Store Manager`, `Procurement Officer`, `Accounts Manager` — each with explicit permissions for `purchase_workflow.*`, `sales_workflow.*`, `vat_challan.*`, `mushak_9_1.*`, `tds.*`, `bill.*`, `payment.*`.
+- Re-use existing `CanonicalRolesSeeder` (idempotent upsert) — just enrich the JSON.
+- Run via `db:seed --class=CanonicalRolesSeeder` (documented in commit, not auto-executed since cPanel deploy).
+- Also seed missing `role_permissions` rows for `purchase_returns`, `sales_returns`, `stock_adjustments` modules across all 7 existing canonical roles.
 
-### Remove (old system)
-- Drop old service/controller logic that didn't support partial PO consumption.
-- Keep table data but **add columns** rather than dropping tables (data preservation).
-- Remove confusing UI bits; rebuild pages around the new flow.
+## Technical notes
+- Backend = Laravel only (`erp-backend/`). No Supabase migrations needed — `sales_returns`, `purchase_returns`, `stock_adjustments` tables already exist (MySQL).
+- All new endpoints use `Sanctum` auth + `permission:` middleware (already registered in `Http/Kernel`).
+- Voucher posting reuses `app/Repositories/VoucherRepository.php` to keep double-entry consistent.
+- Stock impact uses existing `StockMovement` model — no new ledger logic.
+- All controllers wrap multi-table writes in `DB::transaction(...)`.
 
-### Database changes
-1. `purchase_order_items` — add `delivered_qty` (default 0), computed `remaining_qty` via view/accessor.
-2. `vat_challan_items` — add `purchase_order_item_id` (nullable FK), `po_qty_consumed`.
-3. `vat_challans` — add `purchase_order_id` (nullable FK, since a challan is now PO-linked).
-4. `sales_invoices_v2` — already has `bill_submitted_at`, `bill_due_date`, `payment_terms_days` ✓.
-5. `tds_entries` — verify posts to **TDS Receivable (Asset)** account.
-6. Migration applied to **both** Laravel (MySQL) and Supabase (Postgres).
+## Files to be created
+- `erp-backend/app/Http/Controllers/Sales/SalesReturnController.php`
+- `erp-backend/app/Http/Controllers/Purchase/PurchaseReturnController.php`
+- `erp-backend/app/Http/Controllers/Inventory/StockAdjustmentController.php`
+- `erp-backend/app/Models/SalesReturnItem.php`, `PurchaseReturnItem.php` (if missing)
+- `src/pages/purchase-workflow/PurchaseReturnsPage.tsx`
 
-### Backend (Laravel)
-- **`PurchaseOrderService`** — add `availableQtyPerItem(poId)` helper.
-- **`VatChallanService`** — rebuild:
-  - require `purchase_order_id`
-  - validate each item: `qty ≤ po_item.remaining_qty`
-  - on create: increment `po_item.delivered_qty`, auto-create one DC per product
-  - on delete: decrement `po_item.delivered_qty`
-- **`DeliveryChallanService`** — status transitions: `issued → dispatched → customer_received → ho_received → invoiced`.
-- **`InvoiceProcessingService`** — already supports single / same_day / custom multi-challan. Keep as-is; tighten eligibility check (all DCs `ho_received`).
-- **`InvoicePaymentService`** — verify TDS posts to `TDS Receivable`. Fix account name lookup if needed.
-- **`AccountingService`** ledger entries:
-  - Invoice posted: DR AR, CR Sales, CR VAT Payable
-  - Payment received: DR Bank/Cash, DR TDS Receivable, CR AR
+## Files to be modified
+- `erp-backend/app/Http/Controllers/Sales/SalesInvoiceController.php` (add update/destroy)
+- `erp-backend/routes/api.php` (register new routes)
+- `erp-backend/database/seeders/data/demo_config_seed.json` (BD VAT roles + new modules)
+- `src/App.tsx` + `src/components/AppSidebar.tsx` (Purchase Returns route)
+- `src/pages/inventory/StockAdjustmentPage.tsx` (Approve button)
 
-### Frontend (React)
-- `PurchaseOrderDetailPage` — show per-item delivered/remaining qty + "Issue VAT Challan" button.
-- `VatChallanFormPage` (new) — pick PO → load items with `remaining_qty` → enter delivery qty per product.
-- `VatChallansPage`, `DeliveryChallansPage`, `CustomerReceivePage`, `HoReceivePage` — keep current shape, refine status flow.
-- `InvoiceQueuePage` — already supports multi-pick; keep.
-- `InvoiceDetailPage` — already has Bill Submit section ✓.
-- Remove dead components from old confusing workflow.
-
-### Routes & Sidebar
-- No new top-level routes; existing `/sales-workflow/*` paths retained.
-- Sidebar items unchanged → no impact on other modules.
-
-## Technical Details (for review)
-
-**Migration files**
-- `erp-backend/database/migrations/2024_01_01_000700_partial_po_vat_challan.php` — adds the 3 columns above.
-- `supabase/migrations/<timestamp>_partial_po_vat_challan.sql` — same schema for Postgres with GRANTs.
-
-**New / rebuilt files**
-- `erp-backend/app/Services/VatChallanService.php` (rebuild with PO consumption)
-- `erp-backend/app/Services/PurchaseOrderService.php` (add availability helper)
-- `erp-backend/app/Http/Controllers/SalesWorkflow/VatChallanController.php` (accept `purchase_order_id`)
-- `src/pages/sales-workflow/VatChallanFormPage.tsx` (new — PO-driven form)
-- `src/lib/sales-workflow-api.ts` (add `getPoAvailability(poId)`)
-
-**Backward compatibility**
-- `purchase_order_id` on `vat_challans` is **nullable** → existing rows unaffected.
-- Old challans without PO link still display/edit/delete normally.
-
-**Other modules**
-- Accounting, Inventory, HRM, Reports — no schema or code touched outside `sales-workflow`. Voucher/Ledger posting uses existing `AccountingService` API.
-
-## Out of scope
-- Mushak 6.3 print template tweaks (already exists).
-- Customer/Supplier master changes.
-- New report types beyond existing TDS Register & Sales reports.
+No existing endpoints are renamed or removed. Strictly additive.

@@ -105,6 +105,37 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:sales.create')->group(function () {
             Route::post('sales-invoices', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'store']);
         });
+        Route::middleware('permission:sales.edit')->put('sales-invoices/{id}', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'update']);
+        Route::middleware('permission:sales.delete')->delete('sales-invoices/{id}', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'destroy']);
+
+        // Sales Returns
+        Route::middleware('permission:sales_returns.view')->group(function () {
+            Route::get('sales-returns', [\App\Http\Controllers\Sales\SalesReturnController::class, 'index']);
+            Route::get('sales-returns/{id}', [\App\Http\Controllers\Sales\SalesReturnController::class, 'show']);
+        });
+        Route::middleware('permission:sales_returns.create')->post('sales-returns', [\App\Http\Controllers\Sales\SalesReturnController::class, 'store']);
+        Route::middleware('permission:sales_returns.edit')->put('sales-returns/{id}', [\App\Http\Controllers\Sales\SalesReturnController::class, 'update']);
+        Route::middleware('permission:sales_returns.edit')->post('sales-returns/{id}/approve', [\App\Http\Controllers\Sales\SalesReturnController::class, 'approve']);
+        Route::middleware('permission:sales_returns.delete')->delete('sales-returns/{id}', [\App\Http\Controllers\Sales\SalesReturnController::class, 'destroy']);
+
+        // Purchase Returns
+        Route::middleware('permission:purchase_returns.view')->group(function () {
+            Route::get('purchase-returns', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'index']);
+            Route::get('purchase-returns/{id}', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'show']);
+        });
+        Route::middleware('permission:purchase_returns.create')->post('purchase-returns', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'store']);
+        Route::middleware('permission:purchase_returns.edit')->put('purchase-returns/{id}', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'update']);
+        Route::middleware('permission:purchase_returns.edit')->post('purchase-returns/{id}/approve', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'approve']);
+        Route::middleware('permission:purchase_returns.delete')->delete('purchase-returns/{id}', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'destroy']);
+
+        // Stock Adjustments
+        Route::middleware('permission:stock_adjustments.view')->group(function () {
+            Route::get('stock-adjustments', [\App\Http\Controllers\Inventory\StockAdjustmentController::class, 'index']);
+            Route::get('stock-adjustments/{id}', [\App\Http\Controllers\Inventory\StockAdjustmentController::class, 'show']);
+        });
+        Route::middleware('permission:stock_adjustments.create')->post('stock-adjustments', [\App\Http\Controllers\Inventory\StockAdjustmentController::class, 'store']);
+        Route::middleware('permission:stock_adjustments.edit')->post('stock-adjustments/{id}/approve', [\App\Http\Controllers\Inventory\StockAdjustmentController::class, 'approve']);
+        Route::middleware('permission:stock_adjustments.delete')->delete('stock-adjustments/{id}', [\App\Http\Controllers\Inventory\StockAdjustmentController::class, 'destroy']);
 
         // ─── Customers (separate permission key) ────────────────
         Route::middleware('permission:customers.view')->group(function () {
