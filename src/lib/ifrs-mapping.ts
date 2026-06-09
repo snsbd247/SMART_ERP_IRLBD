@@ -52,16 +52,26 @@ const has = (s: string, ...kw: string[]) => kw.some(k => s.includes(k));
 // Direct code → IFRS line mapping for the Bangladesh standardized CoA.
 // This takes precedence over keyword-based fallbacks.
 const CODE_MAP: Record<string, IFRSLine> = {
-  // Non-current assets
+  // ── Header / parent accounts (zero-balance but kept for completeness) ──
+  "1000": "ppe", "1100": "ppe", "1200": "inventory",
+  "2000": "other_liability", "2100": "long_term_loan", "2200": "short_term_loan",
+  "3000": "retained_earnings",
+  "4000": "revenue",
+  "5000": "cogs", "5100": "cogs", "5200": "cogs", "5300": "cogs",
+  "6000": "admin_expense", "6100": "admin_expense", "6200": "selling_expense",
+  "6300": "financial_expense", "6400": "tax_provision",
+
+  // ── Non-current assets (1100 group) ──
   "1101": "ppe",
   "1102": "intangible_asset",
   "1103": "deferred_tax_asset",
-  "1104": "advance_deposit",
+  "1104": "advance_deposit",        // Advance to Supplier
   "1105": "inventory",
-  "1106": "advance_deposit",
-  "1107": "advance_income_tax",
+  "1106": "advance_deposit",        // Prepaid Expenses
+  "1107": "advance_income_tax",     // TDS Receivable
   "1111": "cash_bank", "1112": "cash_bank", "1113": "cash_bank", "1114": "cash_bank",
-  // Current assets - fixed assets sub-codes (legacy)
+
+  // ── Current assets – fixed assets sub-codes (1200 group) ──
   "1201": "ppe", "1202": "ppe", "1203": "ppe", "1204": "ppe", "1205": "ppe",
   // Inventories
   "1210": "inventory", "1211": "inventory", "1212": "inventory",
@@ -74,16 +84,16 @@ const CODE_MAP: Record<string, IFRSLine> = {
   "1250": "cash_bank", "1251": "cash_bank", "1252": "cash_bank",
   "1253": "cash_bank", "1254": "cash_bank", "1255": "cash_bank", "1256": "cash_bank",
 
-  // Liabilities
+  // ── Liabilities ──
   "2101": "long_term_loan",
-  "2102": "accounts_payable",
-  "2103": "other_liability",
+  "2102": "accounts_payable",       // Supplier Payable
+  "2103": "other_liability",        // Accrued Expenses
   "2104": "vat_payable",
   "2105": "short_term_loan",
-  "2106": "other_liability",
-  "2107": "other_liability",
-  "2201": "short_term_loan",
-  "2202": "short_term_loan",
+  "2106": "other_liability",        // Provident Fund Liability
+  "2107": "other_liability",        // Savings Fund Liability
+  "2201": "short_term_loan",        // Bank Loan
+  "2202": "short_term_loan",        // Directors Loan
   "2220": "other_liability", "2221": "other_liability", "2222": "other_liability",
   "2223": "other_liability", "2224": "other_liability", "2225": "other_liability",
   "2226": "other_liability", "2227": "other_liability",
@@ -92,23 +102,23 @@ const CODE_MAP: Record<string, IFRSLine> = {
   "2233": "short_term_loan", "2234": "short_term_loan", "2235": "short_term_loan",
   "2240": "provision_income_tax",
 
-  // Equity
+  // ── Equity ──
   "3101": "share_capital",
   "3102": "retained_earnings",
   "3103": "revaluation_reserve",
 
-  // Income
+  // ── Income ──
   "4101": "revenue", "4102": "revenue", "4105": "revenue",
   "4103": "other_income", "4104": "other_income", "4201": "other_income",
 
-  // COGS group
+  // ── COGS / Direct production (5xxx) ──
   "5101": "cogs", "5102": "cogs", "5103": "cogs",
-  // Direct labour / factory (5200-5299, except 5205, 5206)
   "5201": "cogs", "5202": "cogs", "5203": "cogs", "5204": "cogs",
   "5205": "selling_expense", "5206": "selling_expense",
   "5207": "cogs", "5208": "cogs", "5209": "cogs", "5210": "cogs",
+  // Manufacturing overhead 5300-5399 are handled by range below.
 
-  // Tax expense
+  // ── Tax expense ──
   "6401": "tax_provision",
   "6402": "deferred_tax",
 };
@@ -124,26 +134,39 @@ export function defaultMapping(
   // 1) Exact code match
   if (CODE_MAP[c]) return CODE_MAP[c];
 
-  // 2) Range-based code rules (Bangladesh CoA)
+  // 2) Range-based code rules (Bangladesh CoA) — covers any custom 4-digit code
   if (/^\d{4}$/.test(c)) {
     const num = parseInt(c, 10);
-    // AR sub-ledgers 1241-1249
+    // Assets
+    if (num >= 1101 && num <= 1109) return "ppe";              // Non-current asset sub-codes
+    if (num >= 1110 && num <= 1119) return "cash_bank";        // Non-current bank sub-codes
+    if (num >= 1201 && num <= 1209) return "ppe";              // Fixed assets
+    if (num >= 1210 && num <= 1219) return "inventory";
+    if (num >= 1220 && num <= 1229) return "advance_income_tax";
+    if (num >= 1230 && num <= 1239) return "advance_deposit";
     if (num >= 1240 && num <= 1249) return "accounts_receivable";
-    // AP sub-ledgers 2210-2219
+    if (num >= 1250 && num <= 1299) return "cash_bank";
+    // Liabilities
+    if (num >= 2101 && num <= 2109) return "long_term_loan";
+    if (num >= 2201 && num <= 2209) return "short_term_loan";
     if (num >= 2210 && num <= 2219) return "accounts_payable";
-    // Manufacturing overhead 5300-5399 → COGS
-    if (num >= 5300 && num <= 5399) return "cogs";
-    // Other 5xxx → COGS by default
+    if (num >= 2220 && num <= 2229) return "other_liability";
+    if (num >= 2230 && num <= 2239) return "short_term_loan";
+    if (num >= 2240 && num <= 2249) return "provision_income_tax";
+    // Equity
+    if (num >= 3100 && num <= 3199) return "retained_earnings";
+    // Income
+    if (num >= 4100 && num <= 4199) return "revenue";
+    if (num >= 4200 && num <= 4299) return "other_income";
+    // Expenses
+    if (num >= 5300 && num <= 5399) return "cogs";             // Manufacturing overhead
     if (num >= 5000 && num <= 5999) return "cogs";
-    // Admin 6100-6199
     if (num >= 6100 && num <= 6199) return "admin_expense";
-    // Selling 6200-6299
     if (num >= 6200 && num <= 6299) return "selling_expense";
-    // Financial 6300-6399
     if (num >= 6300 && num <= 6399) return "financial_expense";
-    // Tax 6400-6499
     if (num >= 6400 && num <= 6499) return "tax_provision";
   }
+
 
   // 3) Keyword fallback (legacy / custom accounts)
   if (account_type === "income") {
