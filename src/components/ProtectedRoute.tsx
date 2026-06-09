@@ -1,5 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { ShieldAlert, Home, ArrowLeft } from "lucide-react";
 
 interface Props {
   children: React.ReactNode;
@@ -10,14 +12,33 @@ interface Props {
   requiredAction?: "can_view" | "can_add" | "can_edit" | "can_delete";
 }
 
-const AccessState = ({ title, message }: { title: string; message: string }) => (
-  <div className="min-h-screen flex items-center justify-center bg-background">
-    <div className="text-center space-y-2">
-      <p className="text-destructive font-medium">{title}</p>
-      <p className="text-sm text-muted-foreground">{message}</p>
+const AccessState = ({ title, message }: { title: string; message: string }) => {
+  const navigate = useNavigate();
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center p-6">
+      <div className="max-w-md w-full text-center space-y-4 border border-border rounded-lg p-8 bg-card shadow-sm">
+        <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+          <ShieldAlert className="w-7 h-7 text-destructive" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          <p className="text-sm text-muted-foreground">{message}</p>
+          <p className="text-xs text-muted-foreground pt-2">
+            If you believe this is a mistake, contact your administrator to request access.
+          </p>
+        </div>
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-4 h-4 mr-1.5" />Back
+          </Button>
+          <Button size="sm" onClick={() => navigate("/")}>
+            <Home className="w-4 h-4 mr-1.5" />Dashboard
+          </Button>
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const ProtectedRoute = ({
   children,
