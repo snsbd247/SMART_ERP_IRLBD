@@ -67,8 +67,8 @@ const MUSHAK_CSS = `
     hyphens: auto;
     line-height: 1.1;
   }
-  table.mushak-items thead th { background:#fff !important; font-weight: 700; text-align: center; line-height: 1.15; }
-  table.mushak-items tr.col-no td { font-size: 8pt; font-weight: 600; text-align: center; padding: 0.4mm; }
+  table.mushak-items thead th { background:#fff !important; font-weight: 700; text-align: center; line-height: 1.1; font-size: 7.5pt; }
+  table.mushak-items tr.col-no td { font-size: 7pt; font-weight: 600; text-align: center; padding: 0.3mm; }
   table.mushak-items td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   table.mushak-items td.center { text-align: center; }
   table.mushak-items tr.total-row td { font-weight: 700; text-align: right; }
