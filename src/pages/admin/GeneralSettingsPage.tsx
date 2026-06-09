@@ -32,6 +32,7 @@ const fallbackSettings: CompanySettings = {
   currency_position: "before",
   default_branch_id: null,
   default_financial_year_id: null,
+  bin_number: null,
 };
 
 const apiBase = () => getApiBaseUrl() || "";
@@ -283,6 +284,14 @@ const GeneralSettingsPage = () => {
                 <div className="space-y-2">
                   <Label>Website</Label>
                   <Input value={settings.website || ""} onChange={e => update("website", e.target.value)} placeholder="https://company.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label>BIN Number</Label>
+                  <Input
+                    value={settings.bin_number || ""}
+                    onChange={e => update("bin_number" as any, e.target.value)}
+                    placeholder="e.g. 000000000-0000 (required for VAT Challan 6.3)"
+                  />
                 </div>
               </div>
               <div className="space-y-2">
