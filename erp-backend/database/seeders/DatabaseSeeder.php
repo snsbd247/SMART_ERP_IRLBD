@@ -119,6 +119,12 @@ class DatabaseSeeder extends Seeder
             ['id' => 'payment_voucher',  'prefix' => 'PV',  'description' => 'Payment Voucher'],
             ['id' => 'receipt_voucher',  'prefix' => 'RV',  'description' => 'Receipt Voucher'],
             ['id' => 'contra_voucher',   'prefix' => 'CV',  'description' => 'Contra Voucher'],
+            // New purchase workflow (PR → PO → GRN → Bill → Payment)
+            ['id' => 'purchase_requisition', 'prefix' => 'PR',  'description' => 'Purchase Requisition'],
+            ['id' => 'purchase_order',       'prefix' => 'PO',  'description' => 'Purchase Order'],
+            ['id' => 'grn',                  'prefix' => 'GRN', 'description' => 'Goods Receipt Note'],
+            ['id' => 'purchase_bill',        'prefix' => 'BILL','description' => 'Purchase Bill'],
+            ['id' => 'bill_payment',         'prefix' => 'BP',  'description' => 'Bill Payment'],
         ];
         foreach ($sequences as $s) {
             NumberSequence::create(array_merge($s, ['current_number' => 0, 'year' => 2026]));
