@@ -334,17 +334,62 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ===== Post-restore verification =====
+    // Row counts on key v2/LC tables + lightweight orphan-FK check
+    const verifyTables = [
+      "suppliers", "purchase_requisitions", "purchase_orders_v2", "grns_v2",
+      "supplier_bills_v2", "supplier_payments_v2", "purchase_returns_v2",
+      "lc_documents", "lc_charges",
+    ];
+    const tableCounts: Record<string, number> = {};
+    for (const t of verifyTables) {
+      const { count } = await adminClient.from(t).select("*", { count: "exact", head: true });
+      tableCounts[t] = count ?? 0;
+    }
+
+    // FK orphan checks (child → parent). Sample up to 1000 child rows each.
+    const fkChecks: Array<[string, string, string, string]> = [
+      ["purchase_order_items_v2", "po_id", "purchase_orders_v2", "id"],
+      ["purchase_requisition_items", "requisition_id", "purchase_requisitions", "id"],
+      ["grn_items_v2", "grn_id", "grns_v2", "id"],
+      ["supplier_bill_items_v2", "bill_id", "supplier_bills_v2", "id"],
+      ["supplier_payment_allocations", "payment_id", "supplier_payments_v2", "id"],
+      ["purchase_return_items_v2", "return_id", "purchase_returns_v2", "id"],
+      ["lc_charges", "lc_id", "lc_documents", "id"],
+    ];
+    const fkResults: Array<{ child: string; fk: string; parent: string; sampled: number; orphans: number }> = [];
+    for (const [child, fk, parent, pk] of fkChecks) {
+      const { data: childRows } = await adminClient.from(child).select(`id, ${fk}`).limit(1000);
+      const ids = (childRows ?? []).map((r: any) => r[fk]).filter(Boolean);
+      let orphans = 0;
+      if (ids.length) {
+        const { data: parents } = await adminClient.from(parent).select(pk).in(pk, ids);
+        const ok = new Set((parents ?? []).map((r: any) => r[pk]));
+        orphans = ids.filter((x) => !ok.has(x)).length;
+      }
+      fkResults.push({ child, fk, parent, sampled: ids.length, orphans });
+    }
+    const totalOrphans = fkResults.reduce((s, r) => s + r.orphans, 0);
+    const verification = {
+      table_counts: tableCounts,
+      fk_checks: fkResults,
+      total_orphans: totalOrphans,
+      passed: totalOrphans === 0 && errors.length === 0,
+    };
+
     // Record in backup_history
     await adminClient.from("backup_history").insert({
       file_name: file_name || "restore-upload.sql",
       file_size: new Blob([content]).size,
       backup_type: "restore",
       format: "sql",
-      status: errors.length ? "completed_with_errors" : "completed",
+      status: errors.length || totalOrphans ? "completed_with_errors" : "completed",
       tables_count: TABLES_ORDER.filter(t => restoreData[t]?.length).length,
       records_count: totalRestored,
       created_by: user.id,
-      error_message: errors.length ? errors.join("; ") : null,
+      error_message: errors.length || totalOrphans
+        ? [...errors, totalOrphans ? `${totalOrphans} FK orphans` : ""].filter(Boolean).join("; ")
+        : null,
     });
 
     // Audit log
@@ -353,7 +398,7 @@ Deno.serve(async (req) => {
       user_name: user.email,
       action: "backup_restored",
       module: "backup",
-      details: `Database restored from ${file_name || "upload.sql"}: ${totalRestored} records${errors.length ? `, ${errors.length} errors` : ""}`,
+      details: `Restored ${file_name || "upload.sql"}: ${totalRestored} records, ${errors.length} errors, ${totalOrphans} FK orphans`,
     });
 
     return new Response(
@@ -361,6 +406,7 @@ Deno.serve(async (req) => {
         success: true,
         records_restored: totalRestored,
         errors: errors.length ? errors : undefined,
+        verification,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
