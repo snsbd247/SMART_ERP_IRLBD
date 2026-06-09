@@ -649,7 +649,7 @@ Deno.serve(async (req) => {
     await bulk("stock_transfers", transfers);
 
     // ===== Bill of Materials + Production =====
-    const finished = products.slice(0, 4); // First 4 products as finished goods
+    const finished = products.slice(0, 10); // All 10 finished goods get BOMs
     const rawPool = products.slice(10);
     const boms: any[] = [], bomItemsRows: any[] = [];
     for (let i = 0; i < finished.length; i++) {
