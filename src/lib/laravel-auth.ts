@@ -21,7 +21,7 @@ export function getApiBaseUrl(): string | null {
     // signed into the Laravel backend on the current origin — keep using it.
     let hasLaravelToken = false;
     try {
-      hasLaravelToken = !!(window.localStorage.getItem("laravel_auth_token") || window.localStorage.getItem("auth_token"));
+      hasLaravelToken = !!(sessionStorage.getItem("laravel_auth_token") || sessionStorage.getItem("auth_token"));
     } catch { /* ignore */ }
     if (!isLovableHost && (hasLaravelToken || (host !== "localhost" && host !== "127.0.0.1"))) {
       return `${window.location.origin}/api`;
