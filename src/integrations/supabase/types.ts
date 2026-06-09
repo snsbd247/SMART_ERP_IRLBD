@@ -2018,6 +2018,131 @@ export type Database = {
           },
         ]
       }
+      lc_charges: {
+        Row: {
+          account_id: string | null
+          amount: number
+          charge_date: string | null
+          charge_type: string
+          created_at: string
+          currency: string | null
+          description: string | null
+          id: string
+          lc_id: string
+          reference_no: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          amount?: number
+          charge_date?: string | null
+          charge_type: string
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          id?: string
+          lc_id: string
+          reference_no?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          charge_date?: string | null
+          charge_type?: string
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          id?: string
+          lc_id?: string
+          reference_no?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lc_charges_lc_id_fkey"
+            columns: ["lc_id"]
+            isOneToOne: false
+            referencedRelation: "lc_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lc_documents: {
+        Row: {
+          bank_account_id: string | null
+          bank_name: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          exchange_rate: number | null
+          expiry_date: string | null
+          grn_id: string | null
+          id: string
+          landed_cost: number | null
+          lc_amount: number | null
+          lc_date: string
+          lc_no: string
+          lc_type: string | null
+          margin_amount: number | null
+          margin_pct: number | null
+          notes: string | null
+          po_id: string | null
+          status: string
+          supplier_id: string | null
+          total_charges: number | null
+          updated_at: string
+        }
+        Insert: {
+          bank_account_id?: string | null
+          bank_name?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          exchange_rate?: number | null
+          expiry_date?: string | null
+          grn_id?: string | null
+          id?: string
+          landed_cost?: number | null
+          lc_amount?: number | null
+          lc_date?: string
+          lc_no: string
+          lc_type?: string | null
+          margin_amount?: number | null
+          margin_pct?: number | null
+          notes?: string | null
+          po_id?: string | null
+          status?: string
+          supplier_id?: string | null
+          total_charges?: number | null
+          updated_at?: string
+        }
+        Update: {
+          bank_account_id?: string | null
+          bank_name?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          exchange_rate?: number | null
+          expiry_date?: string | null
+          grn_id?: string | null
+          id?: string
+          landed_cost?: number | null
+          lc_amount?: number | null
+          lc_date?: string
+          lc_no?: string
+          lc_type?: string | null
+          margin_amount?: number | null
+          margin_pct?: number | null
+          notes?: string | null
+          po_id?: string | null
+          status?: string
+          supplier_id?: string | null
+          total_charges?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leave_requests: {
         Row: {
           approved_by: string | null
@@ -4902,6 +5027,245 @@ export type Database = {
           is_active?: boolean
           name?: string
           prefix?: string | null
+        }
+        Relationships: []
+      }
+      supplier_bill_items_v2: {
+        Row: {
+          ait_rate: number | null
+          bill_id: string
+          created_at: string
+          description: string | null
+          discount: number | null
+          grn_item_id: string | null
+          id: string
+          item_id: string | null
+          line_total: number | null
+          quantity: number | null
+          sort_order: number | null
+          unit_price: number | null
+          vat_rate: number | null
+        }
+        Insert: {
+          ait_rate?: number | null
+          bill_id: string
+          created_at?: string
+          description?: string | null
+          discount?: number | null
+          grn_item_id?: string | null
+          id?: string
+          item_id?: string | null
+          line_total?: number | null
+          quantity?: number | null
+          sort_order?: number | null
+          unit_price?: number | null
+          vat_rate?: number | null
+        }
+        Update: {
+          ait_rate?: number | null
+          bill_id?: string
+          created_at?: string
+          description?: string | null
+          discount?: number | null
+          grn_item_id?: string | null
+          id?: string
+          item_id?: string | null
+          line_total?: number | null
+          quantity?: number | null
+          sort_order?: number | null
+          unit_price?: number | null
+          vat_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_bill_items_v2_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_bills_v2"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_bills_v2: {
+        Row: {
+          ait_amount: number | null
+          bill_date: string
+          bill_no: string
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          discount_amount: number | null
+          due_date: string | null
+          exchange_rate: number | null
+          grand_total: number | null
+          grn_id: string | null
+          id: string
+          notes: string | null
+          other_charges: number | null
+          paid_amount: number | null
+          po_id: string | null
+          status: string
+          subtotal: number | null
+          supplier_id: string | null
+          supplier_invoice_no: string | null
+          updated_at: string
+          vat_amount: number | null
+          voucher_id: string | null
+        }
+        Insert: {
+          ait_amount?: number | null
+          bill_date?: string
+          bill_no: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          discount_amount?: number | null
+          due_date?: string | null
+          exchange_rate?: number | null
+          grand_total?: number | null
+          grn_id?: string | null
+          id?: string
+          notes?: string | null
+          other_charges?: number | null
+          paid_amount?: number | null
+          po_id?: string | null
+          status?: string
+          subtotal?: number | null
+          supplier_id?: string | null
+          supplier_invoice_no?: string | null
+          updated_at?: string
+          vat_amount?: number | null
+          voucher_id?: string | null
+        }
+        Update: {
+          ait_amount?: number | null
+          bill_date?: string
+          bill_no?: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          discount_amount?: number | null
+          due_date?: string | null
+          exchange_rate?: number | null
+          grand_total?: number | null
+          grn_id?: string | null
+          id?: string
+          notes?: string | null
+          other_charges?: number | null
+          paid_amount?: number | null
+          po_id?: string | null
+          status?: string
+          subtotal?: number | null
+          supplier_id?: string | null
+          supplier_invoice_no?: string | null
+          updated_at?: string
+          vat_amount?: number | null
+          voucher_id?: string | null
+        }
+        Relationships: []
+      }
+      supplier_payment_allocations: {
+        Row: {
+          allocated_amount: number
+          bill_id: string
+          created_at: string
+          id: string
+          payment_id: string
+        }
+        Insert: {
+          allocated_amount?: number
+          bill_id: string
+          created_at?: string
+          id?: string
+          payment_id: string
+        }
+        Update: {
+          allocated_amount?: number
+          bill_id?: string
+          created_at?: string
+          id?: string
+          payment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_payment_allocations_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_bills_v2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payment_allocations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_payments_v2"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_payments_v2: {
+        Row: {
+          allocated_amount: number | null
+          amount: number
+          bank_account_id: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          exchange_rate: number | null
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string | null
+          payment_no: string
+          reference_no: string | null
+          status: string
+          supplier_id: string | null
+          updated_at: string
+          voucher_id: string | null
+        }
+        Insert: {
+          allocated_amount?: number | null
+          amount?: number
+          bank_account_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          exchange_rate?: number | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          payment_no: string
+          reference_no?: string | null
+          status?: string
+          supplier_id?: string | null
+          updated_at?: string
+          voucher_id?: string | null
+        }
+        Update: {
+          allocated_amount?: number | null
+          amount?: number
+          bank_account_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          exchange_rate?: number | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          payment_no?: string
+          reference_no?: string | null
+          status?: string
+          supplier_id?: string | null
+          updated_at?: string
+          voucher_id?: string | null
         }
         Relationships: []
       }
