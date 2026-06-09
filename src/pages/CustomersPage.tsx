@@ -99,11 +99,11 @@ const CustomersPage = () => {
         const isApprovedEdit = editingCustomer.status === "approved";
         if (isApprovedEdit && isSuperAdmin) {
           await documentApi.editApproved("customer", editingCustomer.id, {
-            name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null,
+            name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null,
           });
         } else {
-          const oldValues = { name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address };
-          const newValues = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null };
+          const oldValues = { name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address, bin_number: editingCustomer.bin_number };
+          const newValues = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null };
           const { error } = await supabase.from("customers").update(newValues).eq("id", editingCustomer.id);
           if (error) throw error;
           await logEditAudit({ userId: user?.id, userName: profile?.name, module: "Sales", action: "Edit Customer", recordId: editingCustomer.id, oldValues, newValues });
