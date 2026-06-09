@@ -177,6 +177,7 @@ export default function BillDetailPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
+          <CoAWarning missing={coaMissing} />
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Date</Label><Input type="date" value={pay.date} onChange={e => setPay({ ...pay, date: e.target.value })} /></div>
