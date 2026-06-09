@@ -161,7 +161,11 @@ const SuppliersPage = () => {
                 const isCancelled = s.status === "cancelled";
                 return (
                   <TableRow key={s.id} className={isCancelled ? "opacity-60" : ""}>
-                    <TableCell className="font-medium">{s.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <button onClick={() => navigate(`/suppliers/${s.id}`)} className="text-primary hover:underline text-left">
+                        {s.name}
+                      </button>
+                    </TableCell>
                     <TableCell>{s.email || "—"}</TableCell>
                     <TableCell>{s.phone || "—"}</TableCell>
                     <TableCell>

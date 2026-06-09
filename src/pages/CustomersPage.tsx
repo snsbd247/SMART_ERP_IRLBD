@@ -173,7 +173,11 @@ const CustomersPage = () => {
                 const isCancelled = c.status === "cancelled";
                 return (
                   <TableRow key={c.id} className={isCancelled ? "opacity-60" : ""}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <button onClick={() => navigate(`/customers/${c.id}`)} className="text-primary hover:underline text-left">
+                        {c.name}
+                      </button>
+                    </TableCell>
                     <TableCell>{c.email || "—"}</TableCell>
                     <TableCell>{c.phone || "—"}</TableCell>
                     <TableCell>

@@ -54,6 +54,9 @@ const CustomerProfilePage = () => {
   const [notes, setNotes] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [allocations, setAllocations] = useState<any[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
+  const [vatChallans, setVatChallans] = useState<any[]>([]);
+  const [deliveryChallans, setDeliveryChallans] = useState<any[]>([]);
   const [newNote, setNewNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState("");
@@ -68,13 +71,21 @@ const CustomerProfilePage = () => {
     if (!id) return;
     setLoading(true);
 
-    const [custRes, invRes, retRes, notesRes, payRes] = await Promise.all([
+    const [custRes, invRes, retRes, notesRes, payRes, poRes, vcRes, dcRes, invV2Res] = await Promise.all([
       supabase.from("customers").select("*").eq("id", id).single(),
       supabase.from("sales_invoices").select("*").eq("customer_id", id).order("invoice_date", { ascending: true }),
       supabase.from("sales_returns").select("*").eq("customer_id", id).order("return_date", { ascending: true }),
       supabase.from("party_notes" as any).select("*").eq("party_type", "customer").eq("party_id", id).order("created_at", { ascending: false }),
       supabase.from("party_payments" as any).select("*").eq("party_type", "customer").eq("party_id", id).order("payment_date", { ascending: false }),
+      supabase.from("purchase_orders").select("*").eq("customer_id", id).order("po_date", { ascending: false }),
+      supabase.from("vat_challans").select("*").eq("customer_id", id).order("challan_date", { ascending: false }),
+      supabase.from("delivery_challans").select("*").eq("customer_id", id).order("dc_date", { ascending: false }),
+      supabase.from("sales_invoices_v2").select("*").eq("customer_id", id).order("invoice_date", { ascending: false }),
     ]);
+    setPurchaseOrders(poRes.data || []);
+    setVatChallans(vcRes.data || []);
+    setDeliveryChallans(dcRes.data || []);
+    void invV2Res;
 
     setCustomer(custRes.data);
     const invs = invRes.data || [];
@@ -469,6 +480,9 @@ const CustomerProfilePage = () => {
           <TabsTrigger value="overview" className="text-xs sm:text-sm"><User className="w-3.5 h-3.5 mr-1 hidden sm:inline" />Overview</TabsTrigger>
           <TabsTrigger value="ledger" className="text-xs sm:text-sm"><Receipt className="w-3.5 h-3.5 mr-1 hidden sm:inline" />Ledger</TabsTrigger>
           <TabsTrigger value="invoices" className="text-xs sm:text-sm"><FileText className="w-3.5 h-3.5 mr-1 hidden sm:inline" />Invoices</TabsTrigger>
+          <TabsTrigger value="pos" className="text-xs sm:text-sm"><FileText className="w-3.5 h-3.5 mr-1 hidden sm:inline" />Purchase Orders</TabsTrigger>
+          <TabsTrigger value="vat" className="text-xs sm:text-sm"><Receipt className="w-3.5 h-3.5 mr-1 hidden sm:inline" />VAT Challans</TabsTrigger>
+          <TabsTrigger value="dc" className="text-xs sm:text-sm"><FileText className="w-3.5 h-3.5 mr-1 hidden sm:inline" />Delivery Challans</TabsTrigger>
           <TabsTrigger value="payments" className="text-xs sm:text-sm"><Wallet className="w-3.5 h-3.5 mr-1 hidden sm:inline" />Payments</TabsTrigger>
           <TabsTrigger value="notes" className="text-xs sm:text-sm"><StickyNote className="w-3.5 h-3.5 mr-1 hidden sm:inline" />Notes</TabsTrigger>
         </TabsList>
@@ -917,6 +931,82 @@ const CustomerProfilePage = () => {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="pos" className="space-y-3">
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Purchase Orders ({purchaseOrders.length})</CardTitle></CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow><TableHead>PO #</TableHead><TableHead>Date</TableHead><TableHead>Delivery Date</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {purchaseOrders.map(po => (
+                      <TableRow key={po.id}>
+                        <TableCell className="font-mono text-xs">{po.po_number}</TableCell>
+                        <TableCell className="text-sm">{po.po_date}</TableCell>
+                        <TableCell className="text-sm">{po.delivery_date || "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fc(Number(po.grand_total || 0))}</TableCell>
+                        <TableCell><Badge variant="outline" className="text-xs">{po.status}</Badge></TableCell>
+                        <TableCell><Button size="sm" variant="ghost" onClick={() => navigate(`/sales-workflow/po/${po.id}`)}>View</Button></TableCell>
+                      </TableRow>
+                    ))}
+                    {purchaseOrders.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No purchase orders</TableCell></TableRow>}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="vat" className="space-y-3">
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">VAT Challans ({vatChallans.length})</CardTitle></CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow><TableHead>Challan #</TableHead><TableHead>Date</TableHead><TableHead>Vehicle</TableHead><TableHead className="text-right">Amount</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {vatChallans.map(vc => (
+                      <TableRow key={vc.id}>
+                        <TableCell className="font-mono text-xs">{vc.challan_number}</TableCell>
+                        <TableCell className="text-sm">{vc.challan_date}</TableCell>
+                        <TableCell className="text-sm">{vc.vehicle_no || "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fc(Number(vc.grand_total || 0))}</TableCell>
+                        <TableCell><Badge variant="outline" className="text-xs">{vc.status}</Badge></TableCell>
+                        <TableCell><Button size="sm" variant="ghost" onClick={() => navigate(`/sales-workflow/vat-challan/${vc.id}`)}>View</Button></TableCell>
+                      </TableRow>
+                    ))}
+                    {vatChallans.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No VAT challans</TableCell></TableRow>}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="dc" className="space-y-3">
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Delivery Challans ({deliveryChallans.length})</CardTitle></CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow><TableHead>DC #</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Qty</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {deliveryChallans.map(dc => (
+                      <TableRow key={dc.id}>
+                        <TableCell className="font-mono text-xs">{dc.dc_number}</TableCell>
+                        <TableCell className="text-sm">{dc.dc_date}</TableCell>
+                        <TableCell className="text-right tabular-nums">{Number(dc.qty || 0)}</TableCell>
+                        <TableCell><Badge variant="outline" className="text-xs">{dc.status}</Badge></TableCell>
+                      </TableRow>
+                    ))}
+                    {deliveryChallans.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">No delivery challans</TableCell></TableRow>}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
