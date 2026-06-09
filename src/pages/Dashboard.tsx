@@ -72,31 +72,38 @@ const Dashboard = () => {
   useEffect(() => { loadDashboardData(); }, []);
 
   const loadDashboardData = async () => {
-    const [salesRes, auditRes, recentInvRes, recentPayRes, paymentsRes, voucherRes] = await Promise.all([
+    const [salesV1Res, salesV2Res, billsV2Res, auditRes, recentInvV2Res, recentInvV1Res, recentPayRes, paymentsRes, voucherRes] = await Promise.all([
       supabase.from("sales_invoices").select("total_amount, net_amount, discount, invoice_date, status"),
+      supabase.from("sales_invoices_v2").select("total_amount, net_amount, invoice_date, status"),
+      supabase.from("supplier_bills_v2").select("total_amount, bill_date, status"),
       supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(8),
+      supabase.from("sales_invoices_v2").select("id, invoice_number, invoice_date, total_amount, net_amount, status, customers(name)").order("created_at", { ascending: false }).limit(5),
       supabase.from("sales_invoices").select("id, invoice_number, invoice_date, total_amount, net_amount, status, customers(name)").order("created_at", { ascending: false }).limit(5),
       supabase.from("party_payments").select("id, payment_date, amount, payment_method, party_type, party_id").order("created_at", { ascending: false }).limit(5),
       supabase.from("party_payments").select("amount, party_type"),
       supabase.from("acc_vouchers").select("voucher_type, total_amount, status").neq("status", "cancelled"),
     ]);
 
-    const sales = salesRes.data || [];
-    const purchases: Array<{ total_amount: number; purchase_date: string; status: string }> = [];
+    const salesV1 = salesV1Res.data || [];
+    const salesV2 = salesV2Res.data || [];
+    const sales = [...salesV1, ...salesV2];
+    const purchases = (billsV2Res.data || []).map((b: any) => ({
+      total_amount: Number(b.total_amount) || 0,
+      purchase_date: b.bill_date,
+      status: b.status,
+    }));
     const payments = paymentsRes.data || [];
     const vouchers = voucherRes.data || [];
 
-    const totalSales = sales.reduce((s, r) => s + Number(r.total_amount), 0);
-    const totalPurchases = 0;
+    const totalSales = sales.reduce((s, r: any) => s + Number(r.total_amount || 0), 0);
+    const totalPurchases = purchases.reduce((s, r) => s + Number(r.total_amount || 0), 0);
 
-    // Real receivable: total sales - payments received from customers
     const customerPayments = payments.filter(p => p.party_type === 'customer').reduce((s, p) => s + Number(p.amount), 0);
     const supplierPayments = payments.filter(p => p.party_type === 'supplier').reduce((s, p) => s + Number(p.amount), 0);
 
     const totalReceivable = Math.max(0, totalSales - customerPayments);
     const totalPayable = Math.max(0, totalPurchases - supplierPayments);
 
-    // Real income/expense from vouchers
     const receiptVouchers = vouchers.filter(v => v.voucher_type === 'receipt').reduce((s, v) => s + Number(v.total_amount), 0);
     const paymentVouchers = vouchers.filter(v => v.voucher_type === 'payment').reduce((s, v) => s + Number(v.total_amount), 0);
 
@@ -112,26 +119,26 @@ const Dashboard = () => {
       salesCount: sales.length, purchaseCount: purchases.length,
     });
     setRecentActivities(auditRes.data || []);
-    setRecentInvoices(recentInvRes.data || []);
+    const recentInv = [...(recentInvV2Res.data || []), ...(recentInvV1Res.data || [])]
+      .sort((a: any, b: any) => new Date(b.invoice_date).getTime() - new Date(a.invoice_date).getTime())
+      .slice(0, 5);
+    setRecentInvoices(recentInv);
     setRecentPayments(recentPayRes.data || []);
 
-    // Monthly chart data from real transactions
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const currentYear = new Date().getFullYear();
 
     const monthlyData = months.map((m, i) => {
-      const mSales = sales.filter(s => { const d = new Date(s.invoice_date); return d.getMonth() === i && d.getFullYear() === currentYear; }).reduce((a, b) => a + Number(b.total_amount), 0);
-      const mPurchases = purchases.filter(p => { const d = new Date(p.purchase_date); return d.getMonth() === i && d.getFullYear() === currentYear; }).reduce((a, b) => a + Number(b.total_amount), 0);
+      const mSales = sales.filter((s: any) => { const d = new Date(s.invoice_date); return d.getMonth() === i && d.getFullYear() === currentYear; }).reduce((a, b: any) => a + Number(b.total_amount || 0), 0);
+      const mPurchases = purchases.filter(p => { const d = new Date(p.purchase_date); return d.getMonth() === i && d.getFullYear() === currentYear; }).reduce((a, b) => a + Number(b.total_amount || 0), 0);
       return { month: m, sales: mSales, purchases: mPurchases, profit: mSales - mPurchases };
     });
     setMonthlySales(monthlyData);
     setProfitData(monthlyData);
 
-    // Real expense breakdown from voucher types
     const expenseCategories: { name: string; value: number }[] = [];
     if (totalPurchases > 0) expenseCategories.push({ name: "Purchases", value: totalPurchases });
     if (paymentVouchers > 0) expenseCategories.push({ name: "Payments", value: paymentVouchers });
-    // If no data at all, show empty
     setExpenseBreakdown(expenseCategories.filter(e => e.value > 0));
   };
 
