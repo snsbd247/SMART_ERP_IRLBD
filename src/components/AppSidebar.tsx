@@ -93,6 +93,8 @@ const navGroups: NavGroup[] = [
     requiredModules: ["purchase"],
     children: [
       { to: "/purchase", label: "Purchase Dashboard", icon: LayoutDashboard, end: true },
+      { to: "/purchase/requisitions", label: "Requisitions (PR)", icon: FileText },
+      { to: "/purchase/orders", label: "Purchase Orders (PO)", icon: ShoppingCart },
       { to: "/purchase/suppliers", label: "Suppliers", icon: Users },
       { to: "/purchase/types", label: "Purchase Types", icon: Layers },
       { to: "/purchase/approval-matrix", label: "Approval Matrix", icon: Shield },
