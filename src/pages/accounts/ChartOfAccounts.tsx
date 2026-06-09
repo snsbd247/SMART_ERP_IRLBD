@@ -29,6 +29,7 @@ const ChartOfAccounts = () => {
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [search, setSearch] = useState("");
 
   const { accounts, loading, refetch } = useAccountBalances({
     financialYearId: filterFY || undefined,
