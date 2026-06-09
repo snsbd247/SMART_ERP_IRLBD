@@ -278,16 +278,12 @@ const App = () => (
                 <Route path="/reports/accounts-receivable" element={<P perm="sales.view"><AccountsReceivableReport /></P>} />
                 <Route path="/reports/ar-aging" element={<P perm="sales.view"><ARAgingReport /></P>} />
                 <Route path="/reports/income-analysis" element={<P perm="sales.view"><IncomeAnalysisReport /></P>} />
-                <Route path="/reports/accounts-payable" element={<P perm="purchase.view"><AccountsPayableReport /></P>} />
-                <Route path="/reports/ap-aging" element={<P perm="purchase.view"><APAgingReport /></P>} />
-                <Route path="/reports/expense-analysis" element={<P perm="purchase.view"><ExpenseAnalysisReport /></P>} />
                 <Route path="/reports/stock-ledger" element={<P perm="inventory.view"><StockLedger /></P>} />
                 <Route path="/reports/stock-reports" element={<P perm="inventory.view"><StockReportsPage /></P>} />
                 <Route path="/reports/stock-by-group" element={<P perm="inventory.view"><StockByGroupPage /></P>} />
                 <Route path="/reports/low-stock" element={<P perm="inventory.view"><LowStockPage /></P>} />
                 <Route path="/reports/customer-statement" element={<P perm="sales.view"><CustomerStatementPage /></P>} />
                 <Route path="/reports/sales" element={<P perm="sales.view"><SalesReport /></P>} />
-                <Route path="/reports/purchase" element={<P perm="purchase.view"><PurchaseReport /></P>} />
 
                 {/* ─── Administration ──────────────────────────── */}
                 <Route path="/admin/users" element={<P perm="users.view"><UsersPage /></P>} />
