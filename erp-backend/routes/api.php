@@ -60,10 +60,10 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:payment.view')->get('admin/vouchers/payment', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::middleware('permission:receipt.view')->get('admin/vouchers/receipt', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::middleware('permission:contra.view')->get('admin/vouchers/contra', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
-        Route::get('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show']);
-        Route::get('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show']);
-        Route::put('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update']);
-        Route::put('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update']);
+        Route::middleware('permission:accounts.view')->get('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show']);
+        Route::middleware('permission:accounts.view')->get('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show']);
+        Route::middleware('permission:accounts.edit')->put('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update']);
+        Route::middleware('permission:accounts.edit')->put('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update']);
 
         Route::middleware('permission:journal.create')->post('vouchers/journal', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
         Route::middleware('permission:payment.create')->post('vouchers/payment', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
@@ -83,12 +83,12 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::post('vouchers/{id}/reopen', [\App\Http\Controllers\Accounting\VoucherController::class, 'reopen']);
             Route::post('vouchers/{id}/reverse', [\App\Http\Controllers\Accounting\VoucherController::class, 'reverse']);
         });
-        Route::post('vouchers/{id}/delete-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'deleteApproved']);
-        Route::post('vouchers/{id}/restore', [\App\Http\Controllers\Accounting\VoucherController::class, 'restore']);
+        Route::middleware('permission:accounts.delete')->post('vouchers/{id}/delete-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'deleteApproved']);
+        Route::middleware('permission:accounts.edit')->post('vouchers/{id}/restore', [\App\Http\Controllers\Accounting\VoucherController::class, 'restore']);
 
         // ─── Generic Super-Admin soft delete / restore (sales, purchases, payments) ──
-        Route::post('soft-delete/{table}/{id}', [\App\Http\Controllers\SoftDeleteController::class, 'delete']);
-        Route::post('soft-delete/{table}/{id}/restore', [\App\Http\Controllers\SoftDeleteController::class, 'restore']);
+        Route::middleware('permission:accounts.delete')->post('soft-delete/{table}/{id}', [\App\Http\Controllers\SoftDeleteController::class, 'delete']);
+        Route::middleware('permission:accounts.edit')->post('soft-delete/{table}/{id}/restore', [\App\Http\Controllers\SoftDeleteController::class, 'restore']);
 
         // ─── Reports ────────────────────────────────────────────
         Route::middleware('permission:reports.view')->prefix('reports')->group(function () {
