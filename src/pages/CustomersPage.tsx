@@ -110,22 +110,25 @@ const CustomersPage = () => {
     try {
       if (editingCustomer) {
         const isApprovedEdit = editingCustomer.status === "approved";
+        const baseFields = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null };
+        const newValues: any = { ...baseFields, receivable_account_id: receivableLedgerId || null };
         if (isApprovedEdit && isSuperAdmin) {
-          await documentApi.editApproved("customer", editingCustomer.id, {
-            name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null,
-          });
+          await documentApi.editApproved("customer", editingCustomer.id, newValues);
         } else {
-          const oldValues = { name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address, bin_number: editingCustomer.bin_number };
-          const newValues = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null };
+          const oldValues = { ...baseFields, receivable_account_id: editingCustomer.receivable_account_id ?? null,
+            name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address, bin_number: editingCustomer.bin_number };
           const { error } = await supabase.from("customers").update(newValues).eq("id", editingCustomer.id);
           if (error) throw error;
           await logEditAudit({ userId: user?.id, userName: profile?.name, module: "Sales", action: "Edit Customer", recordId: editingCustomer.id, oldValues, newValues });
         }
         toast({ title: "Customer updated" });
       } else {
-        const { error } = await supabase.from("customers").insert({ ...form, status: "active" });
+        const { data: inserted, error } = await supabase.from("customers").insert({ ...form, status: "active" }).select("id").single();
         if (error) throw error;
-        await createCustomerLedger(form.name.trim(), parentAccountId || undefined);
+        const ledgerId = await createCustomerLedger(form.name.trim(), parentAccountId || undefined);
+        if (ledgerId && inserted?.id) {
+          await supabase.from("customers").update({ receivable_account_id: ledgerId } as any).eq("id", inserted.id);
+        }
         const parentName = parentAccountId ? assetAccounts.find((a) => a.id === parentAccountId)?.account_name : "Accounts Receivable";
         toast({ title: "Customer added", description: `Ledger created under ${parentName}` });
       }
