@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { PrintLayout } from "@/components/PrintLayout";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 const num = (n: any) => Number(n || 0).toFixed(2);
 const th: any = { background: "#f0f0f0", fontWeight: 600, textAlign: "left", padding: "8px 10px", border: "1px solid #ddd", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.3px" };
@@ -81,6 +82,9 @@ export function PrintPO({ po }: { po: any }) {
 
 /* ---------------- VAT Challan (Mushak 6.3) ---------------- */
 export function PrintVatChallan({ v }: { v: any }) {
+  const { settings } = useCompanySettings();
+  const sellerBin = settings?.bin_number || "—";
+  const buyerBin = v.customer?.bin_number || v.customer?.bin || v.buyer_bin || "—";
   return (
     <PrintButton render={(close, open) => (
       <PrintLayout open={open} onClose={close} title="VAT Challan — মূসক ৬.৩ (Mushak 6.3)"
@@ -91,6 +95,27 @@ export function PrintVatChallan({ v }: { v: any }) {
           Issued under VAT and Supplementary Duty Act, 2012 — Rule 40(1)(b) /
           মূল্য সংযোজন কর ও সম্পূরক শুল্ক আইন, ২০১২ — বিধি ৪০(১)(খ)
         </div>
+        {/* Mushak 6.3 mandatory BIN block: seller (top-left) & buyer (top-right) */}
+        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 10 }}>
+          <tbody>
+            <tr>
+              <td style={{ ...td, width: "50%", verticalAlign: "top" }}>
+                <div style={{ fontWeight: 600 }}>{bi("Seller's Name", "বিক্রেতার নাম")}</div>
+                <div>{settings?.company_name || "—"}</div>
+                <div style={{ marginTop: 4, fontWeight: 600 }}>{bi("Seller's BIN", "বিক্রেতার বিআইএন")}</div>
+                <div style={{ fontFamily: "monospace", letterSpacing: "1px" }}>{sellerBin}</div>
+                {settings?.address && <div style={{ marginTop: 4, fontSize: 11, color: "#555" }}>{settings.address}</div>}
+              </td>
+              <td style={{ ...td, width: "50%", verticalAlign: "top" }}>
+                <div style={{ fontWeight: 600 }}>{bi("Buyer's Name", "ক্রেতার নাম")}</div>
+                <div>{v.customer?.name || "—"}</div>
+                <div style={{ marginTop: 4, fontWeight: 600 }}>{bi("Buyer's BIN", "ক্রেতার বিআইএন")}</div>
+                <div style={{ fontFamily: "monospace", letterSpacing: "1px" }}>{buyerBin}</div>
+                {v.customer?.address && <div style={{ marginTop: 4, fontSize: 11, color: "#555" }}>{v.customer.address}</div>}
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr>
             <th style={th}>#</th>

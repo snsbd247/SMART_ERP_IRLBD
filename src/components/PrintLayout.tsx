@@ -145,6 +145,11 @@ export const PrintLayout = ({
               <p style={{ fontSize: "11px", color: "#666" }}>
                 {[settings?.phone && `Phone: ${settings.phone}`, settings?.email && `Email: ${settings.email}`].filter(Boolean).join(" | ")}
               </p>
+              {settings?.bin_number && (
+                <p style={{ fontSize: "11px", color: "#1a1a1a", fontWeight: 600 }}>
+                  BIN / বিআইএন: {settings.bin_number}
+                </p>
+              )}
               <h2 style={{ fontSize: "14px", fontWeight: 600, marginTop: "8px", textTransform: "uppercase", letterSpacing: "1px", color: "#1a1a1a" }}>{title}</h2>
             </div>
 

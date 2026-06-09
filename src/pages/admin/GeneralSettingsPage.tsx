@@ -124,8 +124,19 @@ const GeneralSettingsPage = () => {
     setSettings({ ...settings, [field]: value });
   };
 
+  const validateBin = (bin: string | null | undefined): string | null => {
+    const raw = (bin || "").trim();
+    if (!raw) return "BIN Number is required (used on VAT Challan 6.3).";
+    const digits = raw.replace(/[\s-]/g, "");
+    if (!/^\d+$/.test(digits)) return "BIN must contain only digits (hyphens/spaces allowed).";
+    if (digits.length < 9 || digits.length > 13) return "BIN must be between 9 and 13 digits.";
+    return null;
+  };
+
   const handleSave = async (attempt = 1) => {
     if (!settings) return;
+    const binError = validateBin(settings.bin_number);
+    if (binError) { toast.error(binError); return; }
     setSaving(true);
     const { id, ...rest } = settings;
     try {
