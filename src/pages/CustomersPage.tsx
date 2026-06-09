@@ -29,6 +29,7 @@ interface Customer {
   address: string | null;
   bin_number: string | null;
   status: string;
+  receivable_account_id?: string | null;
 }
 
 const CustomersPage = () => {
@@ -41,7 +42,9 @@ const CustomersPage = () => {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", bin_number: "" });
   const [parentAccountId, setParentAccountId] = useState<string>("");
+  const [receivableLedgerId, setReceivableLedgerId] = useState<string>("");
   const [assetAccounts, setAssetAccounts] = useState<any[]>([]);
+  const [receivableLedgers, setReceivableLedgers] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
