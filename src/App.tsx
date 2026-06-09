@@ -33,6 +33,17 @@ import PurchasesPage from "./pages/purchase/PurchasesPage";
 import SalesPage from "./pages/sales/SalesPage";
 import SalesInvoiceDetailPage from "./pages/sales/SalesInvoiceDetailPage";
 import PurchaseDetailPage from "./pages/purchase/PurchaseDetailPage";
+import RequisitionsPage from "./pages/purchase-workflow/RequisitionsPage";
+import RequisitionDetailPage from "./pages/purchase-workflow/RequisitionDetailPage";
+import PoListPage from "./pages/purchase-workflow/PoListPage";
+import PoFormPage from "./pages/purchase-workflow/PoFormPage";
+import PoDetailPage from "./pages/purchase-workflow/PoDetailPage";
+import GrnsPage from "./pages/purchase-workflow/GrnsPage";
+import GrnFormPage from "./pages/purchase-workflow/GrnFormPage";
+import GrnDetailPage from "./pages/purchase-workflow/GrnDetailPage";
+import BillsPage from "./pages/purchase-workflow/BillsPage";
+import BillFormPage from "./pages/purchase-workflow/BillFormPage";
+import BillDetailPage from "./pages/purchase-workflow/BillDetailPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
@@ -206,6 +217,19 @@ const App = () => (
                 <Route path="/purchase/returns" element={<P perm="purchase.view"><PurchasesPage /></P>} />
                 <Route path="/suppliers" element={<P perm="suppliers.view,purchase.view"><SuppliersPage /></P>} />
                 <Route path="/suppliers/:id" element={<P perm="suppliers.view,purchase.view"><SupplierProfilePage /></P>} />
+
+                {/* ─── Purchase Workflow (new) ─────────────────── */}
+                <Route path="/purchase-workflow/requisitions" element={<P perm="purchase.view"><RequisitionsPage /></P>} />
+                <Route path="/purchase-workflow/requisitions/:id" element={<P perm="purchase.view"><RequisitionDetailPage /></P>} />
+                <Route path="/purchase-workflow/po" element={<P perm="purchase.view"><PoListPage /></P>} />
+                <Route path="/purchase-workflow/po/new" element={<P perm="purchase.view"><PoFormPage /></P>} />
+                <Route path="/purchase-workflow/po/:id" element={<P perm="purchase.view"><PoDetailPage /></P>} />
+                <Route path="/purchase-workflow/grn" element={<P perm="purchase.view"><GrnsPage /></P>} />
+                <Route path="/purchase-workflow/grn/new" element={<P perm="purchase.view"><GrnFormPage /></P>} />
+                <Route path="/purchase-workflow/grn/:id" element={<P perm="purchase.view"><GrnDetailPage /></P>} />
+                <Route path="/purchase-workflow/bills" element={<P perm="purchase.view"><BillsPage /></P>} />
+                <Route path="/purchase-workflow/bills/new" element={<P perm="purchase.view"><BillFormPage /></P>} />
+                <Route path="/purchase-workflow/bills/:id" element={<P perm="purchase.view"><BillDetailPage /></P>} />
 
                 {/* ─── Inventory ────────────────────────────────── */}
                 <Route path="/inventory" element={<P perm="inventory.view"><InventoryPage /></P>} />

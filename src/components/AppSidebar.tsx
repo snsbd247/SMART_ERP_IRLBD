@@ -93,7 +93,11 @@ const navGroups: NavGroup[] = [
     permission: "purchase.view",
     requiredModules: ["purchase"],
     children: [
-      { to: "/purchase", label: "Purchase Entry", icon: ShoppingCart, permission: "purchase.view" },
+      { to: "/purchase-workflow/requisitions", label: "Requisitions", icon: ClipboardList, permission: "purchase.view" },
+      { to: "/purchase-workflow/po", label: "Purchase Orders", icon: ShoppingCart, permission: "purchase.view" },
+      { to: "/purchase-workflow/grn", label: "GRN (Goods Receipt)", icon: PackageCheck, permission: "purchase.view" },
+      { to: "/purchase-workflow/bills", label: "Bills & Payments", icon: FileText, permission: "purchase.view" },
+      { to: "/purchase", label: "Purchase Entry (Legacy)", icon: ShoppingCart, permission: "purchase.view" },
       { to: "/purchase/returns", label: "Purchase Return", icon: ArrowLeftRight, permission: "purchase.view" },
       { to: "/suppliers", label: "Suppliers", icon: Truck, permission: "suppliers.view,purchase.view" },
       { to: "/reports/accounts-payable", label: "Accounts Payable", icon: Truck, permission: "purchase.view" },
