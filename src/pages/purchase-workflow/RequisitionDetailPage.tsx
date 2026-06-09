@@ -8,15 +8,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Check, X, ShoppingBag } from "lucide-react";
+import { PurchaseStatusTracker } from "@/components/purchase-workflow/PurchaseStatusTracker";
+import { usePermission } from "@/hooks/usePermission";
+import { logApprove, logAudit } from "@/lib/audit-utils";
 
 export default function RequisitionDetailPage() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { user, hasPermission } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
+  const { can, isSuperAdmin } = usePermission();
   const [pr, setPr] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
-  const canApprove = hasPermission("purchase", "can_edit");
+  const canApprove = isSuperAdmin || can("purchase.requisition.approve") || can("purchase.edit");
 
   const load = async () => {
     const [p, it] = await Promise.all([
@@ -31,8 +35,13 @@ export default function RequisitionDetailPage() {
     const updates: any = { status };
     if (status === "approved") { updates.approved_by = user?.id; updates.approved_at = new Date().toISOString(); }
     const { error } = await supabase.from("purchase_requisitions" as any).update(updates).eq("id", id);
-    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
-    else { toast({ title: `Marked ${status}` }); load(); }
+    if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
+    await (status === "approved" ? logApprove : logAudit)({
+      userId: user?.id, userName: profile?.name,
+      module: "purchase_requisition", action: status === "approved" ? "approve" : status,
+      recordId: id!, details: `PR ${pr?.pr_number} marked ${status}`,
+    } as any);
+    toast({ title: `Marked ${status}` }); load();
   };
 
   if (!pr) return <div className="p-6">Loading...</div>;
