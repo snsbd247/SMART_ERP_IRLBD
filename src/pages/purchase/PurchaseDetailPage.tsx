@@ -404,6 +404,7 @@ const PurchaseDetailPage = () => {
               {supplierInfo.phone && <div>Phone: {supplierInfo.phone}</div>}
               {supplierInfo.email && <div>Email: {supplierInfo.email}</div>}
               {supplierInfo.address && <div>Address: {supplierInfo.address}</div>}
+              {supplierInfo.bin_number && <div style={{ fontWeight: 600 }}>BIN: {supplierInfo.bin_number}</div>}
             </div>
           )}
           {renderPrintTable()}
