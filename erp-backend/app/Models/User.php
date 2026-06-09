@@ -61,6 +61,7 @@ class User extends Authenticatable
             'create' => 'can_add',
             'add' => 'can_add',
             'edit' => 'can_edit',
+            'update' => 'can_edit',
             'delete' => 'can_delete',
             'generate' => 'can_add', // payroll.generate maps to can_add
             'approve' => 'can_edit', // approve maps to can_edit
