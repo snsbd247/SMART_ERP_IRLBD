@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, BookOpen, Filter, Search, X } from "lucide-react";
 import { useAccountBalances, AccountWithBalance } from "@/hooks/useAccountBalances";
-import { useMemo } from "react";
+
 import { AccountTreeTable } from "@/components/accounts/AccountTreeTable";
 import { AccountLedgerDialog } from "@/components/accounts/AccountLedgerDialog";
 import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
