@@ -52,6 +52,16 @@ import PurchaseOrderV2DetailPage from "./pages/purchase/PurchaseOrderDetailPage"
 import GrnsPage from "./pages/purchase/GrnsPage";
 import GrnFormPage from "./pages/purchase/GrnFormPage";
 import GrnDetailPage from "./pages/purchase/GrnDetailPage";
+// Purchase module (Phase 4 Billing / Payments / LC)
+import SupplierBillsPage from "./pages/purchase/SupplierBillsPage";
+import SupplierBillFormPage from "./pages/purchase/SupplierBillFormPage";
+import SupplierBillDetailPage from "./pages/purchase/SupplierBillDetailPage";
+import SupplierPaymentsPage from "./pages/purchase/SupplierPaymentsPage";
+import SupplierPaymentFormPage from "./pages/purchase/SupplierPaymentFormPage";
+import SupplierPaymentDetailPage from "./pages/purchase/SupplierPaymentDetailPage";
+import LcsPage from "./pages/purchase/LcsPage";
+import LcFormPage from "./pages/purchase/LcFormPage";
+import LcDetailPage from "./pages/purchase/LcDetailPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
@@ -236,6 +246,18 @@ const App = () => (
                 <Route path="/purchase/grns/new" element={<GrnFormPage />} />
                 <Route path="/purchase/grns/:id" element={<GrnDetailPage />} />
                 <Route path="/purchase/grns/:id/edit" element={<GrnFormPage />} />
+                {/* ─── Purchase (Phase 4 Billing / Payments / LC) ─── */}
+                <Route path="/purchase/bills" element={<SupplierBillsPage />} />
+                <Route path="/purchase/bills/new" element={<SupplierBillFormPage />} />
+                <Route path="/purchase/bills/:id" element={<SupplierBillDetailPage />} />
+                <Route path="/purchase/bills/:id/edit" element={<SupplierBillFormPage />} />
+                <Route path="/purchase/payments" element={<SupplierPaymentsPage />} />
+                <Route path="/purchase/payments/new" element={<SupplierPaymentFormPage />} />
+                <Route path="/purchase/payments/:id" element={<SupplierPaymentDetailPage />} />
+                <Route path="/purchase/lc" element={<LcsPage />} />
+                <Route path="/purchase/lc/new" element={<LcFormPage />} />
+                <Route path="/purchase/lc/:id" element={<LcDetailPage />} />
+                <Route path="/purchase/lc/:id/edit" element={<LcFormPage />} />
 
 
 
