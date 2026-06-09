@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
 import { BookOpen } from "lucide-react";
 
 const GeneralLedgerReport = () => {
@@ -14,34 +14,26 @@ const GeneralLedgerReport = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    let query = supabase.from("voucher_entries")
-      .select("*, acc_vouchers!inner(voucher_number, voucher_date, status, description, branch_id)")
-      .eq("acc_vouchers.status", "approved")
-      .gte("acc_vouchers.voucher_date", dateFrom)
-      .lte("acc_vouchers.voucher_date", dateTo);
+    const entries = await fetchAllVoucherEntries({
+      dateFrom, dateTo, branchId: branch,
+      accountId: selectedAccount !== "all" ? selectedAccount : null,
+    });
 
-    if (selectedAccount !== "all") query = query.eq("account_id", selectedAccount);
-    if (branch !== "all") query = query.eq("acc_vouchers.branch_id", branch);
-    query = query.order("acc_vouchers(voucher_date)");
-
-    const { data: entries } = await query;
-
-    // Group by account and compute running balance
+    // Group by account and compute running balance (entries are date-ordered)
     const grouped = new Map<string, any[]>();
-    (entries || []).forEach((e: any) => {
+    entries.forEach((e: any) => {
       const list = grouped.get(e.account_id) || [];
       list.push(e);
       grouped.set(e.account_id, list);
     });
 
     const result: any[] = [];
-    grouped.forEach((entries, accountId) => {
+    grouped.forEach((rows, accountId) => {
       const acc = accounts.find((a) => a.id === accountId);
       if (!acc) return;
-      let runBal = acc.opening_balance_type === "debit" ? acc.opening_balance : -acc.opening_balance;
-
-      entries.forEach((e) => {
-        runBal += Number(e.debit) - Number(e.credit);
+      let runBal = acc.opening_balance_type === "debit" ? num(acc.opening_balance) : -num(acc.opening_balance);
+      rows.forEach((e) => {
+        runBal += num(e.debit) - num(e.credit);
         result.push({
           ...e,
           account_name: acc.account_name,
@@ -57,6 +49,7 @@ const GeneralLedgerReport = () => {
     setData(result);
     setLoading(false);
   };
+
 
   const columns = [
     { key: "voucher_date", label: "Date" }, { key: "account_name", label: "Account" },

@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
 import { FileText } from "lucide-react";
 
 const TrialBalanceReport = () => {
@@ -13,27 +13,19 @@ const TrialBalanceReport = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    let query = supabase.from("voucher_entries")
-      .select("account_id, debit, credit, acc_vouchers!inner(status, voucher_date, branch_id)")
-      .eq("acc_vouchers.status", "approved")
-      .gte("acc_vouchers.voucher_date", dateFrom)
-      .lte("acc_vouchers.voucher_date", dateTo);
-
-    if (branch !== "all") query = query.eq("acc_vouchers.branch_id", branch);
-
-    const { data: entries } = await query;
+    const entries = await fetchAllVoucherEntries({ dateFrom, dateTo, branchId: branch });
     const balMap = new Map<string, { debit: number; credit: number }>();
-    (entries || []).forEach((e: any) => {
+    entries.forEach((e: any) => {
       const cur = balMap.get(e.account_id) || { debit: 0, credit: 0 };
-      cur.debit += Number(e.debit);
-      cur.credit += Number(e.credit);
+      cur.debit += num(e.debit);
+      cur.credit += num(e.credit);
       balMap.set(e.account_id, cur);
     });
 
     const result = accounts.map((a) => {
       const txn = balMap.get(a.id) || { debit: 0, credit: 0 };
-      const openDr = a.opening_balance_type === "debit" ? a.opening_balance : 0;
-      const openCr = a.opening_balance_type === "credit" ? a.opening_balance : 0;
+      const openDr = a.opening_balance_type === "debit" ? num(a.opening_balance) : 0;
+      const openCr = a.opening_balance_type === "credit" ? num(a.opening_balance) : 0;
       const openBal = openDr - openCr;
       const closingBal = openBal + txn.debit - txn.credit;
       return { ...a, opening: openBal, total_debit: txn.debit, total_credit: txn.credit, closing: closingBal };
@@ -42,6 +34,7 @@ const TrialBalanceReport = () => {
     setData(result);
     setLoading(false);
   };
+
 
   const columns = [
     { key: "account_code", label: "Account Code" },
