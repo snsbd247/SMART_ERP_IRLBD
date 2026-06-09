@@ -887,6 +887,52 @@ Deno.serve(async (req) => {
     }
     await bulk("stock_transfers", transfers);
 
+    // ===== Stock Adjustments =====
+    const adjustments: any[] = [];
+    let adjc = 0;
+    for (const m of months) {
+      const n = RI(1, 3);
+      for (let i = 0; i < n; i++) {
+        const p = pick(products);
+        adjc++;
+        const isIncrease = R() < 0.5;
+        const qty = RI(5, 30);
+        adjustments.push({
+          id: U(), adjustment_number: `ADJ-${fyTag}-${String(adjc).padStart(5,"0")}`,
+          adjustment_date: ymd(new Date(m.getFullYear(), m.getMonth(), RI(5, 25))),
+          adjustment_type: isIncrease ? "increase" : "decrease",
+          product_id: p.id, warehouse_id: WH_DHK, branch_id: BR_DHK,
+          quantity: qty, unit_cost: p.cp, total_value: round2(qty * p.cp),
+          reason: pick(["Physical count variance","Damaged stock","Stock-take adjustment","Found stock"]),
+          notes: "Demo adjustment", created_by: UID,
+        });
+      }
+    }
+    await bulk("stock_adjustments", adjustments);
+
+    // ===== Stock Ledger (opening balance per item per warehouse) =====
+    const ledger: any[] = [];
+    const ledgerDate = ymd(fyStart);
+    for (const p of products) {
+      // Split opening between two warehouses (70/30)
+      const qDhk = Math.floor(p.op * 0.7), qCtg = p.op - qDhk;
+      if (qDhk > 0) ledger.push({
+        id: U(), transaction_type: "opening", item_id: p.iid,
+        branch_id: BR_DHK, warehouse_id: WH_DHK,
+        quantity_in: qDhk, quantity_out: 0, balance_quantity: qDhk,
+        unit_cost: p.cp, total_value: round2(qDhk * p.cp),
+        reference_number: "OPENING", transaction_date: ledgerDate,
+      });
+      if (qCtg > 0) ledger.push({
+        id: U(), transaction_type: "opening", item_id: p.iid,
+        branch_id: BR_CTG, warehouse_id: WH_CTG,
+        quantity_in: qCtg, quantity_out: 0, balance_quantity: qCtg,
+        unit_cost: p.cp, total_value: round2(qCtg * p.cp),
+        reference_number: "OPENING", transaction_date: ledgerDate,
+      });
+    }
+    await bulk("stock_ledger", ledger);
+
     // ===== Bill of Materials + Production =====
     const finished = products.slice(0, 10); // All 10 finished goods get BOMs
     const rawPool = products.slice(10);
