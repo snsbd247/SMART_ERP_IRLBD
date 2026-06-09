@@ -96,56 +96,78 @@ const BackupPage = () => {
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [verifyResult, setVerifyResult] = useState<any | null>(null);
 
-  const DEMO_STEPS = [
-    "Chart of Accounts",
-    "IFRS Account Mapping",
-    "Purchase Types",
-    "Purchase COA Mapping",
-    "Purchase Settings",
-    "Branch Management",
-    "Financial Years",
-    "Roles & Permissions",
-    "GitHub Deploy Sync",
-    "Document Numbering",
-    "Page Shortcuts",
-    "General Settings",
-    "SMS Integration",
-    "Branding & White-Label",
+  // Section key MUST match backend keys returned by DemoConfigImportController.
+  const DEMO_SECTIONS: Array<{ key: string; label: string }> = [
+    { key: "chart_of_accounts",    label: "Chart of Accounts" },
+    { key: "ifrs_account_mapping", label: "IFRS Account Mapping" },
+    { key: "purchase_types",       label: "Purchase Types" },
+    { key: "purchase_coa_mapping", label: "Purchase COA Mapping" },
+    { key: "purchase_settings",    label: "Purchase Settings" },
+    { key: "branches",             label: "Branch Management" },
+    { key: "financial_years",      label: "Financial Years" },
+    { key: "roles_permissions",    label: "Roles & Permissions" },
+    { key: "github_deploy_sync",   label: "GitHub Deploy Sync" },
+    { key: "number_sequences",     label: "Document Numbering" },
+    { key: "page_shortcuts",       label: "Page Shortcuts" },
+    { key: "company_settings",     label: "General Settings" },
+    { key: "sms_settings",         label: "SMS Integration" },
+    { key: "branding",             label: "Branding & White-Label" },
   ];
+  const DEMO_STEPS = DEMO_SECTIONS.map(s => s.label);
 
-  const handleImportDemoConfig = async (reset = false) => {
+  const [selectedSections, setSelectedSections] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(DEMO_SECTIONS.map(s => [s.key, true]))
+  );
+  const [isDryRun, setIsDryRun] = useState(false);
+
+  const toggleSection = (key: string) =>
+    setSelectedSections(prev => ({ ...prev, [key]: !prev[key] }));
+  const setAllSections = (val: boolean) =>
+    setSelectedSections(Object.fromEntries(DEMO_SECTIONS.map(s => [s.key, val])));
+
+  const handleImportDemoConfig = async (reset = false, dryRun = false) => {
     if (!isSuperAdmin) {
       toast({ title: "Access Denied", description: "Only Super Admins can run demo import.", variant: "destructive" });
+      return;
+    }
+    const sections = DEMO_SECTIONS.filter(s => selectedSections[s.key]).map(s => s.key);
+    if (sections.length === 0) {
+      toast({ title: "No sections selected", description: "Please tick at least one section.", variant: "destructive" });
       return;
     }
     setConfirmDemo(false);
     setConfirmResetDemo(false);
     setImportingDemo(true);
+    setIsDryRun(dryRun);
     setDemoResults(null);
     setDemoOverall(null);
     setDemoProgress(5);
-    setDemoStatus(reset ? "Resetting configuration tables..." : "Validating Super Admin access...");
+    setDemoStatus(
+      dryRun ? "Running dry-run preview (no changes will be saved)..."
+             : reset ? "Resetting configuration tables..." : "Validating Super Admin access..."
+    );
 
-    // Simulated step progress (the server runs the full import in one call).
+    const labels = DEMO_SECTIONS.filter(s => selectedSections[s.key]).map(s => s.label);
     let step = 0;
     const stepTimer = window.setInterval(() => {
-      step = Math.min(step + 1, DEMO_STEPS.length - 1);
-      setDemoStatus(`Importing: ${DEMO_STEPS[step]}...`);
-      setDemoProgress(Math.min(15 + step * 15, 85));
-    }, 700);
+      step = Math.min(step + 1, labels.length - 1);
+      setDemoStatus(`${dryRun ? "Previewing" : "Importing"}: ${labels[step]}...`);
+      setDemoProgress(Math.min(15 + Math.round((step / Math.max(labels.length - 1, 1)) * 70), 85));
+    }, 500);
 
     try {
+      const body = { reset, dry_run: dryRun, sections };
       let payload: any = null;
       if (USE_LARAVEL) {
         const res = await fetch(`${API_BASE}/v1/admin/demo/import-config`, {
           method: "POST",
           headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-          body: JSON.stringify({ reset }),
+          body: JSON.stringify(body),
         });
         payload = await res.json().catch(() => ({ message: `Failed (HTTP ${res.status})` }));
         if (!res.ok) throw new Error(payload.message || payload.error || `HTTP ${res.status}`);
       } else {
-        const { data, error } = await supabase.functions.invoke("import-demo-config", { body: { reset } });
+        const { data, error } = await supabase.functions.invoke("import-demo-config", { body });
         if (error) throw error;
         payload = data;
         if (payload && payload.success === false && !payload.results) throw new Error(payload.error || "Import failed");
@@ -156,18 +178,26 @@ const BackupPage = () => {
       setDemoResults(results);
       setDemoOverall(overall);
       setDemoProgress(100);
-      setDemoStatus(overall === "success" ? "Import completed successfully." : "Import completed with warnings.");
+      setDemoStatus(
+        dryRun ? "Dry-run preview ready. Review the table below; nothing has been saved."
+               : overall === "success" ? "Import completed successfully." : "Import completed with warnings."
+      );
 
-      const total = results ? results.reduce((n: number, r: any) => n + (r.inserted || 0), 0) : 0;
+      const totalIns = results ? results.reduce((n: number, r: any) => n + (r.inserted || 0), 0) : 0;
+      const totalUpd = results ? results.reduce((n: number, r: any) => n + (r.skipped || 0), 0) : 0;
       toast({
-        title: overall === "success" ? "Demo configuration imported" : "Demo import finished with warnings",
-        description: `${total} new rows added across ${results?.length ?? 14} sections.`,
+        title: dryRun
+          ? "Dry-run preview complete"
+          : overall === "success" ? "Demo configuration imported" : "Demo import finished with warnings",
+        description: dryRun
+          ? `Would insert ${totalIns} new rows, update ${totalUpd} existing across ${results?.length ?? sections.length} sections.`
+          : `${totalIns} new / ${totalUpd} updated across ${results?.length ?? sections.length} sections.`,
         variant: overall === "success" ? "default" : "destructive",
       });
     } catch (err: any) {
       setDemoProgress(100);
-      setDemoStatus("Import failed.");
-      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+      setDemoStatus(dryRun ? "Dry-run failed." : "Import failed.");
+      toast({ title: dryRun ? "Preview failed" : "Import failed", description: err.message, variant: "destructive" });
     } finally {
       window.clearInterval(stepTimer);
       setImportingDemo(false);
@@ -719,28 +749,67 @@ const BackupPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs text-muted-foreground space-y-1">
-                <p className="font-medium text-foreground">This will import:</p>
-                <ul className="list-disc list-inside space-y-0.5">
-                  <li>Chart of Accounts (Bangladesh standard, 59 accounts)</li>
-                  <li>IFRS Account Mapping (standard IFRS lines)</li>
-                  <li>Roles &amp; Permissions (Super Admin, Admin, Accountant, Sales Manager, Inventory Clerk, Viewer)</li>
-                  <li>Document Numbering (INV, PUR, JV, PV, RV, CV, PRD, INC, EXP)</li>
-                  <li>Page Shortcuts (118 quick-jump codes)</li>
-                </ul>
+              <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-foreground">Select sections to import (14 available)</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAllSections(true)}
+                      disabled={importingDemo}
+                      className="text-[11px] text-primary hover:underline disabled:opacity-50"
+                    >Select all</button>
+                    <span className="text-[11px] text-muted-foreground">·</span>
+                    <button
+                      type="button"
+                      onClick={() => setAllSections(false)}
+                      disabled={importingDemo}
+                      className="text-[11px] text-primary hover:underline disabled:opacity-50"
+                    >Clear</button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5">
+                  {DEMO_SECTIONS.map(s => (
+                    <label
+                      key={s.key}
+                      className="flex items-center gap-2 text-xs text-foreground cursor-pointer select-none"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!selectedSections[s.key]}
+                        onChange={() => toggleSection(s.key)}
+                        disabled={importingDemo}
+                        className="h-3.5 w-3.5 rounded border-border accent-primary"
+                      />
+                      <span>{s.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground pt-1">
+                  Selected: <strong className="text-foreground">{Object.values(selectedSections).filter(Boolean).length}</strong> / {DEMO_SECTIONS.length}
+                </p>
               </div>
               <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-700 dark:text-green-400">
                 <p className="font-medium">✔ Safe to run</p>
-                <p>Idempotent — existing records are kept untouched. Only missing rows are inserted. No transactional data (vouchers, invoices, stock) is touched.</p>
+                <p><strong>Import (keep existing)</strong> upserts the selected sections — existing rows are overwritten with seed values, missing rows are inserted. <strong>Preview (Dry Run)</strong> simulates the import in a rolled-back transaction so you can see exactly what would change without saving anything. No transactional data (vouchers, invoices, stock, payroll) is ever touched.</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => handleImportDemoConfig(false, true)}
+                  disabled={importingDemo || !isSuperAdmin}
+                  className="w-full"
+                >
+                  <FileJson className="w-4 h-4 mr-2" />
+                  {importingDemo && isDryRun ? "Previewing..." : "Preview (Dry Run)"}
+                </Button>
                 <Button
                   onClick={() => setConfirmDemo(true)}
                   disabled={importingDemo || !isSuperAdmin}
                   className="w-full"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
-                  {importingDemo ? "Working..." : "Import (keep existing)"}
+                  {importingDemo && !isDryRun ? "Working..." : "Import (keep existing)"}
                 </Button>
                 <Button
                   variant="destructive"
@@ -753,8 +822,9 @@ const BackupPage = () => {
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground -mt-2">
-                <strong>Reset &amp; Re-import</strong> wipes only the 5 configuration tables (CoA, IFRS, Roles, Numbering, Shortcuts) and re-seeds them fresh. Vouchers, invoices, stock and payroll are NOT touched.
+                <strong>Reset &amp; Re-import</strong> deletes only the selected configuration sections and re-seeds them fresh. Vouchers, invoices, stock and payroll are NOT touched.
               </p>
+
 
               <div className="pt-4 mt-2 border-t border-border space-y-2">
                 <p className="text-sm font-medium text-foreground">Full demo data (all modules, 2 branches)</p>
@@ -799,22 +869,30 @@ const BackupPage = () => {
 
               {demoResults && (
                 <div className="space-y-2 pt-2">
+                  {isDryRun && (
+                    <div className="p-2 rounded border text-xs font-medium bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400">
+                      🔍 Dry-Run Preview — nothing has been saved. Numbers below show what <em>would</em> happen on a real import.
+                    </div>
+                  )}
                   <div className={`p-2 rounded border text-xs font-medium ${
                     demoOverall === "success"
                       ? "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400"
                       : "bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400"
                   }`}>
-                    {demoOverall === "success" ? "✔ Import complete" : "⚠ Import finished with warnings"}
+                    {demoOverall === "success"
+                      ? (isDryRun ? "✔ Preview ready" : "✔ Import complete")
+                      : (isDryRun ? "⚠ Preview finished with warnings" : "⚠ Import finished with warnings")}
                     {" — "}
-                    {demoResults.reduce((n, r) => n + r.inserted, 0)} new rows added.
+                    {demoResults.reduce((n, r) => n + r.inserted, 0)} {isDryRun ? "would be inserted" : "new rows added"},{" "}
+                    {demoResults.reduce((n, r) => n + r.skipped, 0)} {isDryRun ? "would be updated" : "existing rows overwritten"}.
                   </div>
                   <div className="rounded border border-border overflow-hidden">
                     <table className="w-full text-xs">
                       <thead className="bg-muted/50 text-muted-foreground">
                         <tr>
                           <th className="text-left px-2 py-1.5">Section</th>
-                          <th className="text-right px-2 py-1.5">Inserted</th>
-                          <th className="text-right px-2 py-1.5">Skipped</th>
+                          <th className="text-right px-2 py-1.5">{isDryRun ? "Would insert" : "Inserted"}</th>
+                          <th className="text-right px-2 py-1.5">{isDryRun ? "Would update" : "Updated"}</th>
                           <th className="text-right px-2 py-1.5">Attempted</th>
                           <th className="text-center px-2 py-1.5">Status</th>
                         </tr>
@@ -847,9 +925,14 @@ const BackupPage = () => {
                       ))}
                     </div>
                   )}
-                  <p className="text-[10px] text-muted-foreground pt-1">Audit log entry recorded under <code>module=backup</code>, <code>action=demo_config_import</code>.</p>
+                  {!isDryRun && (
+                    <p className="text-[10px] text-muted-foreground pt-1">
+                      Audit log entry recorded under <code>module=backup</code>, <code>action=demo_config_import</code> (or <code>demo_config_reset_import</code>) with timestamp, user, mode and the list of imported sections.
+                    </p>
+                  )}
                 </div>
               )}
+
             </CardContent>
           </Card>
         </TabsContent>
@@ -1070,12 +1153,12 @@ const BackupPage = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" />Import demo configuration?</DialogTitle>
             <DialogDescription>
-              This will insert missing Chart of Accounts, IFRS Mapping, Roles &amp; Permissions, Document Numbering and Page Shortcuts. Existing rows are kept as-is. No transactional data is touched.
+              Selected sections will be <strong>upserted</strong>: existing rows are overwritten with seed values, missing rows are inserted. No transactional data (vouchers, invoices, stock, payroll) is touched.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDemo(false)}>Cancel</Button>
-            <Button onClick={() => handleImportDemoConfig(false)}><Sparkles className="w-4 h-4 mr-2" />Yes, import</Button>
+            <Button onClick={() => handleImportDemoConfig(false, false)}><Sparkles className="w-4 h-4 mr-2" />Yes, import</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1085,17 +1168,18 @@ const BackupPage = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="w-5 h-5" />Reset &amp; Re-import?</DialogTitle>
             <DialogDescription>
-              This will <strong>delete all rows</strong> from Chart of Accounts, IFRS Mapping, Roles &amp; Permissions, Document Numbering and Page Shortcuts, then re-seed them from the demo configuration. Users will be unassigned from their custom roles. Vouchers, invoices, stock and payroll are NOT touched.
+              This will <strong>delete all rows</strong> in the selected configuration sections and re-seed them fresh from the demo bundle. Users will be unassigned from their custom roles. Vouchers, invoices, stock and payroll are NOT touched.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmResetDemo(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => handleImportDemoConfig(true)}>
+            <Button variant="destructive" onClick={() => handleImportDemoConfig(true, false)}>
               <RefreshCw className="w-4 h-4 mr-2" />Yes, reset &amp; re-import
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       <Dialog open={!!verifyResult} onOpenChange={(o) => !o && setVerifyResult(null)}>
         <DialogContent className="max-w-2xl">
