@@ -15,7 +15,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell,
   Legend,
 } from "recharts";
-import { RecentReturnsWidget } from "@/components/dashboard/RecentReturnsWidget";
+// Purchase module removed
 
 interface Stats {
   totalSales: number;
