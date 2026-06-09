@@ -391,12 +391,50 @@ Deno.serve(async (req) => {
     await bulk("sales_returns", sret);
     await bulk("sales_return_items", sretItems);
 
-    // ===== Purchase Orders v2 + GRNs + Supplier Bills + Payments =====
+    // ===== Purchase configuration (Types, Settings, Approval Matrix, CoA Mapping) =====
+    const PT_LOCAL = U(), PT_IMPORT = U(), PT_SERVICE = U(), PT_ASSET = U();
+    await db.from("purchase_types").delete().not("id","is",null);
+    await bulk("purchase_types", [
+      { id: PT_LOCAL,   code: "LOCAL",   name: "Local Purchase",  description: "Domestic supplier purchases", is_system: true, is_active: true, requires_grn: true,  requires_lc: false, affects_inventory: true,  affects_asset: false },
+      { id: PT_IMPORT,  code: "IMPORT",  name: "Import (LC)",     description: "Imported goods via LC",       is_system: true, is_active: true, requires_grn: true,  requires_lc: true,  affects_inventory: true,  affects_asset: false },
+      { id: PT_SERVICE, code: "SERVICE", name: "Service",         description: "Non-stock service purchase",  is_system: true, is_active: true, requires_grn: false, requires_lc: false, affects_inventory: false, affects_asset: false },
+      { id: PT_ASSET,   code: "ASSET",   name: "Capital / Asset", description: "Fixed asset acquisition",     is_system: true, is_active: true, requires_grn: true,  requires_lc: false, affects_inventory: false, affects_asset: true  },
+    ]);
+    await db.from("purchase_settings").delete().not("id","is",null);
+    await db.from("purchase_settings").insert({
+      id: U(), enforce_grn_for_bill: true, allow_over_receive: false, allow_over_bill: false,
+      default_currency: "BDT", default_vat_percent: 15, default_ait_percent: 0,
+      pr_prefix: "PR", po_prefix: "PO2", grn_prefix: "GRN", bill_prefix: "SB", pay_prefix: "SP", lc_prefix: "LC",
+      auto_post_grn: true, auto_post_bill: true, auto_post_payment: true,
+      enable_multi_currency: false, enable_landed_cost: false, enable_lc_module: true,
+    });
+    await db.from("purchase_coa_mapping").delete().not("id","is",null);
+    await bulk("purchase_coa_mapping", [PT_LOCAL, PT_IMPORT, PT_SERVICE, PT_ASSET].map(ptid => ({
+      id: U(), purchase_type_id: ptid, branch_id: BR_DHK,
+      inventory_account_id: Ac.inv, payable_account_id: Ac.ap,
+      vat_input_account_id: Ac.vatIn, cash_account_id: Ac.cash, bank_account_id: Ac.bank,
+      expense_account_id: Ac.pur, discount_account_id: Ac.pur, freight_account_id: Ac.pur,
+      is_active: true,
+    })));
+    await db.from("purchase_approval_matrix").delete().not("id","is",null);
+    await bulk("purchase_approval_matrix", [
+      { id: U(), document_type: "PR", purchase_type_id: PT_LOCAL,  branch_id: BR_DHK, min_amount: 0,      max_amount: 50000,     step_order: 1, approver_role: "manager",  is_active: true },
+      { id: U(), document_type: "PR", purchase_type_id: PT_LOCAL,  branch_id: BR_DHK, min_amount: 50000,  max_amount: 999999999, step_order: 1, approver_role: "director", is_active: true },
+      { id: U(), document_type: "PO", purchase_type_id: PT_LOCAL,  branch_id: BR_DHK, min_amount: 0,      max_amount: 100000,    step_order: 1, approver_role: "manager",  is_active: true },
+      { id: U(), document_type: "PO", purchase_type_id: PT_LOCAL,  branch_id: BR_DHK, min_amount: 100000, max_amount: 999999999, step_order: 1, approver_role: "director", is_active: true },
+      { id: U(), document_type: "PO", purchase_type_id: PT_IMPORT, branch_id: BR_DHK, min_amount: 0,      max_amount: 999999999, step_order: 1, approver_role: "director", is_active: true },
+      { id: U(), document_type: "BILL", purchase_type_id: PT_LOCAL, branch_id: BR_DHK, min_amount: 0,     max_amount: 999999999, step_order: 1, approver_role: "manager",  is_active: true },
+    ]);
+
+    // ===== Purchase Orders v2 + GRNs + Supplier Bills + Payments + PRs + Returns + LC =====
     const POs2: any[] = [], POitems2: any[] = [];
     const GRNs: any[] = [], GRNitems: any[] = [];
     const SBills: any[] = [], SBitems: any[] = [];
     const SPays: any[] = [], SPallocs: any[] = [];
-    let poc2 = 0, grnc = 0, sbc = 0, spc = 0, prc = 0;
+    const PRs: any[] = [], PRitems: any[] = [], PRPOlinks: any[] = [];
+    const PRets: any[] = [], PRetItems: any[] = [];
+    const LCs: any[] = [], LCcharges: any[] = [];
+    let poc2 = 0, grnc = 0, sbc = 0, spc = 0, prc = 0, prq = 0, lcc = 0;
     // Weekly cadence — one PO per business week per rotating supplier
     for (let d = new Date(start), wk = 0; d <= end; d.setDate(d.getDate() + 7), wk++) {
       const sup = suppliers[wk % suppliers.length];
