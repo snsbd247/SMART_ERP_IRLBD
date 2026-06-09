@@ -7,24 +7,19 @@ const corsHeaders = {
 
 const RELATED_TABLES = [
   { table: "sales_invoices", column: "created_by" },
-  { table: "purchases", column: "created_by" },
   { table: "acc_vouchers", column: "created_by" },
   { table: "acc_vouchers", column: "approved_by" },
-  { table: "stock_ledger", column: "branch_id", skip: true }, // no created_by
+  { table: "stock_ledger", column: "branch_id", skip: true },
   { table: "production_entries", column: "created_by" },
-  { table: "purchase_returns", column: "created_by" },
   { table: "sales_returns", column: "created_by" },
   { table: "employee_documents", column: "generated_by" },
 ];
 
-// Tables with created_by that can be transferred
 const TRANSFERABLE_TABLES = [
   { table: "sales_invoices", column: "created_by" },
-  { table: "purchases", column: "created_by" },
   { table: "acc_vouchers", column: "created_by" },
   { table: "acc_vouchers", column: "approved_by" },
   { table: "production_entries", column: "created_by" },
-  { table: "purchase_returns", column: "created_by" },
   { table: "sales_returns", column: "created_by" },
   { table: "employee_documents", column: "generated_by" },
 ];
