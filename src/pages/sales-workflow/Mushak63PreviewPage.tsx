@@ -36,7 +36,7 @@ export default function Mushak63PreviewPage() {
       <MushakStyles />
       <div
         className="bg-white shadow-lg mx-auto"
-        style={{ width: "210mm", minHeight: "297mm", padding: "8mm 10mm", color: "#000" }}
+        style={{ width: "210mm", padding: "8mm 10mm", color: "#000" }}
       >
         <Mushak63Body v={MOCK_CHALLAN} />
       </div>
