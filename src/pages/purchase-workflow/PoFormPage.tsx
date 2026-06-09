@@ -12,6 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { newPONumber } from "@/lib/purchase-workflow-utils";
+import { logCreate } from "@/lib/audit-utils";
+import { usePermission } from "@/hooks/usePermission";
+import { PurchaseStatusTracker } from "@/components/purchase-workflow/PurchaseStatusTracker";
 
 interface Row { id: string; pr_item_id: string | null; product_id: string; qty_ordered: number; rate: number; vat_pct: number; }
 
@@ -19,9 +22,11 @@ export default function PoFormPage() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
   const prId = sp.get("pr");
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { userBranchId } = useBranch();
   const { toast } = useToast();
+  const { can, isSuperAdmin } = usePermission();
+  const canCreate = isSuperAdmin || can("purchase.po.create") || can("purchase.create");
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [approvedPRs, setApprovedPRs] = useState<any[]>([]);
@@ -66,6 +71,7 @@ export default function PoFormPage() {
   const grand = subtotal + vatAmt;
 
   const save = async () => {
+    if (!canCreate) return toast({ title: "Permission denied", description: "Requires purchase.po.create", variant: "destructive" });
     if (!supplierId) return toast({ title: "Select supplier", variant: "destructive" });
     const valid = rows.filter(r => r.product_id && r.qty_ordered > 0 && r.rate > 0);
     if (!valid.length) return toast({ title: "Add items with qty & rate", variant: "destructive" });
@@ -90,6 +96,12 @@ export default function PoFormPage() {
         const { data: it } = await supabase.from("purchase_requisition_items" as any).select("qty_ordered").eq("id", r.pr_item_id).single();
         await supabase.from("purchase_requisition_items" as any).update({ qty_ordered: ((it as any)?.qty_ordered || 0) + r.qty_ordered }).eq("id", r.pr_item_id);
       }
+      await logCreate({
+        userId: user?.id, userName: profile?.name,
+        module: "purchase_order", recordId: (po as any).id,
+        newData: { po_number, supplier_id: supplierId, grand_total: grand, pr_id: selectedPR || null },
+        details: `PO ${po_number} created (grand ${grand.toFixed(2)})`,
+      });
       toast({ title: "PO created", description: po_number });
       nav(`/purchase-workflow/po/${(po as any).id}`);
     } catch (e: any) {
@@ -100,6 +112,7 @@ export default function PoFormPage() {
   return (
     <div className="p-6 space-y-4">
       <Button variant="ghost" onClick={() => nav(-1)}><ArrowLeft className="w-4 h-4 mr-2" />Back</Button>
+      <PurchaseStatusTracker current="po" />
       <Card>
         <CardHeader><CardTitle>New Purchase Order</CardTitle></CardHeader>
         <CardContent className="space-y-4">
