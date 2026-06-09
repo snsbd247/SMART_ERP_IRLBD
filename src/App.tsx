@@ -220,6 +220,15 @@ const App = () => (
                 <Route path="/purchase/approval-matrix" element={<PurchaseApprovalMatrixPage />} />
                 <Route path="/purchase/coa-mapping" element={<PurchaseCoaMappingPage />} />
                 <Route path="/purchase/audit-log" element={<PurchaseAuditLogPage />} />
+                {/* ─── Purchase (Phase 2 PR & PO) ────────────────── */}
+                <Route path="/purchase/requisitions" element={<PurchaseRequisitionsPage />} />
+                <Route path="/purchase/requisitions/new" element={<PurchaseRequisitionFormPage />} />
+                <Route path="/purchase/requisitions/:id" element={<PurchaseRequisitionDetailPage />} />
+                <Route path="/purchase/requisitions/:id/edit" element={<PurchaseRequisitionFormPage />} />
+                <Route path="/purchase/orders" element={<PurchaseOrdersV2Page />} />
+                <Route path="/purchase/orders/new" element={<PurchaseOrderV2FormPage />} />
+                <Route path="/purchase/orders/:id" element={<PurchaseOrderV2DetailPage />} />
+                <Route path="/purchase/orders/:id/edit" element={<PurchaseOrderV2FormPage />} />
 
 
 
