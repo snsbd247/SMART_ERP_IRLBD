@@ -708,9 +708,7 @@ Deno.serve(async (req) => {
     {
       const seqRows = [
         { id:"sales_invoice", prefix:"INV", current_number:sc, year: Number(fyTag), description:"Sales Invoice" },
-        { id:"purchase", prefix:"PUR", current_number:pc, year: Number(fyTag), description:"Purchase" },
         { id:"sales_return", prefix:"SRN", current_number:src, year: Number(fyTag), description:"Sales Return" },
-        { id:"purchase_return", prefix:"PRN", current_number:prc, year: Number(fyTag), description:"Purchase Return" },
         { id:"production", prefix:"PRD", current_number:prdc, year: Number(fyTag), description:"Production" },
         { id:"stock_transfer", prefix:"STR", current_number:tc, year: Number(fyTag), description:"Stock Transfer" },
         { id:"journal_voucher", prefix:"JV", current_number:vc.JV, year: Number(fyTag), description:"Journal Voucher" },
