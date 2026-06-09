@@ -173,13 +173,8 @@ export function PrintMushak63({ v }: Props) {
                 <div className="form-code">মূসক-৬.৩</div>
               </div>
 
-              {/* Seller header grid: logo | seller info | issue info */}
+              {/* Seller header grid: seller info | issue info (logo removed) */}
               <div className="header-grid" style={{ marginTop: 14 }}>
-                <div className="logo-cell">
-                  {settings?.company_logo_url
-                    ? <img src={settings.company_logo_url} alt="logo" />
-                    : <div style={{ width: 60, height: 60, border: "1px solid #ccc" }} />}
-                </div>
                 <div className="kv">
                   <div className="k">নিবন্ধিত ব্যক্তির নাম</div><div>:</div><div className="v">{sellerName}</div>
                   <div className="k">নিবন্ধিত ব্যক্তির বিআইএন</div><div>:</div><div className="v">{sellerBin}</div>
