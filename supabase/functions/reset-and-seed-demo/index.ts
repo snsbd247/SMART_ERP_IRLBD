@@ -129,6 +129,23 @@ Deno.serve(async (req) => {
     }
     const DEPT = depts![0].id, DESIG = desigs![0].id;
 
+    // Sections (per department) + Shifts
+    const sectionRows = depts!.flatMap((d:any) => [
+      { id: U(), name: `${d.name} - Section A`, department_id: d.id, branch_id: BR_DHK, status: "active" },
+      { id: U(), name: `${d.name} - Section B`, department_id: d.id, branch_id: BR_DHK, status: "active" },
+    ]);
+    await bulk("sections", sectionRows);
+    const SEC = sectionRows[0].id;
+
+    const shiftRows = [
+      { id: U(), shift_name: "Morning",   start_time: "08:00:00", end_time: "16:00:00", late_after_minutes: 10 },
+      { id: U(), shift_name: "General",   start_time: "09:00:00", end_time: "18:00:00", late_after_minutes: 15 },
+      { id: U(), shift_name: "Evening",   start_time: "14:00:00", end_time: "22:00:00", late_after_minutes: 10 },
+      { id: U(), shift_name: "Night",     start_time: "22:00:00", end_time: "06:00:00", late_after_minutes: 15 },
+    ];
+    await bulk("shifts", shiftRows);
+    const SHIFT = shiftRows[1].id;
+
     // Leave types
     let { data: lts } = await db.from("leave_types").select("id,name");
     if (!lts || lts.length === 0) {
