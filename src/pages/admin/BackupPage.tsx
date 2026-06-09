@@ -99,9 +99,18 @@ const BackupPage = () => {
   const DEMO_STEPS = [
     "Chart of Accounts",
     "IFRS Account Mapping",
+    "Purchase Types",
+    "Purchase COA Mapping",
+    "Purchase Settings",
+    "Branch Management",
+    "Financial Years",
     "Roles & Permissions",
+    "GitHub Deploy Sync",
     "Document Numbering",
     "Page Shortcuts",
+    "General Settings",
+    "SMS Integration",
+    "Branding & White-Label",
   ];
 
   const handleImportDemoConfig = async (reset = false) => {
