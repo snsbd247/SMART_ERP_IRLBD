@@ -114,7 +114,9 @@ async function postSalesInvoiceVoucher(invoice: any) {
 }
 
 async function postInvoicePaymentVoucher(payment: any, invoice: any) {
-  const bank = await resolveAccount(payment.mode === "cash" ? "Cash in Hand" : "Bank Account", payment.mode === "cash" ? ["Cash"] : ["Bank"]);
+  const bank = payment.mode === "cash"
+    ? await resolveAccount("Cash in Hand", ["Cash"])
+    : await resolveAccount("Bank Account", ["%Bank%A/C%", "%Bank%Current%", "%Bank%Savings%", "%Bank%"]);
   const ar = await resolveAccount("Accounts Receivable");
   const tds = await resolveAccount("TDS Receivable");
   if (!bank || !ar) return null;
