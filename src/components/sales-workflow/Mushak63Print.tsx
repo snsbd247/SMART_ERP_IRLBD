@@ -210,6 +210,20 @@ export function PrintMushak63({ v }: Props) {
 
               {/* Items table (11 columns as per Mushak 6.3) */}
               <table className="mushak-items">
+                {/* Locked column widths — sum = 100%, matches the official Mushak 6.3 form */}
+                <colgroup>
+                  <col style={{ width: "4%" }} />   {/* ক্রমিক */}
+                  <col style={{ width: "22%" }} />  {/* পণ্য/সেবার বর্ণনা */}
+                  <col style={{ width: "7%" }} />   {/* সরবরাহের একক */}
+                  <col style={{ width: "7%" }} />   {/* পরিমাণ */}
+                  <col style={{ width: "9%" }} />   {/* একক মূল্য */}
+                  <col style={{ width: "10%" }} />  {/* মোট মূল্য */}
+                  <col style={{ width: "9%" }} />   {/* সম্পূরক ভিত্তি */}
+                  <col style={{ width: "8%" }} />   {/* সম্পূরক পরিমাণ */}
+                  <col style={{ width: "7%" }} />   {/* মূসক হার */}
+                  <col style={{ width: "8%" }} />   {/* মূসক পরিমাণ */}
+                  <col style={{ width: "9%" }} />   {/* সকল কর সহ */}
+                </colgroup>
                 <thead>
                   <tr>
                     <th rowSpan={2} style={{ width: 38 }}>ক্রমিক</th>
