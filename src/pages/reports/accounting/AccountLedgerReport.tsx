@@ -93,7 +93,7 @@ const AccountLedgerReport = () => {
         {selectedAcc && (
           <div className="mb-3 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">{selectedAcc.account_code}</span> — {selectedAcc.account_name} ({selectedAcc.account_type})
-            {" | Opening: "}{fc(selectedAcc.opening_balance_type === "debit" ? selectedAcc.opening_balance : -selectedAcc.opening_balance)}
+            {" | Opening: "}{fc(selectedAcc.opening_balance_type === "debit" ? num(selectedAcc.opening_balance) : -num(selectedAcc.opening_balance))}
           </div>
         )}
         <Card><CardContent className="p-0">
