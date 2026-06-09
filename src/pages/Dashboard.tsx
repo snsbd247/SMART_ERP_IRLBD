@@ -376,6 +376,67 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* Recent Purchase Bills + Recent VAT Challans */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+        <Card>
+          <CardHeader className="pb-2 px-3 sm:px-6">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+                <ShoppingCart className="w-3.5 h-3.5 text-amber-500" /> Recent Purchase Invoices
+              </CardTitle>
+              <Button variant="ghost" size="sm" className="text-[10px] h-6" onClick={() => navigate("/purchase/bills")}>View all</Button>
+            </div>
+          </CardHeader>
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            {recentPurchaseBills.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">No purchase invoices yet</p>
+            ) : (
+              <div className="space-y-2">
+                {recentPurchaseBills.map((b: any) => (
+                  <div key={b.id} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0 cursor-pointer hover:bg-muted/30 rounded px-1 -mx-1" onClick={() => navigate(`/purchase/bills/${b.id}`)}>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{b.bill_no}</p>
+                      <p className="text-[10px] text-muted-foreground">{(b.suppliers as any)?.name || "—"}</p>
+                    </div>
+                    <p className="text-xs font-semibold tabular-nums text-foreground">{fc(Number(b.grand_total || 0))}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2 px-3 sm:px-6">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+                <FileText className="w-3.5 h-3.5 text-blue-500" /> Recent VAT Challans
+              </CardTitle>
+              <Button variant="ghost" size="sm" className="text-[10px] h-6" onClick={() => navigate("/sales/vat-challans")}>View all</Button>
+            </div>
+          </CardHeader>
+          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+            {recentVatChallans.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">No VAT challans yet</p>
+            ) : (
+              <div className="space-y-2">
+                {recentVatChallans.map((c: any) => (
+                  <div key={c.id} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0 cursor-pointer hover:bg-muted/30 rounded px-1 -mx-1" onClick={() => navigate(`/sales/vat-challans/${c.id}`)}>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">{c.challan_number}</p>
+                      <p className="text-[10px] text-muted-foreground">{(c.customers as any)?.name || "—"}</p>
+                    </div>
+                    <p className="text-xs font-semibold tabular-nums text-foreground">{fc(Number(c.grand_total || 0))}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+
+
 
       {/* Recent Activity */}
       <Card>
