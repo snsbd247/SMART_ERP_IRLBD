@@ -13,14 +13,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft } from "lucide-react";
 import { newGRNNumber } from "@/lib/purchase-workflow-utils";
 import { createStockLedgerEntry } from "@/lib/stock-ledger-utils";
+import { logCreate } from "@/lib/audit-utils";
+import { usePermission } from "@/hooks/usePermission";
+import { PurchaseStatusTracker } from "@/components/purchase-workflow/PurchaseStatusTracker";
 
 export default function GrnFormPage() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
   const initialPo = sp.get("po") || "";
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { userBranchId } = useBranch();
   const { toast } = useToast();
+  const { can, isSuperAdmin } = usePermission();
+  const canCreate = isSuperAdmin || can("purchase.grn.create") || can("purchase.create");
   const [openPOs, setOpenPOs] = useState<any[]>([]);
   const [poId, setPoId] = useState(initialPo);
   const [po, setPo] = useState<any>(null);
@@ -53,6 +58,7 @@ export default function GrnFormPage() {
   const total = poItems.reduce((s, i) => s + (recv[i.id] || 0) * Number(i.rate), 0);
 
   const save = async () => {
+    if (!canCreate) return toast({ title: "Permission denied", description: "Requires purchase.grn.create", variant: "destructive" });
     if (!po) return toast({ title: "Select a PO", variant: "destructive" });
     const items = poItems.filter(i => (recv[i.id] || 0) > 0);
     if (!items.length) return toast({ title: "Enter received qty", variant: "destructive" });
@@ -96,6 +102,12 @@ export default function GrnFormPage() {
       const anyDone = (allItems as any[] || []).some(x => x.qty_received > 0);
       await supabase.from("purchase_orders_v2" as any).update({ status: allDone ? "received" : anyDone ? "partial" : "open" }).eq("id", po.id);
 
+      await logCreate({
+        userId: user?.id, userName: profile?.name,
+        module: "grn", recordId: (grn as any).id,
+        newData: { grn_number, po_id: po.id, total_amount: total, items: items.length },
+        details: `GRN ${grn_number} received against PO ${po.po_number} (${total.toFixed(2)})`,
+      });
       toast({ title: "GRN created", description: grn_number });
       nav(`/purchase-workflow/grn/${(grn as any).id}`);
     } catch (e: any) {
@@ -106,6 +118,7 @@ export default function GrnFormPage() {
   return (
     <div className="p-6 space-y-4">
       <Button variant="ghost" onClick={() => nav(-1)}><ArrowLeft className="w-4 h-4 mr-2" />Back</Button>
+      <PurchaseStatusTracker current="grn" />
       <Card>
         <CardHeader><CardTitle>New GRN (Goods Receipt)</CardTitle></CardHeader>
         <CardContent className="space-y-4">
