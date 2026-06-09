@@ -398,11 +398,11 @@ Deno.serve(async (req) => {
     for (let d = new Date(start), wk = 0; d <= end; d.setDate(d.getDate() + 7), wk++) {
       const sup = suppliers[wk % suppliers.length];
       const ds = ymd(d);
-      const items = pickN(products, RI(2, 5));
+      const items = pickN(products.slice(10), RI(2, 5)); // Purchase only raw materials & packaging
       let subtotal = 0;
       const lines: { itemId: string; itemName: string; qty: number; price: number; total: number }[] = [];
       for (const p of items) {
-        const qty = RI(5, 30), price = p.cp;
+        const qty = RI(50, 500), price = p.cp; // bulk raw material purchases
         const total = qty * price;
         subtotal += total;
         lines.push({ itemId: p.iid, itemName: p.name, qty, price, total });
