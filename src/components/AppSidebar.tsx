@@ -87,24 +87,7 @@ const navGroups: NavGroup[] = [
       { to: "/reports/low-stock", label: "Low Stock Alert", icon: CircleDot, permission: "inventory.view" },
     ],
   },
-  {
-    label: "Purchase",
-    icon: ShoppingCart,
-    permission: "purchase.view",
-    requiredModules: ["purchase"],
-    children: [
-      { to: "/suppliers", label: "Suppliers", icon: Truck, permission: "suppliers.view,purchase.view" },
-      { to: "/purchase-workflow/requisitions", label: "Requisitions", icon: ClipboardList, permission: "purchase.view" },
-      { to: "/purchase-workflow/po", label: "Purchase Orders", icon: ShoppingCart, permission: "purchase.view" },
-      { to: "/purchase-workflow/grn", label: "GRN (Goods Receipt)", icon: PackageCheck, permission: "purchase.view" },
-      { to: "/purchase-workflow/bills", label: "Bills & Payments", icon: FileText, permission: "purchase.view" },
-      { to: "/purchase-workflow/returns", label: "Purchase Returns", icon: ArrowLeftRight, permission: "purchase.view" },
-      { to: "/reports/purchase", label: "Purchase Report", icon: ShoppingCart, permission: "purchase.view" },
-      { to: "/reports/accounts-payable", label: "Accounts Payable", icon: Truck, permission: "purchase.view" },
-      { to: "/reports/ap-aging", label: "AP Aging", icon: Clock, permission: "purchase.view" },
-      { to: "/reports/expense-analysis", label: "Expense Analysis", icon: FileText, permission: "purchase.view" },
-    ],
-  },
+  // Purchase module removed
   {
     label: "Manufacturing",
     icon: Factory,
