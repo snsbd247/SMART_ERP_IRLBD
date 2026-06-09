@@ -715,7 +715,7 @@ Deno.serve(async (req) => {
     for (let d = new Date(fyStart); d <= end; d.setDate(d.getDate()+7)) {
       const BR = (_swIdx++ % 2 === 0) ? BR_DHK : BR_CTG;
       const cust = pick(customers);
-      const its  = pickN(products, RI(2,4));
+      const its  = pickN(products.slice(0, 10), RI(2,4)); // Sell finished goods only
       const poDate = ymd(d);
       const delDate = ymd(new Date(d.getTime() + RI(2,7)*86400000));
       const poId = U(); poc++;
