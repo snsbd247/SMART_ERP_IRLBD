@@ -208,11 +208,8 @@ Deno.serve(async (req) => {
       "Lambda Pharma","Mu Textiles","Nu Logistics","Xi Construction","Omicron Retail"];
     const customers = cn.map((n,i) => ({ id:U(), name:n, phone:`+8801${700000000+i*1111}`, email:n.toLowerCase().replace(/ /g,"")+"@example.com", address:"Dhaka, Bangladesh", status:"active" }));
     await bulk("customers", customers);
-    const sn = ["ABC Suppliers","XYZ Wholesale","PQR Distributors","LMN Trading","EFG Imports",
-      "HIJ Mfg","RST Enterprises","UVW Industries","BDS Tech","GreenLine Foods",
-      "Metro Hardware","Capital Stationers"];
-    const suppliers = sn.map((n,i) => ({ id:U(), name:n, phone:`+8801${800000000+i*2222}`, email:n.toLowerCase().replace(/ /g,"")+"@vendor.com", address:"Dhaka, Bangladesh", status:"active" }));
-    await bulk("suppliers", suppliers);
+    // Suppliers removed with Purchase module
+    const suppliers: any[] = [];
 
     // Employees + salary structures
     const fns = ["Rahim","Karim","Salam","Hasan","Nasir","Jamil","Tarek","Imran","Farhad","Mizan","Fatema","Nasrin","Sumi","Ayesha","Rabeya"];
