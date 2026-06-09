@@ -19,18 +19,28 @@ const VoucherTypeReport = ({ voucherType, title }: VoucherReportProps) => {
 
   const fetchData = async () => {
     setLoading(true);
-    let query = supabase.from("acc_vouchers")
-      .select("*, voucher_entries(*, chart_of_accounts:account_id(account_name, account_code))")
-      .eq("voucher_type", voucherType)
-      .gte("voucher_date", dateFrom)
-      .lte("voucher_date", dateTo)
-      .order("voucher_date", { ascending: true });
-    if (branch !== "all") query = query.eq("branch_id", branch);
-
-    const { data: vouchers } = await query;
+    const PAGE = 500;
+    let from = 0;
+    const vouchers: any[] = [];
+    for (let safety = 0; safety < 50; safety++) {
+      let query = supabase.from("acc_vouchers")
+        .select("*, voucher_entries(*, chart_of_accounts:account_id(account_name, account_code))")
+        .eq("voucher_type", voucherType)
+        .gte("voucher_date", dateFrom)
+        .lte("voucher_date", dateTo)
+        .order("voucher_date", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (branch !== "all") query = query.eq("branch_id", branch);
+      const { data, error } = await query;
+      if (error) { console.error("[voucher-report]", error); break; }
+      const rows = data ?? [];
+      vouchers.push(...rows);
+      if (rows.length < PAGE) break;
+      from += PAGE;
+    }
 
     const result: any[] = [];
-    (vouchers || []).forEach((v: any) => {
+    vouchers.forEach((v: any) => {
       (v.voucher_entries || []).forEach((e: any) => {
         result.push({
           id: e.id,
