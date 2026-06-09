@@ -42,6 +42,13 @@ import PurchaseSettingsPage from "./pages/purchase/PurchaseSettingsPage";
 import PurchaseApprovalMatrixPage from "./pages/purchase/ApprovalMatrixPage";
 import PurchaseCoaMappingPage from "./pages/purchase/CoaMappingPage";
 import PurchaseAuditLogPage from "./pages/purchase/AuditLogPage";
+// Purchase module (Phase 2 PR & PO)
+import PurchaseRequisitionsPage from "./pages/purchase/RequisitionsPage";
+import PurchaseRequisitionFormPage from "./pages/purchase/RequisitionFormPage";
+import PurchaseRequisitionDetailPage from "./pages/purchase/RequisitionDetailPage";
+import PurchaseOrdersV2Page from "./pages/purchase/PurchaseOrdersPage";
+import PurchaseOrderV2FormPage from "./pages/purchase/PurchaseOrderFormPage";
+import PurchaseOrderV2DetailPage from "./pages/purchase/PurchaseOrderDetailPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
@@ -213,6 +220,15 @@ const App = () => (
                 <Route path="/purchase/approval-matrix" element={<PurchaseApprovalMatrixPage />} />
                 <Route path="/purchase/coa-mapping" element={<PurchaseCoaMappingPage />} />
                 <Route path="/purchase/audit-log" element={<PurchaseAuditLogPage />} />
+                {/* ─── Purchase (Phase 2 PR & PO) ────────────────── */}
+                <Route path="/purchase/requisitions" element={<PurchaseRequisitionsPage />} />
+                <Route path="/purchase/requisitions/new" element={<PurchaseRequisitionFormPage />} />
+                <Route path="/purchase/requisitions/:id" element={<PurchaseRequisitionDetailPage />} />
+                <Route path="/purchase/requisitions/:id/edit" element={<PurchaseRequisitionFormPage />} />
+                <Route path="/purchase/orders" element={<PurchaseOrdersV2Page />} />
+                <Route path="/purchase/orders/new" element={<PurchaseOrderV2FormPage />} />
+                <Route path="/purchase/orders/:id" element={<PurchaseOrderV2DetailPage />} />
+                <Route path="/purchase/orders/:id/edit" element={<PurchaseOrderV2FormPage />} />
 
 
 
