@@ -25,7 +25,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/reports/stock-reports": "Stock Reports",
   "/reports/low-stock": "Low Stock Alert",
   "/reports/sales": "Sales Report",
-  "/reports/purchase": "Purchase Report",
+  
   "/bank/accounts": "Bank Accounts",
   "/bank/cashbook": "Cash Book",
   "/admin/users": "Users",
