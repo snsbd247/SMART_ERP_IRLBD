@@ -75,7 +75,7 @@ const SuppliersPage = () => {
       return;
     }
     setEditingSupplier(s);
-    setForm({ name: s.name, email: s.email || "", phone: s.phone || "", address: s.address || "" });
+    setForm({ name: s.name, email: s.email || "", phone: s.phone || "", address: s.address || "", bin_number: s.bin_number || "" });
     setOpen(true);
   };
 
@@ -87,11 +87,11 @@ const SuppliersPage = () => {
         const isApprovedEdit = editingSupplier.status === "approved";
         if (isApprovedEdit && isSuperAdmin) {
           await documentApi.editApproved("supplier", editingSupplier.id, {
-            name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null,
+            name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null,
           });
         } else {
-          const oldValues = { name: editingSupplier.name, email: editingSupplier.email, phone: editingSupplier.phone, address: editingSupplier.address };
-          const newValues = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null };
+          const oldValues = { name: editingSupplier.name, email: editingSupplier.email, phone: editingSupplier.phone, address: editingSupplier.address, bin_number: editingSupplier.bin_number };
+          const newValues = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null };
           const { error } = await supabase.from("suppliers").update(newValues).eq("id", editingSupplier.id);
           if (error) throw error;
           await logEditAudit({ userId: user?.id, userName: profile?.name, module: "Purchase", action: "Edit Supplier", recordId: editingSupplier.id, oldValues, newValues });
