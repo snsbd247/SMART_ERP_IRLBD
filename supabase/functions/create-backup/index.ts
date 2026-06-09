@@ -125,28 +125,31 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user }, error: authErr } = await userClient.auth.getUser();
-    if (authErr || !user) throw new Error("Unauthorized");
-
     const adminClient = createClient(supabaseUrl, serviceKey);
 
-    // Check admin role
-    const { data: profile } = await adminClient
-      .from("profiles")
-      .select("employee_id")
-      .eq("id", user.id)
-      .single();
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    let user: { id: string; email?: string } | null = null;
 
-    // Super admin check: no employee_id means super admin
-    const isSuperAdmin = !profile?.employee_id;
-    if (!isSuperAdmin) throw new Error("Super Admin access required");
+    // Allow internal/scheduled callers using the service role key.
+    if (token === serviceKey) {
+      user = { id: "00000000-0000-0000-0000-000000000000", email: "system@scheduled" };
+    } else {
+      const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user: u }, error: authErr } = await userClient.auth.getUser();
+      if (authErr || !u) throw new Error("Unauthorized");
+      user = { id: u.id, email: u.email };
+
+      const { data: profile } = await adminClient
+        .from("profiles").select("employee_id").eq("id", u.id).single();
+      const isSuperAdmin = !profile?.employee_id;
+      if (!isSuperAdmin) throw new Error("Super Admin access required");
+    }
 
     const body = await req.json().catch(() => ({}));
-    const backupType = body.backup_type || "manual";
+    const backupType = body.backup_type || (token === serviceKey ? "scheduled" : "manual");
+
 
     // Export all tables
     const allData: Record<string, unknown[]> = {};
