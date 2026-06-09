@@ -50,6 +50,8 @@ const Dashboard = () => {
   const [recentInvoices, setRecentInvoices] = useState<any[]>([]);
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [recentVatChallans, setRecentVatChallans] = useState<any[]>([]);
+  const [recentPurchaseBills, setRecentPurchaseBills] = useState<any[]>([]);
   const [monthlySales, setMonthlySales] = useState<any[]>([]);
   const [expenseBreakdown, setExpenseBreakdown] = useState<any[]>([]);
   const [profitData, setProfitData] = useState<any[]>([]);
