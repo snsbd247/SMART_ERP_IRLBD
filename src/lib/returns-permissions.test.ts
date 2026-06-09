@@ -38,8 +38,17 @@ const NEXT_STATUS: Record<Stage, string[]> = {
   return:      ["draft", "approved"],
 };
 
+const VALID_NEXT: Record<Stage, Stage[]> = {
+  requisition: ["po"],
+  po:          ["grn"],
+  grn:         ["bill", "return"],
+  bill:        ["return"],
+  return:      [],
+};
+
 function advance(role: Role, from: Doc, to: Stage): Doc {
   if (!can(role, REQUIRED_PERM[to])) throw new Error(`PERM_DENIED:${to}`);
+  if (!VALID_NEXT[from.stage].includes(to)) throw new Error(`BAD_STATE:skip ${from.stage}->${to}`);
   if (!NEXT_STATUS[from.stage].includes(from.status))
     throw new Error(`BAD_STATE:${from.stage}=${from.status}`);
   return { stage: to, status: "draft", ref: `${from.stage}-1` };
