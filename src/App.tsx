@@ -34,18 +34,7 @@ import AccountingVouchers from "./pages/accounts/AccountingVouchers";
 import SalesPage from "./pages/sales/SalesPage";
 import SalesInvoiceDetailPage from "./pages/sales/SalesInvoiceDetailPage";
 
-import RequisitionsPage from "./pages/purchase-workflow/RequisitionsPage";
-import RequisitionDetailPage from "./pages/purchase-workflow/RequisitionDetailPage";
-import PoListPage from "./pages/purchase-workflow/PoListPage";
-import PoFormPage from "./pages/purchase-workflow/PoFormPage";
-import PoDetailPage from "./pages/purchase-workflow/PoDetailPage";
-import GrnsPage from "./pages/purchase-workflow/GrnsPage";
-import GrnFormPage from "./pages/purchase-workflow/GrnFormPage";
-import GrnDetailPage from "./pages/purchase-workflow/GrnDetailPage";
-import BillsPage from "./pages/purchase-workflow/BillsPage";
-import BillFormPage from "./pages/purchase-workflow/BillFormPage";
-import BillDetailPage from "./pages/purchase-workflow/BillDetailPage";
-import PurchaseReturnsPage from "./pages/purchase-workflow/PurchaseReturnsPage";
+// Purchase module removed
 import InventoryPage from "./pages/inventory/InventoryPage";
 import UnitsPage from "./pages/inventory/UnitsPage";
 import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
