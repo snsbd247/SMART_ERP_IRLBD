@@ -36,15 +36,20 @@ const PurchaseSettingsPage = () => {
   if (!s) return <div className="p-6 text-muted-foreground">Loading…</div>;
 
   const set = (k: string, v: any) => setS({ ...s, [k]: v });
-  const T = ({ k, l }: any) => (
-    <div className="flex items-center justify-between py-2 border-b last:border-0">
+
+  const Toggle = (k: string, l: string) => (
+    <div key={k} className="flex items-center justify-between py-2 border-b last:border-0">
       <Label>{l}</Label>
       <Switch checked={!!s[k]} onCheckedChange={(v) => set(k, v)} />
     </div>
   );
-  const F = ({ k, l, type = "text" }: any) => (
-    <div className="space-y-1"><Label>{l}</Label>
-      <Input type={type} value={s[k] ?? ""} onChange={(e) => set(k, type === "number" ? parseFloat(e.target.value) || 0 : e.target.value)} />
+  const Field = (k: string, l: string, type: string = "text") => (
+    <div key={k} className="space-y-1"><Label>{l}</Label>
+      <Input
+        type={type}
+        value={s[k] ?? ""}
+        onChange={(e) => set(k, type === "number" ? (parseFloat(e.target.value) || 0) : e.target.value)}
+      />
     </div>
   );
 
@@ -58,36 +63,36 @@ const PurchaseSettingsPage = () => {
       <Card>
         <CardHeader><CardTitle className="text-base">Workflow Rules</CardTitle></CardHeader>
         <CardContent className="space-y-0">
-          <T k="enforce_grn_for_bill" l="Enforce GRN before Supplier Bill" />
-          <T k="allow_over_receive" l="Allow Over-Receive (GRN > PO qty)" />
-          <T k="allow_over_bill" l="Allow Over-Bill (Bill > GRN qty)" />
-          <T k="auto_post_grn" l="Auto-post GRN to Journal" />
-          <T k="auto_post_bill" l="Auto-post Bill to Journal" />
-          <T k="auto_post_payment" l="Auto-post Payment to Journal" />
-          <T k="enable_multi_currency" l="Enable Multi-Currency" />
-          <T k="enable_landed_cost" l="Enable Landed Cost Engine" />
-          <T k="enable_lc_module" l="Enable LC / Import Module" />
+          {Toggle("enforce_grn_for_bill", "Enforce GRN before Supplier Bill")}
+          {Toggle("allow_over_receive", "Allow Over-Receive (GRN > PO qty)")}
+          {Toggle("allow_over_bill", "Allow Over-Bill (Bill > GRN qty)")}
+          {Toggle("auto_post_grn", "Auto-post GRN to Journal")}
+          {Toggle("auto_post_bill", "Auto-post Bill to Journal")}
+          {Toggle("auto_post_payment", "Auto-post Payment to Journal")}
+          {Toggle("enable_multi_currency", "Enable Multi-Currency")}
+          {Toggle("enable_landed_cost", "Enable Landed Cost Engine")}
+          {Toggle("enable_lc_module", "Enable LC / Import Module")}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader><CardTitle className="text-base">Defaults</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <F k="default_currency" l="Default Currency" />
-          <F k="default_vat_percent" l="Default VAT %" type="number" />
-          <F k="default_ait_percent" l="Default AIT %" type="number" />
+          {Field("default_currency", "Default Currency")}
+          {Field("default_vat_percent", "Default VAT %", "number")}
+          {Field("default_ait_percent", "Default AIT %", "number")}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader><CardTitle className="text-base">Document Number Prefixes</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <F k="pr_prefix" l="PR Prefix" />
-          <F k="po_prefix" l="PO Prefix" />
-          <F k="grn_prefix" l="GRN Prefix" />
-          <F k="bill_prefix" l="Bill Prefix" />
-          <F k="pay_prefix" l="Payment Prefix" />
-          <F k="lc_prefix" l="LC Prefix" />
+          {Field("pr_prefix", "PR Prefix")}
+          {Field("po_prefix", "PO Prefix")}
+          {Field("grn_prefix", "GRN Prefix")}
+          {Field("bill_prefix", "Bill Prefix")}
+          {Field("pay_prefix", "Payment Prefix")}
+          {Field("lc_prefix", "LC Prefix")}
         </CardContent>
       </Card>
     </div>
