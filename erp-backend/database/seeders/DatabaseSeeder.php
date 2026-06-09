@@ -121,7 +121,7 @@ class DatabaseSeeder extends Seeder
             ['id' => 'contra_voucher',   'prefix' => 'CV',  'description' => 'Contra Voucher'],
             // New purchase workflow (PR → PO → GRN → Bill → Payment)
             ['id' => 'purchase_requisition', 'prefix' => 'PR',  'description' => 'Purchase Requisition'],
-            ['id' => 'purchase_order',       'prefix' => 'PO',  'description' => 'Purchase Order'],
+            ['id' => 'purchase_order_v2',    'prefix' => 'PO',  'description' => 'Purchase Order (Workflow)'],
             ['id' => 'grn',                  'prefix' => 'GRN', 'description' => 'Goods Receipt Note'],
             ['id' => 'purchase_bill',        'prefix' => 'BILL','description' => 'Purchase Bill'],
             ['id' => 'bill_payment',         'prefix' => 'BP',  'description' => 'Bill Payment'],
