@@ -247,7 +247,7 @@ Deno.serve(async (req) => {
     const suppliers = sn.map((n,i) => ({
       id: U(), code: `SUP-${String(i+1).padStart(4,"0")}`, name: n,
       supplier_type: "regular", is_active: true,
-      mobile: `+8801${600000000+i*2222}`, email: n.toLowerCase().replace(/ /g,"")+"@example.com",
+      mobile: `+8801${600000000+i*2222}`, email: n.toLowerCase().replace(/[^a-z0-9]/g,"")+"@example.com",
       address_line1: "Dhaka, Bangladesh", city: "Dhaka", country: "Bangladesh",
       currency: "BDT", payment_terms_days: pick([0,15,30,45]),
     }));
