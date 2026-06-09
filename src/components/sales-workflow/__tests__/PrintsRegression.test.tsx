@@ -6,13 +6,16 @@
 import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 
-// Mock hooks used by PrintLayout/Mushak63Print so we can render without providers
-vi.mock("@/hooks/useCompanySettings", () => ({
-  useCompanySettings: () => ({ settings: { company_name: "Test Co", bin_number: "000000001-0001", address: "Dhaka" }, loading: false, refetch: () => {} }),
-}));
+// Mock provider-dependent modules (alias + relative variants for vitest resolver)
+const settingsStub = { settings: { company_name: "Test Co", bin_number: "000000001-0001", address: "Dhaka" }, loading: false, refetch: () => {} };
+vi.mock("@/hooks/useCompanySettings", () => ({ useCompanySettings: () => settingsStub }));
+vi.mock("../../../hooks/useCompanySettings", () => ({ useCompanySettings: () => settingsStub }));
 vi.mock("@/contexts/CurrencyContext", () => ({ useCurrency: () => ({ refetch: () => {} }) }));
+vi.mock("../../../contexts/CurrencyContext", () => ({ useCurrency: () => ({ refetch: () => {} }) }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: () => {} }) }));
+vi.mock("../../../hooks/use-toast", () => ({ useToast: () => ({ toast: () => {} }) }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: { invoke: async () => ({ data: null, error: null }) } } }));
+vi.mock("../../../integrations/supabase/client", () => ({ supabase: { functions: { invoke: async () => ({ data: null, error: null }) } } }));
 import {
   PrintPO,
   PrintTaxInvoice,
