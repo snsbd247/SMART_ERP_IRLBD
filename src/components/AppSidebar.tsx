@@ -122,7 +122,7 @@ const navGroups: NavGroup[] = [
     children: [
       { to: "/sales", label: "Sales Invoice", icon: Receipt, permission: "sales.view" },
       { to: "/sales/returns", label: "Sales Return", icon: ArrowLeftRight, permission: "sales.view" },
-      { to: "/customers", label: "Customers", icon: UserCheck, permission: "customers.view,sales.view" },
+      { to: "/customers", label: "Customer List", icon: UserCheck, permission: "customers.view,sales.view" },
       { to: "/reports/accounts-receivable", label: "Accounts Receivable", icon: UserCheck, permission: "sales.view" },
       { to: "/reports/ar-aging", label: "AR Aging", icon: Clock, permission: "sales.view" },
       { to: "/reports/customer-statement", label: "Customer Statement", icon: ScrollText, permission: "sales.view" },
@@ -136,6 +136,7 @@ const navGroups: NavGroup[] = [
     permission: "sales.view",
     requiredModules: ["sales_vat"],
     children: [
+      { to: "/customers", label: "Customer List", icon: UserCheck, permission: "customers.view,sales.view" },
       { to: "/sales-workflow/po", label: "Purchase Orders", icon: ClipboardList, permission: "sales.view" },
       { to: "/sales-workflow/vat-challan", label: "VAT Challans", icon: Receipt, permission: "sales.view" },
       { to: "/sales-workflow/delivery-challan", label: "Delivery Challans", icon: FileText, permission: "sales.view" },
