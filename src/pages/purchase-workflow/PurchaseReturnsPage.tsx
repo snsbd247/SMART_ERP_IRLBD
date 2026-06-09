@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Undo2, CheckCircle2 } from "lucide-react";
+import { ReturnsHelpPanel } from "@/components/help/ReturnsHelpPanel";
 
 interface PurchaseReturn {
   id: string;
@@ -64,6 +65,7 @@ const PurchaseReturnsPage = () => {
       <div className="flex items-center gap-2">
         <Undo2 className="w-5 h-5 text-primary" />
         <h1 className="text-xl font-semibold text-foreground">Purchase Returns</h1>
+        <div className="ml-auto"><ReturnsHelpPanel /></div>
       </div>
 
       <Card>
