@@ -127,9 +127,16 @@ export function AccountTreeTable({ accounts, onEdit, onDrillDown, onDelete }: Pr
             {displayClosing > 0 ? `${fc(displayClosing)} ${closingType}` : "—"}
           </TableCell>
           <TableCell>
-            <Button variant="ghost" size="icon" onClick={() => onEdit(a)}>
-              <Pencil className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={() => onEdit(a)} title="Edit">
+                <Pencil className="w-4 h-4" />
+              </Button>
+              {onDelete && !hasChildren && (
+                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => onDelete(a)} title="Delete">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </TableCell>
         </TableRow>
       );
