@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronDown, Pencil, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { ChevronRight, ChevronDown, Pencil, ChevronsDownUp, ChevronsUpDown, Trash2 } from "lucide-react";
 import { AccountWithBalance } from "@/hooks/useAccountBalances";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
@@ -9,6 +9,7 @@ interface Props {
   accounts: AccountWithBalance[];
   onEdit: (account: AccountWithBalance) => void;
   onDrillDown: (account: AccountWithBalance) => void;
+  onDelete?: (account: AccountWithBalance) => void;
 }
 
 export function AccountTreeTable({ accounts, onEdit, onDrillDown }: Props) {
