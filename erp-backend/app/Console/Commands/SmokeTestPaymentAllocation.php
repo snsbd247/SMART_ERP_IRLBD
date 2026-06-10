@@ -142,13 +142,15 @@ class SmokeTestPaymentAllocation extends Command
         $totalAllocB = $svc->getAllocatedTotal($paymentB->id);
         $unallocated = 5000 - $totalAllocB;
 
+        // Note: A3 still has ৳1500 due from Scenario A; FIFO covers it first, then new invoice ৳3000.
+        // Total absorbed = 4500, leaving ৳500 advance.
         $this->newLine();
         $this->table(['Metric', 'Expected', 'Actual', 'OK?'], [
             ['Allocated to new invoice', '3000.00', number_format($advAlloc, 2), $this->check($advAlloc, 3000)],
-            ['Remaining advance balance', '2000.00', number_format($unallocated, 2), $this->check($unallocated, 2000)],
+            ['Remaining advance balance', '500.00 (A3 leftover absorbed)', number_format($unallocated, 2), $this->check($unallocated, 500)],
         ]);
 
-        $passB = abs($advAlloc - 3000) < 0.01 && abs($unallocated - 2000) < 0.01;
+        $passB = abs($advAlloc - 3000) < 0.01 && abs($unallocated - 500) < 0.01;
         $this->line($passB ? '<info>✅ Scenario B PASS</info>' : '<error>❌ Scenario B FAIL</error>');
 
         // ─── Party summary ───────────────────────────────────────────────
