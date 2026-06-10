@@ -477,16 +477,7 @@ export default function BrandingPage() {
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">Sidebar Header</Label>
                 <div className="rounded-lg p-4 max-w-[240px]" style={{ background: `hsl(${form.primary_color} / 0.05)`, border: "1px solid hsl(var(--border))" }}>
-                  <div className="flex items-center gap-2">
-                    {form.company_logo_url ? (
-                      <img src={form.company_logo_url} alt="Logo" className="w-8 h-8 object-contain rounded" />
-                    ) : (
-                      <div className="w-8 h-8 rounded flex items-center justify-center" style={{ background: `hsl(${form.primary_color})` }}>
-                        <Building2 className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-                    <span className="font-bold text-sm text-foreground">{form.software_name || "SmartERP"}</span>
-                  </div>
+                  <span className="font-bold text-sm text-foreground">{form.software_name || "SmartERP"}</span>
                 </div>
               </div>
 
@@ -494,11 +485,6 @@ export default function BrandingPage() {
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">Login Page Header</Label>
                 <div className="rounded-lg p-6 text-center max-w-xs" style={{ background: `hsl(${form.primary_color})` }}>
-                  {form.login_logo_url ? (
-                    <img src={form.login_logo_url} alt="Login Logo" className="h-12 mx-auto mb-2" />
-                  ) : (
-                    <Building2 className="w-10 h-10 mx-auto mb-2 text-white/80" />
-                  )}
                   <h3 className="text-white font-bold text-lg">{form.software_name || "SmartERP"}</h3>
                   <p className="text-white/70 text-xs">v{form.software_version || "1.0"}</p>
                 </div>
