@@ -108,8 +108,12 @@ export default function BrandingPage() {
         }
       }
 
+      // Persist per-user color override so this user's theme survives logout/refresh
+      // even when the system-wide branding is set by an admin to something different.
+      await saveUserTheme(form.primary_color, form.secondary_color);
+
       await refetch();
-      toast({ title: "Branding Updated", description: "All branding settings have been saved successfully." });
+      toast({ title: "Branding Updated", description: "Saved system-wide + your personal theme." });
     } catch (err: any) {
       toast({
         title: "Save failed",
