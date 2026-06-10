@@ -286,7 +286,7 @@ Deno.serve(async (req) => {
       };
       const { data: allAcc } = await admin
         .from("chart_of_accounts")
-        .select("id, account_code, account_type, is_active")
+        .select("id, account_code, account_name, account_type, is_active")
         .eq("is_active", true);
       const { data: mapped } = await admin.from("ifrs_account_mapping").select("account_id");
       const mappedSet = new Set((mapped ?? []).map((r: any) => r.account_id));
@@ -294,7 +294,7 @@ Deno.serve(async (req) => {
         .filter((a: any) => !mappedSet.has(a.id))
         .map((a: any) => ({
           account_id: a.id,
-          ifrs_line: inferLine(a.account_type, a.account_code),
+          ifrs_line: inferLine(a.account_type, a.account_code, a.account_name),
           notes: "auto-mapped",
         }));
       if (fallbackRows.length > 0) {
