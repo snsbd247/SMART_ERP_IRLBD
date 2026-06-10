@@ -41,7 +41,7 @@ class SmokeTestRbacMatrix extends Command
         $scopedEmail = 'rbac.smoke@test.local';
         $scoped = User::where('email', $scopedEmail)->first();
         if (!$scoped) {
-            $scoped = User::create([
+            $scoped = User::forceCreate([
                 'id' => (string) Str::uuid(),
                 'username' => 'rbac_smoke',
                 'name' => 'RBAC Smoke',
@@ -50,13 +50,13 @@ class SmokeTestRbacMatrix extends Command
                 'employee_id' => $emp->id,
             ]);
         } else {
-            $scoped->update(['employee_id' => $emp->id]);
+            $scoped->forceFill(['username' => 'rbac_smoke', 'employee_id' => $emp->id])->save();
         }
 
         $noRoleEmail = 'rbac.norole@test.local';
         $noRole = User::where('email', $noRoleEmail)->first();
         if (!$noRole) {
-            $noRole = User::create([
+            $noRole = User::forceCreate([
                 'id' => (string) Str::uuid(),
                 'username' => 'rbac_norole',
                 'name' => 'RBAC NoRole',
