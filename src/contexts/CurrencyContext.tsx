@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
+import { getApiBaseUrl, getLaravelAuthHeaders, getLaravelToken } from "@/lib/laravel-auth";
 
 interface CurrencyConfig {
   currency_name: string;
@@ -42,7 +42,7 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
       const base = getApiBaseUrl();
       if (base) {
         // Skip authenticated call when no token — avoids spammy 401s on the login screen.
-        const hasToken = typeof window !== "undefined" && !!(localStorage.getItem("laravel_auth_token") || localStorage.getItem("auth_token"));
+        const hasToken = !!getLaravelToken();
         if (!hasToken) { setLoading(false); return; }
         const res = await fetch(`${base}/v1/settings/company`, { headers: getLaravelAuthHeaders() });
         if (res.ok) {
