@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -103,6 +104,27 @@ class GenericTableController extends BaseController
             $out[$map[$k] ?? $k] = $v;
         }
         return $out;
+    }
+
+    /**
+     * Browser/Supabase-style clients often send ISO timestamps such as
+     * 2026-06-10T16:03:58.512Z. MySQL DATETIME columns reject that format, so
+     * normalize all incoming full ISO timestamps before insert/update/upsert.
+     */
+    private function normalizeTemporalValues(array $row): array
+    {
+        foreach ($row as $key => $value) {
+            if (!is_string($value)) continue;
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+\-]\d{2}:?\d{2})$/', $value)) continue;
+
+            try {
+                $row[$key] = Carbon::parse($value)->utc()->format('Y-m-d H:i:s');
+            } catch (\Throwable $e) {
+                $row[$key] = substr(str_replace('T', ' ', $value), 0, 19);
+            }
+        }
+
+        return $row;
     }
 
     private function assertTable(string $table): void
@@ -223,7 +245,7 @@ class GenericTableController extends BaseController
         if (!is_array($payload)) abort(400, 'Body must be JSON object or array');
 
         $rows = $this->isAssoc($payload) ? [$payload] : $payload;
-        $rows = array_map(fn ($r) => $this->stampTimestamps($table, $this->rewriteBody($table, $r), true), $rows);
+        $rows = array_map(fn ($r) => $this->stampTimestamps($table, $this->normalizeTemporalValues($this->rewriteBody($table, $r)), true), $rows);
 
         $inserted = [];
         $pk = $this->primaryKey($table);
@@ -263,7 +285,7 @@ class GenericTableController extends BaseController
             $applyFilters($q);
             $cols = Schema::getColumnListing($table);
             $clean = array_intersect_key(
-                $this->stampTimestamps($table, $this->rewriteBody($table, $payload), false),
+                $this->stampTimestamps($table, $this->normalizeTemporalValues($this->rewriteBody($table, $payload)), false),
                 array_flip($cols)
             );
             // Normalize empty strings on UUID/nullable FK columns → NULL
@@ -303,7 +325,7 @@ class GenericTableController extends BaseController
         $cols = Schema::getColumnListing($table);
         $clean = array_map(
             fn ($r) => array_intersect_key(
-                $this->stampTimestamps($table, $this->rewriteBody($table, $r), true),
+                $this->stampTimestamps($table, $this->normalizeTemporalValues($this->rewriteBody($table, $r)), true),
                 array_flip($cols)
             ),
             $rows
