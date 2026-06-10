@@ -2033,144 +2033,179 @@
   ],
   "sequences": [
     {
+      "id": "bom",
+      "prefix": "BOM",
+      "current_number": 0,
+      "year": 2526,
+      "description": "Bill of Materials"
+    },
+    {
       "id": "contra_voucher",
       "prefix": "CV",
-      "current_number": 0,
-      "year": 2026,
+      "current_number": 12,
+      "year": 2526,
       "description": "Contra Voucher"
     },
     {
-      "id": "expense",
-      "prefix": "EXP",
-      "current_number": 0,
-      "year": 2026,
-      "description": "Expense"
+      "id": "delivery_challan",
+      "prefix": "DC",
+      "current_number": 163,
+      "year": 2526,
+      "description": "Delivery Challan"
     },
     {
-      "id": "income",
-      "prefix": "INC",
-      "current_number": 0,
-      "year": 2026,
-      "description": "Income"
+      "id": "dispatch",
+      "prefix": "DSP",
+      "current_number": 53,
+      "year": 2526,
+      "description": "Dispatch / Gate Pass"
+    },
+    {
+      "id": "invoice_payment",
+      "prefix": "RCP",
+      "current_number": 16,
+      "year": 2526,
+      "description": "Invoice Payment Receipt"
     },
     {
       "id": "journal_voucher",
       "prefix": "JV",
-      "current_number": 0,
-      "year": 2026,
+      "current_number": 692,
+      "year": 2526,
       "description": "Journal Voucher"
     },
     {
       "id": "payment_voucher",
       "prefix": "PV",
-      "current_number": 0,
-      "year": 2026,
+      "current_number": 91,
+      "year": 2526,
       "description": "Payment Voucher"
     },
     {
       "id": "production",
       "prefix": "PRD",
-      "current_number": 0,
-      "year": 2026,
-      "description": "Production Entry"
+      "current_number": 68,
+      "year": 2526,
+      "description": "Production"
     },
     {
-      "id": "purchase",
-      "prefix": "PUR",
+      "id": "purchase_bill",
+      "prefix": "PBL",
       "current_number": 0,
-      "year": 2026,
-      "description": "Purchase"
+      "year": 2526,
+      "description": "Supplier Bill (Legacy)"
+    },
+    {
+      "id": "purchase_bill_payment",
+      "prefix": "PPM",
+      "current_number": 0,
+      "year": 2526,
+      "description": "Supplier Bill Payment (Legacy)"
+    },
+    {
+      "id": "purchase_order",
+      "prefix": "PO",
+      "current_number": 53,
+      "year": 2526,
+      "description": "Customer Purchase Order"
+    },
+    {
+      "id": "purchase_order_v2",
+      "prefix": "POV",
+      "current_number": 0,
+      "year": 2526,
+      "description": "Purchase Order (Sales Workflow)"
+    },
+    {
+      "id": "purchase_requisition",
+      "prefix": "PRQ",
+      "current_number": 0,
+      "year": 2526,
+      "description": "Purchase Requisition"
+    },
+    {
+      "id": "purchase_return",
+      "prefix": "PRN",
+      "current_number": 15,
+      "year": 2526,
+      "description": "Purchase Return"
     },
     {
       "id": "receipt_voucher",
       "prefix": "RV",
-      "current_number": 0,
-      "year": 2026,
+      "current_number": 792,
+      "year": 2526,
       "description": "Receipt Voucher"
     },
     {
       "id": "sales_invoice",
       "prefix": "INV",
-      "current_number": 0,
-      "year": 2026,
+      "current_number": 942,
+      "year": 2526,
       "description": "Sales Invoice"
+    },
+    {
+      "id": "sales_invoice_v2",
+      "prefix": "INV2",
+      "current_number": 20,
+      "year": 2526,
+      "description": "Consolidated Sales Invoice"
+    },
+    {
+      "id": "sales_return",
+      "prefix": "SRN",
+      "current_number": 24,
+      "year": 2526,
+      "description": "Sales Return"
+    },
+    {
+      "id": "stock_adjustment",
+      "prefix": "STA",
+      "current_number": 0,
+      "year": 2526,
+      "description": "Stock Adjustment"
+    },
+    {
+      "id": "stock_transfer",
+      "prefix": "STR",
+      "current_number": 29,
+      "year": 2526,
+      "description": "Stock Transfer"
+    },
+    {
+      "id": "tds_entry",
+      "prefix": "TDS",
+      "current_number": 14,
+      "year": 2526,
+      "description": "TDS Entry"
+    },
+    {
+      "id": "vat_challan",
+      "prefix": "VCH",
+      "current_number": 53,
+      "year": 2526,
+      "description": "VAT Challan (Mushak 6.3)"
     }
   ],
   "shortcuts": [
     {
-      "shortcut_code": "AV",
-      "page_name": "Accounting Vouchers",
-      "page_url": "/accounts/vouchers",
-      "module_name": "accounts",
+      "shortcut_code": "ADJ",
+      "page_name": "Stock Adjustments",
+      "page_url": "/inventory/adjustments",
+      "module_name": "inventory",
       "is_active": true
     },
     {
-      "shortcut_code": "COA",
-      "page_name": "Chart of Accounts",
-      "page_url": "/accounts/chart",
-      "module_name": "accounts",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "CV",
-      "page_name": "Contra Vouchers",
-      "page_url": "/accounts/vouchers?tab=cv",
-      "module_name": "accounts",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "JV",
-      "page_name": "Journal Vouchers",
-      "page_url": "/accounts/vouchers?tab=jv",
-      "module_name": "accounts",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "PV",
-      "page_name": "Payment Vouchers",
-      "page_url": "/accounts/vouchers?tab=pv",
-      "module_name": "accounts",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "RV",
-      "page_name": "Receipt Vouchers",
-      "page_url": "/accounts/vouchers?tab=rv",
-      "module_name": "accounts",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "VCS",
-      "page_name": "All Vouchers",
-      "page_url": "/vouchers",
-      "module_name": "accounts",
+      "shortcut_code": "APM",
+      "page_name": "Approval Matrix",
+      "page_url": "/purchase/approval-matrix",
+      "module_name": "purchase",
       "is_active": true
     },
     {
       "shortcut_code": "ATT",
       "page_name": "Attendance",
       "page_url": "/hrm/attendance",
-      "module_name": "attendance",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "BIO",
-      "page_name": "Biometric Devices",
-      "page_url": "/hrm/biometric",
-      "module_name": "attendance",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "FAR",
-      "page_name": "Face Attendance",
-      "page_url": "/hrm/face-attendance",
-      "module_name": "attendance",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "OT",
-      "page_name": "Overtime",
-      "page_url": "/hrm/overtime",
       "module_name": "attendance",
       "is_active": true
     },
@@ -2182,10 +2217,31 @@
       "is_active": true
     },
     {
+      "shortcut_code": "AV",
+      "page_name": "Accounting Vouchers",
+      "page_url": "/accounts/vouchers",
+      "module_name": "accounts",
+      "is_active": true
+    },
+    {
       "shortcut_code": "BAK",
       "page_name": "Backup",
       "page_url": "/admin/backup",
       "module_name": "backup",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "BIL",
+      "page_name": "Supplier Bills",
+      "page_url": "/purchase/bills",
+      "module_name": "purchase",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "BIO",
+      "page_name": "Biometric Devices",
+      "page_url": "/hrm/biometric",
+      "module_name": "attendance",
       "is_active": true
     },
     {
@@ -2196,17 +2252,10 @@
       "is_active": true
     },
     {
-      "shortcut_code": "CB",
-      "page_name": "Cash Book",
-      "page_url": "/bank/cashbook",
-      "module_name": "bank",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "BRN",
-      "page_name": "Branches",
-      "page_url": "/admin/branches",
-      "module_name": "branches",
+      "shortcut_code": "BOM",
+      "page_name": "Bill of Materials",
+      "page_url": "/manufacturing/bom",
+      "module_name": "manufacturing",
       "is_active": true
     },
     {
@@ -2217,6 +2266,48 @@
       "is_active": true
     },
     {
+      "shortcut_code": "BRN",
+      "page_name": "Branches",
+      "page_url": "/admin/branches",
+      "module_name": "branches",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "CAT",
+      "page_name": "Categories",
+      "page_url": "/inventory/categories",
+      "module_name": "inventory",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "CB",
+      "page_name": "Cash Book",
+      "page_url": "/bank/cashbook",
+      "module_name": "bank",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "CMA",
+      "page_name": "Purchase COA Mapping",
+      "page_url": "/purchase/coa-mapping",
+      "module_name": "purchase",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "COA",
+      "page_name": "Chart of Accounts",
+      "page_url": "/accounts/chart",
+      "module_name": "accounts",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "CRV",
+      "page_name": "Customer Receive",
+      "page_url": "/sales-workflow/customer-receive",
+      "module_name": "sales",
+      "is_active": true
+    },
+    {
       "shortcut_code": "CUS",
       "page_name": "Customers",
       "page_url": "/customers",
@@ -2224,24 +2315,10 @@
       "is_active": true
     },
     {
-      "shortcut_code": "NUM",
-      "page_name": "Document Numbering",
-      "page_url": "/admin/numbering",
-      "module_name": "document_numbering",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "EMP",
-      "page_name": "Employees",
-      "page_url": "/hrm/employees",
-      "module_name": "employees",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "FY",
-      "page_name": "Financial Years",
-      "page_url": "/admin/financial-years",
-      "module_name": "financial_years",
+      "shortcut_code": "CV",
+      "page_name": "Contra Vouchers",
+      "page_url": "/accounts/vouchers?tab=cv",
+      "module_name": "accounts",
       "is_active": true
     },
     {
@@ -2252,10 +2329,10 @@
       "is_active": true
     },
     {
-      "shortcut_code": "PROF",
-      "page_name": "My Profile",
-      "page_url": "/profile",
-      "module_name": "general",
+      "shortcut_code": "DC",
+      "page_name": "Delivery Challan",
+      "page_url": "/sales-workflow/delivery-challan",
+      "module_name": "sales",
       "is_active": true
     },
     {
@@ -2273,6 +2350,62 @@
       "is_active": true
     },
     {
+      "shortcut_code": "DIA",
+      "page_name": "Diagnostics",
+      "page_url": "/admin/diagnostics",
+      "module_name": "settings",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "EAP",
+      "page_name": "Employee Approvals",
+      "page_url": "/hrm/employee-approvals",
+      "module_name": "hrm",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "EMP",
+      "page_name": "Employees",
+      "page_url": "/hrm/employees",
+      "module_name": "employees",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "FAR",
+      "page_name": "Face Attendance",
+      "page_url": "/hrm/face-attendance",
+      "module_name": "attendance",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "FND",
+      "page_name": "Funds",
+      "page_url": "/hrm/funds",
+      "module_name": "payroll",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "FY",
+      "page_name": "Financial Years",
+      "page_url": "/admin/financial-years",
+      "module_name": "financial_years",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "GDS",
+      "page_name": "GitHub Deploy Sync",
+      "page_url": "/admin/github-deploy",
+      "module_name": "admin",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "GRN",
+      "page_name": "Goods Received Notes",
+      "page_url": "/purchase/grns",
+      "module_name": "purchase",
+      "is_active": true
+    },
+    {
       "shortcut_code": "HDOC",
       "page_name": "Employee Documents",
       "page_url": "/hrm/documents",
@@ -2287,45 +2420,24 @@
       "is_active": true
     },
     {
+      "shortcut_code": "HRR",
+      "page_name": "HRM Reports",
+      "page_url": "/hrm/reports",
+      "module_name": "reports",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "HRV",
+      "page_name": "HO Receive",
+      "page_url": "/sales-workflow/ho-receive",
+      "module_name": "sales",
+      "is_active": true
+    },
+    {
       "shortcut_code": "HSC",
       "page_name": "Sections",
       "page_url": "/hrm/sections",
       "module_name": "hrm",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "IDC",
-      "page_name": "ID Cards",
-      "page_url": "/hrm/id-cards",
-      "module_name": "hrm",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "LA",
-      "page_name": "Login Activity",
-      "page_url": "/hrm/login-activity",
-      "module_name": "hrm",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "SHF",
-      "page_name": "Shifts",
-      "page_url": "/hrm/shifts",
-      "module_name": "hrm",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "ADJ",
-      "page_name": "Stock Adjustments",
-      "page_url": "/inventory/adjustments",
-      "module_name": "inventory",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "CAT",
-      "page_name": "Categories",
-      "page_url": "/inventory/categories",
-      "module_name": "inventory",
       "is_active": true
     },
     {
@@ -2336,10 +2448,31 @@
       "is_active": true
     },
     {
+      "shortcut_code": "IDC",
+      "page_name": "ID Cards",
+      "page_url": "/hrm/id-cards",
+      "module_name": "hrm",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "IM",
+      "page_name": "IFRS Mapping",
+      "page_url": "/admin/ifrs-mapping",
+      "module_name": "settings",
+      "is_active": true
+    },
+    {
       "shortcut_code": "INV",
       "page_name": "Inventory",
       "page_url": "/inventory",
       "module_name": "inventory",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "IQ",
+      "page_name": "Invoice Queue",
+      "page_url": "/sales-workflow/invoice-queue",
+      "module_name": "sales",
       "is_active": true
     },
     {
@@ -2350,45 +2483,24 @@
       "is_active": true
     },
     {
-      "shortcut_code": "PRDS",
-      "page_name": "Products",
-      "page_url": "/products",
-      "module_name": "inventory",
+      "shortcut_code": "JV",
+      "page_name": "Journal Vouchers",
+      "page_url": "/accounts/vouchers?tab=jv",
+      "module_name": "accounts",
       "is_active": true
     },
     {
-      "shortcut_code": "SG",
-      "page_name": "Stock Groups",
-      "page_url": "/inventory/stock-groups",
-      "module_name": "inventory",
+      "shortcut_code": "LA",
+      "page_name": "Login Activity",
+      "page_url": "/hrm/login-activity",
+      "module_name": "hrm",
       "is_active": true
     },
     {
-      "shortcut_code": "SL",
-      "page_name": "Stock Ledger",
-      "page_url": "/inventory/stock-ledger",
-      "module_name": "inventory",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "TRF",
-      "page_name": "Stock Transfers",
-      "page_url": "/inventory/transfers",
-      "module_name": "inventory",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "UNT",
-      "page_name": "Units",
-      "page_url": "/inventory/units",
-      "module_name": "inventory",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "WH",
-      "page_name": "Warehouses",
-      "page_url": "/inventory/warehouses",
-      "module_name": "inventory",
+      "shortcut_code": "LC",
+      "page_name": "Letters of Credit",
+      "page_url": "/purchase/lc",
+      "module_name": "purchase",
       "is_active": true
     },
     {
@@ -2399,10 +2511,10 @@
       "is_active": true
     },
     {
-      "shortcut_code": "BOM",
-      "page_name": "Bill of Materials",
-      "page_url": "/manufacturing/bom",
-      "module_name": "manufacturing",
+      "shortcut_code": "M91",
+      "page_name": "Mushak 9.1",
+      "page_url": "/sales-workflow/reports/mushak-9-1",
+      "module_name": "reports",
       "is_active": true
     },
     {
@@ -2420,13 +2532,6 @@
       "is_active": true
     },
     {
-      "shortcut_code": "PROD",
-      "page_name": "Production",
-      "page_url": "/manufacturing/production",
-      "module_name": "manufacturing",
-      "is_active": true
-    },
-    {
       "shortcut_code": "MSG",
       "page_name": "Messaging",
       "page_url": "/messaging",
@@ -2434,17 +2539,17 @@
       "is_active": true
     },
     {
-      "shortcut_code": "FND",
-      "page_name": "Funds",
-      "page_url": "/hrm/funds",
-      "module_name": "payroll",
+      "shortcut_code": "NUM",
+      "page_name": "Document Numbering",
+      "page_url": "/admin/numbering",
+      "module_name": "document_numbering",
       "is_active": true
     },
     {
-      "shortcut_code": "PAY",
-      "page_name": "Payroll",
-      "page_url": "/hrm/payroll",
-      "module_name": "payroll",
+      "shortcut_code": "OT",
+      "page_name": "Overtime",
+      "page_url": "/hrm/overtime",
+      "module_name": "attendance",
       "is_active": true
     },
     {
@@ -2452,6 +2557,20 @@
       "page_name": "My Attendance",
       "page_url": "/portal/attendance",
       "module_name": "portal",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "PAL",
+      "page_name": "Purchase Audit Log",
+      "page_url": "/purchase/audit-log",
+      "module_name": "purchase",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "PAY",
+      "page_name": "Payroll",
+      "page_url": "/hrm/payroll",
+      "module_name": "payroll",
       "is_active": true
     },
     {
@@ -2476,10 +2595,52 @@
       "is_active": true
     },
     {
+      "shortcut_code": "PO",
+      "page_name": "Purchase Orders",
+      "page_url": "/sales-workflow/po",
+      "module_name": "sales",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "POR",
+      "page_name": "Purchase Orders",
+      "page_url": "/purchase/orders",
+      "module_name": "purchase",
+      "is_active": true
+    },
+    {
       "shortcut_code": "PP",
       "page_name": "My Portal Profile",
       "page_url": "/portal/profile",
       "module_name": "portal",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "PRDS",
+      "page_name": "Products",
+      "page_url": "/products",
+      "module_name": "inventory",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "PROD",
+      "page_name": "Production",
+      "page_url": "/manufacturing/production",
+      "module_name": "manufacturing",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "PROF",
+      "page_name": "My Profile",
+      "page_url": "/profile",
+      "module_name": "general",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "PRT",
+      "page_name": "Purchase Returns",
+      "page_url": "/purchase/returns",
+      "module_name": "purchase",
       "is_active": true
     },
     {
@@ -2490,31 +2651,31 @@
       "is_active": true
     },
     {
-      "shortcut_code": "PR",
-      "page_name": "Purchase Returns",
-      "page_url": "/purchase/returns",
+      "shortcut_code": "PST",
+      "page_name": "Purchase Settings",
+      "page_url": "/purchase/settings",
+      "module_name": "purchase",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "PTY",
+      "page_name": "Purchase Types",
+      "page_url": "/purchase/types",
       "module_name": "purchase",
       "is_active": true
     },
     {
       "shortcut_code": "PUR",
-      "page_name": "Purchases",
+      "page_name": "Purchase Dashboard",
       "page_url": "/purchase",
       "module_name": "purchase",
       "is_active": true
     },
     {
-      "shortcut_code": "HRR",
-      "page_name": "HRM Reports",
-      "page_url": "/hrm/reports",
-      "module_name": "reports",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "M91",
-      "page_name": "Mushak 9.1",
-      "page_url": "/sales-workflow/reports/mushak-9-1",
-      "module_name": "reports",
+      "shortcut_code": "PV",
+      "page_name": "Payment Vouchers",
+      "page_url": "/accounts/vouchers?tab=pv",
+      "module_name": "accounts",
       "is_active": true
     },
     {
@@ -2528,20 +2689,6 @@
       "shortcut_code": "RAL",
       "page_name": "Account Ledger",
       "page_url": "/reports/account-ledger",
-      "module_name": "reports",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "RAP",
-      "page_name": "Accounts Payable",
-      "page_url": "/reports/accounts-payable",
-      "module_name": "reports",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "RAPA",
-      "page_name": "AP Aging",
-      "page_url": "/reports/ap-aging",
       "module_name": "reports",
       "is_active": true
     },
@@ -2623,10 +2770,10 @@
       "is_active": true
     },
     {
-      "shortcut_code": "REA",
-      "page_name": "Expense Analysis",
-      "page_url": "/reports/expense-analysis",
-      "module_name": "reports",
+      "shortcut_code": "REQ",
+      "page_name": "Purchase Requisitions",
+      "page_url": "/purchase/requisitions",
+      "module_name": "purchase",
       "is_active": true
     },
     {
@@ -2693,6 +2840,13 @@
       "is_active": true
     },
     {
+      "shortcut_code": "ROL",
+      "page_name": "Roles",
+      "page_url": "/admin/roles",
+      "module_name": "roles",
+      "is_active": true
+    },
+    {
       "shortcut_code": "RPL",
       "page_name": "Profit & Loss",
       "page_url": "/reports/profit-loss",
@@ -2716,13 +2870,13 @@
     {
       "shortcut_code": "RPUR",
       "page_name": "Purchase Report",
-      "page_url": "/reports/purchase",
+      "page_url": "/purchase/reports",
       "module_name": "reports",
       "is_active": true
     },
     {
-      "shortcut_code": "RPVC",
-      "page_name": "PO vs VAT Challan",
+      "shortcut_code": "RPVD",
+      "page_name": "PO vs Dispatch",
       "page_url": "/sales-workflow/reports/po-vs-vat-challan",
       "module_name": "reports",
       "is_active": true
@@ -2777,59 +2931,17 @@
       "is_active": true
     },
     {
+      "shortcut_code": "RV",
+      "page_name": "Receipt Vouchers",
+      "page_url": "/accounts/vouchers?tab=rv",
+      "module_name": "accounts",
+      "is_active": true
+    },
+    {
       "shortcut_code": "RVR",
       "page_name": "VAT Register",
       "page_url": "/sales-workflow/reports/vat-register",
       "module_name": "reports",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "SWR",
-      "page_name": "Sales Workflow Reports",
-      "page_url": "/sales-workflow/reports",
-      "module_name": "reports",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "ROL",
-      "page_name": "Roles",
-      "page_url": "/admin/roles",
-      "module_name": "roles",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "CRV",
-      "page_name": "Customer Receive",
-      "page_url": "/sales-workflow/customer-receive",
-      "module_name": "sales",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "DC",
-      "page_name": "Delivery Challan",
-      "page_url": "/sales-workflow/delivery-challan",
-      "module_name": "sales",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "HRV",
-      "page_name": "HO Receive",
-      "page_url": "/sales-workflow/ho-receive",
-      "module_name": "sales",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "IQ",
-      "page_name": "Invoice Queue",
-      "page_url": "/sales-workflow/invoice-queue",
-      "module_name": "sales",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "PO",
-      "page_name": "Purchase Orders",
-      "page_url": "/sales-workflow/po",
-      "module_name": "sales",
       "is_active": true
     },
     {
@@ -2840,45 +2952,10 @@
       "is_active": true
     },
     {
-      "shortcut_code": "SR",
-      "page_name": "Sales Returns",
-      "page_url": "/sales/returns",
-      "module_name": "sales",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "SWI",
-      "page_name": "Sales Workflow Invoices",
-      "page_url": "/sales-workflow/invoices",
-      "module_name": "sales",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "TDS",
-      "page_name": "TDS Entries",
-      "page_url": "/sales-workflow/tds",
-      "module_name": "sales",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "VCH",
-      "page_name": "VAT Challan (6.3)",
-      "page_url": "/sales-workflow/vat-challan",
-      "module_name": "sales",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "DIA",
-      "page_name": "Diagnostics",
-      "page_url": "/admin/diagnostics",
-      "module_name": "settings",
-      "is_active": true
-    },
-    {
-      "shortcut_code": "IM",
-      "page_name": "IFRS Mapping",
-      "page_url": "/admin/ifrs-mapping",
-      "module_name": "settings",
+      "shortcut_code": "SC",
+      "page_name": "Page Shortcuts",
+      "page_url": "/admin/shortcuts",
+      "module_name": "shortcuts",
       "is_active": true
     },
     {
@@ -2889,10 +2966,24 @@
       "is_active": true
     },
     {
-      "shortcut_code": "SC",
-      "page_name": "Page Shortcuts",
-      "page_url": "/admin/shortcuts",
-      "module_name": "shortcuts",
+      "shortcut_code": "SG",
+      "page_name": "Stock Groups",
+      "page_url": "/inventory/stock-groups",
+      "module_name": "inventory",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "SHF",
+      "page_name": "Shifts",
+      "page_url": "/hrm/shifts",
+      "module_name": "hrm",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "SL",
+      "page_name": "Stock Ledger",
+      "page_url": "/inventory/stock-ledger",
+      "module_name": "inventory",
       "is_active": true
     },
     {
@@ -2903,10 +2994,59 @@
       "is_active": true
     },
     {
+      "shortcut_code": "SPY",
+      "page_name": "Supplier Payments",
+      "page_url": "/purchase/payments",
+      "module_name": "purchase",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "SR",
+      "page_name": "Sales Returns",
+      "page_url": "/sales/returns",
+      "module_name": "sales",
+      "is_active": true
+    },
+    {
       "shortcut_code": "SUP",
       "page_name": "Suppliers",
-      "page_url": "/suppliers",
-      "module_name": "suppliers",
+      "page_url": "/purchase/suppliers",
+      "module_name": "purchase",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "SWI",
+      "page_name": "Sales Workflow Invoices",
+      "page_url": "/sales-workflow/invoices",
+      "module_name": "sales",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "SWR",
+      "page_name": "Sales Workflow Reports",
+      "page_url": "/sales-workflow/reports",
+      "module_name": "reports",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "TDS",
+      "page_name": "TDS Entries",
+      "page_url": "/sales-workflow/tds",
+      "module_name": "sales",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "TRF",
+      "page_name": "Stock Transfers",
+      "page_url": "/inventory/transfers",
+      "module_name": "inventory",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "UNT",
+      "page_name": "Units",
+      "page_url": "/inventory/units",
+      "module_name": "inventory",
       "is_active": true
     },
     {
@@ -2914,6 +3054,27 @@
       "page_name": "Users",
       "page_url": "/admin/users",
       "module_name": "users",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "VCH",
+      "page_name": "VAT Challan (6.3)",
+      "page_url": "/sales-workflow/vat-challan",
+      "module_name": "sales",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "VCS",
+      "page_name": "All Vouchers",
+      "page_url": "/vouchers",
+      "module_name": "accounts",
+      "is_active": true
+    },
+    {
+      "shortcut_code": "WH",
+      "page_name": "Warehouses",
+      "page_url": "/inventory/warehouses",
+      "module_name": "inventory",
       "is_active": true
     }
   ],
@@ -4619,83 +4780,71 @@
     {
       "code": "LOCAL",
       "name": "Local Purchase",
-      "description": "Standard local supplier purchase",
+      "description": "Domestic supplier purchases",
       "is_lc": false,
       "is_capex": false,
       "is_service": false,
       "requires_grn": true,
       "requires_quality_check": false,
-      "default_approval_flow": "standard",
+      "default_approval_flow": null,
       "is_active": true
     },
     {
       "code": "IMPORT",
       "name": "Import (LC)",
-      "description": "Import via Letter of Credit",
+      "description": "Imported goods via LC",
       "is_lc": true,
       "is_capex": false,
       "is_service": false,
       "requires_grn": true,
-      "requires_quality_check": true,
-      "default_approval_flow": "high_value",
-      "is_active": true
-    },
-    {
-      "code": "CAPEX",
-      "name": "Capital Expenditure",
-      "description": "Fixed asset purchase",
-      "is_lc": false,
-      "is_capex": true,
-      "is_service": false,
-      "requires_grn": true,
       "requires_quality_check": false,
-      "default_approval_flow": "capex",
+      "default_approval_flow": null,
       "is_active": true
     },
     {
       "code": "SERVICE",
-      "name": "Service Purchase",
-      "description": "Service/contract purchase",
+      "name": "Service",
+      "description": "Non-stock service purchase",
       "is_lc": false,
       "is_capex": false,
       "is_service": true,
       "requires_grn": false,
       "requires_quality_check": false,
-      "default_approval_flow": "standard",
+      "default_approval_flow": null,
       "is_active": true
     },
     {
-      "code": "CASH",
-      "name": "Cash Purchase",
-      "description": "Direct cash purchase",
+      "code": "ASSET",
+      "name": "Capital / Asset",
+      "description": "Fixed asset acquisition",
       "is_lc": false,
-      "is_capex": false,
+      "is_capex": true,
       "is_service": false,
       "requires_grn": true,
       "requires_quality_check": false,
-      "default_approval_flow": "fast",
+      "default_approval_flow": null,
       "is_active": true
     }
   ],
   "purchase_settings": {
-    "enable_pr_workflow": true,
-    "enable_po_amendment": true,
-    "enable_partial_grn": true,
-    "enable_3way_match": true,
-    "three_way_tolerance_pct": 2,
-    "enable_landed_cost": true,
-    "enable_lc": true,
-    "enable_supplier_advance": true,
+    "po_prefix": "PO2",
+    "pr_prefix": "PR",
+    "bill_prefix": "SB",
+    "grn_prefix": "GRN",
+    "lc_prefix": "LC",
+    "pay_prefix": "SP",
+    "default_currency": "BDT",
+    "default_vat_percent": 15.0,
+    "default_ait_percent": 0.0,
+    "enable_lc_module": true,
+    "enable_landed_cost": false,
+    "enable_multi_currency": false,
+    "enforce_grn_for_bill": true,
+    "allow_over_receive": false,
+    "allow_over_bill": false,
     "auto_post_grn": true,
     "auto_post_bill": true,
-    "auto_post_payment": true,
-    "default_vat_pct": 15,
-    "default_ait_pct": 5,
-    "default_tds_pct": 3,
-    "po_default_currency": "BDT",
-    "require_pr_for_po": false,
-    "require_quote_attachment": false,
-    "budget_check_threshold": 0
+    "auto_post_payment": true
   },
   "purchase_coa_mapping": [
     {
