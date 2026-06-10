@@ -545,6 +545,65 @@ export default function BrandingPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* ---------- Contrast Validation ---------- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" /> Contrast Validation (WCAG AA ≥ 4.5)
+          </CardTitle>
+          <CardDescription>
+            Ensures text and icons stay readable on your brand surfaces — checked live in both light & dark mode.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { label: "White text on Primary", ratio: contrast.onPrimary, ok: contrast.pOk },
+            { label: "Dark text on Accent", ratio: contrast.onAccent, ok: contrast.aOk },
+            { label: "Sidebar text on Primary", ratio: contrast.sidebarText, ok: contrast.sOk },
+          ].map((c) => (
+            <div key={c.label} className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <div className="text-xs text-muted-foreground">{c.label}</div>
+                <div className="font-semibold tabular-nums">{c.ratio.toFixed(2)} : 1</div>
+              </div>
+              {c.ok ? (
+                <Badge className="gap-1"><CheckCircle2 className="w-3 h-3" /> Pass</Badge>
+              ) : (
+                <Badge variant="destructive" className="gap-1"><AlertTriangle className="w-3 h-3" /> Low</Badge>
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* ---------- Derived Theme Tokens ---------- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Palette className="w-4 h-4" /> Derived Theme Tokens
+          </CardTitle>
+          <CardDescription>
+            Live values applied to <code>:root</code>. Every component (button, card, table, sidebar) reads these.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {derivedTokens.map((t) => (
+              <div key={t.name} className="flex items-center gap-3 rounded-md border p-2">
+                <div
+                  className="w-8 h-8 rounded border shrink-0"
+                  style={{ background: `hsl(${t.value})` }}
+                />
+                <div className="min-w-0">
+                  <div className="text-xs font-mono truncate">{t.name}</div>
+                  <div className="text-[10px] text-muted-foreground font-mono truncate">{t.value || "—"}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
