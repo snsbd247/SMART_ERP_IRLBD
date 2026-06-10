@@ -35,26 +35,28 @@ class SalesWorkflowDemoSeeder extends Seeder
             $customerId = $customer->id;
         }
 
-        // 2. Demo products
+        // 2. Demo items (item_master is the FK target for purchase_order_items.product_id)
         $productIds = [];
         foreach ([
             ['code' => 'DEMO-PROD-A', 'name' => 'Demo Product A', 'rate' => 1000.00],
             ['code' => 'DEMO-PROD-B', 'name' => 'Demo Product B', 'rate' => 500.00],
         ] as $p) {
-            $existing = DB::table('products')->where('product_code', $p['code'])->first();
+            $existing = DB::table('item_master')->where('item_code', $p['code'])->first();
             if ($existing) {
                 $productIds[] = ['id' => $existing->id, 'rate' => $p['rate']];
                 continue;
             }
             $pid = (string) Str::uuid();
-            DB::table('products')->insert([
+            DB::table('item_master')->insert([
                 'id' => $pid,
-                'product_code' => $p['code'],
-                'product_name' => $p['name'],
-                'unit' => 'pcs',
+                'item_code' => $p['code'],
+                'item_name' => $p['name'],
+                'item_type' => 'product',
                 'cost_price' => $p['rate'] * 0.7,
                 'selling_price' => $p['rate'],
-                'low_stock_threshold' => 10,
+                'opening_stock' => 1000,
+                'min_stock_level' => 10,
+                'is_stock_item' => 1,
                 'status' => 'active',
                 'created_at' => $now,
                 'updated_at' => $now,
