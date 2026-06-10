@@ -644,11 +644,6 @@
       "account_code": "6102",
       "ifrs_line": "Current tax liabilities",
       "notes": "Output VAT"
-    },
-    {
-      "account_code": "6103",
-      "ifrs_line": "Current tax liabilities",
-      "notes": "VAT payable duplicate"
     }
   ],
   "sequences": [
