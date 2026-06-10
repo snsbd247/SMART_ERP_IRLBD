@@ -30,6 +30,47 @@ interface SectionResult {
   error?: string;
 }
 
+const LEGACY_IFRS_LINE_MAP: Record<string, string> = {
+  "revenue": "revenue",
+  "total income": "revenue",
+  "cost of sales": "cogs",
+  "administrative expenses": "admin_expense",
+  "operating expenses": "admin_expense",
+  "selling and distribution expenses": "selling_expense",
+  "distribution costs": "selling_expense",
+  "finance costs": "financial_expense",
+  "finance income": "other_income",
+  "other income": "other_income",
+  "income tax expense": "tax_provision",
+  "current tax liabilities": "provision_income_tax",
+  "deferred tax assets": "deferred_tax_asset",
+  "property, plant and equipment": "ppe",
+  "intangible assets": "intangible_asset",
+  "inventories": "inventory",
+  "current tax assets": "advance_income_tax",
+  "advances, deposits and prepayments": "advance_deposit",
+  "other current assets": "advance_deposit",
+  "trade receivables": "accounts_receivable",
+  "trade and other receivables": "accounts_receivable",
+  "cash and cash equivalents": "cash_bank",
+  "issued capital": "share_capital",
+  "share capital": "share_capital",
+  "total equity": "retained_earnings",
+  "retained earnings": "retained_earnings",
+  "revaluation reserve": "revaluation_reserve",
+  "long-term borrowings": "long_term_loan",
+  "total liabilities": "other_liability",
+  "accrued expenses and other current liabilities": "other_liability",
+  "other current liabilities": "other_liability",
+  "employee benefit obligations": "other_liability",
+  "trade payables": "accounts_payable",
+  "trade and other payables": "accounts_payable",
+  "short-term borrowings": "short_term_loan",
+  "total assets": "advance_deposit",
+};
+
+const normalizeIfrsLine = (line: string): string => LEGACY_IFRS_LINE_MAP[line.trim().toLowerCase()] ?? line;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const json = (data: unknown, status = 200) =>
@@ -154,11 +195,12 @@ Deno.serve(async (req) => {
         const accId = codeToId.get(m.account_code);
         if (!accId) { ifrsRes.skipped++; continue; }
         const prev = existingMap.get(accId);
-        if (prev && prev.ifrs_line === m.ifrs_line && (prev.notes ?? null) === (m.notes ?? null)) {
+        const ifrsLine = normalizeIfrsLine(m.ifrs_line);
+        if (prev && normalizeIfrsLine(prev.ifrs_line) === ifrsLine && (prev.notes ?? null) === (m.notes ?? null)) {
           ifrsRes.skipped++;
           continue;
         }
-        rows.push({ account_id: accId, ifrs_line: m.ifrs_line, notes: m.notes });
+        rows.push({ account_id: accId, ifrs_line: ifrsLine, notes: m.notes });
       }
       if (rows.length > 0) {
         const { error } = await admin
