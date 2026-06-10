@@ -348,16 +348,17 @@ export const AppSidebar = () => {
 
   const sidebarContent = (
     <>
-      <div className="p-3 sm:p-4 border-b border-sidebar-border flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="min-w-0">
-            <h2 className="font-bold text-sidebar-foreground text-sm tracking-tight truncate">{branding.software_name || "ERP System"}</h2>
-            {profile && (
-              <p className="text-[10px] text-sidebar-foreground/60 truncate">
-                {profile.name || profile.email}
-              </p>
-            )}
-          </div>
+      <div
+        data-testid="sidebar-header"
+        className="px-4 py-3 border-b border-sidebar-border flex items-center justify-between gap-2"
+      >
+        <div className="min-w-0">
+          <h2 className="font-bold text-sidebar-foreground text-sm tracking-tight truncate">{branding.software_name || "ERP System"}</h2>
+          {profile && (
+            <p className="text-[10px] text-sidebar-foreground/60 truncate">
+              {profile.name || profile.email}
+            </p>
+          )}
         </div>
         {isMobile && (
           <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)} className="h-8 w-8 shrink-0">
