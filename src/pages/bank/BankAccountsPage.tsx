@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Landmark } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Landmark, Plus } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
 const BankAccountsPage = () => {
   const [accounts, setAccounts] = useState<any[]>([]);
   const { fc } = useCurrency();
+  const navigate = useNavigate();
 
   useEffect(() => {
     supabase
@@ -20,7 +23,12 @@ const BankAccountsPage = () => {
 
   return (
     <div className="p-4 lg:p-6 max-w-[1200px] mx-auto space-y-4">
-      <h1 className="text-xl font-bold text-foreground">Bank Accounts</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-foreground">Bank Accounts</h1>
+        <Button onClick={() => navigate("/accounts/chart?new=bank")} size="sm">
+          <Plus className="w-4 h-4 mr-2" />Add Bank Account
+        </Button>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -46,7 +54,7 @@ const BankAccountsPage = () => {
                   <TableCell className="text-right tabular-nums">{fc(Number(a.opening_balance))}</TableCell>
                 </TableRow>
               ))}
-              {accounts.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No bank accounts found. Add accounts with "Bank" in the name in Chart of Accounts.</TableCell></TableRow>}
+              {accounts.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No bank accounts found. Click "Add Bank Account" to create one (account name must contain "Bank").</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
