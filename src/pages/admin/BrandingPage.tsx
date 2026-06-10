@@ -329,7 +329,20 @@ export default function BrandingPage() {
           </h1>
           <p className="text-muted-foreground text-sm">Configure your ERP visual identity and branding</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <input
+            ref={importRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={handleImport}
+          />
+          <Button variant="outline" onClick={() => importRef.current?.click()}>
+            <FileUp className="w-4 h-4 mr-2" /> Import
+          </Button>
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="w-4 h-4 mr-2" /> Export
+          </Button>
           <Button variant="outline" onClick={() => setPreviewMode(!previewMode)}>
             <Eye className="w-4 h-4 mr-2" />{previewMode ? "Close Preview" : "Preview"}
           </Button>
