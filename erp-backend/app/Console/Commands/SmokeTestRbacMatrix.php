@@ -39,31 +39,57 @@ class SmokeTestRbacMatrix extends Command
         }
 
         $scopedEmail = 'rbac.smoke@test.local';
-        $scoped = User::where('email', $scopedEmail)->first();
+        $scoped = User::withTrashed()->where('email', $scopedEmail)->first();
         if (!$scoped) {
-            $scoped = User::forceCreate([
-                'id' => (string) Str::uuid(),
+            $scopedId = (string) Str::uuid();
+            DB::table('users')->insert([
+                'id' => $scopedId,
                 'username' => 'rbac_smoke',
                 'name' => 'RBAC Smoke',
                 'email' => $scopedEmail,
                 'password' => Hash::make(Str::random(24)),
                 'employee_id' => $emp->id,
+                'status' => 'active',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
+            $scoped = User::findOrFail($scopedId);
         } else {
-            $scoped->forceFill(['username' => 'rbac_smoke', 'employee_id' => $emp->id])->save();
+            DB::table('users')->where('id', $scoped->id)->update([
+                'username' => 'rbac_smoke',
+                'employee_id' => $emp->id,
+                'status' => 'active',
+                'deleted_at' => null,
+                'updated_at' => now(),
+            ]);
+            $scoped = User::findOrFail($scoped->id);
         }
 
         $noRoleEmail = 'rbac.norole@test.local';
-        $noRole = User::where('email', $noRoleEmail)->first();
+        $noRole = User::withTrashed()->where('email', $noRoleEmail)->first();
         if (!$noRole) {
-            $noRole = User::forceCreate([
-                'id' => (string) Str::uuid(),
+            $noRoleId = (string) Str::uuid();
+            DB::table('users')->insert([
+                'id' => $noRoleId,
                 'username' => 'rbac_norole',
                 'name' => 'RBAC NoRole',
                 'email' => $noRoleEmail,
                 'password' => Hash::make(Str::random(24)),
                 'employee_id' => $emp->id,
+                'status' => 'active',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
+            $noRole = User::findOrFail($noRoleId);
+        } else {
+            DB::table('users')->where('id', $noRole->id)->update([
+                'username' => 'rbac_norole',
+                'employee_id' => $emp->id,
+                'status' => 'active',
+                'deleted_at' => null,
+                'updated_at' => now(),
+            ]);
+            $noRole = User::findOrFail($noRole->id);
         }
 
         // 3. Custom role: sales.view only
