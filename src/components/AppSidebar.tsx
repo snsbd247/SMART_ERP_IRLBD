@@ -353,14 +353,14 @@ export const AppSidebar = () => {
           {branding.company_logo_url ? (
             <img src={branding.company_logo_url} alt="Logo" className="w-7 h-7 object-contain rounded shrink-0" />
           ) : (
-            <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
-              <Building2 className="w-4 h-4 text-primary" />
+            <div className="w-7 h-7 rounded bg-sidebar-primary/20 flex items-center justify-center shrink-0">
+              <Building2 className="w-4 h-4 text-sidebar-primary" />
             </div>
           )}
           <div className="min-w-0">
             <h2 className="font-bold text-sidebar-foreground text-sm tracking-tight truncate">{branding.software_name || "ERP System"}</h2>
             {profile && (
-              <p className="text-[10px] text-muted-foreground truncate">
+              <p className="text-[10px] text-sidebar-foreground/60 truncate">
                 {profile.name || profile.email}
               </p>
             )}
