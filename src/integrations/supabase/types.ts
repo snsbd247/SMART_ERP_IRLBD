@@ -5732,6 +5732,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_theme_preferences: {
+        Row: {
+          created_at: string
+          primary_color: string
+          secondary_color: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          primary_color: string
+          secondary_color: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          primary_color?: string
+          secondary_color?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vat_challan_items: {
         Row: {
           id: string
