@@ -47,6 +47,52 @@ export const IFRS_LINE_LABEL: Record<IFRSLine, string> = {
   vat_payable: "VAT Current Account",
 };
 
+const LEGACY_IFRS_LINE_MAP: Record<string, IFRSLine> = {
+  "revenue": "revenue",
+  "total income": "revenue",
+  "cost of sales": "cogs",
+  "administrative expenses": "admin_expense",
+  "operating expenses": "admin_expense",
+  "selling and distribution expenses": "selling_expense",
+  "distribution costs": "selling_expense",
+  "finance costs": "financial_expense",
+  "finance income": "other_income",
+  "other income": "other_income",
+  "income tax expense": "tax_provision",
+  "current tax liabilities": "provision_income_tax",
+  "deferred tax assets": "deferred_tax_asset",
+  "property, plant and equipment": "ppe",
+  "intangible assets": "intangible_asset",
+  "inventories": "inventory",
+  "current tax assets": "advance_income_tax",
+  "advances, deposits and prepayments": "advance_deposit",
+  "other current assets": "advance_deposit",
+  "trade receivables": "accounts_receivable",
+  "trade and other receivables": "accounts_receivable",
+  "cash and cash equivalents": "cash_bank",
+  "issued capital": "share_capital",
+  "share capital": "share_capital",
+  "total equity": "retained_earnings",
+  "retained earnings": "retained_earnings",
+  "revaluation reserve": "revaluation_reserve",
+  "long-term borrowings": "long_term_loan",
+  "total liabilities": "other_liability",
+  "accrued expenses and other current liabilities": "other_liability",
+  "other current liabilities": "other_liability",
+  "employee benefit obligations": "other_liability",
+  "trade payables": "accounts_payable",
+  "trade and other payables": "accounts_payable",
+  "short-term borrowings": "short_term_loan",
+  "total assets": "advance_deposit",
+};
+
+export function normalizeIFRSLine(value: string | null | undefined): IFRSLine | null {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if ((IFRS_LINE_LABEL as Record<string, string>)[raw]) return raw as IFRSLine;
+  return LEGACY_IFRS_LINE_MAP[raw.toLowerCase()] ?? null;
+}
+
 const has = (s: string, ...kw: string[]) => kw.some(k => s.includes(k));
 
 // Direct code → IFRS line mapping for the Bangladesh standardized CoA.
