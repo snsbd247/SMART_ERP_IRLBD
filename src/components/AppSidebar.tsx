@@ -388,7 +388,7 @@ export const AppSidebar = () => {
         </nav>
       </ScrollArea>
       <div className="p-2 border-t border-sidebar-border">
-        <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground hover:text-destructive" onClick={signOut}>
+        <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-destructive" onClick={signOut}>
           <LogOut className="w-4 h-4 mr-2" />Sign Out
         </Button>
       </div>
