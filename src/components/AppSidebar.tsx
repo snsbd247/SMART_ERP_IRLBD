@@ -265,7 +265,7 @@ const NavItem = ({ to, label, icon: Icon, end }: { to: string; label: string; ic
     to={to}
     end={end}
     className="flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-    activeClassName="bg-primary/10 text-primary font-medium"
+    activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium shadow-sm"
   >
     <Icon className="w-3.5 h-3.5 shrink-0" />
     <span className="truncate">{label}</span>
@@ -303,16 +303,16 @@ const CollapsibleGroup = ({ group, isModuleEnabled, hasPermission }: { group: Na
     <div>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+        className="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
       >
         <span className="flex items-center gap-2.5 min-w-0">
           <Icon className="w-4 h-4 shrink-0" />
           <span className="truncate">{group.label}</span>
         </span>
-        {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+        {open ? <ChevronDown className="w-3.5 h-3.5 text-sidebar-foreground/60 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-sidebar-foreground/60 shrink-0" />}
       </button>
       {open && (
-        <div className="ml-2 pl-3 border-l border-border/50 space-y-0.5 mt-0.5 mb-1">
+        <div className="ml-2 pl-3 border-l border-sidebar-border/60 space-y-0.5 mt-0.5 mb-1">
           {filteredChildren.map((item) => (
             <NavItem key={item.to + item.label} {...item} />
           ))}
@@ -353,14 +353,14 @@ export const AppSidebar = () => {
           {branding.company_logo_url ? (
             <img src={branding.company_logo_url} alt="Logo" className="w-7 h-7 object-contain rounded shrink-0" />
           ) : (
-            <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
-              <Building2 className="w-4 h-4 text-primary" />
+            <div className="w-7 h-7 rounded bg-sidebar-primary/20 flex items-center justify-center shrink-0">
+              <Building2 className="w-4 h-4 text-sidebar-primary" />
             </div>
           )}
           <div className="min-w-0">
             <h2 className="font-bold text-sidebar-foreground text-sm tracking-tight truncate">{branding.software_name || "ERP System"}</h2>
             {profile && (
-              <p className="text-[10px] text-muted-foreground truncate">
+              <p className="text-[10px] text-sidebar-foreground/60 truncate">
                 {profile.name || profile.email}
               </p>
             )}
@@ -388,7 +388,7 @@ export const AppSidebar = () => {
         </nav>
       </ScrollArea>
       <div className="p-2 border-t border-sidebar-border">
-        <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground hover:text-destructive" onClick={signOut}>
+        <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-destructive" onClick={signOut}>
           <LogOut className="w-4 h-4 mr-2" />Sign Out
         </Button>
       </div>
