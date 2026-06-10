@@ -83,8 +83,14 @@ function buildQS(params: {
     // silently to avoid 500s. Callers must filter via the parent table.
     if (f.col.includes(".")) continue;
     const key = `f[${f.col}][${f.op}]`;
-    if (f.op === "in" && Array.isArray(f.val)) sp.append(key, f.val.join(","));
-    else sp.append(key, f.val === null ? "null" : String(f.val));
+    if (f.op === "in" && Array.isArray(f.val)) {
+      sp.append(key, f.val.map((v) => (typeof v === "boolean" ? (v ? "1" : "0") : v)).join(","));
+    } else if (typeof f.val === "boolean") {
+      // MySQL tinyint(1) stores 1/0; "true"/"false" strings won't match.
+      sp.append(key, f.val ? "1" : "0");
+    } else {
+      sp.append(key, f.val === null ? "null" : String(f.val));
+    }
   }
   for (const o of params.orders) sp.append(`order[${o.col}]`, o.asc ? "asc" : "desc");
   if (params.limit != null) sp.set("limit", String(params.limit));
