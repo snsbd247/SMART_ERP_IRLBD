@@ -66,22 +66,31 @@ export function isSupabaseDisabledError(err: unknown): boolean {
 }
 
 // Auth tokens are stored in sessionStorage so closing the browser/tab logs the
-// user out. Any legacy localStorage tokens are cleared on first read.
-function clearLegacyLocalTokens() {
+// user out. Legacy localStorage tokens are migrated once, then removed.
+function popLegacyLocalToken(): string | null {
   try {
+    const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(LEGACY_TOKEN_KEY);
-  } catch { /* ignore */ }
+    return token;
+  } catch { return null; }
 }
 
 export function getLaravelToken(): string | null {
   if (typeof window === "undefined") return null;
-  clearLegacyLocalTokens();
-  const token = sessionStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(LEGACY_TOKEN_KEY);
+  let token = sessionStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(LEGACY_TOKEN_KEY);
+  if (!token) {
+    token = popLegacyLocalToken();
+    if (token) {
+      sessionStorage.setItem(TOKEN_KEY, token);
+      sessionStorage.setItem(LEGACY_TOKEN_KEY, token);
+    }
+  }
   if (!token) return null;
   if (!/^[\x20-\x7E]+$/.test(token)) {
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(LEGACY_TOKEN_KEY);
+    popLegacyLocalToken();
     return null;
   }
   return token;
@@ -89,7 +98,7 @@ export function getLaravelToken(): string | null {
 
 export function setLaravelToken(token: string | null) {
   if (typeof window === "undefined") return;
-  clearLegacyLocalTokens();
+  popLegacyLocalToken();
   if (token) {
     sessionStorage.setItem(TOKEN_KEY, token);
     sessionStorage.setItem(LEGACY_TOKEN_KEY, token);

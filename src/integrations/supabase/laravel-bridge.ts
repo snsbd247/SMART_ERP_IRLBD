@@ -12,7 +12,7 @@
  * is never contacted.
  */
 
-import { getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
+import { getApiBaseUrl, getLaravelAuthHeaders, getLaravelToken } from "@/lib/laravel-auth";
 
 type Result<T> = { data: T | null; error: { message: string; code?: string } | null };
 
@@ -226,8 +226,7 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
     if (this.table === "company_settings") {
       // Skip authenticated calls when there is no session (e.g. on /login)
       // to avoid noisy 401s before the user signs in.
-      const hasToken = typeof window !== "undefined" &&
-        !!(localStorage.getItem("laravel_auth_token") || localStorage.getItem("auth_token"));
+      const hasToken = !!getLaravelToken();
       if (!hasToken) {
         return { data: (this._single ? null : []) as T, error: null };
       }

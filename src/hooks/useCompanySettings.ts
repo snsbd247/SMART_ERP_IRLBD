@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getApiBaseUrl, getLaravelAuthHeaders, setLaravelToken } from "@/lib/laravel-auth";
+import { getApiBaseUrl, getLaravelAuthHeaders, getLaravelToken, setLaravelToken } from "@/lib/laravel-auth";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface CompanySettings {
@@ -29,7 +29,7 @@ export function useCompanySettings() {
   const fetchSettings = async () => {
     try {
       const base = getApiBaseUrl();
-      const hasToken = typeof window !== "undefined" && !!(localStorage.getItem("laravel_auth_token") || localStorage.getItem("auth_token"));
+      const hasToken = !!getLaravelToken();
       if (base) {
         // Only call the authenticated endpoint when we actually have a session.
         if (!hasToken || !profile) { setLoading(false); return; }
