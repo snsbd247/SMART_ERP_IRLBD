@@ -202,6 +202,17 @@ SUDO
 cd "${APP_DIR}"
 CURRENT_STEP="git-pull"
 log "Pulling latest from origin/${REPO_BRANCH}..."
+# Ensure 'origin' points to the configured REPO_URL (auto-heal stale remotes).
+if git remote get-url origin >/dev/null 2>&1; then
+  CURRENT_ORIGIN="$(git remote get-url origin 2>/dev/null || true)"
+  if [[ -n "${REPO_URL}" && "${CURRENT_ORIGIN}" != "${REPO_URL}" ]]; then
+    log "Updating 'origin' remote: ${CURRENT_ORIGIN} → ${REPO_URL}"
+    git remote set-url origin "${REPO_URL}"
+  fi
+else
+  log "Adding 'origin' remote: ${REPO_URL}"
+  git remote add origin "${REPO_URL}"
+fi
 git fetch --all --prune
 git checkout "${REPO_BRANCH}"
 git reset --hard "origin/${REPO_BRANCH}"
