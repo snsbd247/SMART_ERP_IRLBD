@@ -41,6 +41,9 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
     try {
       const base = getApiBaseUrl();
       if (base) {
+        // Skip authenticated call when no token — avoids spammy 401s on the login screen.
+        const hasToken = typeof window !== "undefined" && !!(localStorage.getItem("laravel_auth_token") || localStorage.getItem("auth_token"));
+        if (!hasToken) { setLoading(false); return; }
         const res = await fetch(`${base}/v1/settings/company`, { headers: getLaravelAuthHeaders() });
         if (res.ok) {
           const payload = await res.json().catch(() => ({}));
