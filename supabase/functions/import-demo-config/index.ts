@@ -179,34 +179,110 @@ Deno.serve(async (req) => {
     // Fallback: auto-map any remaining active CoA accounts that still have no IFRS line.
     // Heuristic based on account_type + code prefix so the IFRS report is never blank.
     try {
-      const inferLine = (type: string, code: string): string => {
+      // Mirrors src/lib/ifrs-mapping.ts defaultMapping(). Guarantees every active
+      // account gets an IFRS line so a re-import never leaves orphans.
+      const CODE_MAP: Record<string, string> = {
+        "1000":"ppe","1100":"ppe","1200":"inventory",
+        "2000":"other_liability","2100":"long_term_loan","2200":"short_term_loan",
+        "3000":"retained_earnings","4000":"revenue",
+        "5000":"cogs","5100":"cogs","5200":"cogs","5300":"cogs",
+        "6000":"admin_expense","6100":"admin_expense","6200":"selling_expense",
+        "6300":"financial_expense","6400":"tax_provision",
+        "1101":"ppe","1102":"intangible_asset","1103":"deferred_tax_asset",
+        "1104":"advance_deposit","1105":"inventory","1106":"advance_deposit",
+        "1107":"advance_income_tax",
+        "1111":"cash_bank","1112":"cash_bank","1113":"cash_bank","1114":"cash_bank",
+        "1201":"ppe","1202":"ppe","1203":"ppe","1204":"ppe","1205":"ppe",
+        "1210":"inventory","1211":"inventory","1212":"inventory","1213":"inventory","1214":"inventory","1215":"inventory",
+        "1220":"advance_income_tax",
+        "1230":"advance_deposit","1231":"advance_deposit","1232":"advance_deposit","1233":"advance_deposit","1234":"advance_deposit",
+        "1250":"cash_bank","1251":"cash_bank","1252":"cash_bank","1253":"cash_bank","1254":"cash_bank","1255":"cash_bank","1256":"cash_bank",
+        "2101":"long_term_loan","2102":"accounts_payable","2103":"other_liability","2104":"vat_payable",
+        "2105":"short_term_loan","2106":"other_liability","2107":"other_liability",
+        "2201":"short_term_loan","2202":"short_term_loan",
+        "2220":"other_liability","2221":"other_liability","2222":"other_liability","2223":"other_liability",
+        "2224":"other_liability","2225":"other_liability","2226":"other_liability","2227":"other_liability",
+        "2228":"vat_payable",
+        "2230":"short_term_loan","2231":"short_term_loan","2232":"short_term_loan","2233":"short_term_loan","2234":"short_term_loan","2235":"short_term_loan",
+        "2240":"provision_income_tax",
+        "3101":"share_capital","3102":"retained_earnings","3103":"revaluation_reserve",
+        "4101":"revenue","4102":"revenue","4105":"revenue",
+        "4103":"other_income","4104":"other_income","4201":"other_income",
+        "5101":"cogs","5102":"cogs","5103":"cogs",
+        "5201":"cogs","5202":"cogs","5203":"cogs","5204":"cogs",
+        "5205":"selling_expense","5206":"selling_expense",
+        "5207":"cogs","5208":"cogs","5209":"cogs","5210":"cogs",
+        "6401":"tax_provision","6402":"deferred_tax",
+      };
+      const has = (s: string, ...kw: string[]) => kw.some(k => s.includes(k));
+      const inferLine = (type: string, code: string, name = ""): string => {
         const t = (type || "").toLowerCase();
-        const c = (code || "");
-        if (t === "asset") {
-          if (/^11/.test(c)) return "cash_bank";
-          if (/^12/.test(c)) return "accounts_receivable";
-          if (/^13/.test(c)) return "inventory";
-          if (/^14/.test(c)) return "advance_deposit";
-          if (/^15|^16/.test(c)) return "ppe";
-          if (/^17/.test(c)) return "intangible_asset";
-          return "current_assets" as any;
+        const c = (code || "").toString().trim();
+        const n = (name || "").toLowerCase();
+        if (CODE_MAP[c]) return CODE_MAP[c];
+        if (/^\d{4}$/.test(c)) {
+          const num = parseInt(c, 10);
+          if (num >= 1101 && num <= 1109) return "ppe";
+          if (num >= 1110 && num <= 1119) return "cash_bank";
+          if (num >= 1201 && num <= 1209) return "ppe";
+          if (num >= 1210 && num <= 1219) return "inventory";
+          if (num >= 1220 && num <= 1229) return "advance_income_tax";
+          if (num >= 1230 && num <= 1239) return "advance_deposit";
+          if (num >= 1240 && num <= 1249) return "accounts_receivable";
+          if (num >= 1250 && num <= 1299) return "cash_bank";
+          if (num >= 2101 && num <= 2109) return "long_term_loan";
+          if (num >= 2201 && num <= 2209) return "short_term_loan";
+          if (num >= 2210 && num <= 2219) return "accounts_payable";
+          if (num >= 2220 && num <= 2229) return "other_liability";
+          if (num >= 2230 && num <= 2239) return "short_term_loan";
+          if (num >= 2240 && num <= 2249) return "provision_income_tax";
+          if (num >= 3100 && num <= 3199) return "retained_earnings";
+          if (num >= 4100 && num <= 4199) return "revenue";
+          if (num >= 4200 && num <= 4299) return "other_income";
+          if (num >= 5300 && num <= 5399) return "cogs";
+          if (num >= 5000 && num <= 5999) return "cogs";
+          if (num >= 6100 && num <= 6199) return "admin_expense";
+          if (num >= 6200 && num <= 6299) return "selling_expense";
+          if (num >= 6300 && num <= 6399) return "financial_expense";
+          if (num >= 6400 && num <= 6499) return "tax_provision";
         }
-        if (t === "liability") {
-          if (/^21/.test(c)) return "accounts_payable";
-          if (/^22/.test(c)) return "short_term_loan";
-          if (/^23/.test(c)) return "long_term_loan";
-          if (/^24|^61/.test(c)) return "vat_payable";
-          return "other_liability";
+        if (t === "income" || t === "revenue") {
+          if (has(n, "interest", "fdr", "other income", "gain", "discount received")) return "other_income";
+          return "revenue";
         }
-        if (t === "equity") return /retained|reserve/i.test(c) ? "retained_earnings" : "share_capital";
-        if (t === "income" || t === "revenue") return /^41/.test(c) ? "revenue" : "other_income";
         if (t === "expense") {
-          if (/^51/.test(c)) return "cogs";
-          if (/^53/.test(c)) return "selling_expense";
-          if (/^54/.test(c)) return "financial_expense";
+          if (has(n, "deferred tax")) return "deferred_tax";
+          if (has(n, "income tax", "tax provision", "current tax")) return "tax_provision";
+          if (has(n, "cost of goods", "raw material", "factory", "manufacturing", "direct labour", "wages", "production", "consumption", "factory overhead")) return "cogs";
+          if (has(n, "selling", "distribution", "carton", "delivery", "freight outward", "marketing", "transportation")) return "selling_expense";
+          if (has(n, "interest on", "bank charge", "loan interest", "lc charge", "finance cost")) return "financial_expense";
           return "admin_expense";
         }
-        return "other_income";
+        if (t === "asset") {
+          if (has(n, "deferred tax")) return "deferred_tax_asset";
+          if (has(n, "cash", "bank", "fdr", "petty")) return "cash_bank";
+          if (has(n, "receivable", "debtor")) return "accounts_receivable";
+          if (has(n, "inventory", "stock", "raw material", "finished good", "wip", "spare")) return "inventory";
+          if (has(n, "advance income tax", "ait", "advance tax", "tds receivable")) return "advance_income_tax";
+          if (has(n, "intangible", "software", "goodwill")) return "intangible_asset";
+          if (has(n, "property", "plant", "equipment", "machinery", "building", "vehicle", "furniture", "land", "ppe", "fixed asset", "accumulated depreciation")) return "ppe";
+          return "advance_deposit";
+        }
+        if (t === "liability") {
+          if (has(n, "deferred tax")) return "deferred_tax_liability";
+          if (has(n, "vat")) return "vat_payable";
+          if (has(n, "provision for income tax", "income tax payable", "tax provision")) return "provision_income_tax";
+          if (has(n, "long term", "long-term", "term loan", "lease")) return "long_term_loan";
+          if (has(n, "cc loan", "sod", "short term", "overdraft", "cash credit", "short-term", "bank loan")) return "short_term_loan";
+          if (has(n, "payable", "creditor", "supplier")) return "accounts_payable";
+          return "other_liability";
+        }
+        if (t === "equity") {
+          if (has(n, "share capital", "paid up", "paid-up", "ordinary share")) return "share_capital";
+          if (has(n, "reserve", "revaluation", "surplus")) return "revaluation_reserve";
+          return "retained_earnings";
+        }
+        return "other_liability";
       };
       const { data: allAcc } = await admin
         .from("chart_of_accounts")
