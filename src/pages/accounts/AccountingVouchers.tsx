@@ -41,7 +41,7 @@ interface Voucher {
   ledger_accounts?: string[];
 }
 
-type SuperAdminAction = "delete" | "reopen" | "reverse" | "restore" | null;
+type SuperAdminAction = "delete" | "reopen" | "reverse" | "restore" | "purge" | null;
 
 const AccountingVouchers = () => {
   const { isSuperAdmin, hasPermission } = useAuth();
