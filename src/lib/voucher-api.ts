@@ -184,4 +184,14 @@ export const voucherApi = {
     if (isLaravelMode()) return laravelFetch(`vouchers/${id}/reverse`, { method: "POST", body: JSON.stringify({ reason }) });
     return invokeEdge({ action: "reverse", id, reason });
   },
+
+  /** Permanently delete a soft-deleted voucher (Super Admin only). */
+  purge: async (id: string, reason?: string) => {
+    if (isLaravelMode()) return laravelFetch(`vouchers/${id}/purge`, { method: "POST", body: JSON.stringify({ reason }) });
+    await supabase.from("voucher_entries").delete().eq("voucher_id", id);
+    const { error } = await supabase.from("acc_vouchers").delete().eq("id", id);
+    if (error) throw error;
+    return { success: true };
+  },
 };
+
