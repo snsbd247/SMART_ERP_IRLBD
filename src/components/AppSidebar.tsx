@@ -303,16 +303,16 @@ const CollapsibleGroup = ({ group, isModuleEnabled, hasPermission }: { group: Na
     <div>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+        className="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
       >
         <span className="flex items-center gap-2.5 min-w-0">
           <Icon className="w-4 h-4 shrink-0" />
           <span className="truncate">{group.label}</span>
         </span>
-        {open ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+        {open ? <ChevronDown className="w-3.5 h-3.5 text-sidebar-foreground/60 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-sidebar-foreground/60 shrink-0" />}
       </button>
       {open && (
-        <div className="ml-2 pl-3 border-l border-border/50 space-y-0.5 mt-0.5 mb-1">
+        <div className="ml-2 pl-3 border-l border-sidebar-border/60 space-y-0.5 mt-0.5 mb-1">
           {filteredChildren.map((item) => (
             <NavItem key={item.to + item.label} {...item} />
           ))}
