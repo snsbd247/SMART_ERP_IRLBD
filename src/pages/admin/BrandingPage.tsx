@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
   Palette, Upload, Eye, Save, Building2, Globe, Type, Image as ImageIcon,
+  Download, FileUp, AlertTriangle, CheckCircle2, Loader2, XCircle,
   Download, FileUp, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 
