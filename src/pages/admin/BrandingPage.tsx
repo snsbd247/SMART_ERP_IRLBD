@@ -462,65 +462,7 @@ export default function BrandingPage() {
           </CardContent>
         </Card>
 
-        {/* Logo Uploads */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Logo Management</CardTitle>
-            <CardDescription>Upload logos for different parts of the ERP system</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { key: "company_logo_url", label: "Company Logo", desc: "Used in reports, invoices, sidebar" },
-                { key: "login_logo_url", label: "Login Page Logo", desc: "Displayed on the login screen" },
-                { key: "favicon_url", label: "Favicon", desc: "Browser tab icon" },
-              ].map((logo) => (
-                <div key={logo.key} className="space-y-3">
-                  <div>
-                    <Label className="text-sm font-medium">{logo.label}</Label>
-                    <p className="text-xs text-muted-foreground">{logo.desc}</p>
-                  </div>
-                  <div className="border-2 border-dashed border-border rounded-lg p-4 text-center min-h-[120px] flex flex-col items-center justify-center gap-2">
-                    {(form as any)[logo.key] ? (
-                      <img
-                        src={(form as any)[logo.key]}
-                        alt={logo.label}
-                        className="max-h-16 max-w-full object-contain"
-                      />
-                    ) : (
-                      <ImageIcon className="w-8 h-8 text-muted-foreground/40" />
-                    )}
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleLogoUpload(e, logo.key)}
-                        disabled={uploading === logo.key}
-                      />
-                      <Button variant="outline" size="sm" asChild disabled={uploading === logo.key}>
-                        <span>
-                          <Upload className="w-3 h-3 mr-1" />
-                          {uploading === logo.key ? "Uploading..." : "Upload"}
-                        </span>
-                      </Button>
-                    </label>
-                  </div>
-                  {(form as any)[logo.key] && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs text-destructive"
-                      onClick={() => updateField(logo.key, "")}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Logo Management intentionally hidden — no logos used in this build. */}
       </div>
 
       {/* Live Preview */}
@@ -535,16 +477,7 @@ export default function BrandingPage() {
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">Sidebar Header</Label>
                 <div className="rounded-lg p-4 max-w-[240px]" style={{ background: `hsl(${form.primary_color} / 0.05)`, border: "1px solid hsl(var(--border))" }}>
-                  <div className="flex items-center gap-2">
-                    {form.company_logo_url ? (
-                      <img src={form.company_logo_url} alt="Logo" className="w-8 h-8 object-contain rounded" />
-                    ) : (
-                      <div className="w-8 h-8 rounded flex items-center justify-center" style={{ background: `hsl(${form.primary_color})` }}>
-                        <Building2 className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-                    <span className="font-bold text-sm text-foreground">{form.software_name || "SmartERP"}</span>
-                  </div>
+                  <span className="font-bold text-sm text-foreground">{form.software_name || "SmartERP"}</span>
                 </div>
               </div>
 
@@ -552,11 +485,6 @@ export default function BrandingPage() {
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">Login Page Header</Label>
                 <div className="rounded-lg p-6 text-center max-w-xs" style={{ background: `hsl(${form.primary_color})` }}>
-                  {form.login_logo_url ? (
-                    <img src={form.login_logo_url} alt="Login Logo" className="h-12 mx-auto mb-2" />
-                  ) : (
-                    <Building2 className="w-10 h-10 mx-auto mb-2 text-white/80" />
-                  )}
                   <h3 className="text-white font-bold text-lg">{form.software_name || "SmartERP"}</h3>
                   <p className="text-white/70 text-xs">v{form.software_version || "1.0"}</p>
                 </div>
