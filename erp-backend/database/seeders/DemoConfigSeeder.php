@@ -94,6 +94,55 @@ class DemoConfigSeeder extends Seeder
                 ['id' => (string) Str::uuid(), 'ifrs_line' => $r['ifrs_line'], 'notes' => $r['notes'] ?? null, 'updated_at' => now(), 'created_at' => now()]
             );
         }
+
+        // Fallback: every active CoA account must have an IFRS line so the
+        // IFRS Financial Statements report is never blank for new accounts.
+        $infer = function (?string $type, string $code): string {
+            $t = strtolower((string) $type);
+            if ($t === 'asset') {
+                if (preg_match('/^11/', $code)) return 'cash_bank';
+                if (preg_match('/^12/', $code)) return 'accounts_receivable';
+                if (preg_match('/^13/', $code)) return 'inventory';
+                if (preg_match('/^14/', $code)) return 'advance_deposit';
+                if (preg_match('/^15|^16/', $code)) return 'ppe';
+                if (preg_match('/^17/', $code)) return 'intangible_asset';
+                return 'current_assets';
+            }
+            if ($t === 'liability') {
+                if (preg_match('/^21/', $code)) return 'accounts_payable';
+                if (preg_match('/^22/', $code)) return 'short_term_loan';
+                if (preg_match('/^23/', $code)) return 'long_term_loan';
+                if (preg_match('/^24|^61/', $code)) return 'vat_payable';
+                return 'other_liability';
+            }
+            if ($t === 'equity') return preg_match('/retained|reserve/i', $code) ? 'retained_earnings' : 'share_capital';
+            if ($t === 'income' || $t === 'revenue') return preg_match('/^41/', $code) ? 'revenue' : 'other_income';
+            if ($t === 'expense') {
+                if (preg_match('/^51/', $code)) return 'cogs';
+                if (preg_match('/^53/', $code)) return 'selling_expense';
+                if (preg_match('/^54/', $code)) return 'financial_expense';
+                return 'admin_expense';
+            }
+            return 'other_income';
+        };
+
+        $mappedIds = DB::table('ifrs_account_mapping')->pluck('account_id')->all();
+        $unmapped = DB::table('chart_of_accounts')
+            ->where('is_active', 1)
+            ->whereNotIn('id', $mappedIds)
+            ->get(['id', 'account_code', 'account_type']);
+        foreach ($unmapped as $a) {
+            DB::table('ifrs_account_mapping')->updateOrInsert(
+                ['account_id' => $a->id],
+                [
+                    'id' => (string) Str::uuid(),
+                    'ifrs_line' => $infer($a->account_type, (string) $a->account_code),
+                    'notes' => 'auto-mapped',
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+        }
     }
 
     private function seedPurchaseTypes(array $rows): void
