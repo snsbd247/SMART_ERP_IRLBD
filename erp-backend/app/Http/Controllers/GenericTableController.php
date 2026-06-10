@@ -392,6 +392,21 @@ class GenericTableController extends BaseController
         if ($isInsert && Schema::hasColumn($table, 'created_at') && !isset($row['created_at'])) {
             $row['created_at'] = $now;
         }
+        // Auto-generate UUID for `id` primary key on INSERT when the column is
+        // a CHAR(36)/VARCHAR UUID without a DB default and the frontend did
+        // not supply one. Without this, MySQL fails with
+        // "Field 'id' doesn't have a default value" for every UUID-PK table.
+        if ($isInsert && Schema::hasColumn($table, 'id') && !isset($row['id'])) {
+            try {
+                $idType = Schema::getColumnType($table, 'id');
+                // UUID columns surface as 'string' on MySQL/Doctrine.
+                if (in_array($idType, ['string', 'guid', 'uuid'], true)) {
+                    $row['id'] = (string) \Illuminate\Support\Str::uuid();
+                }
+            } catch (\Throwable $e) {
+                // Fall through — let DB raise its own error if anything is off.
+            }
+        }
         return $row;
     }
 }
