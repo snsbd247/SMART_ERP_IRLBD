@@ -175,6 +175,63 @@ Deno.serve(async (req) => {
       ifrsRes.status = "failed";
       ifrsRes.error = e instanceof Error ? e.message : String(e);
     }
+
+    // Fallback: auto-map any remaining active CoA accounts that still have no IFRS line.
+    // Heuristic based on account_type + code prefix so the IFRS report is never blank.
+    try {
+      const inferLine = (type: string, code: string): string => {
+        const t = (type || "").toLowerCase();
+        const c = (code || "");
+        if (t === "asset") {
+          if (/^11/.test(c)) return "cash_bank";
+          if (/^12/.test(c)) return "accounts_receivable";
+          if (/^13/.test(c)) return "inventory";
+          if (/^14/.test(c)) return "advance_deposit";
+          if (/^15|^16/.test(c)) return "ppe";
+          if (/^17/.test(c)) return "intangible_asset";
+          return "current_assets" as any;
+        }
+        if (t === "liability") {
+          if (/^21/.test(c)) return "accounts_payable";
+          if (/^22/.test(c)) return "short_term_loan";
+          if (/^23/.test(c)) return "long_term_loan";
+          if (/^24|^61/.test(c)) return "vat_payable";
+          return "other_liability";
+        }
+        if (t === "equity") return /retained|reserve/i.test(c) ? "retained_earnings" : "share_capital";
+        if (t === "income" || t === "revenue") return /^41/.test(c) ? "revenue" : "other_income";
+        if (t === "expense") {
+          if (/^51/.test(c)) return "cogs";
+          if (/^53/.test(c)) return "selling_expense";
+          if (/^54/.test(c)) return "financial_expense";
+          return "admin_expense";
+        }
+        return "other_income";
+      };
+      const { data: allAcc } = await admin
+        .from("chart_of_accounts")
+        .select("id, account_code, account_type, is_active")
+        .eq("is_active", true);
+      const { data: mapped } = await admin.from("ifrs_account_mapping").select("account_id");
+      const mappedSet = new Set((mapped ?? []).map((r: any) => r.account_id));
+      const fallbackRows = (allAcc ?? [])
+        .filter((a: any) => !mappedSet.has(a.id))
+        .map((a: any) => ({
+          account_id: a.id,
+          ifrs_line: inferLine(a.account_type, a.account_code),
+          notes: "auto-mapped",
+        }));
+      if (fallbackRows.length > 0) {
+        const { error } = await admin
+          .from("ifrs_account_mapping")
+          .upsert(fallbackRows, { onConflict: "account_id" });
+        if (!error) ifrsRes.inserted += fallbackRows.length;
+        else { ifrsRes.status = "partial"; ifrsRes.error = (ifrsRes.error ? ifrsRes.error + "; " : "") + error.message; }
+      }
+    } catch (e) {
+      ifrsRes.status = ifrsRes.status === "ok" ? "partial" : ifrsRes.status;
+      ifrsRes.error = (ifrsRes.error ? ifrsRes.error + "; " : "") + (e instanceof Error ? e.message : String(e));
+    }
     results.push(ifrsRes);
 
 
