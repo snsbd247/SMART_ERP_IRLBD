@@ -15,7 +15,7 @@ class SmokeTestStockMovement extends Command
     {
         $this->info('=== Test #4: Stock Movement ===');
 
-        $itemId = DB::table('items')->where('item_code', 'DEMO-PROD-A')->value('id');
+        $itemId = DB::table('item_master')->where('item_code', 'DEMO-PROD-A')->value('id');
         if (!$itemId) { $this->error('Item DEMO-PROD-A missing. Run sales:smoke first.'); return 1; }
 
         // Pick two warehouses (create dest if only one exists)
