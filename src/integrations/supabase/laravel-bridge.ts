@@ -95,6 +95,23 @@ function buildQS(params: {
   return s ? `?${s}` : "";
 }
 
+// Convert ISO 8601 'Z' timestamps to MySQL-compatible 'YYYY-MM-DD HH:MM:SS'
+// so Laravel/MySQL doesn't reject values like "2026-06-10T08:09:08.432Z".
+const ISO_Z_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
+function sanitizeMysqlDates(value: any): any {
+  if (value == null) return value;
+  if (typeof value === "string") {
+    return ISO_Z_RE.test(value) ? value.slice(0, 19).replace("T", " ") : value;
+  }
+  if (Array.isArray(value)) return value.map(sanitizeMysqlDates);
+  if (typeof value === "object") {
+    const out: any = {};
+    for (const k in value) out[k] = sanitizeMysqlDates(value[k]);
+    return out;
+  }
+  return value;
+}
+
 async function call<T>(method: string, url: string, body?: any): Promise<Result<T>> {
   try {
     const base = getApiBaseUrl();
@@ -103,7 +120,7 @@ async function call<T>(method: string, url: string, body?: any): Promise<Result<
       method,
       headers: { ...getLaravelAuthHeaders(true) },
     };
-    if (body !== undefined) init.body = JSON.stringify(body);
+    if (body !== undefined) init.body = JSON.stringify(sanitizeMysqlDates(body));
     const res = await fetch(`${base}${url}`, init);
     const ct = res.headers.get("content-type") || "";
     const json = ct.includes("application/json") ? await res.json().catch(() => null) : null;
