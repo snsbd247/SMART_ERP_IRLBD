@@ -188,10 +188,35 @@ export const voucherApi = {
   /** Permanently delete a soft-deleted voucher (Super Admin only). */
   purge: async (id: string, reason?: string) => {
     if (isLaravelMode()) return laravelFetch(`vouchers/${id}/purge`, { method: "POST", body: JSON.stringify({ reason }) });
+
+    // Authorization: only Super Admin (null employee_id) may permanently delete.
+    const { data: auth } = await supabase.auth.getUser();
+    const uid = auth?.user?.id;
+    if (!uid) throw new Error("Not authenticated");
+    const { data: profile } = await supabase.from("profiles").select("id, name, employee_id").eq("id", uid).single();
+    if (!profile || (profile as any).employee_id !== null) {
+      throw new Error("Permanent delete is restricted to Super Admins.");
+    }
+
+    // Capture voucher snapshot for audit before deletion.
+    const { data: voucher } = await supabase.from("acc_vouchers").select("voucher_number, voucher_type, total_amount, status").eq("id", id).single();
+
     await supabase.from("voucher_entries").delete().eq("voucher_id", id);
     const { error } = await supabase.from("acc_vouchers").delete().eq("id", id);
     if (error) throw error;
+
+    // Audit log entry with voucher id, user, timestamp + reason.
+    await supabase.from("audit_log").insert({
+      user_id: uid,
+      user_name: (profile as any).name || "Super Admin",
+      module: "accounting_vouchers",
+      action: "voucher_permanently_deleted",
+      record_id: id,
+      details: `Permanently deleted ${(voucher as any)?.voucher_type || ""} ${(voucher as any)?.voucher_number || id} (amount: ${(voucher as any)?.total_amount ?? "—"}). Reason: ${reason || "(none)"}`,
+    } as any);
+
     return { success: true };
   },
 };
+
 
