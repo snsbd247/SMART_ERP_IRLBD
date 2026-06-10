@@ -44,7 +44,7 @@ const BRANDING_FIELDS = [
 ] as const;
 
 export default function BrandingPage() {
-  const { branding, refetch, previewTheme } = useBranding();
+  const { branding, refetch, previewTheme, saveUserTheme } = useBranding();
   const { toast } = useToast();
   const [form, setForm] = useState({ ...branding });
   const [saving, setSaving] = useState(false);
