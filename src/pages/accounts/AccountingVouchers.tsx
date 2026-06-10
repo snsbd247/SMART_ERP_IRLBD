@@ -438,6 +438,10 @@ const AccountingVouchers = () => {
           await voucherApi.reverse(actionVoucher.id, actionReason);
           toast({ title: "Reversal voucher created" });
           break;
+        case "purge":
+          await voucherApi.purge(actionVoucher.id, actionReason);
+          toast({ title: "Voucher permanently deleted" });
+          break;
       }
       setSuperAdminAction(null);
       setActionVoucher(null);
