@@ -43,6 +43,7 @@ class SmokeTestRbacMatrix extends Command
         if (!$scoped) {
             $scoped = User::create([
                 'id' => (string) Str::uuid(),
+                'username' => 'rbac_smoke',
                 'name' => 'RBAC Smoke',
                 'email' => $scopedEmail,
                 'password' => Hash::make(Str::random(24)),
@@ -57,6 +58,7 @@ class SmokeTestRbacMatrix extends Command
         if (!$noRole) {
             $noRole = User::create([
                 'id' => (string) Str::uuid(),
+                'username' => 'rbac_norole',
                 'name' => 'RBAC NoRole',
                 'email' => $noRoleEmail,
                 'password' => Hash::make(Str::random(24)),
