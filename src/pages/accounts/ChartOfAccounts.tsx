@@ -270,7 +270,7 @@ const ChartOfAccounts = () => {
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Loading accounts...</div>
           ) : (
-            <AccountTreeTable accounts={filteredAccounts} onEdit={openEdit} onDrillDown={(a) => setLedgerAccount(a)} />
+            <AccountTreeTable accounts={filteredAccounts} onEdit={openEdit} onDrillDown={(a) => setLedgerAccount(a)} onDelete={handleDelete} />
           )}
         </CardContent>
       </Card>
