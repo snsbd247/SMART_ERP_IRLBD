@@ -48,6 +48,8 @@ export default function BrandingPage() {
   const { toast } = useToast();
   const [form, setForm] = useState({ ...branding });
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<string>("");
   const [uploading, setUploading] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
@@ -69,6 +71,8 @@ export default function BrandingPage() {
 
   const handleSave = async (attempt = 1) => {
     setSaving(true);
+    setSaveStatus("saving");
+    setSaveError("");
     try {
       const rows = Object.entries(form).map(([key, value]) => ({
         setting_key: key,
@@ -113,11 +117,17 @@ export default function BrandingPage() {
       await saveUserTheme(form.primary_color, form.secondary_color);
 
       await refetch();
+      setSaveStatus("saved");
       toast({ title: "Branding Updated", description: "Saved system-wide + your personal theme." });
+      // Reset the inline indicator after a short delay so it doesn't linger forever.
+      setTimeout(() => setSaveStatus((s) => (s === "saved" ? "idle" : s)), 3000);
     } catch (err: any) {
+      const msg = err?.message || "Unknown error";
+      setSaveStatus("error");
+      setSaveError(msg);
       toast({
         title: "Save failed",
-        description: `${err?.message || "Unknown error"} — Check your network and try again. If this persists, verify VITE_API_BASE_URL or run scripts/test-branding-api.sh.`,
+        description: `${msg} — Check your network and try again.`,
         variant: "destructive",
       });
     } finally {
