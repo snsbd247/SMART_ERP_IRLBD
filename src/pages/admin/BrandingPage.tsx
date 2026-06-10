@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Palette, Upload, Eye, Save, Building2, Globe, Type, Image as ImageIcon,
   Download, FileUp, AlertTriangle, CheckCircle2, Loader2, XCircle,
-  Download, FileUp, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 
 // Compute on each call so the auto-fallback flag (set after a 503) is honored.
@@ -361,9 +360,27 @@ export default function BrandingPage() {
           <Button variant="outline" onClick={() => setPreviewMode(!previewMode)}>
             <Eye className="w-4 h-4 mr-2" />{previewMode ? "Close Preview" : "Preview"}
           </Button>
-          <Button onClick={() => handleSave()} disabled={saving}>
-            <Save className="w-4 h-4 mr-2" />{saving ? "Saving..." : "Save Changes"}
-          </Button>
+          <div className="flex items-center gap-2" data-testid="save-status" data-status={saveStatus}>
+            {saveStatus === "saving" && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" /> Saving…
+              </span>
+            )}
+            {saveStatus === "saved" && (
+              <span className="text-xs text-success flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Saved
+              </span>
+            )}
+            {saveStatus === "error" && (
+              <span className="text-xs text-destructive flex items-center gap-1" title={saveError}>
+                <XCircle className="w-3 h-3" /> Failed
+              </span>
+            )}
+            <Button onClick={() => handleSave()} disabled={saving} data-testid="branding-save">
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
         </div>
       </div>
 
