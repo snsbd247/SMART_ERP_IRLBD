@@ -350,13 +350,6 @@ export const AppSidebar = () => {
     <>
       <div className="p-3 sm:p-4 border-b border-sidebar-border flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          {branding.company_logo_url ? (
-            <img src={branding.company_logo_url} alt="Logo" className="w-7 h-7 object-contain rounded shrink-0" />
-          ) : (
-            <div className="w-7 h-7 rounded bg-sidebar-primary/20 flex items-center justify-center shrink-0">
-              <Building2 className="w-4 h-4 text-sidebar-primary" />
-            </div>
-          )}
           <div className="min-w-0">
             <h2 className="font-bold text-sidebar-foreground text-sm tracking-tight truncate">{branding.software_name || "ERP System"}</h2>
             {profile && (
