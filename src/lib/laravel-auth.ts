@@ -68,32 +68,39 @@ export function isSupabaseDisabledError(err: unknown): boolean {
   return code === 503 || /supabase is disabled|laravel[_ ]only/i.test(msg);
 }
 
-// Auth tokens are stored in sessionStorage so closing the browser/tab logs the
-// user out. Legacy localStorage tokens are migrated once, then removed.
-function popLegacyLocalToken(): string | null {
+// Auth tokens are stored in localStorage so the session persists across
+// browser tabs and refreshes. Legacy sessionStorage tokens are migrated.
+function popLegacySessionToken(): string | null {
   try {
-    const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(LEGACY_TOKEN_KEY);
+    const token = sessionStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(LEGACY_TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(LEGACY_TOKEN_KEY);
     return token;
   } catch { return null; }
 }
 
 export function getLaravelToken(): string | null {
   if (typeof window === "undefined") return null;
-  let token = sessionStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(LEGACY_TOKEN_KEY);
+  let token: string | null = null;
+  try {
+    token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+  } catch { /* ignore */ }
   if (!token) {
-    token = popLegacyLocalToken();
+    token = popLegacySessionToken();
     if (token) {
-      sessionStorage.setItem(TOKEN_KEY, token);
-      sessionStorage.setItem(LEGACY_TOKEN_KEY, token);
+      try {
+        localStorage.setItem(TOKEN_KEY, token);
+        localStorage.setItem(LEGACY_TOKEN_KEY, token);
+      } catch { /* ignore */ }
     }
   }
   if (!token) return null;
   if (!/^[\x20-\x7E]+$/.test(token)) {
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(LEGACY_TOKEN_KEY);
-    popLegacyLocalToken();
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(LEGACY_TOKEN_KEY);
+    } catch { /* ignore */ }
+    popLegacySessionToken();
     return null;
   }
   return token;
@@ -101,14 +108,16 @@ export function getLaravelToken(): string | null {
 
 export function setLaravelToken(token: string | null) {
   if (typeof window === "undefined") return;
-  popLegacyLocalToken();
-  if (token) {
-    sessionStorage.setItem(TOKEN_KEY, token);
-    sessionStorage.setItem(LEGACY_TOKEN_KEY, token);
-  } else {
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(LEGACY_TOKEN_KEY);
-  }
+  popLegacySessionToken();
+  try {
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(LEGACY_TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(LEGACY_TOKEN_KEY);
+    }
+  } catch { /* ignore */ }
 }
 
 export function getLaravelAuthHeaders(includeJson = false): Record<string, string> {
