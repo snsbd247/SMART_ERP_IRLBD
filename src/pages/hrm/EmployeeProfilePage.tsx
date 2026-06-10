@@ -335,7 +335,7 @@ export default function EmployeeProfilePage() {
     <div className="p-4 lg:p-6 space-y-6 max-w-[1200px] mx-auto">
       {/* Header with Avatar */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/hrm/employees")}>
+        <Button variant="ghost" size="icon" aria-label="Back to employees" onClick={() => navigate("/hrm/employees")}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
 
@@ -517,8 +517,8 @@ export default function EmployeeProfilePage() {
                         <TableCell>{e.result}</TableCell>
                         {isAdmin && (
                           <TableCell className="text-right space-x-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEditEdu(e)}><Edit className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => deleteEdu(e.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                            <Button variant="ghost" size="icon" aria-label="Edit education" onClick={() => openEditEdu(e)}><Edit className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" aria-label="Delete education" onClick={() => deleteEdu(e.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                           </TableCell>
                         )}
                       </TableRow>
@@ -565,8 +565,8 @@ export default function EmployeeProfilePage() {
                         <TableCell className="max-w-[200px] truncate">{e.job_description || "-"}</TableCell>
                         {isAdmin && (
                           <TableCell className="text-right space-x-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEditExp(e)}><Edit className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => deleteExp(e.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                            <Button variant="ghost" size="icon" aria-label="Edit experience" onClick={() => openEditExp(e)}><Edit className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" aria-label="Delete experience" onClick={() => deleteExp(e.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                           </TableCell>
                         )}
                       </TableRow>
@@ -611,8 +611,8 @@ export default function EmployeeProfilePage() {
                         <TableCell className="max-w-[200px] truncate">{c.address || "-"}</TableCell>
                         {isAdmin && (
                           <TableCell className="text-right space-x-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEditEc(c)}><Edit className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => deleteEc(c.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                            <Button variant="ghost" size="icon" aria-label="Edit contact" onClick={() => openEditEc(c)}><Edit className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" aria-label="Delete contact" onClick={() => deleteEc(c.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                           </TableCell>
                         )}
                       </TableRow>
