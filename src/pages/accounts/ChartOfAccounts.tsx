@@ -71,7 +71,40 @@ const ChartOfAccounts = () => {
     setDialogOpen(true);
   };
 
-  // Filter accounts by search (name OR code). Always include ancestors of matches so the tree stays valid.
+  const handleDelete = async (a: AccountWithBalance) => {
+    // Block delete when account has children
+    const hasChildren = accounts.some((x) => x.parent_id === a.id);
+    if (hasChildren) {
+      toast({ title: "Cannot delete", description: "Account has child accounts. Delete or reassign them first.", variant: "destructive" });
+      return;
+    }
+    // Block delete when account has voucher entries (DB FK is RESTRICT)
+    const { count, error: cntErr } = await supabase
+      .from("voucher_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("account_id", a.id);
+    if (cntErr) {
+      toast({ title: "Error", description: cntErr.message, variant: "destructive" });
+      return;
+    }
+    if ((count || 0) > 0) {
+      toast({ title: "Cannot delete", description: `Account "${a.account_name}" has ${count} voucher entries. Reverse / delete those vouchers first.`, variant: "destructive" });
+      return;
+    }
+    if (!confirm(`Delete account "${a.account_code} — ${a.account_name}"?\n\nIts IFRS mapping will also be removed.`)) return;
+    try {
+      // ifrs_account_mapping cascades via FK, but remove explicitly to be safe
+      await supabase.from("ifrs_account_mapping").delete().eq("account_id", a.id);
+      const { error } = await supabase.from("chart_of_accounts").delete().eq("id", a.id);
+      if (error) throw error;
+      toast({ title: "Account deleted" });
+      refetch();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+
   const filteredAccounts = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return accounts;
@@ -237,7 +270,7 @@ const ChartOfAccounts = () => {
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Loading accounts...</div>
           ) : (
-            <AccountTreeTable accounts={filteredAccounts} onEdit={openEdit} onDrillDown={(a) => setLedgerAccount(a)} />
+            <AccountTreeTable accounts={filteredAccounts} onEdit={openEdit} onDrillDown={(a) => setLedgerAccount(a)} onDelete={handleDelete} />
           )}
         </CardContent>
       </Card>
