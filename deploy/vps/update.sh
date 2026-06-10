@@ -18,6 +18,7 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/smarterp}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
+REPO_URL="${REPO_URL:-https://github.com/snsbd247/audit-treasure-6d69be20.git}"
 PHP_VERSION="${PHP_VERSION:-8.2}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/smarterp}"
 STATUS_FILE="${STATUS_FILE:-/var/log/smarterp-deploy.status.json}"
