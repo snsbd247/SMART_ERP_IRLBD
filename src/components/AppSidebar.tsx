@@ -265,7 +265,7 @@ const NavItem = ({ to, label, icon: Icon, end }: { to: string; label: string; ic
     to={to}
     end={end}
     className="flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-    activeClassName="bg-primary/10 text-primary font-medium"
+    activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium shadow-sm"
   >
     <Icon className="w-3.5 h-3.5 shrink-0" />
     <span className="truncate">{label}</span>
