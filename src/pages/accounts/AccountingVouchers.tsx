@@ -855,7 +855,7 @@ const AccountingVouchers = () => {
             <AlertDialogAction
               onClick={handleSuperAdminAction}
               disabled={superAdminAction !== "restore" && !actionReason.trim()}
-              className={superAdminAction === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+              className={(superAdminAction === "delete" || superAdminAction === "purge") ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
             >
               {superAdminAction && actionLabels[superAdminAction]?.confirm}
             </AlertDialogAction>
