@@ -178,22 +178,34 @@ const BackupPage = () => {
       setDemoResults(results);
       setDemoOverall(overall);
       setDemoProgress(100);
+      const hasFailures = results ? results.some((r: any) => r.status === "failed") : overall !== "success";
       setDemoStatus(
         dryRun ? "Dry-run preview ready. Review the table below; nothing has been saved."
-               : overall === "success" ? "Import completed successfully." : "Import completed with warnings."
+               : hasFailures ? "Import completed with warnings." : "Import completed successfully."
       );
+
 
       const totalIns = results ? results.reduce((n: number, r: any) => n + (r.inserted || 0), 0) : 0;
       const totalUpd = results ? results.reduce((n: number, r: any) => n + (r.skipped || 0), 0) : 0;
+      const failed = results ? results.filter((r: any) => r.status === "failed") : [];
+      const partial = results ? results.filter((r: any) => r.status === "partial") : [];
+      const hardFail = failed.length > 0;
+      const effective: "success" | "partial" = hardFail ? "partial" : "success";
+      setDemoOverall(effective);
       toast({
         title: dryRun
           ? "Dry-run preview complete"
-          : overall === "success" ? "Demo configuration imported" : "Demo import finished with warnings",
+          : effective === "success"
+              ? (partial.length ? "Demo configuration imported (some sections skipped)" : "Demo configuration imported")
+              : "Demo import finished with warnings",
         description: dryRun
           ? `Would insert ${totalIns} new rows, update ${totalUpd} existing across ${results?.length ?? sections.length} sections.`
-          : `${totalIns} new / ${totalUpd} updated across ${results?.length ?? sections.length} sections.`,
-        variant: overall === "success" ? "default" : "destructive",
+          : `${totalIns} new / ${totalUpd} updated across ${results?.length ?? sections.length} sections.`
+            + (hardFail ? ` Failed: ${failed.map((r: any) => `${r.label} (${r.error || "unknown"})`).join("; ")}` : "")
+            + (partial.length ? ` Skipped: ${partial.map((r: any) => r.label).join(", ")}.` : ""),
+        variant: effective === "success" ? "default" : "destructive",
       });
+
     } catch (err: any) {
       setDemoProgress(100);
       setDemoStatus(dryRun ? "Dry-run failed." : "Import failed.");
