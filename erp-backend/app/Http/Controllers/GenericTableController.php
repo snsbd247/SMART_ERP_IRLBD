@@ -258,19 +258,33 @@ class GenericTableController extends BaseController
             }
         };
 
-        $q = DB::table($table);
-        $applyFilters($q);
-        $cols = Schema::getColumnListing($table);
-        $clean = array_intersect_key(
-            $this->stampTimestamps($table, $this->rewriteBody($table, $payload), false),
-            array_flip($cols)
-        );
-        $q->update($clean);
+        try {
+            $q = DB::table($table);
+            $applyFilters($q);
+            $cols = Schema::getColumnListing($table);
+            $clean = array_intersect_key(
+                $this->stampTimestamps($table, $this->rewriteBody($table, $payload), false),
+                array_flip($cols)
+            );
+            // Normalize empty strings on UUID/nullable FK columns → NULL
+            foreach ($clean as $k => $v) {
+                if ($v === '') $clean[$k] = null;
+            }
+            $q->update($clean);
 
-        $q2 = DB::table($table);
-        $applyFilters($q2);
-        return response()->json($this->applyAliasesToRows($table, $q2->get()));
+            $q2 = DB::table($table);
+            $applyFilters($q2);
+            return response()->json($this->applyAliasesToRows($table, $q2->get()));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("db update $table failed: " . $e->getMessage());
+            return response()->json([
+                'error'   => $e->getMessage(),
+                'table'   => $table,
+                'payload' => $payload,
+            ], 500);
+        }
     }
+
 
 
     public function upsert(Request $request, string $table)
