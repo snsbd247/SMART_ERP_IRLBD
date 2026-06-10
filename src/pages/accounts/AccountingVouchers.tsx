@@ -41,7 +41,7 @@ interface Voucher {
   ledger_accounts?: string[];
 }
 
-type SuperAdminAction = "delete" | "reopen" | "reverse" | "restore" | null;
+type SuperAdminAction = "delete" | "reopen" | "reverse" | "restore" | "purge" | null;
 
 const AccountingVouchers = () => {
   const { isSuperAdmin, hasPermission } = useAuth();
@@ -438,6 +438,10 @@ const AccountingVouchers = () => {
           await voucherApi.reverse(actionVoucher.id, actionReason);
           toast({ title: "Reversal voucher created" });
           break;
+        case "purge":
+          await voucherApi.purge(actionVoucher.id, actionReason);
+          toast({ title: "Voucher permanently deleted" });
+          break;
       }
       setSuperAdminAction(null);
       setActionVoucher(null);
@@ -471,6 +475,7 @@ const AccountingVouchers = () => {
     restore: { title: "Restore Voucher", desc: "This will restore the voucher to its previous status and make it visible in reports again. This action is logged.", confirm: "Restore Voucher" },
     reopen: { title: "Reopen Voucher", desc: "This will change the voucher status back to draft, allowing it to be edited and re-submitted. This action will be logged.", confirm: "Reopen Voucher" },
     reverse: { title: "Reverse Voucher", desc: "This will create a new reversal voucher with swapped debit/credit entries to offset the original transaction. Both vouchers will remain in the system.", confirm: "Create Reversal" },
+    purge: { title: "Permanently Delete Voucher", desc: "This will PERMANENTLY delete the voucher and all its entries from the database. This action CANNOT be undone. Only proceed if you are absolutely sure.", confirm: "Delete Permanently" },
   };
 
   return (
@@ -597,6 +602,12 @@ const AccountingVouchers = () => {
                             {isSuperAdmin && (v as any).deleted_at && (
                               <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Restore voucher" onClick={() => openSuperAdminAction("restore", v)} title="Restore">
                                 <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
+                              </Button>
+                            )}
+                            {/* Permanent delete - super admin only, deleted vouchers */}
+                            {isSuperAdmin && (v as any).deleted_at && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Permanently delete voucher" onClick={() => openSuperAdminAction("purge", v)} title="Delete permanently">
+                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
                               </Button>
                             )}
                             {/* Delete - based on role & status, not for already-deleted */}
