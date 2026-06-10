@@ -282,21 +282,91 @@ class DemoConfigImportController extends BaseController
             $exists = DB::table('ifrs_account_mapping')->where('account_id', $accId)->first();
             if ($exists) {
                 DB::table('ifrs_account_mapping')->where('id', $exists->id)->update([
-                    'ifrs_line' => $r['ifrs_line'], 'notes' => $r['notes'] ?? null, 'updated_at' => now(),
+                    'ifrs_line' => $this->normalizeIfrsLine($r['ifrs_line']), 'notes' => $r['notes'] ?? null, 'updated_at' => now(),
                 ]);
                 $skipped++;
             } else {
                 DB::table('ifrs_account_mapping')->insert([
                     'id' => (string) Str::uuid(),
                     'account_id' => $accId,
-                    'ifrs_line' => $r['ifrs_line'],
+                    'ifrs_line' => $this->normalizeIfrsLine($r['ifrs_line']),
                     'notes' => $r['notes'] ?? null,
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
                 $inserted++;
             }
         }
+
+        $mappedIds = DB::table('ifrs_account_mapping')->pluck('account_id')->all();
+        $unmappedQuery = DB::table('chart_of_accounts')->where('is_active', 1);
+        if (!empty($mappedIds)) $unmappedQuery->whereNotIn('id', $mappedIds);
+        $unmapped = $unmappedQuery->get(['id', 'account_code', 'account_name', 'account_type']);
+        foreach ($unmapped as $a) {
+            DB::table('ifrs_account_mapping')->insert([
+                'id' => (string) Str::uuid(),
+                'account_id' => $a->id,
+                'ifrs_line' => $this->inferIfrsLine($a->account_type, (string) $a->account_code, (string) $a->account_name),
+                'notes' => 'auto-mapped',
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $inserted++;
+        }
         return ['attempted' => count($rows), 'inserted' => $inserted, 'skipped' => $skipped];
+    }
+
+    private function normalizeIfrsLine(string $line): string
+    {
+        $map = [
+            'revenue' => 'revenue', 'total income' => 'revenue', 'cost of sales' => 'cogs',
+            'administrative expenses' => 'admin_expense', 'operating expenses' => 'admin_expense',
+            'selling and distribution expenses' => 'selling_expense', 'distribution costs' => 'selling_expense',
+            'finance costs' => 'financial_expense', 'finance income' => 'other_income', 'other income' => 'other_income',
+            'income tax expense' => 'tax_provision', 'current tax liabilities' => 'provision_income_tax',
+            'deferred tax assets' => 'deferred_tax_asset', 'property, plant and equipment' => 'ppe',
+            'intangible assets' => 'intangible_asset', 'inventories' => 'inventory', 'current tax assets' => 'advance_income_tax',
+            'advances, deposits and prepayments' => 'advance_deposit', 'other current assets' => 'advance_deposit',
+            'trade receivables' => 'accounts_receivable', 'trade and other receivables' => 'accounts_receivable',
+            'cash and cash equivalents' => 'cash_bank', 'issued capital' => 'share_capital', 'share capital' => 'share_capital',
+            'total equity' => 'retained_earnings', 'retained earnings' => 'retained_earnings', 'revaluation reserve' => 'revaluation_reserve',
+            'long-term borrowings' => 'long_term_loan', 'total liabilities' => 'other_liability',
+            'accrued expenses and other current liabilities' => 'other_liability', 'other current liabilities' => 'other_liability',
+            'employee benefit obligations' => 'other_liability', 'trade payables' => 'accounts_payable',
+            'trade and other payables' => 'accounts_payable', 'short-term borrowings' => 'short_term_loan', 'total assets' => 'advance_deposit',
+        ];
+        return $map[strtolower(trim($line))] ?? $line;
+    }
+
+    private function inferIfrsLine(?string $type, string $code, string $name): string
+    {
+        $codeMap = [
+            '1000'=>'ppe','1100'=>'ppe','1200'=>'inventory','2000'=>'other_liability','2100'=>'long_term_loan','2200'=>'short_term_loan','3000'=>'retained_earnings','4000'=>'revenue','5000'=>'cogs','5100'=>'cogs','5200'=>'cogs','5300'=>'cogs','6000'=>'admin_expense','6100'=>'admin_expense','6200'=>'selling_expense','6300'=>'financial_expense','6400'=>'tax_provision',
+            '1101'=>'ppe','1102'=>'intangible_asset','1103'=>'deferred_tax_asset','1104'=>'advance_deposit','1105'=>'inventory','1106'=>'advance_deposit','1107'=>'advance_income_tax','1111'=>'cash_bank','1112'=>'cash_bank','1113'=>'cash_bank','1114'=>'cash_bank','1201'=>'ppe','1202'=>'ppe','1203'=>'ppe','1204'=>'ppe','1205'=>'ppe','1210'=>'inventory','1211'=>'inventory','1212'=>'inventory','1213'=>'inventory','1214'=>'inventory','1215'=>'inventory','1220'=>'advance_income_tax','1230'=>'advance_deposit','1231'=>'advance_deposit','1232'=>'advance_deposit','1233'=>'advance_deposit','1234'=>'advance_deposit','1250'=>'cash_bank','1251'=>'cash_bank','1252'=>'cash_bank','1253'=>'cash_bank','1254'=>'cash_bank','1255'=>'cash_bank','1256'=>'cash_bank',
+            '2101'=>'long_term_loan','2102'=>'accounts_payable','2103'=>'other_liability','2104'=>'vat_payable','2105'=>'short_term_loan','2106'=>'other_liability','2107'=>'other_liability','2201'=>'short_term_loan','2202'=>'short_term_loan','2228'=>'vat_payable','2240'=>'provision_income_tax','3101'=>'share_capital','3102'=>'retained_earnings','3103'=>'revaluation_reserve','4101'=>'revenue','4102'=>'revenue','4105'=>'revenue','4103'=>'other_income','4104'=>'other_income','4201'=>'other_income','5101'=>'cogs','5102'=>'cogs','5103'=>'cogs','5205'=>'selling_expense','5206'=>'selling_expense','6401'=>'tax_provision','6402'=>'deferred_tax',
+        ];
+        if (isset($codeMap[$code])) return $codeMap[$code];
+        $num = preg_match('/^\d{4}$/', $code) ? (int) $code : 0;
+        if ($num >= 1201 && $num <= 1209) return 'ppe';
+        if ($num >= 1210 && $num <= 1219) return 'inventory';
+        if ($num >= 1220 && $num <= 1229) return 'advance_income_tax';
+        if ($num >= 1230 && $num <= 1239) return 'advance_deposit';
+        if ($num >= 1240 && $num <= 1249) return 'accounts_receivable';
+        if ($num >= 1250 && $num <= 1299) return 'cash_bank';
+        if ($num >= 2210 && $num <= 2219) return 'accounts_payable';
+        if ($num >= 2220 && $num <= 2229) return 'other_liability';
+        if ($num >= 2230 && $num <= 2239) return 'short_term_loan';
+        if ($num >= 5300 && $num <= 5999) return 'cogs';
+        if ($num >= 6100 && $num <= 6199) return 'admin_expense';
+        if ($num >= 6200 && $num <= 6299) return 'selling_expense';
+        if ($num >= 6300 && $num <= 6399) return 'financial_expense';
+        if ($num >= 6400 && $num <= 6499) return 'tax_provision';
+        return match (strtolower((string) $type)) {
+            'asset' => str_contains(strtolower($name), 'cash') || str_contains(strtolower($name), 'bank') ? 'cash_bank' : 'advance_deposit',
+            'liability' => str_contains(strtolower($name), 'payable') || str_contains(strtolower($name), 'supplier') ? 'accounts_payable' : 'other_liability',
+            'equity' => str_contains(strtolower($name), 'capital') ? 'share_capital' : 'retained_earnings',
+            'income', 'revenue' => str_contains(strtolower($name), 'other') || str_contains(strtolower($name), 'interest') ? 'other_income' : 'revenue',
+            'expense' => 'admin_expense',
+            default => 'other_liability',
+        };
     }
 
     private function importPurchaseTypes(array $rows): array
