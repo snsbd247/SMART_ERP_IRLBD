@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isLaravelMode, getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 
@@ -30,14 +30,36 @@ const DEFAULTS: BrandingSettings = {
 };
 
 const BRANDING_KEYS = Object.keys(DEFAULTS) as (keyof BrandingSettings)[];
-const CACHE_KEY = "erp-branding-cache-v1";
+
+// ---------- Cache versioning ----------
+// Bump CACHE_VERSION when the cached shape changes so stale browsers
+// reset cleanly instead of feeding broken values into applyThemeColors.
+const CACHE_VERSION = 2;
+const CACHE_KEY = "erp-branding-cache";
+const LEGACY_KEYS = ["erp-branding-cache-v1"];
+
+interface CachedShape {
+  v: number;
+  branding: BrandingSettings;
+}
 
 function readCache(): BrandingSettings | null {
   try {
+    // Drop any legacy unversioned/old-version caches.
+    LEGACY_KEYS.forEach((k) => localStorage.removeItem(k));
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULTS, ...parsed };
+    const parsed = JSON.parse(raw) as CachedShape;
+    if (!parsed || parsed.v !== CACHE_VERSION || !parsed.branding) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+    // Sanity-check the two colors so we never apply garbage.
+    if (!parseHsl(parsed.branding.primary_color) || !parseHsl(parsed.branding.secondary_color)) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+    return { ...DEFAULTS, ...parsed.branding };
   } catch {
     return null;
   }
@@ -45,7 +67,8 @@ function readCache(): BrandingSettings | null {
 
 function writeCache(b: BrandingSettings) {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(b));
+    const payload: CachedShape = { v: CACHE_VERSION, branding: b };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
   } catch {
     /* quota / private mode — ignore */
   }
@@ -55,8 +78,10 @@ interface BrandingContextType {
   branding: BrandingSettings;
   loading: boolean;
   refetch: () => Promise<void>;
-  /** Live preview: apply colors immediately without persisting state. */
+  /** Live preview: apply colors immediately (rAF-debounced). */
   previewTheme: (primary: string, secondary: string) => void;
+  /** Persist current user's color choice to backend + cache. */
+  saveUserTheme: (primary: string, secondary: string) => Promise<void>;
 }
 
 const BrandingContext = createContext<BrandingContextType>({
@@ -64,17 +89,17 @@ const BrandingContext = createContext<BrandingContextType>({
   loading: true,
   refetch: async () => {},
   previewTheme: () => {},
+  saveUserTheme: async () => {},
 });
 
 export const useBranding = () => useContext(BrandingContext);
 
 export const BrandingProvider = ({ children }: { children: ReactNode }) => {
-  // Hydrate from localStorage so the theme is correct on first paint after refresh / login.
   const initial = readCache() || DEFAULTS;
   const [branding, setBranding] = useState<BrandingSettings>(initial);
   const [loading, setLoading] = useState(true);
 
-  // Apply cached theme immediately (before backend responds).
+  // Apply cached theme synchronously on first render — no flash.
   if (typeof document !== "undefined") {
     applyThemeColors(initial.primary_color, initial.secondary_color);
     applyFavicon(initial.favicon_url);
@@ -104,8 +129,8 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
       /* fall back to cache / defaults */
     }
 
+    const merged = { ...DEFAULTS };
     if (rows.length > 0) {
-      const merged = { ...DEFAULTS };
       rows.forEach((row) => {
         const key = row.setting_key as keyof BrandingSettings;
         if (!(key in DEFAULTS)) return;
@@ -115,20 +140,41 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
           (merged as any)[key] = row.setting_value || DEFAULTS[key];
         }
       });
-      setBranding(merged);
-      writeCache(merged);
-      applyThemeColors(merged.primary_color, merged.secondary_color);
-      applyFavicon(merged.favicon_url);
     }
+
+    // Per-user override (only when logged in) wins over system-wide branding.
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: pref } = await supabase
+          .from("user_theme_preferences")
+          .select("primary_color, secondary_color")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (pref?.primary_color) merged.primary_color = pref.primary_color;
+        if (pref?.secondary_color) merged.secondary_color = pref.secondary_color;
+      }
+    } catch {
+      /* unauthenticated or table missing — ignore */
+    }
+
+    setBranding(merged);
+    writeCache(merged);
+    applyThemeColors(merged.primary_color, merged.secondary_color);
+    applyFavicon(merged.favicon_url);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     fetchBranding();
+    // Re-load when auth state changes so each user gets their own theme.
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      fetchBranding();
+    });
+    return () => sub.subscription.unsubscribe();
   }, [fetchBranding]);
 
-  // Re-derive tokens whenever the html `dark` class flips so the same
-  // two brand colors drive both light & dark palettes.
+  // Re-derive tokens whenever the html `dark` class flips.
   useEffect(() => {
     const root = document.documentElement;
     const obs = new MutationObserver(() => {
@@ -138,12 +184,43 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
     return () => obs.disconnect();
   }, [branding.primary_color, branding.secondary_color]);
 
+  // ---------- Debounced live preview (rAF coalesces rapid changes) ----------
+  const pendingRef = useRef<{ p: string; s: string } | null>(null);
+  const rafRef = useRef<number | null>(null);
   const previewTheme = useCallback((primary: string, secondary: string) => {
-    applyThemeColors(primary, secondary);
+    pendingRef.current = { p: primary, s: secondary };
+    if (rafRef.current != null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      const pending = pendingRef.current;
+      pendingRef.current = null;
+      if (pending) applyThemeColors(pending.p, pending.s);
+    });
   }, []);
 
+  const saveUserTheme = useCallback(async (primary: string, secondary: string) => {
+    // Always update cache so the next page-load is instant.
+    const next = { ...branding, primary_color: primary, secondary_color: secondary };
+    setBranding(next);
+    writeCache(next);
+    applyThemeColors(primary, secondary);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase
+        .from("user_theme_preferences")
+        .upsert(
+          { user_id: user.id, primary_color: primary, secondary_color: secondary },
+          { onConflict: "user_id" },
+        );
+    } catch {
+      /* offline / unauthenticated — cache already saved */
+    }
+  }, [branding]);
+
   return (
-    <BrandingContext.Provider value={{ branding, loading, refetch: fetchBranding, previewTheme }}>
+    <BrandingContext.Provider value={{ branding, loading, refetch: fetchBranding, previewTheme, saveUserTheme }}>
       {children}
     </BrandingContext.Provider>
   );
