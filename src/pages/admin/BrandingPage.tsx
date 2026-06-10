@@ -44,7 +44,7 @@ const BRANDING_FIELDS = [
 ] as const;
 
 export default function BrandingPage() {
-  const { branding, refetch, previewTheme } = useBranding();
+  const { branding, refetch, previewTheme, saveUserTheme } = useBranding();
   const { toast } = useToast();
   const [form, setForm] = useState({ ...branding });
   const [saving, setSaving] = useState(false);
@@ -108,8 +108,12 @@ export default function BrandingPage() {
         }
       }
 
+      // Persist per-user color override so this user's theme survives logout/refresh
+      // even when the system-wide branding is set by an admin to something different.
+      await saveUserTheme(form.primary_color, form.secondary_color);
+
       await refetch();
-      toast({ title: "Branding Updated", description: "All branding settings have been saved successfully." });
+      toast({ title: "Branding Updated", description: "Saved system-wide + your personal theme." });
     } catch (err: any) {
       toast({
         title: "Save failed",
