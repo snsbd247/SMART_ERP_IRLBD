@@ -77,7 +77,7 @@ const navGroups: NavGroup[] = [
       { to: "/inventory/chart", label: "Chart of Inventory", icon: Layers, permission: "inventory.view" },
       { to: "/inventory/units", label: "Units", icon: CircleDot, permission: "inventory.view" },
       { to: "/inventory/warehouses", label: "Warehouses", icon: Warehouse, permission: "inventory.view" },
-      { to: "/inventory", label: "Stock Overview", icon: Warehouse, permission: "inventory.view" },
+      { to: "/inventory", label: "Stock Overview", icon: Warehouse, end: true, permission: "inventory.view" },
       { to: "/inventory/transfers", label: "Stock Transfer", icon: ArrowLeftRight, permission: "inventory.view" },
       { to: "/inventory/adjustments", label: "Stock Adjustment", icon: ClipboardList, permission: "inventory.view" },
       { to: "/inventory/stock-ledger", label: "Stock Ledger", icon: ScrollText, permission: "inventory.view" },
@@ -149,7 +149,7 @@ const navGroups: NavGroup[] = [
     requiredModules: ["sales_vat"],
     children: [
       { to: "/customers", label: "Customer List", icon: UserCheck, permission: "customers.view,sales.view" },
-      { to: "/sales-workflow/po", label: "Purchase Orders", icon: ClipboardList, permission: "sales.view" },
+      { to: "/sales-workflow/po", label: "Customer POs", icon: ClipboardList, permission: "sales.view" },
       { to: "/sales-workflow/delivery-challan", label: "Delivery Challans", icon: FileText, permission: "sales.view" },
       { to: "/sales-workflow/vat-challan", label: "VAT Challans", icon: Receipt, permission: "sales.view" },
       { to: "/sales-workflow/customer-receive", label: "Customer Receive", icon: UserCheck, permission: "sales.edit" },
@@ -287,7 +287,7 @@ const CollapsibleGroup = ({ group, isModuleEnabled, hasPermission }: { group: Na
   });
 
   // Auto-open group if current route is within it
-  const isActiveGroup = filteredChildren.some((item) => location.pathname.startsWith(item.to));
+  const isActiveGroup = filteredChildren.some((item) => location.pathname === item.to || location.pathname.startsWith(item.to + "/"));
   const [open, setOpen] = useState(isActiveGroup);
 
   // Keep group open when navigating into it
