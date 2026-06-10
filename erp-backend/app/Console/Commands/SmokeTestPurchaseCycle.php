@@ -71,7 +71,7 @@ class SmokeTestPurchaseCycle extends Command
         $poNo = 'PO2-DEMO-' . substr(uniqid(), -6);
         DB::table('purchase_orders_v2')->insert([
             'id' => $poId,
-            'po_no' => $poNo,
+            'po_number' => $poNo,
             'po_date' => $today,
             'supplier_id' => $supplierId,
             'currency' => 'BDT',
