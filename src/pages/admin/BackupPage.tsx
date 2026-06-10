@@ -178,10 +178,12 @@ const BackupPage = () => {
       setDemoResults(results);
       setDemoOverall(overall);
       setDemoProgress(100);
+      const hasFailures = results ? results.some((r: any) => r.status === "failed") : overall !== "success";
       setDemoStatus(
         dryRun ? "Dry-run preview ready. Review the table below; nothing has been saved."
-               : overall === "success" ? "Import completed successfully." : "Import completed with warnings."
+               : hasFailures ? "Import completed with warnings." : "Import completed successfully."
       );
+
 
       const totalIns = results ? results.reduce((n: number, r: any) => n + (r.inserted || 0), 0) : 0;
       const totalUpd = results ? results.reduce((n: number, r: any) => n + (r.skipped || 0), 0) : 0;
