@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useBranding } from "@/contexts/BrandingContext";
+import { useBranding, contrastRatio, parseHsl } from "@/contexts/BrandingContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import {
   getApiBaseUrl,
@@ -15,8 +15,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Palette, Upload, Eye, Save, Building2, Globe, Type, Image as ImageIcon } from "lucide-react";
+import {
+  Palette, Upload, Eye, Save, Building2, Globe, Type, Image as ImageIcon,
+  Download, FileUp, AlertTriangle, CheckCircle2,
+} from "lucide-react";
 
 // Compute on each call so the auto-fallback flag (set after a 503) is honored.
 const useLaravel = () => isLaravelMode();
@@ -40,19 +44,27 @@ const BRANDING_FIELDS = [
 ] as const;
 
 export default function BrandingPage() {
-  const { branding, refetch } = useBranding();
+  const { branding, refetch, previewTheme } = useBranding();
   const { toast } = useToast();
   const [form, setForm] = useState({ ...branding });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
+  const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setForm({ ...branding });
   }, [branding]);
 
   const updateField = (key: string, value: string | boolean) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      // Live preview — colors apply across the whole app instantly.
+      if (key === "primary_color" || key === "secondary_color") {
+        previewTheme(next.primary_color, next.secondary_color);
+      }
+      return next;
+    });
   };
 
   const handleSave = async (attempt = 1) => {
