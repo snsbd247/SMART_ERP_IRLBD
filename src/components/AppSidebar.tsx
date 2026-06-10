@@ -287,7 +287,7 @@ const CollapsibleGroup = ({ group, isModuleEnabled, hasPermission }: { group: Na
   });
 
   // Auto-open group if current route is within it
-  const isActiveGroup = filteredChildren.some((item) => location.pathname.startsWith(item.to));
+  const isActiveGroup = filteredChildren.some((item) => location.pathname === item.to || location.pathname.startsWith(item.to + "/"));
   const [open, setOpen] = useState(isActiveGroup);
 
   // Keep group open when navigating into it
