@@ -333,12 +333,12 @@ export default function EmployeesPage() {
                       <span className="text-muted-foreground text-xs">No login</span>
                     )}
                   </TableCell>
-                  <TableCell><Badge variant={emp.status === "active" ? "default" : "secondary"} className="capitalize">{emp.status}</Badge></TableCell>
+                  <TableCell><Badge variant={emp.status === "active" ? "default" : "secondary"} className="capitalize">{emp.status || "unknown"}</Badge></TableCell>
                   {isAdmin && (
                     <TableCell className="text-right space-x-1">
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); navigate(`/hrm/employees/${emp.id}`); }}><Eye className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEdit(emp); }}><Edit className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(emp.id); }}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                      <Button variant="ghost" size="icon" aria-label="View employee" onClick={(e) => { e.stopPropagation(); navigate(`/hrm/employees/${emp.id}`); }}><Eye className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" aria-label="Edit employee" onClick={(e) => { e.stopPropagation(); openEdit(emp); }}><Edit className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" aria-label="Delete employee" onClick={(e) => { e.stopPropagation(); handleDelete(emp.id); }}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                     </TableCell>
                   )}
                 </TableRow>
@@ -475,6 +475,7 @@ export default function EmployeesPage() {
                       type="button"
                       variant="outline"
                       size="icon"
+                      aria-label="Auto-generate username"
                       onClick={() => setForm({...form, username: generateUsername()})}
                       title="Auto-generate username"
                     >
@@ -497,6 +498,7 @@ export default function EmployeesPage() {
                       type="button"
                       variant="ghost"
                       size="icon"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                       className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
                       onClick={() => setShowPassword(!showPassword)}
                     >

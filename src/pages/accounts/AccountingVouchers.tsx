@@ -570,48 +570,48 @@ const AccountingVouchers = () => {
                         <TableCell>
                           <div className="flex gap-1">
                             {/* View - always visible */}
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openView(v)} title="View">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View voucher" onClick={() => openView(v)} title="View">
                               <Eye className="w-3.5 h-3.5" />
                             </Button>
                             {/* Edit - based on role & status */}
                             {canEditVoucher(v) && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(v)} title="Edit">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit voucher" onClick={() => openEdit(v)} title="Edit">
                                 <Pencil className="w-3.5 h-3.5" />
                               </Button>
                             )}
                             {/* Print - always visible */}
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openPrintVoucher(v)} title="Print">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Print voucher" onClick={() => openPrintVoucher(v)} title="Print">
                               <Printer className="w-3.5 h-3.5" />
                             </Button>
                             {/* Reverse - approved vouchers, super admin or admin */}
                             {v.status === "approved" && isSuperAdmin && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSuperAdminAction("reverse", v)} title="Reverse">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Reverse voucher" onClick={() => openSuperAdminAction("reverse", v)} title="Reverse">
                                 <ArrowLeftRight className="w-3.5 h-3.5 text-primary" />
                               </Button>
                             )}
                             {/* History */}
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setAuditRecordId(v.id); setAuditOpen(true); }} title="View history">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View history" onClick={() => { setAuditRecordId(v.id); setAuditOpen(true); }} title="View history">
                               <History className="w-3.5 h-3.5 text-muted-foreground" />
                             </Button>
                             {/* Restore - super admin only, deleted vouchers */}
                             {isSuperAdmin && (v as any).deleted_at && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSuperAdminAction("restore", v)} title="Restore">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Restore voucher" onClick={() => openSuperAdminAction("restore", v)} title="Restore">
                                 <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
                               </Button>
                             )}
                             {/* Delete - based on role & status, not for already-deleted */}
                             {canDeleteVoucher(v) && !(v as any).deleted_at && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openSuperAdminAction("delete", v)} title="Delete">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete voucher" onClick={() => openSuperAdminAction("delete", v)} title="Delete">
                                 <Trash2 className="w-3.5 h-3.5 text-destructive" />
                               </Button>
                             )}
                             {/* Admin: Approve/Reject pending */}
                             {v.status === "pending" && canEditForType(activeTab) && (
                               <>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleApprove(v)} title="Approve">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Approve voucher" onClick={() => handleApprove(v)} title="Approve">
                                   <Check className="w-3.5 h-3.5 text-emerald-600" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleReject(v)} title="Reject">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Reject voucher" onClick={() => handleReject(v)} title="Reject">
                                   <X className="w-3.5 h-3.5 text-destructive" />
                                 </Button>
                               </>
@@ -764,11 +764,11 @@ const AccountingVouchers = () => {
                           <TableCell className="pt-3">
                             <div className="flex items-center justify-center gap-1">
                               {isLast && (
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={addEntry} title="Add row">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Add row" onClick={addEntry} title="Add row">
                                   <Plus className="w-4 h-4 text-primary" />
                                 </Button>
                               )}
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeEntry(entry.id)} disabled={entries.length <= 2} title="Delete">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete row" onClick={() => removeEntry(entry.id)} disabled={entries.length <= 2} title="Delete">
                                 <Trash2 className="w-3.5 h-3.5 text-destructive" />
                               </Button>
                             </div>
