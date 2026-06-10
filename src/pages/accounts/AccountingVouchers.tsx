@@ -604,6 +604,12 @@ const AccountingVouchers = () => {
                                 <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
                               </Button>
                             )}
+                            {/* Permanent delete - super admin only, deleted vouchers */}
+                            {isSuperAdmin && (v as any).deleted_at && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Permanently delete voucher" onClick={() => openSuperAdminAction("purge", v)} title="Delete permanently">
+                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                              </Button>
+                            )}
                             {/* Delete - based on role & status, not for already-deleted */}
                             {canDeleteVoucher(v) && !(v as any).deleted_at && (
                               <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete voucher" onClick={() => openSuperAdminAction("delete", v)} title="Delete">
