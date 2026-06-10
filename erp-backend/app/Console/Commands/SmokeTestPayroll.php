@@ -31,6 +31,8 @@ class SmokeTestPayroll extends Command
                 'id' => $id, 'employee_code' => 'EMP-SMK-001',
                 'first_name' => 'Smoke', 'last_name' => 'Tester',
                 'branch_id' => $branchId, 'salary' => 30000,
+                'joining_date' => now()->startOfYear()->toDateString(),
+                'employment_type' => 'permanent',
                 'status' => 'active', 'approval_status' => 'approved',
                 'created_at' => now(), 'updated_at' => now(),
             ]);
