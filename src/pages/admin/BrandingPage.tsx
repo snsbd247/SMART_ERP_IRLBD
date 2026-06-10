@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
   Palette, Upload, Eye, Save, Building2, Globe, Type, Image as ImageIcon,
-  Download, FileUp, AlertTriangle, CheckCircle2,
+  Download, FileUp, AlertTriangle, CheckCircle2, Loader2, XCircle,
 } from "lucide-react";
 
 // Compute on each call so the auto-fallback flag (set after a 503) is honored.
@@ -48,6 +48,8 @@ export default function BrandingPage() {
   const { toast } = useToast();
   const [form, setForm] = useState({ ...branding });
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<string>("");
   const [uploading, setUploading] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
@@ -69,6 +71,8 @@ export default function BrandingPage() {
 
   const handleSave = async (attempt = 1) => {
     setSaving(true);
+    setSaveStatus("saving");
+    setSaveError("");
     try {
       const rows = Object.entries(form).map(([key, value]) => ({
         setting_key: key,
@@ -113,11 +117,17 @@ export default function BrandingPage() {
       await saveUserTheme(form.primary_color, form.secondary_color);
 
       await refetch();
+      setSaveStatus("saved");
       toast({ title: "Branding Updated", description: "Saved system-wide + your personal theme." });
+      // Reset the inline indicator after a short delay so it doesn't linger forever.
+      setTimeout(() => setSaveStatus((s) => (s === "saved" ? "idle" : s)), 3000);
     } catch (err: any) {
+      const msg = err?.message || "Unknown error";
+      setSaveStatus("error");
+      setSaveError(msg);
       toast({
         title: "Save failed",
-        description: `${err?.message || "Unknown error"} — Check your network and try again. If this persists, verify VITE_API_BASE_URL or run scripts/test-branding-api.sh.`,
+        description: `${msg} — Check your network and try again.`,
         variant: "destructive",
       });
     } finally {
@@ -350,9 +360,27 @@ export default function BrandingPage() {
           <Button variant="outline" onClick={() => setPreviewMode(!previewMode)}>
             <Eye className="w-4 h-4 mr-2" />{previewMode ? "Close Preview" : "Preview"}
           </Button>
-          <Button onClick={() => handleSave()} disabled={saving}>
-            <Save className="w-4 h-4 mr-2" />{saving ? "Saving..." : "Save Changes"}
-          </Button>
+          <div className="flex items-center gap-2" data-testid="save-status" data-status={saveStatus}>
+            {saveStatus === "saving" && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" /> Saving…
+              </span>
+            )}
+            {saveStatus === "saved" && (
+              <span className="text-xs text-success flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Saved
+              </span>
+            )}
+            {saveStatus === "error" && (
+              <span className="text-xs text-destructive flex items-center gap-1" title={saveError}>
+                <XCircle className="w-3 h-3" /> Failed
+              </span>
+            )}
+            <Button onClick={() => handleSave()} disabled={saving} data-testid="branding-save">
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
         </div>
       </div>
 
