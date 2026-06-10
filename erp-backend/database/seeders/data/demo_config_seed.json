@@ -9,28 +9,28 @@
     },
     {
       "account_code": "1100",
-      "account_name": "Current Assets",
+      "account_name": "Non-Current Assets",
       "account_type": "asset",
       "opening_balance_type": "debit",
       "parent_code": "1000"
     },
     {
       "account_code": "1101",
-      "account_name": "Cash in Hand",
+      "account_name": "Property, Plant & Equipment",
       "account_type": "asset",
       "opening_balance_type": "debit",
       "parent_code": "1100"
     },
     {
       "account_code": "1102",
-      "account_name": "Bank Account",
+      "account_name": "Intangible Assets - ERP Software",
       "account_type": "asset",
       "opening_balance_type": "debit",
       "parent_code": "1100"
     },
     {
       "account_code": "1103",
-      "account_name": "Accounts Receivable",
+      "account_name": "Deferred Tax Assets",
       "account_type": "asset",
       "opening_balance_type": "debit",
       "parent_code": "1100"
@@ -64,8 +64,36 @@
       "parent_code": "1100"
     },
     {
+      "account_code": "1111",
+      "account_name": "EBL Current A/C - 1234567890",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1102"
+    },
+    {
+      "account_code": "1112",
+      "account_name": "City Bank Current A/C - 9988776655",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1102"
+    },
+    {
+      "account_code": "1113",
+      "account_name": "BRAC Bank Savings A/C - 4455667788",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1102"
+    },
+    {
+      "account_code": "1114",
+      "account_name": "HSBC USD A/C - 0011223344",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1102"
+    },
+    {
       "account_code": "1200",
-      "account_name": "Fixed Assets",
+      "account_name": "Current Assets",
       "account_type": "asset",
       "opening_balance_type": "debit",
       "parent_code": "1000"
@@ -106,183 +134,561 @@
       "parent_code": "1200"
     },
     {
+      "account_code": "1210",
+      "account_name": "Inventories",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1200"
+    },
+    {
+      "account_code": "1211",
+      "account_name": "Raw Materials",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1210"
+    },
+    {
+      "account_code": "1212",
+      "account_name": "Work-in-Progress",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1210"
+    },
+    {
+      "account_code": "1213",
+      "account_name": "Finished Goods",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1210"
+    },
+    {
+      "account_code": "1214",
+      "account_name": "Raw Material in Transit (PVC)",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1210"
+    },
+    {
+      "account_code": "1215",
+      "account_name": "Spare Parts & Others",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1210"
+    },
+    {
+      "account_code": "1220",
+      "account_name": "Advance Income Tax",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1200"
+    },
+    {
+      "account_code": "1230",
+      "account_name": "Advance, Deposit & Prepayments",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1200"
+    },
+    {
+      "account_code": "1231",
+      "account_name": "Demand Note for Power, BG for Gas",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1230"
+    },
+    {
+      "account_code": "1232",
+      "account_name": "L/C Margin",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1230"
+    },
+    {
+      "account_code": "1233",
+      "account_name": "Advance with Employee",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1230"
+    },
+    {
+      "account_code": "1234",
+      "account_name": "VAT Current Account (Receivable)",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1230"
+    },
+    {
+      "account_code": "1240",
+      "account_name": "Accounts Receivable",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1200"
+    },
+    {
+      "account_code": "1241",
+      "account_name": "AR - Corbel Chemical Industries",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1240"
+    },
+    {
+      "account_code": "1242",
+      "account_name": "AR - Emami Bangladesh Limited",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1240"
+    },
+    {
+      "account_code": "1243",
+      "account_name": "AR - Marico Bangladesh Limited",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1240"
+    },
+    {
+      "account_code": "1244",
+      "account_name": "AR - Pidilite Speciality (Pvt) Ltd.",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1240"
+    },
+    {
+      "account_code": "1245",
+      "account_name": "AR - Rahimafrooz Battery",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1240"
+    },
+    {
+      "account_code": "1246",
+      "account_name": "AR - Padma Pet Limited (SESA)",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1240"
+    },
+    {
+      "account_code": "1247",
+      "account_name": "AR - Cavinkare",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1240"
+    },
+    {
+      "account_code": "1248",
+      "account_name": "AR - Keya Cosmetics Ltd",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1240"
+    },
+    {
+      "account_code": "1250",
+      "account_name": "Cash & Bank Balances",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1200"
+    },
+    {
+      "account_code": "1251",
+      "account_name": "Cash in Hand",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1250"
+    },
+    {
+      "account_code": "1252",
+      "account_name": "IFIC Bank Ltd - CD A/C 1025178216001",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1250"
+    },
+    {
+      "account_code": "1253",
+      "account_name": "Dutch Bangla Bank PLC - 1511100010719",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1250"
+    },
+    {
+      "account_code": "1254",
+      "account_name": "IPDC FDR - 1001251000056303",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1250"
+    },
+    {
+      "account_code": "1255",
+      "account_name": "IPDC FDR - 1001251000049290",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1250"
+    },
+    {
+      "account_code": "1256",
+      "account_name": "Dhaka Bank PLC - 2261000004530",
+      "account_type": "asset",
+      "opening_balance_type": "debit",
+      "parent_code": "1250"
+    },
+    {
       "account_code": "2000",
       "account_name": "Liabilities",
       "account_type": "liability",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": null
     },
     {
       "account_code": "2100",
-      "account_name": "Current Liabilities",
+      "account_name": "Non-Current Liabilities",
       "account_type": "liability",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "2000"
     },
     {
       "account_code": "2101",
-      "account_name": "Accounts Payable",
+      "account_name": "Long Term Loan - IPDC (Non-current Portion)",
       "account_type": "liability",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "2100"
     },
     {
       "account_code": "2102",
       "account_name": "Supplier Payable",
       "account_type": "liability",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "2100"
     },
     {
       "account_code": "2103",
       "account_name": "Accrued Expenses",
       "account_type": "liability",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "2100"
     },
     {
       "account_code": "2104",
       "account_name": "VAT Payable",
       "account_type": "liability",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "2100"
     },
     {
       "account_code": "2105",
       "account_name": "Loan Payable (Short Term)",
       "account_type": "liability",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "2100"
     },
     {
       "account_code": "2106",
       "account_name": "Provident Fund Liability",
       "account_type": "liability",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "2100"
     },
     {
       "account_code": "2107",
       "account_name": "Savings Fund Liability",
       "account_type": "liability",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "2100"
     },
     {
       "account_code": "2200",
-      "account_name": "Long-Term Liabilities",
+      "account_name": "Current Liabilities",
       "account_type": "liability",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "2000"
     },
     {
       "account_code": "2201",
       "account_name": "Bank Loan",
       "account_type": "liability",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "2200"
     },
     {
       "account_code": "2202",
       "account_name": "Directors Loan",
       "account_type": "liability",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
+      "parent_code": "2200"
+    },
+    {
+      "account_code": "2210",
+      "account_name": "Accounts & Other Payable",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2200"
+    },
+    {
+      "account_code": "2211",
+      "account_name": "AP - Due for RM (HDPE)",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2210"
+    },
+    {
+      "account_code": "2212",
+      "account_name": "AP - Famous Accessories",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2210"
+    },
+    {
+      "account_code": "2213",
+      "account_name": "AP - Concord Association",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2210"
+    },
+    {
+      "account_code": "2214",
+      "account_name": "AP - Abdul Ali Filling Station (Diesel)",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2210"
+    },
+    {
+      "account_code": "2215",
+      "account_name": "AP - Redwan Colour (Screen Cloth)",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2210"
+    },
+    {
+      "account_code": "2216",
+      "account_name": "AP - Colour Plus / Tarik Enterprise",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2210"
+    },
+    {
+      "account_code": "2217",
+      "account_name": "AP - Q.Pail",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2210"
+    },
+    {
+      "account_code": "2218",
+      "account_name": "AP - Klystron Automation Co. Ltd",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2210"
+    },
+    {
+      "account_code": "2220",
+      "account_name": "Other Liabilities (Accruals)",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2200"
+    },
+    {
+      "account_code": "2221",
+      "account_name": "Accrued Electricity",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2220"
+    },
+    {
+      "account_code": "2222",
+      "account_name": "Accrued Gas",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2220"
+    },
+    {
+      "account_code": "2223",
+      "account_name": "Accrued Salary & Allowance",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2220"
+    },
+    {
+      "account_code": "2224",
+      "account_name": "Accrued Audit & Professional Fee",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2220"
+    },
+    {
+      "account_code": "2225",
+      "account_name": "Accrued Wages",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2220"
+    },
+    {
+      "account_code": "2226",
+      "account_name": "Accrued Credit Report",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2220"
+    },
+    {
+      "account_code": "2227",
+      "account_name": "Withholding VAT & Tax Payables",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2220"
+    },
+    {
+      "account_code": "2228",
+      "account_name": "VAT Current Account (Payable)",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2220"
+    },
+    {
+      "account_code": "2230",
+      "account_name": "Short Term Loans & Borrowings",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2200"
+    },
+    {
+      "account_code": "2231",
+      "account_name": "CC Loan - IFIC Bank (A/C 121)",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2230"
+    },
+    {
+      "account_code": "2232",
+      "account_name": "Term Loan - IFIC-471",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2230"
+    },
+    {
+      "account_code": "2233",
+      "account_name": "Loan from MD and MD Relative",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2230"
+    },
+    {
+      "account_code": "2234",
+      "account_name": "IFIC Bank Ltd SOD (A/C 0000178216002)",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2230"
+    },
+    {
+      "account_code": "2235",
+      "account_name": "IPDC - Current Portion of Long Term Loan",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
+      "parent_code": "2230"
+    },
+    {
+      "account_code": "2240",
+      "account_name": "Provision for Income Tax",
+      "account_type": "liability",
+      "opening_balance_type": "credit",
       "parent_code": "2200"
     },
     {
       "account_code": "3000",
       "account_name": "Equity",
       "account_type": "equity",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": null
     },
     {
       "account_code": "3101",
-      "account_name": "Owner Capital",
+      "account_name": "Share Capital",
       "account_type": "equity",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "3000"
     },
     {
       "account_code": "3102",
       "account_name": "Retained Earnings",
       "account_type": "equity",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "3000"
     },
     {
       "account_code": "3103",
-      "account_name": "Drawings",
+      "account_name": "Revaluation Reserve",
       "account_type": "equity",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "3000"
     },
     {
       "account_code": "4000",
       "account_name": "Income",
       "account_type": "income",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": null
     },
     {
       "account_code": "4101",
       "account_name": "Sales Revenue",
       "account_type": "income",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "4000"
     },
     {
       "account_code": "4102",
       "account_name": "Service Income",
       "account_type": "income",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "4000"
     },
     {
       "account_code": "4103",
       "account_name": "Other Income",
       "account_type": "income",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "4000"
     },
     {
       "account_code": "4104",
       "account_name": "Discount Received",
       "account_type": "income",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
       "parent_code": "4000"
     },
     {
       "account_code": "4105",
       "account_name": "Sales Return",
       "account_type": "income",
-      "opening_balance_type": "debit",
+      "opening_balance_type": "credit",
+      "parent_code": "4000"
+    },
+    {
+      "account_code": "4201",
+      "account_name": "Other Income - Interest on FDR",
+      "account_type": "income",
+      "opening_balance_type": "credit",
       "parent_code": "4000"
     },
     {
       "account_code": "5000",
-      "account_name": "Expenses",
+      "account_name": "Cost of Goods Sold",
       "account_type": "expense",
       "opening_balance_type": "debit",
       "parent_code": null
     },
     {
       "account_code": "5100",
-      "account_name": "Direct Expenses",
+      "account_name": "Raw Material Consumed",
       "account_type": "expense",
       "opening_balance_type": "debit",
       "parent_code": "5000"
     },
     {
       "account_code": "5101",
-      "account_name": "Purchase",
+      "account_name": "Raw Material - Local Purchase (HDPE/LDPE/MB)",
       "account_type": "expense",
       "opening_balance_type": "debit",
       "parent_code": "5100"
     },
     {
       "account_code": "5102",
-      "account_name": "Cost of Goods Sold",
+      "account_name": "Raw Material - Import",
       "account_type": "expense",
       "opening_balance_type": "debit",
       "parent_code": "5100"
@@ -296,7 +702,7 @@
     },
     {
       "account_code": "5200",
-      "account_name": "Operating Expenses",
+      "account_name": "Direct Labour",
       "account_type": "expense",
       "opening_balance_type": "debit",
       "parent_code": "5000"
@@ -373,80 +779,409 @@
     },
     {
       "account_code": "5300",
-      "account_name": "Financial Expenses",
+      "account_name": "Manufacturing Overhead",
       "account_type": "expense",
       "opening_balance_type": "debit",
       "parent_code": "5000"
     },
     {
       "account_code": "5301",
-      "account_name": "Bank Charge",
+      "account_name": "Building Maintenance - Factory",
       "account_type": "expense",
       "opening_balance_type": "debit",
       "parent_code": "5300"
     },
     {
       "account_code": "5302",
-      "account_name": "Interest Expense",
+      "account_name": "Amortization - Factory",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "5300"
+    },
+    {
+      "account_code": "5303",
+      "account_name": "Depreciation - Factory",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "5300"
+    },
+    {
+      "account_code": "5304",
+      "account_name": "Electric Expense - Factory",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "5300"
+    },
+    {
+      "account_code": "5305",
+      "account_name": "Electricity Bill - Factory",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "5300"
+    },
+    {
+      "account_code": "5306",
+      "account_name": "Factory Maintenance",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "5300"
+    },
+    {
+      "account_code": "5307",
+      "account_name": "Gas Bill - Factory",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "5300"
+    },
+    {
+      "account_code": "5308",
+      "account_name": "Diesel & Petroleum for Generator",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "5300"
+    },
+    {
+      "account_code": "5309",
+      "account_name": "Generator Repairing & Parts",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "5300"
+    },
+    {
+      "account_code": "5310",
+      "account_name": "Lubricants",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "5300"
+    },
+    {
+      "account_code": "5311",
+      "account_name": "Medical Expenses / Donation - Factory",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "5300"
+    },
+    {
+      "account_code": "5312",
+      "account_name": "Machine Maintenance Expense",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "5300"
+    },
+    {
+      "account_code": "5313",
+      "account_name": "Printing Machine Expense (incl. Chemical)",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "5300"
+    },
+    {
+      "account_code": "5314",
+      "account_name": "Factory Staff Salary",
       "account_type": "expense",
       "opening_balance_type": "debit",
       "parent_code": "5300"
     },
     {
       "account_code": "6000",
-      "account_name": "VAT & TAX",
-      "account_type": "liability",
+      "account_name": "Operating & Other Expenses",
+      "account_type": "expense",
       "opening_balance_type": "debit",
       "parent_code": null
     },
     {
-      "account_code": "6101",
-      "account_name": "Input VAT",
-      "account_type": "asset",
+      "account_code": "6100",
+      "account_name": "Administrative Expenses",
+      "account_type": "expense",
       "opening_balance_type": "debit",
       "parent_code": "6000"
+    },
+    {
+      "account_code": "6101",
+      "account_name": "Audit Fee & Professional Fee",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
     },
     {
       "account_code": "6102",
-      "account_name": "Output VAT",
-      "account_type": "liability",
+      "account_name": "Conveyance",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6103",
+      "account_name": "Canteen & Meal Expense",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6104",
+      "account_name": "Amortization - Admin",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6105",
+      "account_name": "Depreciation - Admin",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6106",
+      "account_name": "Directors Remuneration",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6107",
+      "account_name": "Consultant Fee / Fire Plan / Credit Report",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6108",
+      "account_name": "Fuel Expense",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6109",
+      "account_name": "License & Renewals (Tax Token, Route Permit, Fitness)",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6110",
+      "account_name": "Car Maintenance Expense",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6111",
+      "account_name": "Gas Bill - Office",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6112",
+      "account_name": "Insurance",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6113",
+      "account_name": "Internet & Mobile",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6114",
+      "account_name": "License, Renewal & Registration",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6115",
+      "account_name": "Miscellaneous Expenses",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6116",
+      "account_name": "Municipal Tax (GCC / DCC)",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6117",
+      "account_name": "Newspaper & Periodicals",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6118",
+      "account_name": "Office Maintenance",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6119",
+      "account_name": "Printing & Stationery",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6120",
+      "account_name": "Bad Debt Expenses",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6121",
+      "account_name": "Salary & Allowance - Admin",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6122",
+      "account_name": "Provision for Advance with Employee",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6123",
+      "account_name": "Employee Welfare Fund",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6124",
+      "account_name": "Service Charges (Concord)",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6125",
+      "account_name": "Electric Bill - Office",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6126",
+      "account_name": "WASA Bill",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6127",
+      "account_name": "Software Maintenance Charge",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6100"
+    },
+    {
+      "account_code": "6200",
+      "account_name": "Selling & Distribution Expenses",
+      "account_type": "expense",
       "opening_balance_type": "debit",
       "parent_code": "6000"
     },
     {
-      "account_code": "1102.01",
-      "account_name": "DBBL Current A/C - 001",
-      "account_type": "asset",
+      "account_code": "6201",
+      "account_name": "Unloading Bill (Labour / Cooli)",
+      "account_type": "expense",
       "opening_balance_type": "debit",
-      "parent_code": "1102"
+      "parent_code": "6200"
     },
     {
-      "account_code": "1102.02",
-      "account_name": "City Bank Current A/C - 002",
-      "account_type": "asset",
+      "account_code": "6202",
+      "account_name": "Petrol & Diesel for Cover Van",
+      "account_type": "expense",
       "opening_balance_type": "debit",
-      "parent_code": "1102"
+      "parent_code": "6200"
     },
     {
-      "account_code": "1102.03",
-      "account_name": "BRAC Bank Savings A/C - 003",
-      "account_type": "asset",
+      "account_code": "6203",
+      "account_name": "Carton Expenses with Poly",
+      "account_type": "expense",
       "opening_balance_type": "debit",
-      "parent_code": "1102"
+      "parent_code": "6200"
     },
     {
-      "account_code": "1102.04",
-      "account_name": "Islami Bank Current A/C - 004",
-      "account_type": "asset",
+      "account_code": "6300",
+      "account_name": "Financial Expenses",
+      "account_type": "expense",
       "opening_balance_type": "debit",
-      "parent_code": "1102"
+      "parent_code": "6000"
     },
     {
-      "account_code": "1102.05",
-      "account_name": "Eastern Bank Current A/C - 005",
-      "account_type": "asset",
+      "account_code": "6301",
+      "account_name": "Interest on UFL Lease",
+      "account_type": "expense",
       "opening_balance_type": "debit",
-      "parent_code": "1102"
+      "parent_code": "6300"
+    },
+    {
+      "account_code": "6302",
+      "account_name": "Interest on Meridian Finance",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6300"
+    },
+    {
+      "account_code": "6303",
+      "account_name": "Interest on IPDC",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6300"
+    },
+    {
+      "account_code": "6304",
+      "account_name": "Bank Interest on IFIC Loan (A/C 178216-121)",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6300"
+    },
+    {
+      "account_code": "6305",
+      "account_name": "IFIC Interest - SOD Loan (A/C 002)",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6300"
+    },
+    {
+      "account_code": "6306",
+      "account_name": "Bank / Doc Charges (IFIC/UFL/Meridian/IPDC)",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6300"
+    },
+    {
+      "account_code": "6400",
+      "account_name": "Income Tax",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6000"
+    },
+    {
+      "account_code": "6401",
+      "account_name": "Provision for Income Tax (Expense)",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6400"
+    },
+    {
+      "account_code": "6402",
+      "account_name": "Deferred Tax (Expense)/Income",
+      "account_type": "expense",
+      "opening_balance_type": "debit",
+      "parent_code": "6400"
     }
   ],
   "ifrs": [
