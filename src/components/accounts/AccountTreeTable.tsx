@@ -12,7 +12,7 @@ interface Props {
   onDelete?: (account: AccountWithBalance) => void;
 }
 
-export function AccountTreeTable({ accounts, onEdit, onDrillDown }: Props) {
+export function AccountTreeTable({ accounts, onEdit, onDrillDown, onDelete }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const { fc } = useCurrency();
 
