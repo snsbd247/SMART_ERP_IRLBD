@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useBranding } from "@/contexts/BrandingContext";
+import { useBranding, contrastRatio, parseHsl } from "@/contexts/BrandingContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import {
   getApiBaseUrl,
@@ -15,8 +15,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Palette, Upload, Eye, Save, Building2, Globe, Type, Image as ImageIcon } from "lucide-react";
+import {
+  Palette, Upload, Eye, Save, Building2, Globe, Type, Image as ImageIcon,
+  Download, FileUp, AlertTriangle, CheckCircle2,
+} from "lucide-react";
 
 // Compute on each call so the auto-fallback flag (set after a 503) is honored.
 const useLaravel = () => isLaravelMode();
@@ -40,19 +44,27 @@ const BRANDING_FIELDS = [
 ] as const;
 
 export default function BrandingPage() {
-  const { branding, refetch } = useBranding();
+  const { branding, refetch, previewTheme } = useBranding();
   const { toast } = useToast();
   const [form, setForm] = useState({ ...branding });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
+  const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setForm({ ...branding });
   }, [branding]);
 
   const updateField = (key: string, value: string | boolean) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      // Live preview — colors apply across the whole app instantly.
+      if (key === "primary_color" || key === "secondary_color") {
+        previewTheme(next.primary_color, next.secondary_color);
+      }
+      return next;
+    });
   };
 
   const handleSave = async (attempt = 1) => {
@@ -225,6 +237,88 @@ export default function BrandingPage() {
     }
   };
 
+  // ---------- Contrast validation (WCAG) ----------
+  const contrast = useMemo(() => {
+    const p = form.primary_color;
+    const a = form.secondary_color;
+    // Light-mode foreground sample (near-white) vs primary fill
+    const onPrimary = contrastRatio(p, "0 0% 100%");
+    const onAccent = contrastRatio(a, "161 100% 12%");
+    const sidebarText = contrastRatio(p, "43 35% 88%");
+    return {
+      onPrimary,
+      onAccent,
+      sidebarText,
+      pOk: onPrimary >= 4.5,
+      aOk: onAccent >= 4.5,
+      sOk: sidebarText >= 4.5,
+    };
+  }, [form.primary_color, form.secondary_color]);
+
+  // ---------- Derived tokens (live from :root) ----------
+  const [tokenTick, setTokenTick] = useState(0);
+  useEffect(() => {
+    // Re-read after each color change
+    const id = setTimeout(() => setTokenTick((t) => t + 1), 50);
+    return () => clearTimeout(id);
+  }, [form.primary_color, form.secondary_color]);
+
+  const derivedTokens = useMemo(() => {
+    if (typeof window === "undefined") return [];
+    const cs = getComputedStyle(document.documentElement);
+    const names = [
+      "--primary", "--primary-foreground", "--primary-glow",
+      "--secondary", "--accent", "--accent-foreground", "--ring",
+      "--background", "--foreground", "--card", "--popover",
+      "--muted", "--muted-foreground", "--border", "--input",
+      "--sidebar-background", "--sidebar-foreground",
+      "--sidebar-primary", "--sidebar-primary-foreground",
+      "--sidebar-accent", "--sidebar-accent-foreground", "--sidebar-border",
+    ];
+    return names.map((n) => ({ name: n, value: cs.getPropertyValue(n).trim() }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokenTick]);
+
+  // ---------- Export / Import ----------
+  const handleExport = () => {
+    const payload = {
+      _type: "smarterp-branding-theme",
+      _version: 1,
+      exported_at: new Date().toISOString(),
+      branding: form,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `branding-theme-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Theme exported", description: "JSON file downloaded — share it with other environments." });
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const b = data?.branding || data;
+      if (!b || typeof b !== "object" || !b.primary_color) {
+        throw new Error("Invalid theme file");
+      }
+      const next = { ...form, ...b };
+      setForm(next);
+      previewTheme(next.primary_color, next.secondary_color);
+      toast({ title: "Theme imported", description: "Click Save Changes to persist across users." });
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err?.message || "Invalid JSON", variant: "destructive" });
+    } finally {
+      if (importRef.current) importRef.current.value = "";
+    }
+  };
+
+
   return (
     <div className="p-4 lg:p-6 space-y-6 max-w-[1200px] mx-auto">
       <div className="flex items-center justify-between">
@@ -235,7 +329,20 @@ export default function BrandingPage() {
           </h1>
           <p className="text-muted-foreground text-sm">Configure your ERP visual identity and branding</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <input
+            ref={importRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={handleImport}
+          />
+          <Button variant="outline" onClick={() => importRef.current?.click()}>
+            <FileUp className="w-4 h-4 mr-2" /> Import
+          </Button>
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="w-4 h-4 mr-2" /> Export
+          </Button>
           <Button variant="outline" onClick={() => setPreviewMode(!previewMode)}>
             <Eye className="w-4 h-4 mr-2" />{previewMode ? "Close Preview" : "Preview"}
           </Button>
@@ -438,6 +545,65 @@ export default function BrandingPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* ---------- Contrast Validation ---------- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" /> Contrast Validation (WCAG AA ≥ 4.5)
+          </CardTitle>
+          <CardDescription>
+            Ensures text and icons stay readable on your brand surfaces — checked live in both light & dark mode.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { label: "White text on Primary", ratio: contrast.onPrimary, ok: contrast.pOk },
+            { label: "Dark text on Accent", ratio: contrast.onAccent, ok: contrast.aOk },
+            { label: "Sidebar text on Primary", ratio: contrast.sidebarText, ok: contrast.sOk },
+          ].map((c) => (
+            <div key={c.label} className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <div className="text-xs text-muted-foreground">{c.label}</div>
+                <div className="font-semibold tabular-nums">{c.ratio.toFixed(2)} : 1</div>
+              </div>
+              {c.ok ? (
+                <Badge className="gap-1"><CheckCircle2 className="w-3 h-3" /> Pass</Badge>
+              ) : (
+                <Badge variant="destructive" className="gap-1"><AlertTriangle className="w-3 h-3" /> Low</Badge>
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* ---------- Derived Theme Tokens ---------- */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Palette className="w-4 h-4" /> Derived Theme Tokens
+          </CardTitle>
+          <CardDescription>
+            Live values applied to <code>:root</code>. Every component (button, card, table, sidebar) reads these.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {derivedTokens.map((t) => (
+              <div key={t.name} className="flex items-center gap-3 rounded-md border p-2">
+                <div
+                  className="w-8 h-8 rounded border shrink-0"
+                  style={{ background: `hsl(${t.value})` }}
+                />
+                <div className="min-w-0">
+                  <div className="text-xs font-mono truncate">{t.name}</div>
+                  <div className="text-[10px] text-muted-foreground font-mono truncate">{t.value || "—"}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

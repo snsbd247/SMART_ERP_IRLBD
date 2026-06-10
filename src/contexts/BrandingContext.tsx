@@ -30,24 +30,55 @@ const DEFAULTS: BrandingSettings = {
 };
 
 const BRANDING_KEYS = Object.keys(DEFAULTS) as (keyof BrandingSettings)[];
+const CACHE_KEY = "erp-branding-cache-v1";
+
+function readCache(): BrandingSettings | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULTS, ...parsed };
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(b: BrandingSettings) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(b));
+  } catch {
+    /* quota / private mode — ignore */
+  }
+}
 
 interface BrandingContextType {
   branding: BrandingSettings;
   loading: boolean;
   refetch: () => Promise<void>;
+  /** Live preview: apply colors immediately without persisting state. */
+  previewTheme: (primary: string, secondary: string) => void;
 }
 
 const BrandingContext = createContext<BrandingContextType>({
   branding: DEFAULTS,
   loading: true,
   refetch: async () => {},
+  previewTheme: () => {},
 });
 
 export const useBranding = () => useContext(BrandingContext);
 
 export const BrandingProvider = ({ children }: { children: ReactNode }) => {
-  const [branding, setBranding] = useState<BrandingSettings>(DEFAULTS);
+  // Hydrate from localStorage so the theme is correct on first paint after refresh / login.
+  const initial = readCache() || DEFAULTS;
+  const [branding, setBranding] = useState<BrandingSettings>(initial);
   const [loading, setLoading] = useState(true);
+
+  // Apply cached theme immediately (before backend responds).
+  if (typeof document !== "undefined") {
+    applyThemeColors(initial.primary_color, initial.secondary_color);
+    applyFavicon(initial.favicon_url);
+  }
 
   const fetchBranding = useCallback(async () => {
     let rows: { setting_key: string; setting_value: string | null }[] = [];
@@ -55,7 +86,6 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
     try {
       if (isLaravelMode()) {
         const base = getApiBaseUrl() || "";
-        // Public endpoint — works before login (no auth header required)
         const res = await fetch(`${base}/v1/public/branding`, {
           headers: { Accept: "application/json" },
         });
@@ -71,7 +101,7 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
         rows = (data as any) || [];
       }
     } catch {
-      // ignore — fall back to defaults
+      /* fall back to cache / defaults */
     }
 
     if (rows.length > 0) {
@@ -86,6 +116,7 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
         }
       });
       setBranding(merged);
+      writeCache(merged);
       applyThemeColors(merged.primary_color, merged.secondary_color);
       applyFavicon(merged.favicon_url);
     }
@@ -96,8 +127,8 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
     fetchBranding();
   }, [fetchBranding]);
 
-  // Re-apply derived tokens whenever the html `dark` class flips
-  // so the same two brand colors drive both light & dark palettes.
+  // Re-derive tokens whenever the html `dark` class flips so the same
+  // two brand colors drive both light & dark palettes.
   useEffect(() => {
     const root = document.documentElement;
     const obs = new MutationObserver(() => {
@@ -107,15 +138,19 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
     return () => obs.disconnect();
   }, [branding.primary_color, branding.secondary_color]);
 
+  const previewTheme = useCallback((primary: string, secondary: string) => {
+    applyThemeColors(primary, secondary);
+  }, []);
+
   return (
-    <BrandingContext.Provider value={{ branding, loading, refetch: fetchBranding }}>
+    <BrandingContext.Provider value={{ branding, loading, refetch: fetchBranding, previewTheme }}>
       {children}
     </BrandingContext.Provider>
   );
 };
 
 /** Parse "H S% L%" → [h, s, l]. Returns null if unparseable. */
-function parseHsl(value: string): [number, number, number] | null {
+export function parseHsl(value: string): [number, number, number] | null {
   if (!value) return null;
   const m = value.trim().match(/^(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)%?\s+(-?\d+(?:\.\d+)?)%?$/);
   if (!m) return null;
@@ -125,13 +160,32 @@ function parseHsl(value: string): [number, number, number] | null {
 const fmt = (h: number, s: number, l: number) =>
   `${Math.round(h)} ${Math.round(Math.max(0, Math.min(100, s)))}% ${Math.round(Math.max(0, Math.min(100, l)))}%`;
 
+/** WCAG contrast ratio between two HSL strings ("H S% L%"). */
+export function contrastRatio(a: string, b: string): number {
+  const toRgb = (hsl: string) => {
+    const p = parseHsl(hsl);
+    if (!p) return [0, 0, 0];
+    const [h, s, l] = [p[0], p[1] / 100, p[2] / 100];
+    const k = (n: number) => (n + h / 30) % 12;
+    const aa = s * Math.min(l, 1 - l);
+    const f = (n: number) => l - aa * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return [f(0), f(8), f(4)];
+  };
+  const lum = (rgb: number[]) => {
+    const [r, g, bl] = rgb.map((c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const L1 = lum(toRgb(a));
+  const L2 = lum(toRgb(b));
+  const [hi, lo] = L1 > L2 ? [L1, L2] : [L2, L1];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 /**
  * Apply branding colors across the entire design-system token set.
- * Derives foreground, accent, ring, sidebar, gradients & shadows from the
- * two brand colors so every Tailwind class (bg-primary, text-accent, ring,
- * border, sidebar-*) follows the user's choice — for light AND dark mode.
+ * Exported so the Branding page can drive a live preview.
  */
-function applyThemeColors(primary: string, secondary: string) {
+export function applyThemeColors(primary: string, secondary: string) {
   const p = parseHsl(primary);
   if (!p) return;
   const [ph, ps, pl] = p;
@@ -141,11 +195,9 @@ function applyThemeColors(primary: string, secondary: string) {
   const root = document.documentElement;
   const set = (name: string, value: string) => root.style.setProperty(name, value);
 
-  // Foreground that contrasts with the primary fill.
   const primaryFg = pl < 50 ? fmt(sh, Math.max(20, ss - 10), 95) : fmt(ph, 100, 10);
   const accentFg = sl < 50 ? fmt(ph, 30, 95) : fmt(ph, 100, 12);
 
-  // ---------- shared tokens ----------
   set("--primary", fmt(ph, ps, pl));
   set("--primary-foreground", primaryFg);
   set("--primary-glow", fmt(ph, Math.max(40, ps - 20), Math.min(85, pl + 12)));
@@ -172,11 +224,8 @@ function applyThemeColors(primary: string, secondary: string) {
   );
   set("--shadow-glow", `0 0 24px hsl(${fmt(ph, ps, pl)} / 0.25)`);
 
-  // ---------- light vs dark adjustments ----------
   const isDark = root.classList.contains("dark");
   if (isDark) {
-    // Dark mode: gold/secondary becomes the prominent action color,
-    // deep brand color tints surfaces.
     set("--background", fmt(ph, 35, 6));
     set("--card", fmt(ph, 35, 8));
     set("--popover", fmt(ph, 35, 8));
