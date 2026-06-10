@@ -411,28 +411,28 @@ const SalesPage = () => {
                     <TableCell>
                       <div className="flex gap-1">
                         {/* View */}
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/sales/invoices/${inv.id}`)} title="View">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View invoice" onClick={() => navigate(`/sales/invoices/${inv.id}`)} title="View">
                           <Eye className="w-3.5 h-3.5" />
                         </Button>
                         {/* Edit */}
                         {canEditDoc(inv.status) && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(inv)} title="Edit">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit invoice" onClick={() => openEdit(inv)} title="Edit">
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
                         )}
                         {/* Print */}
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openPrint(inv)} title="Print">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Print invoice" onClick={() => openPrint(inv)} title="Print">
                           <Printer className="w-3.5 h-3.5" />
                         </Button>
                         {/* Delete */}
                         {canDeleteDoc(inv.status) && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setActionTarget(inv); setActionType("delete"); setActionDialogOpen(true); }} title="Delete">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setActionTarget(inv); setActionType("delete"); setActionDialogOpen(true); }} aria-label="Delete invoice" title="Delete">
                             <Trash2 className="w-3.5 h-3.5 text-destructive" />
                           </Button>
                         )}
                         {/* Approve (admin only, draft/completed) */}
                         {!isCancelled && (inv.status === "draft" || inv.status === "completed") && (isAdmin || isSuperAdmin) && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setActionTarget(inv); setActionType("approve"); setActionDialogOpen(true); }} title="Approve">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setActionTarget(inv); setActionType("approve"); setActionDialogOpen(true); }} aria-label="Approve invoice" title="Approve">
                             <Check className="w-3.5 h-3.5 text-emerald-600" />
                           </Button>
                         )}
