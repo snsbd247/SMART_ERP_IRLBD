@@ -417,14 +417,27 @@ class GenericTableController extends BaseController
         // not supply one. Without this, MySQL fails with
         // "Field 'id' doesn't have a default value" for every UUID-PK table.
         if ($isInsert && Schema::hasColumn($table, 'id') && !isset($row['id'])) {
+            // Detect auto-increment by querying information_schema. If the
+            // `id` column is NOT auto-increment we assume it is a UUID/string
+            // PK without a DB default and generate one here.
+            $isAutoInc = false;
             try {
-                $idType = Schema::getColumnType($table, 'id');
-                // UUID columns surface as 'string' on MySQL/Doctrine.
-                if (in_array($idType, ['string', 'guid', 'uuid'], true)) {
-                    $row['id'] = (string) \Illuminate\Support\Str::uuid();
+                $info = DB::selectOne(
+                    'SELECT EXTRA, DATA_TYPE FROM information_schema.COLUMNS
+                       WHERE TABLE_SCHEMA = DATABASE()
+                         AND TABLE_NAME = ?
+                         AND COLUMN_NAME = ?',
+                    [$table, 'id']
+                );
+                if ($info) {
+                    $extra = strtolower((string) ($info->EXTRA ?? $info->extra ?? ''));
+                    $isAutoInc = str_contains($extra, 'auto_increment');
                 }
             } catch (\Throwable $e) {
-                // Fall through — let DB raise its own error if anything is off.
+                // If detection fails, fall through and generate UUID anyway.
+            }
+            if (!$isAutoInc) {
+                $row['id'] = (string) \Illuminate\Support\Str::uuid();
             }
         }
         return $row;
