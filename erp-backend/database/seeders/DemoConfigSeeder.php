@@ -198,9 +198,25 @@ class DemoConfigSeeder extends Seeder
     {
         if (!Schema::hasTable('purchase_settings') || !is_array($obj)) return;
         $existing = DB::table('purchase_settings')->first();
-        $row = array_merge($obj, ['updated_at' => now()]);
+        $row = $this->normalizePurchaseSettingsRow($obj);
         if ($existing) DB::table('purchase_settings')->where('id', $existing->id)->update($row);
         else DB::table('purchase_settings')->insert(array_merge($row, ['id' => (string) Str::uuid(), 'created_at' => now()]));
+    }
+
+    private function normalizePurchaseSettingsRow(array $obj): array
+    {
+        $columns = array_flip(Schema::getColumnListing('purchase_settings'));
+        $row = [];
+        $put = function (string $column, $value) use (&$row, $columns): void {
+            if (isset($columns[$column])) $row[$column] = $value;
+        };
+        foreach ($obj as $key => $value) $put($key, $value);
+        $put('default_vat_pct', $obj['default_vat_percent'] ?? null);
+        $put('default_ait_pct', $obj['default_ait_percent'] ?? null);
+        $put('po_default_currency', $obj['default_currency'] ?? null);
+        $put('enable_lc', $obj['enable_lc_module'] ?? null);
+        $put('updated_at', now());
+        return array_filter($row, fn($value) => $value !== null);
     }
 
     private function seedPurchaseCoaMapping(array $rows): void
