@@ -1186,18 +1186,33 @@
   ],
   "ifrs": [
     {
+      "account_code": "1000",
+      "ifrs_line": "Total assets",
+      "notes": null
+    },
+    {
+      "account_code": "1100",
+      "ifrs_line": "Total assets",
+      "notes": null
+    },
+    {
       "account_code": "1101",
-      "ifrs_line": "Cash and cash equivalents",
+      "ifrs_line": "Property, plant and equipment",
       "notes": null
     },
     {
       "account_code": "1102",
-      "ifrs_line": "Cash and cash equivalents",
+      "ifrs_line": "Intangible assets",
       "notes": null
     },
     {
       "account_code": "1103",
-      "ifrs_line": "Trade receivables",
+      "ifrs_line": "Deferred tax assets",
+      "notes": null
+    },
+    {
+      "account_code": "1104",
+      "ifrs_line": "Advances, deposits and prepayments",
       "notes": null
     },
     {
@@ -1207,11 +1222,56 @@
     },
     {
       "account_code": "1106",
-      "ifrs_line": "Other current assets",
+      "ifrs_line": "Advances, deposits and prepayments",
+      "notes": null
+    },
+    {
+      "account_code": "1107",
+      "ifrs_line": "Current tax assets",
+      "notes": null
+    },
+    {
+      "account_code": "1111",
+      "ifrs_line": "Cash and cash equivalents",
+      "notes": null
+    },
+    {
+      "account_code": "1112",
+      "ifrs_line": "Cash and cash equivalents",
+      "notes": null
+    },
+    {
+      "account_code": "1113",
+      "ifrs_line": "Cash and cash equivalents",
+      "notes": null
+    },
+    {
+      "account_code": "1114",
+      "ifrs_line": "Cash and cash equivalents",
       "notes": null
     },
     {
       "account_code": "1200",
+      "ifrs_line": "Total assets",
+      "notes": null
+    },
+    {
+      "account_code": "1201",
+      "ifrs_line": "Property, plant and equipment",
+      "notes": null
+    },
+    {
+      "account_code": "1202",
+      "ifrs_line": "Property, plant and equipment",
+      "notes": null
+    },
+    {
+      "account_code": "1203",
+      "ifrs_line": "Property, plant and equipment",
+      "notes": null
+    },
+    {
+      "account_code": "1204",
       "ifrs_line": "Property, plant and equipment",
       "notes": null
     },
@@ -1221,13 +1281,168 @@
       "notes": null
     },
     {
+      "account_code": "1210",
+      "ifrs_line": "Inventories",
+      "notes": null
+    },
+    {
+      "account_code": "1211",
+      "ifrs_line": "Inventories",
+      "notes": null
+    },
+    {
+      "account_code": "1212",
+      "ifrs_line": "Inventories",
+      "notes": null
+    },
+    {
+      "account_code": "1213",
+      "ifrs_line": "Inventories",
+      "notes": null
+    },
+    {
+      "account_code": "1214",
+      "ifrs_line": "Inventories",
+      "notes": null
+    },
+    {
+      "account_code": "1215",
+      "ifrs_line": "Inventories",
+      "notes": null
+    },
+    {
+      "account_code": "1220",
+      "ifrs_line": "Current tax assets",
+      "notes": null
+    },
+    {
+      "account_code": "1230",
+      "ifrs_line": "Advances, deposits and prepayments",
+      "notes": null
+    },
+    {
+      "account_code": "1231",
+      "ifrs_line": "Advances, deposits and prepayments",
+      "notes": null
+    },
+    {
+      "account_code": "1232",
+      "ifrs_line": "Advances, deposits and prepayments",
+      "notes": null
+    },
+    {
+      "account_code": "1233",
+      "ifrs_line": "Advances, deposits and prepayments",
+      "notes": null
+    },
+    {
+      "account_code": "1234",
+      "ifrs_line": "Current tax assets",
+      "notes": null
+    },
+    {
+      "account_code": "1240",
+      "ifrs_line": "Trade and other receivables",
+      "notes": null
+    },
+    {
+      "account_code": "1241",
+      "ifrs_line": "Trade and other receivables",
+      "notes": null
+    },
+    {
+      "account_code": "1242",
+      "ifrs_line": "Trade and other receivables",
+      "notes": null
+    },
+    {
+      "account_code": "1243",
+      "ifrs_line": "Trade and other receivables",
+      "notes": null
+    },
+    {
+      "account_code": "1244",
+      "ifrs_line": "Trade and other receivables",
+      "notes": null
+    },
+    {
+      "account_code": "1245",
+      "ifrs_line": "Trade and other receivables",
+      "notes": null
+    },
+    {
+      "account_code": "1246",
+      "ifrs_line": "Trade and other receivables",
+      "notes": null
+    },
+    {
+      "account_code": "1247",
+      "ifrs_line": "Trade and other receivables",
+      "notes": null
+    },
+    {
+      "account_code": "1248",
+      "ifrs_line": "Trade and other receivables",
+      "notes": null
+    },
+    {
+      "account_code": "1250",
+      "ifrs_line": "Cash and cash equivalents",
+      "notes": null
+    },
+    {
+      "account_code": "1251",
+      "ifrs_line": "Cash and cash equivalents",
+      "notes": null
+    },
+    {
+      "account_code": "1252",
+      "ifrs_line": "Cash and cash equivalents",
+      "notes": null
+    },
+    {
+      "account_code": "1253",
+      "ifrs_line": "Cash and cash equivalents",
+      "notes": null
+    },
+    {
+      "account_code": "1254",
+      "ifrs_line": "Cash and cash equivalents",
+      "notes": null
+    },
+    {
+      "account_code": "1255",
+      "ifrs_line": "Cash and cash equivalents",
+      "notes": null
+    },
+    {
+      "account_code": "1256",
+      "ifrs_line": "Cash and cash equivalents",
+      "notes": null
+    },
+    {
+      "account_code": "2000",
+      "ifrs_line": "Total liabilities",
+      "notes": null
+    },
+    {
+      "account_code": "2100",
+      "ifrs_line": "Total liabilities",
+      "notes": null
+    },
+    {
       "account_code": "2101",
-      "ifrs_line": "Trade payables",
+      "ifrs_line": "Long-term borrowings",
       "notes": null
     },
     {
       "account_code": "2102",
-      "ifrs_line": "Trade payables",
+      "ifrs_line": "Trade and other payables",
+      "notes": null
+    },
+    {
+      "account_code": "2103",
+      "ifrs_line": "Accrued expenses and other current liabilities",
       "notes": null
     },
     {
@@ -1236,18 +1451,183 @@
       "notes": null
     },
     {
+      "account_code": "2105",
+      "ifrs_line": "Short-term borrowings",
+      "notes": null
+    },
+    {
+      "account_code": "2106",
+      "ifrs_line": "Employee benefit obligations",
+      "notes": null
+    },
+    {
+      "account_code": "2107",
+      "ifrs_line": "Employee benefit obligations",
+      "notes": null
+    },
+    {
+      "account_code": "2200",
+      "ifrs_line": "Total liabilities",
+      "notes": null
+    },
+    {
       "account_code": "2201",
+      "ifrs_line": "Short-term borrowings",
+      "notes": null
+    },
+    {
+      "account_code": "2202",
+      "ifrs_line": "Short-term borrowings",
+      "notes": null
+    },
+    {
+      "account_code": "2210",
+      "ifrs_line": "Trade and other payables",
+      "notes": null
+    },
+    {
+      "account_code": "2211",
+      "ifrs_line": "Trade and other payables",
+      "notes": null
+    },
+    {
+      "account_code": "2212",
+      "ifrs_line": "Trade and other payables",
+      "notes": null
+    },
+    {
+      "account_code": "2213",
+      "ifrs_line": "Trade and other payables",
+      "notes": null
+    },
+    {
+      "account_code": "2214",
+      "ifrs_line": "Trade and other payables",
+      "notes": null
+    },
+    {
+      "account_code": "2215",
+      "ifrs_line": "Trade and other payables",
+      "notes": null
+    },
+    {
+      "account_code": "2216",
+      "ifrs_line": "Trade and other payables",
+      "notes": null
+    },
+    {
+      "account_code": "2217",
+      "ifrs_line": "Trade and other payables",
+      "notes": null
+    },
+    {
+      "account_code": "2218",
+      "ifrs_line": "Trade and other payables",
+      "notes": null
+    },
+    {
+      "account_code": "2220",
+      "ifrs_line": "Accrued expenses and other current liabilities",
+      "notes": null
+    },
+    {
+      "account_code": "2221",
+      "ifrs_line": "Accrued expenses and other current liabilities",
+      "notes": null
+    },
+    {
+      "account_code": "2222",
+      "ifrs_line": "Accrued expenses and other current liabilities",
+      "notes": null
+    },
+    {
+      "account_code": "2223",
+      "ifrs_line": "Accrued expenses and other current liabilities",
+      "notes": null
+    },
+    {
+      "account_code": "2224",
+      "ifrs_line": "Accrued expenses and other current liabilities",
+      "notes": null
+    },
+    {
+      "account_code": "2225",
+      "ifrs_line": "Accrued expenses and other current liabilities",
+      "notes": null
+    },
+    {
+      "account_code": "2226",
+      "ifrs_line": "Accrued expenses and other current liabilities",
+      "notes": null
+    },
+    {
+      "account_code": "2227",
+      "ifrs_line": "Accrued expenses and other current liabilities",
+      "notes": null
+    },
+    {
+      "account_code": "2228",
+      "ifrs_line": "Accrued expenses and other current liabilities",
+      "notes": null
+    },
+    {
+      "account_code": "2230",
+      "ifrs_line": "Short-term borrowings",
+      "notes": null
+    },
+    {
+      "account_code": "2231",
+      "ifrs_line": "Short-term borrowings",
+      "notes": null
+    },
+    {
+      "account_code": "2232",
+      "ifrs_line": "Short-term borrowings",
+      "notes": null
+    },
+    {
+      "account_code": "2233",
+      "ifrs_line": "Short-term borrowings",
+      "notes": null
+    },
+    {
+      "account_code": "2234",
+      "ifrs_line": "Short-term borrowings",
+      "notes": null
+    },
+    {
+      "account_code": "2235",
       "ifrs_line": "Long-term borrowings",
       "notes": null
     },
     {
+      "account_code": "2240",
+      "ifrs_line": "Current tax liabilities",
+      "notes": null
+    },
+    {
+      "account_code": "3000",
+      "ifrs_line": "Total equity",
+      "notes": null
+    },
+    {
       "account_code": "3101",
-      "ifrs_line": "Issued capital",
+      "ifrs_line": "Share capital",
       "notes": null
     },
     {
       "account_code": "3102",
       "ifrs_line": "Retained earnings",
+      "notes": null
+    },
+    {
+      "account_code": "3103",
+      "ifrs_line": "Revaluation reserve",
+      "notes": null
+    },
+    {
+      "account_code": "4000",
+      "ifrs_line": "Total income",
       "notes": null
     },
     {
@@ -1261,28 +1641,393 @@
       "notes": null
     },
     {
+      "account_code": "4103",
+      "ifrs_line": "Other income",
+      "notes": null
+    },
+    {
+      "account_code": "4104",
+      "ifrs_line": "Other income",
+      "notes": null
+    },
+    {
+      "account_code": "4105",
+      "ifrs_line": "Revenue",
+      "notes": null
+    },
+    {
+      "account_code": "4201",
+      "ifrs_line": "Finance income",
+      "notes": null
+    },
+    {
+      "account_code": "5000",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5100",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5101",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
       "account_code": "5102",
       "ifrs_line": "Cost of sales",
       "notes": null
     },
     {
+      "account_code": "5103",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5200",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
       "account_code": "5201",
-      "ifrs_line": "Administrative expenses",
+      "ifrs_line": "Cost of sales",
       "notes": null
     },
     {
       "account_code": "5202",
-      "ifrs_line": "Administrative expenses",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5203",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5204",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5205",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5206",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5207",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5208",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5209",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5210",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5300",
+      "ifrs_line": "Cost of sales",
       "notes": null
     },
     {
       "account_code": "5301",
-      "ifrs_line": "Finance costs",
+      "ifrs_line": "Cost of sales",
       "notes": null
     },
     {
       "account_code": "5302",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5303",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5304",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5305",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5306",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5307",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5308",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5309",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5310",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5311",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5312",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5313",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "5314",
+      "ifrs_line": "Cost of sales",
+      "notes": null
+    },
+    {
+      "account_code": "6000",
+      "ifrs_line": "Operating expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6100",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6101",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6102",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6103",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6104",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6105",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6106",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6107",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6108",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6109",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6110",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6111",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6112",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6113",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6114",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6115",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6116",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6117",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6118",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6119",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6120",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6121",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6122",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6123",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6124",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6125",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6126",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6127",
+      "ifrs_line": "Administrative expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6200",
+      "ifrs_line": "Selling and distribution expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6201",
+      "ifrs_line": "Selling and distribution expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6202",
+      "ifrs_line": "Selling and distribution expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6203",
+      "ifrs_line": "Selling and distribution expenses",
+      "notes": null
+    },
+    {
+      "account_code": "6300",
       "ifrs_line": "Finance costs",
+      "notes": null
+    },
+    {
+      "account_code": "6301",
+      "ifrs_line": "Finance costs",
+      "notes": null
+    },
+    {
+      "account_code": "6302",
+      "ifrs_line": "Finance costs",
+      "notes": null
+    },
+    {
+      "account_code": "6303",
+      "ifrs_line": "Finance costs",
+      "notes": null
+    },
+    {
+      "account_code": "6304",
+      "ifrs_line": "Finance costs",
+      "notes": null
+    },
+    {
+      "account_code": "6305",
+      "ifrs_line": "Finance costs",
+      "notes": null
+    },
+    {
+      "account_code": "6306",
+      "ifrs_line": "Finance costs",
+      "notes": null
+    },
+    {
+      "account_code": "6400",
+      "ifrs_line": "Income tax expense",
+      "notes": null
+    },
+    {
+      "account_code": "6401",
+      "ifrs_line": "Income tax expense",
+      "notes": null
+    },
+    {
+      "account_code": "6402",
+      "ifrs_line": "Income tax expense",
       "notes": null
     }
   ],
