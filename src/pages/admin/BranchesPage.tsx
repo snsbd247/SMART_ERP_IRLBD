@@ -62,7 +62,6 @@ const BranchesPage = () => {
       if (editBranch) {
         const { error } = await supabase.from("branches").update({
           name: formName, code: formCode, address: formAddress, phone: formPhone, status: formStatus,
-          updated_at: new Date().toISOString(),
         }).eq("id", editBranch.id);
         if (error) throw error;
       } else {
