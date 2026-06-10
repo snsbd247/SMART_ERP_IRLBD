@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  IFRSLine, IFRS_LINE_LABEL, defaultMapping,
+  IFRSLine, IFRS_LINE_LABEL, defaultMapping, normalizeIFRSLine,
   PL_SECTIONS, BS_SECTIONS,
 } from "@/lib/ifrs-mapping";
 import { Loader2, Save, RotateCcw, Settings2 } from "lucide-react";
@@ -33,6 +33,7 @@ const IFRSMappingPage = () => {
   const [pending, setPending] = useState<Map<string, IFRSLine | "__default__">>(new Map());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [normalizing, setNormalizing] = useState(false);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
@@ -44,7 +45,10 @@ const IFRSMappingPage = () => {
     ]);
     setAccounts((a.data || []) as Account[]);
     const om = new Map<string, IFRSLine>();
-    (m.data as any[] || []).forEach(r => om.set(r.account_id, r.ifrs_line as IFRSLine));
+    (m.data as any[] || []).forEach(r => {
+      const normalized = normalizeIFRSLine(r.ifrs_line);
+      if (normalized) om.set(r.account_id, normalized);
+    });
     setOverrides(om);
     setPending(new Map());
     setLoading(false);
@@ -104,6 +108,27 @@ const IFRSMappingPage = () => {
     }
   };
 
+  const normalizeAllMappings = async () => {
+    setNormalizing(true);
+    try {
+      const rows = accounts.map(a => ({
+        account_id: a.id,
+        ifrs_line: effectiveLine(a).line,
+        notes: overrides.has(a.id) ? "normalized" : "auto-mapped",
+      }));
+      const { error } = await supabase
+        .from("ifrs_account_mapping" as any)
+        .upsert(rows as any, { onConflict: "account_id" });
+      if (error) throw error;
+      toast.success(`Mapped ${rows.length} IFRS accounts`);
+      await load();
+    } catch (e: any) {
+      toast.error("Normalize failed: " + (e?.message || "Unknown error"));
+    } finally {
+      setNormalizing(false);
+    }
+  };
+
   const resetPending = () => setPending(new Map());
 
   return (
@@ -139,6 +164,10 @@ const IFRSMappingPage = () => {
           <div className="flex gap-2">
             <Button variant="outline" onClick={resetPending} disabled={pending.size === 0}>
               <RotateCcw className="w-4 h-4 mr-1" /> Discard
+            </Button>
+            <Button variant="outline" onClick={normalizeAllMappings} disabled={loading || normalizing || accounts.length === 0}>
+              {normalizing ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Settings2 className="w-4 h-4 mr-1" />}
+              Map All
             </Button>
             <Button onClick={save} disabled={saving || pending.size === 0}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
