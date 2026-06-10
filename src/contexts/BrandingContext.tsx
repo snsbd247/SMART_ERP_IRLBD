@@ -96,6 +96,17 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
     fetchBranding();
   }, [fetchBranding]);
 
+  // Re-apply derived tokens whenever the html `dark` class flips
+  // so the same two brand colors drive both light & dark palettes.
+  useEffect(() => {
+    const root = document.documentElement;
+    const obs = new MutationObserver(() => {
+      applyThemeColors(branding.primary_color, branding.secondary_color);
+    });
+    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, [branding.primary_color, branding.secondary_color]);
+
   return (
     <BrandingContext.Provider value={{ branding, loading, refetch: fetchBranding }}>
       {children}
