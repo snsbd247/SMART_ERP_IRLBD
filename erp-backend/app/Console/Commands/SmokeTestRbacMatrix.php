@@ -43,7 +43,7 @@ class SmokeTestRbacMatrix extends Command
         if (!$scoped) {
             $scopedId = (string) Str::uuid();
             DB::table('users')->insert([
-                'id' => (string) Str::uuid(),
+                'id' => $scopedId,
                 'username' => 'rbac_smoke',
                 'name' => 'RBAC Smoke',
                 'email' => $scopedEmail,
