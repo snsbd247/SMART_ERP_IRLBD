@@ -237,6 +237,88 @@ export default function BrandingPage() {
     }
   };
 
+  // ---------- Contrast validation (WCAG) ----------
+  const contrast = useMemo(() => {
+    const p = form.primary_color;
+    const a = form.secondary_color;
+    // Light-mode foreground sample (near-white) vs primary fill
+    const onPrimary = contrastRatio(p, "0 0% 100%");
+    const onAccent = contrastRatio(a, "161 100% 12%");
+    const sidebarText = contrastRatio(p, "43 35% 88%");
+    return {
+      onPrimary,
+      onAccent,
+      sidebarText,
+      pOk: onPrimary >= 4.5,
+      aOk: onAccent >= 4.5,
+      sOk: sidebarText >= 4.5,
+    };
+  }, [form.primary_color, form.secondary_color]);
+
+  // ---------- Derived tokens (live from :root) ----------
+  const [tokenTick, setTokenTick] = useState(0);
+  useEffect(() => {
+    // Re-read after each color change
+    const id = setTimeout(() => setTokenTick((t) => t + 1), 50);
+    return () => clearTimeout(id);
+  }, [form.primary_color, form.secondary_color]);
+
+  const derivedTokens = useMemo(() => {
+    if (typeof window === "undefined") return [];
+    const cs = getComputedStyle(document.documentElement);
+    const names = [
+      "--primary", "--primary-foreground", "--primary-glow",
+      "--secondary", "--accent", "--accent-foreground", "--ring",
+      "--background", "--foreground", "--card", "--popover",
+      "--muted", "--muted-foreground", "--border", "--input",
+      "--sidebar-background", "--sidebar-foreground",
+      "--sidebar-primary", "--sidebar-primary-foreground",
+      "--sidebar-accent", "--sidebar-accent-foreground", "--sidebar-border",
+    ];
+    return names.map((n) => ({ name: n, value: cs.getPropertyValue(n).trim() }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokenTick]);
+
+  // ---------- Export / Import ----------
+  const handleExport = () => {
+    const payload = {
+      _type: "smarterp-branding-theme",
+      _version: 1,
+      exported_at: new Date().toISOString(),
+      branding: form,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `branding-theme-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Theme exported", description: "JSON file downloaded — share it with other environments." });
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const b = data?.branding || data;
+      if (!b || typeof b !== "object" || !b.primary_color) {
+        throw new Error("Invalid theme file");
+      }
+      const next = { ...form, ...b };
+      setForm(next);
+      previewTheme(next.primary_color, next.secondary_color);
+      toast({ title: "Theme imported", description: "Click Save Changes to persist across users." });
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err?.message || "Invalid JSON", variant: "destructive" });
+    } finally {
+      if (importRef.current) importRef.current.value = "";
+    }
+  };
+
+
   return (
     <div className="p-4 lg:p-6 space-y-6 max-w-[1200px] mx-auto">
       <div className="flex items-center justify-between">
