@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronDown, Pencil, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { ChevronRight, ChevronDown, Pencil, ChevronsDownUp, ChevronsUpDown, Trash2 } from "lucide-react";
 import { AccountWithBalance } from "@/hooks/useAccountBalances";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
@@ -9,9 +9,10 @@ interface Props {
   accounts: AccountWithBalance[];
   onEdit: (account: AccountWithBalance) => void;
   onDrillDown: (account: AccountWithBalance) => void;
+  onDelete?: (account: AccountWithBalance) => void;
 }
 
-export function AccountTreeTable({ accounts, onEdit, onDrillDown }: Props) {
+export function AccountTreeTable({ accounts, onEdit, onDrillDown, onDelete }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const { fc } = useCurrency();
 
@@ -126,9 +127,16 @@ export function AccountTreeTable({ accounts, onEdit, onDrillDown }: Props) {
             {displayClosing > 0 ? `${fc(displayClosing)} ${closingType}` : "—"}
           </TableCell>
           <TableCell>
-            <Button variant="ghost" size="icon" onClick={() => onEdit(a)}>
-              <Pencil className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={() => onEdit(a)} title="Edit">
+                <Pencil className="w-4 h-4" />
+              </Button>
+              {onDelete && !hasChildren && (
+                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => onDelete(a)} title="Delete">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </TableCell>
         </TableRow>
       );
