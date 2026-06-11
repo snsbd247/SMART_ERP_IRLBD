@@ -41,13 +41,26 @@ class StockTransferController extends BaseController
 
     public function store(Request $r)
     {
-        $r->validate([
-            'transfer_date'     => 'required|date',
-            'from_warehouse_id' => 'required|exists:warehouses,id',
-            'to_warehouse_id'   => 'required|different:from_warehouse_id|exists:warehouses,id',
-            'item_id'           => 'required|exists:item_master,id',
-            'quantity'          => 'required|numeric|min:0.01',
-        ]);
+        $hasItems = is_array($r->input('items')) && count($r->input('items')) > 0;
+
+        if ($hasItems) {
+            $r->validate([
+                'transfer_date'     => 'required|date',
+                'from_warehouse_id' => 'required|exists:warehouses,id',
+                'to_warehouse_id'   => 'required|different:from_warehouse_id|exists:warehouses,id',
+                'items'             => 'required|array|min:1',
+                'items.*.item_id'   => 'required|exists:item_master,id',
+                'items.*.quantity'  => 'required|numeric|min:0.01',
+            ]);
+        } else {
+            $r->validate([
+                'transfer_date'     => 'required|date',
+                'from_warehouse_id' => 'required|exists:warehouses,id',
+                'to_warehouse_id'   => 'required|different:from_warehouse_id|exists:warehouses,id',
+                'item_id'           => 'required|exists:item_master,id',
+                'quantity'          => 'required|numeric|min:0.01',
+            ]);
+        }
 
         $this->period->ensureActive($r->transfer_date);
 
@@ -55,22 +68,42 @@ class StockTransferController extends BaseController
         catch (\Throwable $e) { $number = 'STR-' . date('y') . '-' . substr((string) microtime(true), -5); }
 
         $id = (string) Str::uuid();
-        DB::table('stock_transfers')->insert([
-            'id' => $id,
-            'transfer_number'   => $number,
-            'transfer_date'     => $r->transfer_date,
-            'from_warehouse_id' => $r->from_warehouse_id,
-            'to_warehouse_id'   => $r->to_warehouse_id,
-            'item_id'           => $r->item_id,
-            'quantity'          => $r->quantity,
-            'notes'             => $r->notes,
-            'status'            => 'pending',
-            'created_by'        => optional($r->user())->id,
-            'created_at'        => now(),
-            'updated_at'        => now(),
-        ]);
 
-        return $this->created(DB::table('stock_transfers')->where('id', $id)->first());
+        DB::transaction(function () use ($r, $id, $number, $hasItems) {
+            DB::table('stock_transfers')->insert([
+                'id' => $id,
+                'transfer_number'   => $number,
+                'transfer_date'     => $r->transfer_date,
+                'from_warehouse_id' => $r->from_warehouse_id,
+                'to_warehouse_id'   => $r->to_warehouse_id,
+                'item_id'           => $hasItems ? null : $r->item_id,
+                'quantity'          => $hasItems ? null : $r->quantity,
+                'notes'             => $r->notes,
+                'status'            => 'pending',
+                'created_by'        => optional($r->user())->id,
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ]);
+
+            if ($hasItems) {
+                $rows = [];
+                foreach ($r->input('items') as $line) {
+                    $rows[] = [
+                        'id'                => (string) Str::uuid(),
+                        'stock_transfer_id' => $id,
+                        'item_id'           => $line['item_id'],
+                        'quantity'          => $line['quantity'],
+                        'notes'             => $line['notes'] ?? null,
+                        'created_at'        => now(),
+                    ];
+                }
+                DB::table('stock_transfer_items')->insert($rows);
+            }
+        });
+
+        $row = DB::table('stock_transfers')->where('id', $id)->first();
+        $row->items = DB::table('stock_transfer_items')->where('stock_transfer_id', $id)->get();
+        return $this->created($row);
     }
 
     public function destroy(string $id)
