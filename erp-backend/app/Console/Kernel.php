@@ -2,11 +2,16 @@
 
 namespace App\Console;
 
+use App\Console\Commands\RunPhpUnitTest;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 class Kernel extends ConsoleKernel
 {
+    protected $commands = [
+        RunPhpUnitTest::class,
+    ];
+
     protected function schedule(Schedule $schedule): void
     {
         // Mark users offline if inactive for >2 minutes
