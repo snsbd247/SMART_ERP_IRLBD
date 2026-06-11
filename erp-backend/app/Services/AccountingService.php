@@ -17,7 +17,7 @@ class AccountingService
     /**
      * Create and optionally auto-approve an accounting voucher with balanced entries.
      */
-    public function createVoucher(array $data, array $entries, bool $autoApprove = false): AccVoucher
+    public function createVoucher(array $data, array $entries, bool $autoApprove = true): AccVoucher
     {
         // Validate balanced
         $totalDebit = collect($entries)->sum('debit');
