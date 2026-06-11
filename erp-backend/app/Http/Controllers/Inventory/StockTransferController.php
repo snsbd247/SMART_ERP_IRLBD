@@ -36,6 +36,7 @@ class StockTransferController extends BaseController
     {
         $row = DB::table('stock_transfers')->where('id', $id)->first();
         if (!$row) return $this->error('Not found', 404);
+        $row->items = DB::table('stock_transfer_items')->where('stock_transfer_id', $id)->get();
         return $this->success($row);
     }
 
