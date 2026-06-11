@@ -220,6 +220,7 @@ const navGroups: NavGroup[] = [
       { to: "/admin/financial-years", label: "Financial Years", icon: Calendar, permission: "financial_years.view" },
       { to: "/admin/users", label: "Users", icon: Users, permission: "users.view" },
       { to: "/admin/roles", label: "Roles & Permissions", icon: Shield, permission: "roles.view" },
+      { to: "/admin/permission-matrix", label: "Permission Matrix", icon: Shield, permission: "roles.view" },
       { to: "/admin/backup", label: "Backup & Restore", icon: Database, permission: "backup.view" },
       { to: "/admin/audit-log", label: "Activity Logs", icon: Activity, permission: "audit_log.view" },
       { to: "/admin/diagnostics", label: "System Diagnostics", icon: Gauge, permission: "settings.view" },
