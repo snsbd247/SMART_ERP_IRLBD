@@ -147,6 +147,16 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:stock_adjustments.edit')->post('stock-adjustments/{id}/approve', [\App\Http\Controllers\Inventory\StockAdjustmentController::class, 'approve']);
         Route::middleware('permission:stock_adjustments.delete')->delete('stock-adjustments/{id}', [\App\Http\Controllers\Inventory\StockAdjustmentController::class, 'destroy']);
 
+        // Stock Transfers (Inter-warehouse)
+        Route::middleware('permission:inventory.view')->group(function () {
+            Route::get('stock-transfers', [\App\Http\Controllers\Inventory\StockTransferController::class, 'index']);
+            Route::get('stock-transfers/{id}', [\App\Http\Controllers\Inventory\StockTransferController::class, 'show']);
+        });
+        Route::middleware('permission:inventory.create')->post('stock-transfers', [\App\Http\Controllers\Inventory\StockTransferController::class, 'store']);
+        Route::middleware('permission:inventory.edit')->post('stock-transfers/{id}/approve', [\App\Http\Controllers\Inventory\StockTransferController::class, 'approve']);
+        Route::middleware('permission:inventory.edit')->post('stock-transfers/{id}/cancel', [\App\Http\Controllers\Inventory\StockTransferController::class, 'cancel']);
+        Route::middleware('permission:inventory.delete')->delete('stock-transfers/{id}', [\App\Http\Controllers\Inventory\StockTransferController::class, 'destroy']);
+
         // ─── Customers (separate permission key) ────────────────
         Route::middleware('permission:customers.view')->group(function () {
             Route::get('customers', [\App\Http\Controllers\Sales\CustomerController::class, 'index']);
