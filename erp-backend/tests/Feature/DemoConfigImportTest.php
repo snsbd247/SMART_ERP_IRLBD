@@ -41,6 +41,7 @@ class DemoConfigImportTest extends TestCase
     {
         $user = new \App\Models\User();
         $user->id          = (string) Str::uuid();
+        $user->username    = 'super_'. Str::random(5);
         $user->name        = 'Test Super Admin';
         $user->email       = 'super@test.local';
         $user->password    = bcrypt('secret');
