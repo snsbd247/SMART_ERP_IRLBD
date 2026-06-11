@@ -25,8 +25,10 @@ export const stockTransfersApi = {
     transfer_date: string;
     from_warehouse_id: string;
     to_warehouse_id: string;
-    item_id: string;
-    quantity: number;
+    // Legacy single-item OR new multi-item lines
+    item_id?: string;
+    quantity?: number;
+    items?: Array<{ item_id: string; quantity: number; notes?: string }>;
     notes?: string;
   }) => req("POST", path, payload),
   approve: (id: string) => req("POST", `${path}/${id}/approve`),
