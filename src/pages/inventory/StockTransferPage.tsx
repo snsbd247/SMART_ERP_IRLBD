@@ -211,7 +211,7 @@ const StockTransferPage = () => {
           <DialogHeader><DialogTitle>New Stock Transfer</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2"><Label>Stock Group</Label>
-              <Select value={stockGroupId} onValueChange={(v) => { setStockGroupId(v); setItemId(""); }}>
+              <Select value={stockGroupId} onValueChange={(v) => { setStockGroupId(v); setLines((p) => p.map((l) => ({ ...l, item_id: "" }))); }}>
                 <SelectTrigger><SelectValue placeholder="All groups" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">All Stock Groups</SelectItem>
