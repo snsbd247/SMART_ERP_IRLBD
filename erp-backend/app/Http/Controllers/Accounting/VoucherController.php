@@ -66,9 +66,8 @@ class VoucherController extends BaseController
         if (!$user->isSuperAdmin() && !$user->hasPermission($voucher->voucher_type . '.edit')) {
             return $this->error('Forbidden', 403);
         }
-        if ($voucher->status === 'approved') {
-            return $this->error('Approved vouchers require Super Admin override.', 422);
-        }
+        // Approval system removed — vouchers are always editable by users with accounts.edit.
+
 
         $data = $request->validate([
             'voucher_date' => 'required|date',
