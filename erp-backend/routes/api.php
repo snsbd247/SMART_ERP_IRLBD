@@ -126,7 +126,16 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:sales_returns.edit')->post('sales-returns/{id}/approve', [\App\Http\Controllers\Sales\SalesReturnController::class, 'approve']);
         Route::middleware('permission:sales_returns.delete')->delete('sales-returns/{id}', [\App\Http\Controllers\Sales\SalesReturnController::class, 'destroy']);
 
-        // Purchase Returns — removed with Purchase module
+        // Purchase Returns
+        Route::middleware('permission:purchase_returns.view')->group(function () {
+            Route::get('purchase-returns', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'index']);
+            Route::get('purchase-returns/{id}', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'show']);
+        });
+        Route::middleware('permission:purchase_returns.create')->post('purchase-returns', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'store']);
+        Route::middleware('permission:purchase_returns.edit')->put('purchase-returns/{id}', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'update']);
+        Route::middleware('permission:purchase_returns.edit')->post('purchase-returns/{id}/approve', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'approve']);
+        Route::middleware('permission:purchase_returns.delete')->delete('purchase-returns/{id}', [\App\Http\Controllers\Purchase\PurchaseReturnController::class, 'destroy']);
+
 
 
         // Stock Adjustments
