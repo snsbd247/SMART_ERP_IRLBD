@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, ArrowRightLeft, Printer, Check, X } from "lucide-react";
 import { PrintLayout } from "@/components/PrintLayout";
 import { getDocumentStatusConfig } from "@/hooks/useDocumentRules";
-import { documentApi } from "@/lib/document-api";
+
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
