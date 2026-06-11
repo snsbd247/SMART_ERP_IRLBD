@@ -59,10 +59,10 @@ const StockTransferPage = () => {
     setSaving(true);
     try {
       if (actionType === "approve") {
-        await documentApi.approve("stock_transfer", actionTarget.id);
+        await stockTransfersApi.approve(actionTarget.id);
         toast({ title: `Transfer ${actionTarget.transfer_number} approved` });
       } else if (actionType === "cancel") {
-        await documentApi.cancel("stock_transfer", actionTarget.id, actionReason);
+        await stockTransfersApi.cancel(actionTarget.id, actionReason);
         toast({ title: `Transfer ${actionTarget.transfer_number} cancelled` });
       }
       setActionDialogOpen(false);
