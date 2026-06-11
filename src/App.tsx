@@ -30,6 +30,8 @@ import GithubDeploySyncPage from "./pages/admin/GithubDeploySyncPage";
 
 import ChartOfAccounts from "./pages/accounts/ChartOfAccounts";
 import AccountingVouchers from "./pages/accounts/AccountingVouchers";
+import VoucherApprovalDashboard from "./pages/accounts/VoucherApprovalDashboard";
+import PermissionMatrixPage from "./pages/admin/PermissionMatrixPage";
 
 import SalesPage from "./pages/sales/SalesPage";
 import SalesInvoiceDetailPage from "./pages/sales/SalesInvoiceDetailPage";
@@ -222,6 +224,8 @@ const App = () => (
                 {/* ─── Accounts ─────────────────────────────────── */}
                 <Route path="/accounts/chart" element={<P perm="accounts.view"><ChartOfAccounts /></P>} />
                 <Route path="/accounts/vouchers" element={<AccountingVouchers />} />
+                <Route path="/accounts/approvals" element={<P perm="accounts.view"><VoucherApprovalDashboard /></P>} />
+                <Route path="/admin/permission-matrix" element={<P perm="roles.view"><PermissionMatrixPage /></P>} />
 
                 {/* ─── Sales ────────────────────────────────────── */}
                 <Route path="/sales" element={<P perm="sales.view"><SalesPage /></P>} />

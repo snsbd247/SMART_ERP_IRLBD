@@ -118,12 +118,36 @@ class VoucherController extends BaseController
 
     public function approve(Request $request, string $id)
     {
-        return $this->success($this->service->approveVoucher($id, $request->user()->id));
+        $note = $request->input('note');
+        return $this->success($this->service->approveVoucher($id, $request->user()->id, $note));
     }
 
-    public function reject(string $id)
+    public function reject(Request $request, string $id)
     {
-        return $this->success($this->service->rejectVoucher($id));
+        $note = $request->input('note');
+        return $this->success($this->service->rejectVoucher($id, $request->user()?->id, $note));
+    }
+
+    /**
+     * GET /v1/vouchers/pending — vouchers awaiting approval.
+     */
+    public function pending(Request $request)
+    {
+        $q = AccVoucher::where('status', 'pending');
+        if ($type = $request->input('voucher_type')) $q->where('voucher_type', $type);
+        if ($branch = $request->input('branch_id')) $q->where('branch_id', $branch);
+        $rows = $q->orderBy('voucher_date', 'desc')->paginate($request->input('per_page', 50));
+        return $this->paginated($rows);
+    }
+
+    /**
+     * GET /v1/vouchers/{id}/approval-history
+     */
+    public function approvalHistory(string $id)
+    {
+        $rows = \App\Models\VoucherApprovalHistory::where('voucher_id', $id)
+            ->orderBy('created_at', 'desc')->get();
+        return $this->success($rows);
     }
 
     public function editApproved(Request $request, string $id)
