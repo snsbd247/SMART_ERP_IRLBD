@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\BaseController;
+use App\Models\AuditLog;
 use App\Services\FinancialPeriodGuard;
 use App\Services\NumberSequenceService;
 use App\Services\StockService;
