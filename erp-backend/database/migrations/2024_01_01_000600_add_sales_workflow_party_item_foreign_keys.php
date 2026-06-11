@@ -16,6 +16,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         $this->addFk('purchase_orders',        'customer_id', 'customers',   'purchase_orders_customer_id_fkey');
         $this->addFk('purchase_order_items',   'product_id',  'item_master', 'purchase_order_items_product_id_fkey');
         $this->addFk('vat_challans',           'customer_id', 'customers',   'vat_challans_customer_id_fkey');
@@ -28,6 +32,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         foreach ([
             ['purchase_orders',        'purchase_orders_customer_id_fkey'],
             ['purchase_order_items',   'purchase_order_items_product_id_fkey'],
