@@ -88,7 +88,7 @@ class VoucherController extends BaseController
             return $this->error('Debit and Credit must be equal', 422);
         }
 
-        return DB::transaction(function () use ($voucher, $data, $totalDebit) {
+        return DB::transaction(function () use ($voucher, $data, $totalDebit, $request) {
             $voucher->update([
                 'voucher_date' => $data['voucher_date'],
                 'branch_id' => $data['branch_id'] ?? null,
