@@ -95,7 +95,9 @@ class VoucherController extends BaseController
                 'financial_year_id' => $data['financial_year_id'] ?? null,
                 'description' => $data['description'] ?? '',
                 'total_amount' => $totalDebit,
-                'status' => !empty($data['submit']) ? 'pending' : 'draft',
+                'status' => 'approved',
+                'approved_by' => $voucher->approved_by ?? $request->user()->id,
+                'approved_at' => $voucher->approved_at ?? now(),
             ]);
             VoucherEntry::where('voucher_id', $voucher->id)->delete();
             foreach ($data['entries'] as $i => $entry) {
