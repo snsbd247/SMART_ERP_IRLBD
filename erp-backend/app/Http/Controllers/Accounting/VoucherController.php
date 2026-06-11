@@ -50,12 +50,9 @@ class VoucherController extends BaseController
 
         $voucher = $this->service->createVoucher(
             array_merge($request->only('voucher_type', 'voucher_date', 'description', 'branch_id', 'financial_year_id'), ['created_by' => $request->user()->id]),
-            $request->entries
+            $request->entries,
+            true // approval system removed — auto-post directly to accounts
         );
-        if ($request->boolean('submit')) {
-            $voucher->update(['status' => 'pending']);
-            $voucher->refresh();
-        }
 
         return $this->created($voucher);
     }
