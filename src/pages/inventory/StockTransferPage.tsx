@@ -25,7 +25,9 @@ import {
 interface WH { id: string; warehouse_code: string; warehouse_name: string; branch_id: string | null; }
 interface Item { id: string; item_code: string; item_name: string; stock_group_id: string | null; }
 interface StockGroup { id: string; name: string; }
-interface Transfer { id: string; transfer_number: string; transfer_date: string; from_warehouse_id: string; to_warehouse_id: string; item_id: string; quantity: number; notes: string | null; status: string; created_at: string; }
+interface TransferLine { item_id: string; quantity: number; notes?: string | null; }
+interface Transfer { id: string; transfer_number: string; transfer_date: string; from_warehouse_id: string; to_warehouse_id: string; item_id: string | null; quantity: number | null; notes: string | null; status: string; created_at: string; details?: TransferLine[]; }
+interface FormLine { item_id: string; quantity: string; }
 
 const StockTransferPage = () => {
   const { user, isSuperAdmin, hasPermission } = useAuth();
@@ -43,12 +45,12 @@ const StockTransferPage = () => {
   const [fromWH, setFromWH] = useState("");
   const [toWH, setToWH] = useState("");
   const [stockGroupId, setStockGroupId] = useState("__all__");
-  const [itemId, setItemId] = useState("");
-  const [qty, setQty] = useState("1");
+  const [lines, setLines] = useState<FormLine[]>([{ item_id: "", quantity: "1" }]);
   const [notes, setNotes] = useState("");
 
   // Print state
   const [printTransfer, setPrintTransfer] = useState<Transfer | null>(null);
+  const [printLines, setPrintLines] = useState<TransferLine[]>([]);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<"approve" | "cancel" | null>(null);
   const [actionTarget, setActionTarget] = useState<Transfer | null>(null);
@@ -97,12 +99,20 @@ const StockTransferPage = () => {
   const itemNameMap = new Map(items.map((i) => [i.id, i.item_name]));
 
   const handleTransfer = async () => {
-    if (!fromWH || !toWH || !itemId || fromWH === toWH) {
-      toast({ title: "Invalid transfer", description: "Select different warehouses and an item", variant: "destructive" });
+    if (!fromWH || !toWH || fromWH === toWH) {
+      toast({ title: "Invalid transfer", description: "Select different source and destination warehouses", variant: "destructive" });
       return;
     }
-    const quantity = parseFloat(qty);
-    if (!quantity || quantity <= 0) { toast({ title: "Invalid quantity", variant: "destructive" }); return; }
+    const validLines = lines.filter((l) => l.item_id && parseFloat(l.quantity) > 0);
+    if (validLines.length === 0 || validLines.length !== lines.length) {
+      toast({ title: "Invalid lines", description: "Every line needs an item and a quantity greater than 0", variant: "destructive" });
+      return;
+    }
+    const ids = validLines.map((l) => l.item_id);
+    if (new Set(ids).size !== ids.length) {
+      toast({ title: "Duplicate item", description: "Each item may appear only once", variant: "destructive" });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -110,17 +120,32 @@ const StockTransferPage = () => {
         transfer_date: new Date().toISOString().slice(0, 10),
         from_warehouse_id: fromWH,
         to_warehouse_id: toWH,
-        item_id: itemId,
-        quantity,
+        items: validLines.map((l) => ({ item_id: l.item_id, quantity: parseFloat(l.quantity) })),
         notes: notes || undefined,
       });
       toast({ title: `Transfer ${result?.transfer_number || ""} created` });
       setDialogOpen(false);
-      setFromWH(""); setToWH(""); setItemId(""); setQty("1"); setNotes(""); setStockGroupId("__all__");
+      setFromWH(""); setToWH(""); setLines([{ item_id: "", quantity: "1" }]); setNotes(""); setStockGroupId("__all__");
       fetchData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally { setSaving(false); }
+  };
+
+  const updateLine = (idx: number, field: keyof FormLine, value: string) => {
+    setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, [field]: value } : l)));
+  };
+
+  const handlePrint = async (t: Transfer) => {
+    if (t.item_id) {
+      setPrintLines([{ item_id: t.item_id, quantity: t.quantity || 0 }]);
+    } else {
+      try {
+        const detail = await stockTransfersApi.get(t.id);
+        setPrintLines(detail?.details || []);
+      } catch { setPrintLines([]); }
+    }
+    setPrintTransfer(t);
   };
 
   return (
@@ -148,10 +173,10 @@ const StockTransferPage = () => {
               <TableRow key={t.id} className={isCancelled ? "opacity-60" : ""}>
                 <TableCell className="font-mono text-xs">{t.transfer_number}</TableCell>
                 <TableCell>{t.transfer_date}</TableCell>
-                <TableCell className="font-medium">{itemMap.get(t.item_id) || "—"}</TableCell>
+                <TableCell className="font-medium">{t.item_id ? (itemMap.get(t.item_id) || "—") : <Badge variant="secondary">Multiple items</Badge>}</TableCell>
                 <TableCell>{whMap.get(t.from_warehouse_id) || "—"}</TableCell>
                 <TableCell>{whMap.get(t.to_warehouse_id) || "—"}</TableCell>
-                <TableCell className="text-right tabular-nums">{t.quantity}</TableCell>
+                <TableCell className="text-right tabular-nums">{t.quantity ?? "—"}</TableCell>
                 <TableCell>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusCfg.className}`}>
                     {statusCfg.label}
@@ -169,7 +194,7 @@ const StockTransferPage = () => {
                         <X className="w-3.5 h-3.5" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPrintTransfer(t)} title="Print">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrint(t)} title="Print">
                       <Printer className="w-3.5 h-3.5" />
                     </Button>
                   </div>
@@ -182,7 +207,7 @@ const StockTransferPage = () => {
       </CardContent></Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>New Stock Transfer</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2"><Label>Stock Group</Label>
@@ -195,11 +220,27 @@ const StockTransferPage = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label>Item *</Label>
-              <Select value={itemId} onValueChange={setItemId}>
-                <SelectTrigger><SelectValue placeholder="Select item" /></SelectTrigger>
-                <SelectContent>{items.filter((i) => stockGroupId === "__all__" || (stockGroupId === "__unassigned__" ? !i.stock_group_id : i.stock_group_id === stockGroupId)).map((i) => <SelectItem key={i.id} value={i.id}>{i.item_code} — {i.item_name}</SelectItem>)}</SelectContent>
-              </Select>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Items *</Label>
+                <Button type="button" variant="outline" size="sm" className="h-7" onClick={() => setLines((p) => [...p, { item_id: "", quantity: "1" }])}>
+                  <Plus className="w-3 h-3 mr-1" />Add Line
+                </Button>
+              </div>
+              {lines.map((l, idx) => (
+                <div key={idx} className="flex gap-2 items-center">
+                  <div className="flex-1 min-w-0">
+                    <Select value={l.item_id} onValueChange={(v) => updateLine(idx, "item_id", v)}>
+                      <SelectTrigger><SelectValue placeholder="Select item" /></SelectTrigger>
+                      <SelectContent>{items.filter((i) => stockGroupId === "__all__" || (stockGroupId === "__unassigned__" ? !i.stock_group_id : i.stock_group_id === stockGroupId)).map((i) => <SelectItem key={i.id} value={i.id}>{i.item_code} — {i.item_name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <Input type="number" min="1" className="w-24" value={l.quantity} onChange={(e) => updateLine(idx, "quantity", e.target.value)} />
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" disabled={lines.length === 1} onClick={() => setLines((p) => p.filter((_, i) => i !== idx))} title="Remove line">
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ))}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>From Warehouse *</Label>
@@ -215,7 +256,6 @@ const StockTransferPage = () => {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2"><Label>Quantity *</Label><Input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} /></div>
             <div className="space-y-2"><Label>Notes</Label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} /></div>
           </div>
           <DialogFooter><Button onClick={handleTransfer} disabled={saving}>{saving ? "Processing..." : "Transfer"}</Button></DialogFooter>
@@ -235,11 +275,7 @@ const StockTransferPage = () => {
           <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "16px" }}>
             <tbody>
               <tr>
-                <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontWeight: 600, width: "30%", background: "#f0f0f0" }}>Item</td>
-                <td style={{ padding: "8px 12px", border: "1px solid #ddd" }}>{itemMap.get(printTransfer.item_id) || "—"}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontWeight: 600, background: "#f0f0f0" }}>From Warehouse</td>
+                <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontWeight: 600, width: "30%", background: "#f0f0f0" }}>From Warehouse</td>
                 <td style={{ padding: "8px 12px", border: "1px solid #ddd" }}>{whMap.get(printTransfer.from_warehouse_id) || "—"}</td>
               </tr>
               <tr>
@@ -247,13 +283,27 @@ const StockTransferPage = () => {
                 <td style={{ padding: "8px 12px", border: "1px solid #ddd" }}>{whMap.get(printTransfer.to_warehouse_id) || "—"}</td>
               </tr>
               <tr>
-                <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontWeight: 600, background: "#f0f0f0" }}>Quantity</td>
-                <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontVariantNumeric: "tabular-nums" }}>{printTransfer.quantity}</td>
-              </tr>
-              <tr>
                 <td style={{ padding: "8px 12px", border: "1px solid #ddd", fontWeight: 600, background: "#f0f0f0" }}>Status</td>
                 <td style={{ padding: "8px 12px", border: "1px solid #ddd", textTransform: "capitalize" }}>{printTransfer.status}</td>
               </tr>
+            </tbody>
+          </table>
+          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "16px" }}>
+            <thead>
+              <tr>
+                <th style={{ padding: "8px 12px", border: "1px solid #ddd", background: "#f0f0f0", textAlign: "left" }}>Item</th>
+                <th style={{ padding: "8px 12px", border: "1px solid #ddd", background: "#f0f0f0", textAlign: "right", width: "20%" }}>Quantity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printLines.length === 0 ? (
+                <tr><td colSpan={2} style={{ padding: "8px 12px", border: "1px solid #ddd", textAlign: "center", color: "#888" }}>No line details</td></tr>
+              ) : printLines.map((l, idx) => (
+                <tr key={idx}>
+                  <td style={{ padding: "8px 12px", border: "1px solid #ddd" }}>{itemMap.get(l.item_id) || "—"}</td>
+                  <td style={{ padding: "8px 12px", border: "1px solid #ddd", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{l.quantity}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </PrintLayout>
