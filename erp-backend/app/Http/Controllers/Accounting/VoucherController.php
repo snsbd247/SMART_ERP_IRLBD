@@ -50,12 +50,9 @@ class VoucherController extends BaseController
 
         $voucher = $this->service->createVoucher(
             array_merge($request->only('voucher_type', 'voucher_date', 'description', 'branch_id', 'financial_year_id'), ['created_by' => $request->user()->id]),
-            $request->entries
+            $request->entries,
+            true // approval system removed — auto-post directly to accounts
         );
-        if ($request->boolean('submit')) {
-            $voucher->update(['status' => 'pending']);
-            $voucher->refresh();
-        }
 
         return $this->created($voucher);
     }
@@ -69,9 +66,8 @@ class VoucherController extends BaseController
         if (!$user->isSuperAdmin() && !$user->hasPermission($voucher->voucher_type . '.edit')) {
             return $this->error('Forbidden', 403);
         }
-        if ($voucher->status === 'approved') {
-            return $this->error('Approved vouchers require Super Admin override.', 422);
-        }
+        // Approval system removed — vouchers are always editable by users with accounts.edit.
+
 
         $data = $request->validate([
             'voucher_date' => 'required|date',
@@ -92,14 +88,16 @@ class VoucherController extends BaseController
             return $this->error('Debit and Credit must be equal', 422);
         }
 
-        return DB::transaction(function () use ($voucher, $data, $totalDebit) {
+        return DB::transaction(function () use ($voucher, $data, $totalDebit, $request) {
             $voucher->update([
                 'voucher_date' => $data['voucher_date'],
                 'branch_id' => $data['branch_id'] ?? null,
                 'financial_year_id' => $data['financial_year_id'] ?? null,
                 'description' => $data['description'] ?? '',
                 'total_amount' => $totalDebit,
-                'status' => !empty($data['submit']) ? 'pending' : 'draft',
+                'status' => 'approved',
+                'approved_by' => $voucher->approved_by ?? $request->user()->id,
+                'approved_at' => $voucher->approved_at ?? now(),
             ]);
             VoucherEntry::where('voucher_id', $voucher->id)->delete();
             foreach ($data['entries'] as $i => $entry) {
