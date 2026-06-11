@@ -127,54 +127,65 @@ class StockTransferController extends BaseController
 
         $this->period->ensureActive($row->transfer_date);
 
-        // Pre-check: source warehouse must have enough stock
-        $available = $this->stock->getBalance($row->item_id, $row->from_warehouse_id);
-        if ($available < (float) $row->quantity) {
-            return $this->error("Insufficient stock at source warehouse (available: {$available})", 422);
+        // Build line list: prefer stock_transfer_items, fallback to legacy single item.
+        $lines = DB::table('stock_transfer_items')->where('stock_transfer_id', $row->id)->get()->toArray();
+        if (empty($lines)) {
+            if (!$row->item_id || !$row->quantity) return $this->error('Transfer has no items', 422);
+            $lines = [(object) ['item_id' => $row->item_id, 'quantity' => $row->quantity]];
         }
 
-        DB::transaction(function () use ($row, $r) {
-            $qty = (float) $row->quantity;
+        // Pre-check stock availability for every line
+        foreach ($lines as $ln) {
+            $available = $this->stock->getBalance($ln->item_id, $row->from_warehouse_id);
+            if ($available < (float) $ln->quantity) {
+                return $this->error("Insufficient stock for item {$ln->item_id} (available: {$available}, need: {$ln->quantity})", 422);
+            }
+        }
+
+        DB::transaction(function () use ($row, $r, $lines) {
             $branchId = DB::table('warehouses')->where('id', $row->from_warehouse_id)->value('branch_id');
-
-            // OUT from source
-            $this->stock->createLedgerEntry([
-                'transaction_type'  => 'stock_transfer_out',
-                'transaction_id'    => $row->id,
-                'item_id'           => $row->item_id,
-                'branch_id'         => $branchId,
-                'warehouse_id'      => $row->from_warehouse_id,
-                'quantity_in'       => 0,
-                'quantity_out'      => $qty,
-                'reference_number'  => $row->transfer_number,
-                'transaction_date'  => $row->transfer_date,
-            ]);
-            $this->stock->updateWarehouseStock($row->item_id, $row->from_warehouse_id, -$qty);
-
-            // IN to destination
             $toBranch = DB::table('warehouses')->where('id', $row->to_warehouse_id)->value('branch_id');
-            $this->stock->createLedgerEntry([
-                'transaction_type'  => 'stock_transfer_in',
-                'transaction_id'    => $row->id,
-                'item_id'           => $row->item_id,
-                'branch_id'         => $toBranch,
-                'warehouse_id'      => $row->to_warehouse_id,
-                'quantity_in'       => $qty,
-                'quantity_out'      => 0,
-                'reference_number'  => $row->transfer_number,
-                'transaction_date'  => $row->transfer_date,
-            ]);
-            $this->stock->updateWarehouseStock($row->item_id, $row->to_warehouse_id, $qty);
 
-            // Movement audit trail (both legs)
-            $this->stock->createBulkMovements(
-                [['product_id' => $row->item_id, 'quantity' => $qty]],
-                'transfer_out', 'stock_transfer', $row->id, $branchId, -1,
-            );
-            $this->stock->createBulkMovements(
-                [['product_id' => $row->item_id, 'quantity' => $qty]],
-                'transfer_in', 'stock_transfer', $row->id, $toBranch, +1,
-            );
+            foreach ($lines as $ln) {
+                $qty = (float) $ln->quantity;
+
+                // OUT from source
+                $this->stock->createLedgerEntry([
+                    'transaction_type'  => 'stock_transfer_out',
+                    'transaction_id'    => $row->id,
+                    'item_id'           => $ln->item_id,
+                    'branch_id'         => $branchId,
+                    'warehouse_id'      => $row->from_warehouse_id,
+                    'quantity_in'       => 0,
+                    'quantity_out'      => $qty,
+                    'reference_number'  => $row->transfer_number,
+                    'transaction_date'  => $row->transfer_date,
+                ]);
+                $this->stock->updateWarehouseStock($ln->item_id, $row->from_warehouse_id, -$qty);
+
+                // IN to destination
+                $this->stock->createLedgerEntry([
+                    'transaction_type'  => 'stock_transfer_in',
+                    'transaction_id'    => $row->id,
+                    'item_id'           => $ln->item_id,
+                    'branch_id'         => $toBranch,
+                    'warehouse_id'      => $row->to_warehouse_id,
+                    'quantity_in'       => $qty,
+                    'quantity_out'      => 0,
+                    'reference_number'  => $row->transfer_number,
+                    'transaction_date'  => $row->transfer_date,
+                ]);
+                $this->stock->updateWarehouseStock($ln->item_id, $row->to_warehouse_id, $qty);
+
+                $this->stock->createBulkMovements(
+                    [['product_id' => $ln->item_id, 'quantity' => $qty]],
+                    'transfer_out', 'stock_transfer', $row->id, $branchId, -1,
+                );
+                $this->stock->createBulkMovements(
+                    [['product_id' => $ln->item_id, 'quantity' => $qty]],
+                    'transfer_in', 'stock_transfer', $row->id, $toBranch, +1,
+                );
+            }
 
             DB::table('stock_transfers')->where('id', $row->id)->update([
                 'status' => 'approved', 'updated_at' => now(),
@@ -187,14 +198,13 @@ class StockTransferController extends BaseController
                 'module'     => 'inventory',
                 'action'     => 'stock_transfer.approve',
                 'record_id'  => $row->id,
-                'details'    => "Approved {$row->transfer_number}: qty {$qty} from {$row->from_warehouse_id} → {$row->to_warehouse_id}",
+                'details'    => "Approved {$row->transfer_number}: " . count($lines) . " line(s) from {$row->from_warehouse_id} → {$row->to_warehouse_id}",
                 'new_data'   => [
-                    'transfer_number' => $row->transfer_number,
-                    'item_id'         => $row->item_id,
-                    'quantity'        => $qty,
+                    'transfer_number'   => $row->transfer_number,
                     'from_warehouse_id' => $row->from_warehouse_id,
                     'to_warehouse_id'   => $row->to_warehouse_id,
-                    'transfer_date'   => $row->transfer_date,
+                    'transfer_date'     => $row->transfer_date,
+                    'lines'             => array_map(fn($l) => ['item_id' => $l->item_id, 'quantity' => (float) $l->quantity], $lines),
                 ],
                 'ip_address' => $r->ip(),
                 'user_agent' => substr((string) $r->userAgent(), 0, 255),
