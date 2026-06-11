@@ -182,6 +182,21 @@ class StockTransferController extends BaseController
             'status' => 'cancelled', 'notes' => trim(($row->notes ?? '') . "\nCancelled: " . ($r->reason ?? '')),
             'updated_at' => now(),
         ]);
+
+        $u = $r->user();
+        AuditLog::create([
+            'user_id'    => optional($u)->id,
+            'user_name'  => optional($u)->name,
+            'module'     => 'inventory',
+            'action'     => 'stock_transfer.cancel',
+            'record_id'  => $id,
+            'details'    => "Cancelled {$row->transfer_number}" . ($r->reason ? " — reason: {$r->reason}" : ''),
+            'old_data'   => ['status' => $row->status],
+            'new_data'   => ['status' => 'cancelled', 'reason' => $r->reason],
+            'ip_address' => $r->ip(),
+            'user_agent' => substr((string) $r->userAgent(), 0, 255),
+        ]);
+
         return $this->success(DB::table('stock_transfers')->where('id', $id)->first());
     }
 }
