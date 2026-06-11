@@ -86,6 +86,11 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::post('vouchers/{id}/reopen', [\App\Http\Controllers\Accounting\VoucherController::class, 'reopen']);
             Route::post('vouchers/{id}/reverse', [\App\Http\Controllers\Accounting\VoucherController::class, 'reverse']);
         });
+        // Approval dashboard endpoints
+        Route::middleware('permission:accounts.view')->group(function () {
+            Route::get('vouchers/pending', [\App\Http\Controllers\Accounting\VoucherController::class, 'pending']);
+            Route::get('vouchers/{id}/approval-history', [\App\Http\Controllers\Accounting\VoucherController::class, 'approvalHistory']);
+        });
         Route::middleware('permission:accounts.delete')->post('vouchers/{id}/delete-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'deleteApproved']);
         Route::middleware('permission:accounts.edit')->post('vouchers/{id}/restore', [\App\Http\Controllers\Accounting\VoucherController::class, 'restore']);
 

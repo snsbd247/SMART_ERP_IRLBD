@@ -87,19 +87,51 @@ class AccountingService
         ], true);
     }
 
-    public function approveVoucher(string $id, string $userId): AccVoucher
+    public function approveVoucher(string $id, string $userId, ?string $note = null): AccVoucher
     {
         $voucher = AccVoucher::findOrFail($id);
         if ($voucher->status === 'approved') throw new \RuntimeException('Already approved');
+        $before = $voucher->status;
         $voucher->update(['status' => 'approved', 'approved_by' => $userId, 'approved_at' => now()]);
+        $this->recordApprovalHistory($voucher, $userId, 'approve', $before, 'approved', $note);
         return $voucher;
     }
 
-    public function rejectVoucher(string $id): AccVoucher
+    public function rejectVoucher(string $id, ?string $userId = null, ?string $note = null): AccVoucher
     {
         $voucher = AccVoucher::findOrFail($id);
+        $before = $voucher->status;
         $voucher->update(['status' => 'rejected']);
+        $this->recordApprovalHistory($voucher, $userId, 'reject', $before, 'rejected', $note);
         return $voucher;
+    }
+
+    /**
+     * Write a row to voucher_approval_history AND mirror to audit_log.
+     */
+    protected function recordApprovalHistory(AccVoucher $voucher, ?string $userId, string $action, ?string $before, ?string $after, ?string $note): void
+    {
+        $actor = $userId ? \App\Models\User::find($userId) : null;
+        \App\Models\VoucherApprovalHistory::create([
+            'voucher_id' => $voucher->id,
+            'actor_user_id' => $userId,
+            'actor_name' => $actor?->name,
+            'action' => $action,
+            'before_status' => $before,
+            'after_status' => $after,
+            'note' => $note,
+            'created_at' => now(),
+        ]);
+        \App\Models\AuditLog::create([
+            'user_id' => $userId,
+            'user_name' => $actor?->name ?? 'System',
+            'module' => 'vouchers',
+            'action' => $action,
+            'record_id' => $voucher->id,
+            'details' => trim(($voucher->voucher_number ?? $voucher->id) . ': ' . $before . ' → ' . $after . ($note ? " ({$note})" : '')),
+            'old_data' => ['status' => $before],
+            'new_data' => ['status' => $after, 'note' => $note],
+        ]);
     }
 
     /**
