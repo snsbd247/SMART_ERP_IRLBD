@@ -164,7 +164,12 @@ class VoucherApprovalRbacTest extends TestCase
         $this->makeVoucher();
         $this->actingAs($allowed, 'sanctum')
             ->getJson('/api/v1/vouchers/pending')
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->actingAs($allowed, 'sanctum')
+            ->getJson('/api/v1/vouchers/not-a-valid-voucher-id')
+            ->assertNotFound();
     }
 
     public function test_file_upload_endpoint_enforces_hrm_create(): void

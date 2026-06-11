@@ -64,10 +64,10 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:receipt.view')->get('admin/vouchers/receipt', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::middleware('permission:contra.view')->get('admin/vouchers/contra', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::middleware('permission:accounts.view')->get('vouchers/pending', [\App\Http\Controllers\Accounting\VoucherController::class, 'pending']);
-        Route::middleware('permission:accounts.view')->get('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show'])->where('id', '[0-9a-fA-F-]{36}');
-        Route::middleware('permission:accounts.view')->get('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show'])->where('id', '[0-9a-fA-F-]{36}');
-        Route::middleware('permission:accounts.edit')->put('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update']);
-        Route::middleware('permission:accounts.edit')->put('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update']);
+        Route::middleware('permission:accounts.view')->get('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show'])->whereUuid('id');
+        Route::middleware('permission:accounts.view')->get('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show'])->whereUuid('id');
+        Route::middleware('permission:accounts.edit')->put('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update'])->whereUuid('id');
+        Route::middleware('permission:accounts.edit')->put('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update'])->whereUuid('id');
 
         Route::middleware('permission:journal.create')->post('vouchers/journal', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
         Route::middleware('permission:payment.create')->post('vouchers/payment', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
@@ -79,20 +79,20 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:contra.create')->post('admin/vouchers/contra', [\App\Http\Controllers\Accounting\VoucherController::class, 'store']);
 
         Route::middleware('permission:accounts.edit')->group(function () {
-            Route::post('vouchers/{id}/approve', [\App\Http\Controllers\Accounting\VoucherController::class, 'approve']);
-            Route::post('vouchers/{id}/reject', [\App\Http\Controllers\Accounting\VoucherController::class, 'reject']);
-            Route::post('admin/vouchers/{id}/approve', [\App\Http\Controllers\Accounting\VoucherController::class, 'approve']);
-            Route::post('admin/vouchers/{id}/reject', [\App\Http\Controllers\Accounting\VoucherController::class, 'reject']);
-            Route::post('vouchers/{id}/edit-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'editApproved']);
-            Route::post('vouchers/{id}/reopen', [\App\Http\Controllers\Accounting\VoucherController::class, 'reopen']);
-            Route::post('vouchers/{id}/reverse', [\App\Http\Controllers\Accounting\VoucherController::class, 'reverse']);
+            Route::post('vouchers/{id}/approve', [\App\Http\Controllers\Accounting\VoucherController::class, 'approve'])->whereUuid('id');
+            Route::post('vouchers/{id}/reject', [\App\Http\Controllers\Accounting\VoucherController::class, 'reject'])->whereUuid('id');
+            Route::post('admin/vouchers/{id}/approve', [\App\Http\Controllers\Accounting\VoucherController::class, 'approve'])->whereUuid('id');
+            Route::post('admin/vouchers/{id}/reject', [\App\Http\Controllers\Accounting\VoucherController::class, 'reject'])->whereUuid('id');
+            Route::post('vouchers/{id}/edit-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'editApproved'])->whereUuid('id');
+            Route::post('vouchers/{id}/reopen', [\App\Http\Controllers\Accounting\VoucherController::class, 'reopen'])->whereUuid('id');
+            Route::post('vouchers/{id}/reverse', [\App\Http\Controllers\Accounting\VoucherController::class, 'reverse'])->whereUuid('id');
         });
         // Approval dashboard endpoints
         Route::middleware('permission:accounts.view')->group(function () {
-            Route::get('vouchers/{id}/approval-history', [\App\Http\Controllers\Accounting\VoucherController::class, 'approvalHistory']);
+            Route::get('vouchers/{id}/approval-history', [\App\Http\Controllers\Accounting\VoucherController::class, 'approvalHistory'])->whereUuid('id');
         });
-        Route::middleware('permission:accounts.delete')->post('vouchers/{id}/delete-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'deleteApproved']);
-        Route::middleware('permission:accounts.edit')->post('vouchers/{id}/restore', [\App\Http\Controllers\Accounting\VoucherController::class, 'restore']);
+        Route::middleware('permission:accounts.delete')->post('vouchers/{id}/delete-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'deleteApproved'])->whereUuid('id');
+        Route::middleware('permission:accounts.edit')->post('vouchers/{id}/restore', [\App\Http\Controllers\Accounting\VoucherController::class, 'restore'])->whereUuid('id');
 
         // ─── Generic Super-Admin soft delete / restore (sales, purchases, payments) ──
         Route::middleware('permission:accounts.delete')->post('soft-delete/{table}/{id}', [\App\Http\Controllers\SoftDeleteController::class, 'delete']);
