@@ -145,6 +145,26 @@ class StockTransferController extends BaseController
             DB::table('stock_transfers')->where('id', $row->id)->update([
                 'status' => 'approved', 'updated_at' => now(),
             ]);
+
+            $u = $r->user();
+            AuditLog::create([
+                'user_id'    => optional($u)->id,
+                'user_name'  => optional($u)->name,
+                'module'     => 'inventory',
+                'action'     => 'stock_transfer.approve',
+                'record_id'  => $row->id,
+                'details'    => "Approved {$row->transfer_number}: qty {$qty} from {$row->from_warehouse_id} → {$row->to_warehouse_id}",
+                'new_data'   => [
+                    'transfer_number' => $row->transfer_number,
+                    'item_id'         => $row->item_id,
+                    'quantity'        => $qty,
+                    'from_warehouse_id' => $row->from_warehouse_id,
+                    'to_warehouse_id'   => $row->to_warehouse_id,
+                    'transfer_date'   => $row->transfer_date,
+                ],
+                'ip_address' => $r->ip(),
+                'user_agent' => substr((string) $r->userAgent(), 0, 255),
+            ]);
         });
 
         return $this->success(DB::table('stock_transfers')->where('id', $id)->first());
