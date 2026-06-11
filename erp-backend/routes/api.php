@@ -63,6 +63,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:payment.view')->get('admin/vouchers/payment', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::middleware('permission:receipt.view')->get('admin/vouchers/receipt', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::middleware('permission:contra.view')->get('admin/vouchers/contra', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
+        Route::middleware('permission:accounts.view')->get('vouchers/pending', [\App\Http\Controllers\Accounting\VoucherController::class, 'pending']);
         Route::middleware('permission:accounts.view')->get('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show'])->where('id', '[0-9a-fA-F-]{36}');
         Route::middleware('permission:accounts.view')->get('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show'])->where('id', '[0-9a-fA-F-]{36}');
         Route::middleware('permission:accounts.edit')->put('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'update']);
@@ -88,7 +89,6 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         });
         // Approval dashboard endpoints
         Route::middleware('permission:accounts.view')->group(function () {
-            Route::get('vouchers/pending', [\App\Http\Controllers\Accounting\VoucherController::class, 'pending']);
             Route::get('vouchers/{id}/approval-history', [\App\Http\Controllers\Accounting\VoucherController::class, 'approvalHistory']);
         });
         Route::middleware('permission:accounts.delete')->post('vouchers/{id}/delete-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'deleteApproved']);
