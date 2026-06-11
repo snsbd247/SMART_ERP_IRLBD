@@ -76,16 +76,17 @@ const StockTransferPage = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    const [wRes, iRes, tRes, sgRes] = await Promise.all([
+    const [wRes, iRes, sgRes, tRows] = await Promise.all([
       supabase.from("warehouses" as any).select("id, warehouse_code, warehouse_name, branch_id").eq("status", "active").order("warehouse_name"),
       supabase.from("item_master" as any).select("id, item_code, item_name, stock_group_id").eq("status", "active").order("item_name"),
-      supabase.from("stock_transfers" as any).select("*").order("created_at", { ascending: false }).limit(100),
       (supabase.from as any)("stock_groups").select("id, name").eq("is_active", true).order("name"),
+      stockTransfersApi.list().catch(() => ({ data: [] })),
     ]);
     setWarehouses((wRes.data || []) as any);
     setItems((iRes.data || []) as any);
-    setTransfers((tRes.data || []) as any);
     setStockGroups((sgRes.data || []) as any);
+    const rows = (tRows as any)?.data ?? tRows ?? [];
+    setTransfers(Array.isArray(rows) ? rows : []);
     setLoading(false);
   };
 
@@ -105,9 +106,15 @@ const StockTransferPage = () => {
 
     setSaving(true);
     try {
-      const ctx = { date: new Date().toISOString().slice(0, 10), branchId: userBranchId, userId: user?.id };
-      const result = await createStockTransfer(ctx, fromWH, toWH, itemId, quantity, notes);
-      toast({ title: `Transfer ${result.transferNumber} completed` });
+      const result = await stockTransfersApi.create({
+        transfer_date: new Date().toISOString().slice(0, 10),
+        from_warehouse_id: fromWH,
+        to_warehouse_id: toWH,
+        item_id: itemId,
+        quantity,
+        notes: notes || undefined,
+      });
+      toast({ title: `Transfer ${result?.transfer_number || ""} created` });
       setDialogOpen(false);
       setFromWH(""); setToWH(""); setItemId(""); setQty("1"); setNotes(""); setStockGroupId("__all__");
       fetchData();
