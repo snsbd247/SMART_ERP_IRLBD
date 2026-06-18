@@ -282,6 +282,7 @@ const BackupPage = () => {
     )) return;
     setResettingDemo(true);
     setFullSeedLog(null);
+    await logDemoAudit("demo_seed_reset", "reset", "started", "Reset Demo Data Only initiated", currentUser);
     try {
       let data: any;
       if (USE_LARAVEL) {
@@ -299,10 +300,12 @@ const BackupPage = () => {
         if (data?.success === false) throw new Error(data.error || "Reset failed");
       }
       setFullSeedLog(JSON.stringify(data, null, 2));
-      toast({ title: "Demo data reset", description: `Completed in ${data?.elapsedMs ?? "?"}ms.` });
+      toast({ title: "✓ Demo data reset", description: data?.message || `Completed${data?.elapsedMs ? ` in ${data.elapsedMs}ms` : ""}.` });
+      await logDemoAudit("demo_seed_reset", "reset", "success", data?.message || "Reset completed", currentUser);
     } catch (err: any) {
       toast({ title: "Reset failed", description: err.message, variant: "destructive" });
       setFullSeedLog(String(err.message || err));
+      await logDemoAudit("demo_seed_reset", "reset", "failed", err.message || String(err), currentUser);
     } finally {
       setResettingDemo(false);
     }
