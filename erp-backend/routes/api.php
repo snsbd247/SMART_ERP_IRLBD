@@ -364,6 +364,8 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
 
         // ─── Demo Data Seeder (Super Admin only) ─────────────────
         Route::post('admin/demo/seed', [\App\Http\Controllers\Admin\DemoSeedController::class, 'run']);
+        Route::get ('admin/demo/audit-tables', [\App\Http\Controllers\Admin\DemoSeedController::class, 'auditTables']);
+        Route::get ('admin/demo/audit-log/export', [\App\Http\Controllers\Admin\DemoSeedController::class, 'auditExport']);
         Route::post('admin/demo/import-config', [\App\Http\Controllers\Admin\DemoConfigImportController::class, 'import']);
 
         // ─── Branding & White-Label (Super Admin only) ───────────
