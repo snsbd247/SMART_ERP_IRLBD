@@ -67,7 +67,7 @@ async function laravelApiCall(url: string, options: RequestInit = {}) {
   return res;
 }
 
-async function logDemoAudit(action: "demo_seed_full" | "demo_seed_reset", mode: string, status: "started" | "success" | "failed", details: string, user: { id?: string; name?: string; email?: string } | null) {
+async function logDemoAudit(action: "demo_seed_full" | "demo_seed_reset" | "demo_seed_transactions_only", mode: string, status: "started" | "success" | "failed", details: string, user: { id?: string; name?: string; email?: string } | null) {
   try {
     await supabase.from("audit_log").insert({
       user_id: user?.id ?? null,
