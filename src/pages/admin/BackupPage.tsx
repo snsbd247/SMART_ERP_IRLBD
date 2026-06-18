@@ -67,7 +67,7 @@ async function laravelApiCall(url: string, options: RequestInit = {}) {
   return res;
 }
 
-async function logDemoAudit(action: "demo_seed_full" | "demo_seed_reset", mode: string, status: "started" | "success" | "failed", details: string, user: { id?: string; name?: string; email?: string } | null) {
+async function logDemoAudit(action: "demo_seed_full" | "demo_seed_reset" | "demo_seed_transactions_only", mode: string, status: "started" | "success" | "failed", details: string, user: { id?: string; name?: string; email?: string } | null) {
   try {
     await supabase.from("audit_log").insert({
       user_id: user?.id ?? null,
@@ -310,6 +310,49 @@ const BackupPage = () => {
       setResettingDemo(false);
     }
   };
+
+  const [resettingTxn, setResettingTxn] = useState(false);
+  const handleResetTransactionsOnly = async () => {
+    if (!isSuperAdmin) {
+      toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
+      return;
+    }
+    if (!confirm(
+      "This will WIPE only TRANSACTIONAL data (vouchers, invoices, POs, stock movements, payroll, attendance, payments, etc.).\n\n" +
+      "PRESERVED: All masters (customers, suppliers, products, items, employees, salary structures, BOMs) AND all configuration (Chart of Accounts, branches, financial years, units, categories, warehouses, departments, designations, leave types, company settings, users, roles, document numbering, page shortcuts, branding).\n\nContinue?"
+    )) return;
+    setResettingTxn(true);
+    setFullSeedLog(null);
+    await logDemoAudit("demo_seed_transactions_only", "transactions", "started", "Reset Transactions Only initiated", currentUser);
+    try {
+      let data: any;
+      if (USE_LARAVEL) {
+        const res = await fetch(`${API_BASE}/v1/admin/demo/seed`, {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "transactions" }),
+        });
+        data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.success === false) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+      } else {
+        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "transactions" } });
+        if (r.error) throw r.error;
+        data = r.data;
+        if (data?.success === false) throw new Error(data.error || "Reset failed");
+      }
+      setFullSeedLog(JSON.stringify(data, null, 2));
+      toast({ title: "✓ Transactional data cleared", description: data?.message || "Masters & configuration preserved." });
+      await logDemoAudit("demo_seed_transactions_only", "transactions", "success", data?.message || "Reset completed", currentUser);
+    } catch (err: any) {
+      toast({ title: "Reset failed", description: err.message, variant: "destructive" });
+      setFullSeedLog(String(err.message || err));
+      await logDemoAudit("demo_seed_transactions_only", "transactions", "failed", err.message || String(err), currentUser);
+    } finally {
+      setResettingTxn(false);
+    }
+  };
+
+
 
 
 
@@ -899,7 +942,7 @@ const BackupPage = () => {
                 <Button
                   variant="outline"
                   onClick={handleResetDemoOnly}
-                  disabled={resettingDemo || seedingFull || !isSuperAdmin}
+                  disabled={resettingDemo || seedingFull || resettingTxn || !isSuperAdmin}
                   className="w-full"
                 >
                   {resettingDemo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
@@ -907,6 +950,18 @@ const BackupPage = () => {
                 </Button>
                 <p className="text-[11px] text-muted-foreground">
                   <strong>Reset Demo Data Only</strong> wipes all transactions + masters but PRESERVES Chart of Accounts, IFRS Mapping, Document Numbering, Page Shortcuts, General Settings, SMS Integration, Branding &amp; GitHub Deploy Sync.
+                </p>
+                <Button
+                  variant="secondary"
+                  onClick={handleResetTransactionsOnly}
+                  disabled={resettingTxn || seedingFull || resettingDemo || !isSuperAdmin}
+                  className="w-full"
+                >
+                  {resettingTxn ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  {resettingTxn ? "Clearing transactional data..." : "Reset Transactions Only (keep masters + config)"}
+                </Button>
+                <p className="text-[11px] text-muted-foreground">
+                  <strong>Reset Transactions Only</strong> wipes vouchers, invoices, POs, stock movements, payroll, attendance &amp; payments. PRESERVES all masters (customers, suppliers, products, employees, BOMs, salary structures) AND all configuration.
                 </p>
                 {fullSeedLog && (
                   <pre className="text-[10px] p-2 bg-muted rounded max-h-48 overflow-auto">{fullSeedLog}</pre>
