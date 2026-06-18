@@ -80,4 +80,19 @@ class StockService
         $entry = $query->first();
         return $entry ? (float) $entry->balance_quantity : 0;
     }
+
+    /**
+     * Throw if the requested outgoing quantity would push stock negative.
+     * Use before any stock-decreasing transaction (sale, transfer, decrease adjustment).
+     */
+    public function assertSufficient(string $itemId, ?string $warehouseId, float $qtyRequested, ?string $itemLabel = null): void
+    {
+        $available = $this->getBalance($itemId, $warehouseId);
+        if ($qtyRequested > $available + 0.0001) {
+            $label = $itemLabel ?: "item {$itemId}";
+            throw new \RuntimeException(
+                "Insufficient stock for {$label}: requested {$qtyRequested}, available {$available}."
+            );
+        }
+    }
 }
