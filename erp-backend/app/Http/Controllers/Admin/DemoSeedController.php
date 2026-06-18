@@ -49,7 +49,11 @@ class DemoSeedController extends BaseController
             }
 
             $stats = $this->collectStats();
-            $message = $mode === 'reset' ? 'Demo data reset successfully' : 'Demo data seeded successfully';
+            $message = match ($mode) {
+                'reset'        => 'Demo data reset successfully',
+                'transactions' => 'Transactional data cleared successfully (masters & configuration preserved)',
+                default        => 'Demo data seeded successfully',
+            };
             $this->audit($request, $mode, 'success', $message, ['stats' => $stats, 'output' => trim($output)]);
 
             return $this->success([
