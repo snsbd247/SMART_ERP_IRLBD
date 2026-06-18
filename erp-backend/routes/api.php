@@ -323,6 +323,9 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::delete('users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'destroy']);
             Route::post('users/{id}/transfer-delete', [\App\Http\Controllers\Admin\UserController::class, 'transferAndDelete']);
         });
+        Route::middleware('permission:users.view')->get('admin/users', [\App\Http\Controllers\Admin\UserController::class, 'index']);
+        Route::middleware('permission:users.create')->post('admin/users', [\App\Http\Controllers\Admin\UserController::class, 'store']);
+        Route::middleware('permission:users.edit')->put('admin/users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'update']);
 
         // Roles
         Route::middleware('permission:roles.view')->group(function () {

@@ -124,21 +124,24 @@ const UsersPage = () => {
           email: formEmail || null,
           phone: formPhone || null,
           branch_id: formBranch || null,
+          branch_ids: formBranch ? [formBranch] : [],
           status: formStatus,
+          system_role: formRole,
           role_ids: formCustomRole && formCustomRole !== "none" ? [formCustomRole] : [],
         };
         if (formPassword) payload.password = formPassword;
 
         if (editUser) {
-          const res = await fetch(`${base}/v1/admin/users/${editUser.id}`, {
+          const res = await fetch(`${base}/v1/users/${editUser.id}`, {
             method: "PUT", headers, body: JSON.stringify(payload),
           });
           const json = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(json?.message || json?.error || `HTTP ${res.status}`);
+          if (!res.ok) throw new Error(json?.message || json?.error ||
+            (json?.errors ? Object.values(json.errors).flat().join(", ") : `HTTP ${res.status}`));
           toast({ title: "User updated" });
         } else {
           if (!formPassword) throw new Error("Password is required");
-          const res = await fetch(`${base}/v1/admin/users`, {
+          const res = await fetch(`${base}/v1/users`, {
             method: "POST", headers, body: JSON.stringify(payload),
           });
           const json = await res.json().catch(() => ({}));
