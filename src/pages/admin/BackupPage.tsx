@@ -893,7 +893,7 @@ const BackupPage = () => {
                   disabled={seedingFull || resettingDemo || !isSuperAdmin}
                   className="w-full"
                 >
-                  <Sparkles className="w-4 h-4 mr-2" />
+                  {seedingFull ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
                   {seedingFull ? "Seeding full demo data..." : "Wipe & Seed Full Demo Data (2 branches)"}
                 </Button>
                 <Button
@@ -902,7 +902,7 @@ const BackupPage = () => {
                   disabled={resettingDemo || seedingFull || !isSuperAdmin}
                   className="w-full"
                 >
-                  <RefreshCw className="w-4 h-4 mr-2" />
+                  {resettingDemo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                   {resettingDemo ? "Resetting demo data..." : "Reset Demo Data Only (preserve config)"}
                 </Button>
                 <p className="text-[11px] text-muted-foreground">
