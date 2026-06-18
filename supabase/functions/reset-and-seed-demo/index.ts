@@ -19,8 +19,12 @@ const round2 = (n:number) => Math.round(n*100)/100;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  let MODE: "reset" | "reset-and-seed" = "reset-and-seed";
-  try { const b = await req.clone().json(); if (b?.mode === "reset") MODE = "reset"; } catch {}
+  let MODE: "reset" | "reset-and-seed" | "transactions" = "reset-and-seed";
+  try {
+    const b = await req.clone().json();
+    if (b?.mode === "reset") MODE = "reset";
+    else if (b?.mode === "transactions") MODE = "transactions";
+  } catch {}
   const log: string[] = [];
   const t0 = Date.now();
   try {
@@ -38,7 +42,46 @@ Deno.serve(async (req) => {
     if (prof?.employee_id) throw new Error("Super Admin only");
     const UID = user.id;
 
-    // ===== RESET =====
+    // ===== TRANSACTIONS-ONLY RESET =====
+    // Wipe only transactional rows; preserve ALL masters (customers, suppliers,
+    // products, item_master, employees, salary_structures, BOMs) AND configuration
+    // (CoA, branches, financial_years, units, categories, warehouses, departments,
+    // designations, leave_types, company_settings, users, roles, page_shortcuts,
+    // document numbering, branding).
+    if (MODE === "transactions") {
+      const txnGroups: string[][] = [
+        // Purchase v2 child rows first
+        ["lc_charges","purchase_return_items_v2","supplier_payment_allocations","supplier_bill_items_v2","grn_items_v2","po_amendments_v2","po_pr_links","purchase_order_items_v2","purchase_requisition_items","purchase_approval_history","purchase_audit_log"],
+        ["purchase_returns_v2","supplier_payments_v2","supplier_bills_v2","grns_v2","lc_documents"],
+        ["purchase_orders_v2","purchase_requisitions"],
+        // Leaf child rows
+        ["voucher_entries","payment_allocations","sales_invoice_items","sales_return_items","stock_movements","stock_ledger","stock_transfers","production_materials","fund_transactions","overtime_records","leave_requests","attendance","biometric_logs","payroll","party_notes","login_logs","backup_history","messages","conversation_participants",
+          "tds_entries","invoice_payments","invoice_challans","sales_invoice_items_v2","customer_receives","ho_receives","vat_challan_items","purchase_order_items","invoice_status_logs","po_amendments","stock_adjustments","physical_stock_items","stock_damage_items","consumption_items"],
+        ["sales_returns","physical_stock_entries","stock_damage_entries","consumption_entries","finished_goods_entries"],
+        ["sales_invoices_v2","delivery_challans","vat_challans","purchase_orders"],
+        ["acc_vouchers","party_payments","sales_invoices","production_entries","conversations","number_sequences"],
+      ];
+      for (const grp of txnGroups) {
+        for (const t of grp) {
+          const { error } = await db.from(t).delete().not("id", "is", null);
+          if (error) log.push(`del ${t}: ${error.message}`);
+        }
+      }
+      await db.from("audit_log").insert({
+        user_id: UID, user_name: user.email,
+        action: "demo_reset_transactions_only", module: "backup",
+        details: `Transactional data wiped (masters & configuration preserved) in ${Date.now() - t0}ms`,
+      });
+      return new Response(JSON.stringify({
+        success: true,
+        mode: "transactions",
+        message: "Transactional data cleared. Masters & configuration preserved.",
+        elapsedMs: Date.now() - t0,
+        log,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ===== RESET (full wipe incl. masters) =====
     const resetGroups: string[][] = [
       // Purchase v2 child rows first (must precede suppliers / items)
       ["lc_charges","purchase_return_items_v2","supplier_payment_allocations","supplier_bill_items_v2","grn_items_v2","po_amendments_v2","po_pr_links","purchase_order_items_v2","purchase_requisition_items","purchase_approval_history","purchase_audit_log"],
@@ -79,6 +122,7 @@ Deno.serve(async (req) => {
         log,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
 
 
     // ===== RESOLVE / ENSURE MASTER REFS =====
