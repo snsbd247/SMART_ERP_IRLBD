@@ -50,6 +50,9 @@ class StockAdjustmentController extends BaseController
             'unit_cost'       => 'nullable|numeric|min:0',
         ]);
 
+        // Period close lock
+        $this->period->assertOpen($r->adjustment_date, 'stock adjustment');
+
         // Try to allocate a number from sequence; gracefully fall back to ad-hoc number.
         try { $number = $this->seq->next('stock_adjustment'); }
         catch (\Throwable $e) { $number = 'ADJ-' . date('y') . '-' . substr((string) microtime(true), -5); }
