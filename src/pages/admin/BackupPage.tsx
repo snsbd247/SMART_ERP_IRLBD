@@ -1035,16 +1035,53 @@ const BackupPage = () => {
                 </p>
                 <Button
                   variant="secondary"
-                  onClick={handleResetTransactionsOnly}
-                  disabled={resettingTxn || seedingFull || resettingDemo || !isSuperAdmin}
+                  onClick={() => handleResetTransactionsOnly(false)}
+                  disabled={resettingTxn || dryRunTxn || seedingFull || resettingDemo || !isSuperAdmin}
                   className="w-full"
                 >
                   {resettingTxn ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                   {resettingTxn ? "Clearing transactional data..." : "Reset Transactions Only (keep masters + config)"}
                 </Button>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleResetTransactionsOnly(true)} disabled={dryRunTxn || resettingTxn || !isSuperAdmin}>
+                    {dryRunTxn ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Shield className="w-3.5 h-3.5 mr-2" />}
+                    Dry-Run (preview only)
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleOpenAuditTables} disabled={!isSuperAdmin}>
+                    <Database className="w-3.5 h-3.5 mr-2" /> View Table Audit Report
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleExportAuditLog} disabled={exportingAuditLog || !isSuperAdmin}>
+                    {exportingAuditLog ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-2" />}
+                    Export Audit Log (CSV)
+                  </Button>
+                </div>
                 <p className="text-[11px] text-muted-foreground">
-                  <strong>Reset Transactions Only</strong> wipes vouchers, invoices, POs, stock movements, payroll, attendance &amp; payments. PRESERVES all masters (customers, suppliers, products, employees, BOMs, salary structures) AND all configuration.
+                  <strong>Reset Transactions Only</strong> wipes vouchers, invoices, POs, stock movements, payroll, attendance &amp; payments. PRESERVES all masters (customers, suppliers, products, employees, BOMs, salary structures) AND all configuration. Pending migrations run automatically before seed.
                 </p>
+                {dryRunResult && (
+                  <div className="rounded border border-blue-500/30 bg-blue-500/5 p-3 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-medium text-blue-700 dark:text-blue-400">
+                      <span>🔍 Dry-Run Preview — nothing has been deleted</span>
+                      <span>{dryRunResult.tables_to_wipe} tables · {dryRunResult.total_rows} rows</span>
+                    </div>
+                    <div className="max-h-56 overflow-auto rounded border border-border">
+                      <table className="w-full text-[11px]">
+                        <thead className="bg-muted/50 sticky top-0">
+                          <tr><th className="text-left px-2 py-1">Table</th><th className="text-right px-2 py-1">Rows</th><th className="text-center px-2 py-1">Status</th></tr>
+                        </thead>
+                        <tbody>
+                          {(dryRunResult.tables || []).map((t: any) => (
+                            <tr key={t.table} className="border-t border-border">
+                              <td className="px-2 py-1 font-mono">{t.table}</td>
+                              <td className="px-2 py-1 text-right">{t.exists ? t.rows : "—"}</td>
+                              <td className="px-2 py-1 text-center">{t.exists ? (t.rows > 0 ? "would wipe" : "empty") : "missing"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
                 {fullSeedLog && (
                   <pre className="text-[10px] p-2 bg-muted rounded max-h-48 overflow-auto">{fullSeedLog}</pre>
                 )}
