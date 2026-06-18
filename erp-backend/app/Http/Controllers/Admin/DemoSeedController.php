@@ -79,7 +79,11 @@ class DemoSeedController extends BaseController
                 'user_id'    => $user?->id,
                 'user_name'  => $user?->name ?? $user?->email ?? 'System',
                 'module'     => 'backup',
-                'action'     => $mode === 'reset' ? 'demo_seed_reset' : 'demo_seed_full',
+                'action'     => match ($mode) {
+                    'reset'        => 'demo_seed_reset',
+                    'transactions' => 'demo_seed_transactions_only',
+                    default        => 'demo_seed_full',
+                },
                 'record_id'  => null,
                 'details'    => sprintf('[%s] mode=%s timestamp=%s user=%s. %s', $status, $mode, now()->toIso8601String(), $user?->email ?? $user?->name ?? 'System', $details),
                 'new_data'   => json_encode(array_merge(['mode' => $mode, 'status' => $status, 'timestamp' => now()->toIso8601String()], $payload)),
