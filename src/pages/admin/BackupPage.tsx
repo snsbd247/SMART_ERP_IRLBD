@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Download, Upload, Database, Clock, FileText, Trash2, AlertTriangle, CheckCircle, XCircle, Settings, RefreshCw, Shield, Cloud, HardDrive, Sparkles, FileJson } from "lucide-react";
+import { Download, Upload, Database, Clock, FileText, Trash2, AlertTriangle, CheckCircle, XCircle, Settings, RefreshCw, Shield, Cloud, HardDrive, Sparkles, FileJson, Loader2 } from "lucide-react";
 
 const API_BASE = getApiBaseUrl() || "";
 const USE_LARAVEL = isLaravelMode();
@@ -67,9 +67,23 @@ async function laravelApiCall(url: string, options: RequestInit = {}) {
   return res;
 }
 
+async function logDemoAudit(action: "demo_seed_full" | "demo_seed_reset", mode: string, status: "started" | "success" | "failed", details: string, user: { id?: string; name?: string; email?: string } | null) {
+  try {
+    await supabase.from("audit_log").insert({
+      user_id: user?.id ?? null,
+      user_name: user?.name || user?.email || "unknown",
+      module: "backup",
+      action,
+      record_id: mode,
+      details: `[${status}] ${details}`.slice(0, 1000),
+    });
+  } catch { /* ignore audit failure */ }
+}
+
 const BackupPage = () => {
   const { toast } = useToast();
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, user, profile } = useAuth();
+  const currentUser = { id: user?.id, name: (profile as any)?.name, email: user?.email };
   const [activeTab, setActiveTab] = useState("local");
   const [exporting, setExporting] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -228,6 +242,7 @@ const BackupPage = () => {
     if (!confirm("This will WIPE all transactions/masters and seed a full year of demo data across Accounts, Bank, Inventory, Purchase, Manufacturing, Sales (BD VAT) and HRM for 2 branches (Head Office, Factory). Continue?")) return;
     setSeedingFull(true);
     setFullSeedLog(null);
+    await logDemoAudit("demo_seed_full", "full", "started", "Wipe & Seed Full Demo Data initiated", currentUser);
     try {
       let data: any;
       if (USE_LARAVEL) {
@@ -245,10 +260,12 @@ const BackupPage = () => {
         if (data?.success === false) throw new Error(data.error || "Seed failed");
       }
       setFullSeedLog(JSON.stringify(data, null, 2));
-      toast({ title: "Demo data seeded", description: `Completed in ${data?.elapsedMs ?? data?.data?.output ? "OK" : "?"}.` });
+      toast({ title: "✓ Demo data seeded", description: data?.message || `Completed${data?.elapsedMs ? ` in ${data.elapsedMs}ms` : ""}.` });
+      await logDemoAudit("demo_seed_full", "full", "success", data?.message || "Seed completed", currentUser);
     } catch (err: any) {
       toast({ title: "Seed failed", description: err.message, variant: "destructive" });
       setFullSeedLog(String(err.message || err));
+      await logDemoAudit("demo_seed_full", "full", "failed", err.message || String(err), currentUser);
     } finally {
       setSeedingFull(false);
     }
@@ -265,6 +282,7 @@ const BackupPage = () => {
     )) return;
     setResettingDemo(true);
     setFullSeedLog(null);
+    await logDemoAudit("demo_seed_reset", "reset", "started", "Reset Demo Data Only initiated", currentUser);
     try {
       let data: any;
       if (USE_LARAVEL) {
@@ -282,10 +300,12 @@ const BackupPage = () => {
         if (data?.success === false) throw new Error(data.error || "Reset failed");
       }
       setFullSeedLog(JSON.stringify(data, null, 2));
-      toast({ title: "Demo data reset", description: `Completed in ${data?.elapsedMs ?? "?"}ms.` });
+      toast({ title: "✓ Demo data reset", description: data?.message || `Completed${data?.elapsedMs ? ` in ${data.elapsedMs}ms` : ""}.` });
+      await logDemoAudit("demo_seed_reset", "reset", "success", data?.message || "Reset completed", currentUser);
     } catch (err: any) {
       toast({ title: "Reset failed", description: err.message, variant: "destructive" });
       setFullSeedLog(String(err.message || err));
+      await logDemoAudit("demo_seed_reset", "reset", "failed", err.message || String(err), currentUser);
     } finally {
       setResettingDemo(false);
     }
@@ -873,7 +893,7 @@ const BackupPage = () => {
                   disabled={seedingFull || resettingDemo || !isSuperAdmin}
                   className="w-full"
                 >
-                  <Sparkles className="w-4 h-4 mr-2" />
+                  {seedingFull ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
                   {seedingFull ? "Seeding full demo data..." : "Wipe & Seed Full Demo Data (2 branches)"}
                 </Button>
                 <Button
@@ -882,7 +902,7 @@ const BackupPage = () => {
                   disabled={resettingDemo || seedingFull || !isSuperAdmin}
                   className="w-full"
                 >
-                  <RefreshCw className="w-4 h-4 mr-2" />
+                  {resettingDemo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                   {resettingDemo ? "Resetting demo data..." : "Reset Demo Data Only (preserve config)"}
                 </Button>
                 <p className="text-[11px] text-muted-foreground">
