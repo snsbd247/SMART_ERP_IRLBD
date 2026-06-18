@@ -121,10 +121,10 @@ class UserController extends BaseController
     private function nextEmployeeCode(): string
     {
         do {
-            $next = ((int) Employee::where('employee_code', 'like', 'USR-%')->lockForUpdate()
+            $next = ((int) Employee::where('employee_code', 'like', 'EMP-%')
                 ->selectRaw("MAX(CAST(SUBSTRING(employee_code, 5) AS UNSIGNED)) as max_no")
                 ->value('max_no')) + 1;
-            $code = 'USR-' . str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+            $code = 'EMP-' . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
         } while (Employee::where('employee_code', $code)->exists());
 
         return $code;
