@@ -74,8 +74,8 @@ async function logDemoAudit(action: "demo_seed_full" | "demo_seed_reset", mode: 
       user_name: user?.name || user?.email || "unknown",
       module: "backup",
       action,
-      record_id: mode,
-      details: `[${status}] ${details}`.slice(0, 1000),
+      record_id: null,
+      details: `[${status}] mode=${mode} ${details}`.slice(0, 1000),
     });
   } catch { /* ignore audit failure */ }
 }
