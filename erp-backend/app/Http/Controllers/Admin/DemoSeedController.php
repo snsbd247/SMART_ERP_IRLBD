@@ -27,14 +27,19 @@ class DemoSeedController extends BaseController
         @ini_set('memory_limit', '512M');
 
         $mode = $request->input('mode', 'full');
-        if (!in_array($mode, ['full', 'reset'], true)) {
+        if (!in_array($mode, ['full', 'reset', 'transactions'], true)) {
             return $this->error('Invalid demo seed mode.', 422);
         }
 
         $this->audit($request, $mode, 'started', 'Demo seed action started.');
 
         try {
-            $exitCode = Artisan::call('demo:seed', $mode === 'reset' ? ['--wipe' => true] : ['--reset' => true]);
+            $args = match ($mode) {
+                'reset'        => ['--wipe' => true],
+                'transactions' => ['--wipe-transactions' => true],
+                default        => ['--reset' => true],
+            };
+            $exitCode = Artisan::call('demo:seed', $args);
             $output = Artisan::output();
 
             if ($exitCode !== 0) {
@@ -44,7 +49,11 @@ class DemoSeedController extends BaseController
             }
 
             $stats = $this->collectStats();
-            $message = $mode === 'reset' ? 'Demo data reset successfully' : 'Demo data seeded successfully';
+            $message = match ($mode) {
+                'reset'        => 'Demo data reset successfully',
+                'transactions' => 'Transactional data cleared successfully (masters & configuration preserved)',
+                default        => 'Demo data seeded successfully',
+            };
             $this->audit($request, $mode, 'success', $message, ['stats' => $stats, 'output' => trim($output)]);
 
             return $this->success([
@@ -70,7 +79,11 @@ class DemoSeedController extends BaseController
                 'user_id'    => $user?->id,
                 'user_name'  => $user?->name ?? $user?->email ?? 'System',
                 'module'     => 'backup',
-                'action'     => $mode === 'reset' ? 'demo_seed_reset' : 'demo_seed_full',
+                'action'     => match ($mode) {
+                    'reset'        => 'demo_seed_reset',
+                    'transactions' => 'demo_seed_transactions_only',
+                    default        => 'demo_seed_full',
+                },
                 'record_id'  => null,
                 'details'    => sprintf('[%s] mode=%s timestamp=%s user=%s. %s', $status, $mode, now()->toIso8601String(), $user?->email ?? $user?->name ?? 'System', $details),
                 'new_data'   => json_encode(array_merge(['mode' => $mode, 'status' => $status, 'timestamp' => now()->toIso8601String()], $payload)),

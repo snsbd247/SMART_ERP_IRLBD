@@ -24,7 +24,7 @@ use App\Models\{
 
 class SeedDemoData extends Command
 {
-    protected $signature = 'demo:seed {--reset : Reset all transactional/demo data first} {--wipe : Wipe transactional/demo data and exit (do not seed)}';
+    protected $signature = 'demo:seed {--reset : Reset all transactional/demo data first} {--wipe : Wipe transactional/demo data and exit (do not seed)} {--wipe-transactions : Wipe ONLY transactional data, keep all masters & configuration, then exit}';
     protected $description = 'Seed 1-year operational demo data covering all ERP modules';
 
     // Deterministic RNG state
@@ -122,6 +122,12 @@ class SeedDemoData extends Command
         }
         $this->UID = $admin->id;
 
+        if ($this->option('wipe-transactions')) {
+            $this->resetTransactionsOnly();
+            $this->info('Wipe-transactions mode: transactional data cleared, masters & configuration preserved.');
+            return 0;
+        }
+
         if ($this->option('reset') || $this->option('wipe')) {
             $this->resetData();
         }
@@ -182,6 +188,40 @@ class SeedDemoData extends Command
 
         DB::statement('SET FOREIGN_KEY_CHECKS=1');
         $this->info('Reset complete.');
+    }
+
+    /**
+     * Wipe ONLY transactional data. Preserves ALL masters
+     * (customers, suppliers, products, item_master, employees, salary_structures,
+     * employee_*, bom_items, bill_of_materials) AND configuration
+     * (branches, financial_years, chart_of_accounts, item_categories, units,
+     * warehouses, product_categories, departments, designations, leave_types,
+     * company_setting, users, user_roles, page shortcuts, document numbering, etc.).
+     */
+    private function resetTransactionsOnly(): void
+    {
+        $this->info('Resetting transactional data only (masters & configuration preserved)...');
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+
+        $txnGroups = [
+            // Child / dependent rows first
+            ['voucher_entries','payment_allocations','sales_invoice_items','sales_return_items','purchase_items','purchase_return_items','purchase_order_items','sales_invoice_items_v2','invoice_status_logs','po_amendments','vat_challan_items','invoice_payments','invoice_challans','tds_entries','customer_receives','ho_receives','stock_movements','stock_ledger','production_materials','fund_transactions','overtime_records','leave_requests','attendance','biometric_logs','login_logs','backup_history','party_notes','messages','conversation_participants','payroll'],
+            // Parents
+            ['sales_returns','purchase_returns'],
+            ['sales_invoices_v2','delivery_challans','vat_challans','purchase_orders','stock_transfers'],
+            ['acc_vouchers','party_payments','sales_invoices','purchases','production_entries','conversations','number_sequences'],
+        ];
+
+        foreach ($txnGroups as $grp) {
+            foreach ($grp as $t) {
+                if (DB::getSchemaBuilder()->hasTable($t)) {
+                    DB::table($t)->delete();
+                }
+            }
+        }
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        $this->info('Transactional data reset complete.');
     }
 
     private function resolveMasters(): void
