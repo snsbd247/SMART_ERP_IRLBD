@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import UserDeleteDialog from "@/components/admin/UserDeleteDialog";
+import { isLaravelMode, getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 
 interface UserRow {
   id: string;
