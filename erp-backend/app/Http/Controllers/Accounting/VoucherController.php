@@ -50,6 +50,9 @@ class VoucherController extends BaseController
             'entries.*.credit' => 'numeric|min:0',
         ]);
 
+        // Period close lock
+        $this->period->assertOpen($request->voucher_date, 'voucher');
+
         $voucher = $this->service->createVoucher(
             array_merge($request->only('voucher_type', 'voucher_date', 'description', 'branch_id', 'financial_year_id'), ['created_by' => $request->user()->id]),
             $request->entries,
