@@ -95,6 +95,12 @@ class StockAdjustmentController extends BaseController
         if (!$row) return $this->error('Not found', 404);
         if (($row->status ?? 'draft') === 'posted') return $this->error('Already posted', 422);
 
+        // Period close lock + negative-stock guard before posting
+        $this->period->assertOpen($row->adjustment_date, 'stock adjustment approval');
+        if ($row->adjustment_type === 'decrease') {
+            $this->stock->assertSufficient($row->product_id, $row->warehouse_id ?? null, (float) $row->quantity);
+        }
+
         DB::transaction(function () use ($row, $r) {
             $multiplier = $row->adjustment_type === 'increase' ? +1 : -1;
             $this->stock->createBulkMovements(
