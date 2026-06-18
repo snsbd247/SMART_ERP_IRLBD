@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\BaseController;
+use App\Models\Employee;
 use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
@@ -36,27 +37,56 @@ class UserController extends BaseController
         $data = $request->validate([
             'username' => 'required|unique:users',
             'name' => 'required|max:100',
-            'email' => 'nullable|email',
+            'email' => 'nullable|email|max:100',
+            'phone' => 'nullable|string|max:30',
             'password' => 'required|min:6',
             'branch_id' => 'nullable|exists:branches,id',
+            'employee_id' => 'nullable|exists:employees,id',
+            'status' => 'nullable|in:active,inactive',
+            'system_role' => 'nullable|in:user,super_admin',
             'branch_ids' => 'array',
             'branch_ids.*' => 'exists:branches,id',
             'role_ids' => 'array',
             'role_ids.*' => 'exists:custom_roles,id',
         ]);
-        $data['password'] = Hash::make($data['password']);
-        $branchIds = $data['branch_ids'] ?? [];
-        // Default primary branch to first selected if not explicitly set
-        if (empty($data['branch_id']) && !empty($branchIds)) {
-            $data['branch_id'] = $branchIds[0];
+        $systemRole = $data['system_role'] ?? 'user';
+        if ($systemRole === 'super_admin' && !$request->user()?->isSuperAdmin()) {
+            return $this->error('Only Super Admin can create another Super Admin user.', 403);
         }
-        $user = User::create(collect($data)->except(['role_ids', 'branch_ids'])->toArray());
-        if (!empty($data['role_ids'])) $user->roles()->sync($data['role_ids']);
-        $user->branches()->sync($branchIds ?: ($data['branch_id'] ? [$data['branch_id']] : []));
 
-        $this->auditService->logCreate('users', $user->id, $user->toArray(), $request);
+        return DB::transaction(function () use ($data, $request, $systemRole) {
+            $branchIds = $data['branch_ids'] ?? [];
+            if (empty($data['branch_id']) && !empty($branchIds)) {
+                $data['branch_id'] = $branchIds[0];
+            }
 
-        return $this->created($user->load('roles', 'branches'));
+            $employeeId = $data['employee_id'] ?? null;
+            if ($systemRole !== 'super_admin' && empty($employeeId)) {
+                $employee = $this->createEmployeeForUser($data, $request);
+                $employeeId = $employee->id;
+            }
+
+            $user = User::create([
+                'username' => $data['username'],
+                'name' => $data['name'],
+                'email' => $data['email'] ?? null,
+                'phone' => $data['phone'] ?? null,
+                'password' => Hash::make($data['password']),
+                'branch_id' => $data['branch_id'] ?? null,
+                'employee_id' => $systemRole === 'super_admin' ? null : $employeeId,
+                'status' => $data['status'] ?? 'active',
+            ]);
+
+            if ($employeeId) {
+                Employee::where('id', $employeeId)->update(['user_id' => $user->id]);
+            }
+            $user->roles()->sync($data['role_ids'] ?? []);
+            $user->branches()->sync($branchIds ?: (!empty($data['branch_id']) ? [$data['branch_id']] : []));
+
+            $this->auditService->logCreate('users', $user->id, $user->toArray(), $request);
+
+            return $this->created($user->load('roles', 'branches', 'employee'));
+        });
     }
 
     public function show(string $id)
