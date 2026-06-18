@@ -312,45 +312,127 @@ const BackupPage = () => {
   };
 
   const [resettingTxn, setResettingTxn] = useState(false);
-  const handleResetTransactionsOnly = async () => {
+  const [dryRunTxn, setDryRunTxn] = useState(false);
+  const [dryRunResult, setDryRunResult] = useState<any | null>(null);
+  const [auditTablesOpen, setAuditTablesOpen] = useState(false);
+  const [auditTablesData, setAuditTablesData] = useState<any | null>(null);
+  const [loadingAuditTables, setLoadingAuditTables] = useState(false);
+  const [exportingAuditLog, setExportingAuditLog] = useState(false);
+
+  const handleResetTransactionsOnly = async (dryRun: boolean = false) => {
     if (!isSuperAdmin) {
       toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
       return;
     }
-    if (!confirm(
+    if (!dryRun && !confirm(
       "This will WIPE only TRANSACTIONAL data (vouchers, invoices, POs, stock movements, payroll, attendance, payments, etc.).\n\n" +
       "PRESERVED: All masters (customers, suppliers, products, items, employees, salary structures, BOMs) AND all configuration (Chart of Accounts, branches, financial years, units, categories, warehouses, departments, designations, leave types, company settings, users, roles, document numbering, page shortcuts, branding).\n\nContinue?"
     )) return;
-    setResettingTxn(true);
+    if (dryRun) { setDryRunTxn(true); setDryRunResult(null); } else { setResettingTxn(true); }
     setFullSeedLog(null);
-    await logDemoAudit("demo_seed_transactions_only", "transactions", "started", "Reset Transactions Only initiated", currentUser);
+    await logDemoAudit("demo_seed_transactions_only", "transactions", "started", dryRun ? "Dry-run preview initiated" : "Reset Transactions Only initiated", currentUser);
     try {
       let data: any;
       if (USE_LARAVEL) {
         const res = await fetch(`${API_BASE}/v1/admin/demo/seed`, {
           method: "POST",
           headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-          body: JSON.stringify({ mode: "transactions" }),
+          body: JSON.stringify({ mode: "transactions", dry_run: dryRun }),
         });
         data = await res.json().catch(() => ({}));
         if (!res.ok || data?.success === false) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
       } else {
-        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "transactions" } });
+        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "transactions", dry_run: dryRun } });
         if (r.error) throw r.error;
         data = r.data;
         if (data?.success === false) throw new Error(data.error || "Reset failed");
       }
-      setFullSeedLog(JSON.stringify(data, null, 2));
-      toast({ title: "✓ Transactional data cleared", description: data?.message || "Masters & configuration preserved." });
-      await logDemoAudit("demo_seed_transactions_only", "transactions", "success", data?.message || "Reset completed", currentUser);
+      if (dryRun) {
+        const preview = data?.data?.preview ?? data?.preview ?? data;
+        setDryRunResult(preview);
+        toast({ title: "🔍 Dry-run complete", description: `${preview?.tables_to_wipe ?? 0} tables / ${preview?.total_rows ?? 0} rows would be cleared. Nothing was deleted.` });
+        await logDemoAudit("demo_seed_transactions_only", "transactions", "success", `Dry-run: ${preview?.total_rows ?? 0} rows would be cleared`, currentUser);
+      } else {
+        setFullSeedLog(JSON.stringify(data, null, 2));
+        toast({ title: "✓ Transactional data cleared", description: data?.message || "Masters & configuration preserved." });
+        await logDemoAudit("demo_seed_transactions_only", "transactions", "success", data?.message || "Reset completed", currentUser);
+      }
     } catch (err: any) {
-      toast({ title: "Reset failed", description: err.message, variant: "destructive" });
-      setFullSeedLog(String(err.message || err));
+      toast({ title: dryRun ? "Dry-run failed" : "Reset failed", description: err.message, variant: "destructive" });
+      if (!dryRun) setFullSeedLog(String(err.message || err));
       await logDemoAudit("demo_seed_transactions_only", "transactions", "failed", err.message || String(err), currentUser);
     } finally {
-      setResettingTxn(false);
+      if (dryRun) setDryRunTxn(false); else setResettingTxn(false);
     }
   };
+
+  const handleOpenAuditTables = async () => {
+    if (!isSuperAdmin) {
+      toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
+      return;
+    }
+    setAuditTablesOpen(true);
+    setLoadingAuditTables(true);
+    setAuditTablesData(null);
+    try {
+      if (USE_LARAVEL) {
+        const res = await fetch(`${API_BASE}/v1/admin/demo/audit-tables`, { headers: { ...getAuthHeaders() } });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
+        setAuditTablesData(json.data ?? json);
+      } else {
+        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "audit" } });
+        if (r.error) throw r.error;
+        setAuditTablesData(r.data?.data ?? r.data);
+      }
+    } catch (err: any) {
+      toast({ title: "Failed to load table audit", description: err.message, variant: "destructive" });
+    } finally {
+      setLoadingAuditTables(false);
+    }
+  };
+
+  const handleExportAuditLog = async () => {
+    if (!isSuperAdmin) {
+      toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
+      return;
+    }
+    setExportingAuditLog(true);
+    try {
+      let csv: string;
+      if (USE_LARAVEL) {
+        const res = await fetch(`${API_BASE}/v1/admin/demo/audit-log/export`, { headers: { ...getAuthHeaders() } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        csv = await res.text();
+      } else {
+        const { data, error } = await supabase
+          .from("audit_log")
+          .select("created_at,user_name,action,details,ip_address,user_agent")
+          .eq("module", "backup")
+          .in("action", ["demo_seed_full","demo_seed_reset","demo_seed_transactions_only","demo_reset","demo_reset_transactions_only"])
+          .order("created_at", { ascending: false })
+          .limit(5000);
+        if (error) throw error;
+        const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+        csv = ["created_at,user_name,action,details,ip_address,user_agent"]
+          .concat((data || []).map(r => [r.created_at, r.user_name, r.action, r.details, r.ip_address, r.user_agent].map(esc).join(",")))
+          .join("\n");
+      }
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `demo-seed-audit-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: "✓ Audit log exported" });
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+    } finally {
+      setExportingAuditLog(false);
+    }
+  };
+
 
 
 
@@ -953,16 +1035,53 @@ const BackupPage = () => {
                 </p>
                 <Button
                   variant="secondary"
-                  onClick={handleResetTransactionsOnly}
-                  disabled={resettingTxn || seedingFull || resettingDemo || !isSuperAdmin}
+                  onClick={() => handleResetTransactionsOnly(false)}
+                  disabled={resettingTxn || dryRunTxn || seedingFull || resettingDemo || !isSuperAdmin}
                   className="w-full"
                 >
                   {resettingTxn ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                   {resettingTxn ? "Clearing transactional data..." : "Reset Transactions Only (keep masters + config)"}
                 </Button>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleResetTransactionsOnly(true)} disabled={dryRunTxn || resettingTxn || !isSuperAdmin}>
+                    {dryRunTxn ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Shield className="w-3.5 h-3.5 mr-2" />}
+                    Dry-Run (preview only)
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleOpenAuditTables} disabled={!isSuperAdmin}>
+                    <Database className="w-3.5 h-3.5 mr-2" /> View Table Audit Report
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleExportAuditLog} disabled={exportingAuditLog || !isSuperAdmin}>
+                    {exportingAuditLog ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-2" />}
+                    Export Audit Log (CSV)
+                  </Button>
+                </div>
                 <p className="text-[11px] text-muted-foreground">
-                  <strong>Reset Transactions Only</strong> wipes vouchers, invoices, POs, stock movements, payroll, attendance &amp; payments. PRESERVES all masters (customers, suppliers, products, employees, BOMs, salary structures) AND all configuration.
+                  <strong>Reset Transactions Only</strong> wipes vouchers, invoices, POs, stock movements, payroll, attendance &amp; payments. PRESERVES all masters (customers, suppliers, products, employees, BOMs, salary structures) AND all configuration. Pending migrations run automatically before seed.
                 </p>
+                {dryRunResult && (
+                  <div className="rounded border border-blue-500/30 bg-blue-500/5 p-3 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-medium text-blue-700 dark:text-blue-400">
+                      <span>🔍 Dry-Run Preview — nothing has been deleted</span>
+                      <span>{dryRunResult.tables_to_wipe} tables · {dryRunResult.total_rows} rows</span>
+                    </div>
+                    <div className="max-h-56 overflow-auto rounded border border-border">
+                      <table className="w-full text-[11px]">
+                        <thead className="bg-muted/50 sticky top-0">
+                          <tr><th className="text-left px-2 py-1">Table</th><th className="text-right px-2 py-1">Rows</th><th className="text-center px-2 py-1">Status</th></tr>
+                        </thead>
+                        <tbody>
+                          {(dryRunResult.tables || []).map((t: any) => (
+                            <tr key={t.table} className="border-t border-border">
+                              <td className="px-2 py-1 font-mono">{t.table}</td>
+                              <td className="px-2 py-1 text-right">{t.exists ? t.rows : "—"}</td>
+                              <td className="px-2 py-1 text-center">{t.exists ? (t.rows > 0 ? "would wipe" : "empty") : "missing"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
                 {fullSeedLog && (
                   <pre className="text-[10px] p-2 bg-muted rounded max-h-48 overflow-auto">{fullSeedLog}</pre>
                 )}
@@ -1345,6 +1464,67 @@ const BackupPage = () => {
           )}
           <DialogFooter>
             <Button onClick={() => setVerifyResult(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={auditTablesOpen} onOpenChange={setAuditTablesOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Database Table Audit Report</DialogTitle>
+            <DialogDescription>
+              Live inventory of transactional tables (cleared by "Reset Transactions Only") and preserved master/configuration tables.
+            </DialogDescription>
+          </DialogHeader>
+          {loadingAuditTables && (
+            <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+            </div>
+          )}
+          {!loadingAuditTables && auditTablesData && (
+            <div className="space-y-4 overflow-auto">
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="rounded border border-border p-2"><div className="text-muted-foreground">Transactional tables</div><div className="text-lg font-semibold">{auditTablesData.summary?.transactional_tables ?? 0}</div></div>
+                <div className="rounded border border-border p-2"><div className="text-muted-foreground">Transactional rows</div><div className="text-lg font-semibold">{auditTablesData.summary?.transactional_rows ?? 0}</div></div>
+                <div className="rounded border border-border p-2"><div className="text-muted-foreground">Preserved tables</div><div className="text-lg font-semibold">{auditTablesData.summary?.preserved_tables ?? 0}</div></div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold mb-1 text-red-600 dark:text-red-400">Transactional (will be wiped)</div>
+                <div className="rounded border border-border max-h-64 overflow-auto">
+                  <table className="w-full text-[11px]">
+                    <thead className="bg-muted/50 sticky top-0"><tr><th className="text-left px-2 py-1">Table</th><th className="text-right px-2 py-1">Rows</th><th className="text-center px-2 py-1">Status</th></tr></thead>
+                    <tbody>
+                      {(auditTablesData.transactional || []).map((t: any) => (
+                        <tr key={t.table} className="border-t border-border">
+                          <td className="px-2 py-1 font-mono">{t.table}</td>
+                          <td className="px-2 py-1 text-right">{t.exists ? t.rows : "—"}</td>
+                          <td className="px-2 py-1 text-center">{t.exists ? "will wipe" : <span className="text-muted-foreground">missing</span>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold mb-1 text-green-600 dark:text-green-400">Preserved (masters + configuration)</div>
+                <div className="rounded border border-border max-h-64 overflow-auto">
+                  <table className="w-full text-[11px]">
+                    <thead className="bg-muted/50 sticky top-0"><tr><th className="text-left px-2 py-1">Table</th><th className="text-right px-2 py-1">Rows</th><th className="text-center px-2 py-1">Status</th></tr></thead>
+                    <tbody>
+                      {(auditTablesData.preserved || []).map((t: any) => (
+                        <tr key={t.table} className="border-t border-border">
+                          <td className="px-2 py-1 font-mono">{t.table}</td>
+                          <td className="px-2 py-1 text-right">{t.exists ? t.rows : "—"}</td>
+                          <td className="px-2 py-1 text-center">{t.exists ? "preserved" : <span className="text-muted-foreground">missing</span>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAuditTablesOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
