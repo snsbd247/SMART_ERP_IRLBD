@@ -312,45 +312,127 @@ const BackupPage = () => {
   };
 
   const [resettingTxn, setResettingTxn] = useState(false);
-  const handleResetTransactionsOnly = async () => {
+  const [dryRunTxn, setDryRunTxn] = useState(false);
+  const [dryRunResult, setDryRunResult] = useState<any | null>(null);
+  const [auditTablesOpen, setAuditTablesOpen] = useState(false);
+  const [auditTablesData, setAuditTablesData] = useState<any | null>(null);
+  const [loadingAuditTables, setLoadingAuditTables] = useState(false);
+  const [exportingAuditLog, setExportingAuditLog] = useState(false);
+
+  const handleResetTransactionsOnly = async (dryRun: boolean = false) => {
     if (!isSuperAdmin) {
       toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
       return;
     }
-    if (!confirm(
+    if (!dryRun && !confirm(
       "This will WIPE only TRANSACTIONAL data (vouchers, invoices, POs, stock movements, payroll, attendance, payments, etc.).\n\n" +
       "PRESERVED: All masters (customers, suppliers, products, items, employees, salary structures, BOMs) AND all configuration (Chart of Accounts, branches, financial years, units, categories, warehouses, departments, designations, leave types, company settings, users, roles, document numbering, page shortcuts, branding).\n\nContinue?"
     )) return;
-    setResettingTxn(true);
+    if (dryRun) { setDryRunTxn(true); setDryRunResult(null); } else { setResettingTxn(true); }
     setFullSeedLog(null);
-    await logDemoAudit("demo_seed_transactions_only", "transactions", "started", "Reset Transactions Only initiated", currentUser);
+    await logDemoAudit("demo_seed_transactions_only", "transactions", "started", dryRun ? "Dry-run preview initiated" : "Reset Transactions Only initiated", currentUser);
     try {
       let data: any;
       if (USE_LARAVEL) {
         const res = await fetch(`${API_BASE}/v1/admin/demo/seed`, {
           method: "POST",
           headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-          body: JSON.stringify({ mode: "transactions" }),
+          body: JSON.stringify({ mode: "transactions", dry_run: dryRun }),
         });
         data = await res.json().catch(() => ({}));
         if (!res.ok || data?.success === false) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
       } else {
-        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "transactions" } });
+        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "transactions", dry_run: dryRun } });
         if (r.error) throw r.error;
         data = r.data;
         if (data?.success === false) throw new Error(data.error || "Reset failed");
       }
-      setFullSeedLog(JSON.stringify(data, null, 2));
-      toast({ title: "✓ Transactional data cleared", description: data?.message || "Masters & configuration preserved." });
-      await logDemoAudit("demo_seed_transactions_only", "transactions", "success", data?.message || "Reset completed", currentUser);
+      if (dryRun) {
+        const preview = data?.data?.preview ?? data?.preview ?? data;
+        setDryRunResult(preview);
+        toast({ title: "🔍 Dry-run complete", description: `${preview?.tables_to_wipe ?? 0} tables / ${preview?.total_rows ?? 0} rows would be cleared. Nothing was deleted.` });
+        await logDemoAudit("demo_seed_transactions_only", "transactions", "success", `Dry-run: ${preview?.total_rows ?? 0} rows would be cleared`, currentUser);
+      } else {
+        setFullSeedLog(JSON.stringify(data, null, 2));
+        toast({ title: "✓ Transactional data cleared", description: data?.message || "Masters & configuration preserved." });
+        await logDemoAudit("demo_seed_transactions_only", "transactions", "success", data?.message || "Reset completed", currentUser);
+      }
     } catch (err: any) {
-      toast({ title: "Reset failed", description: err.message, variant: "destructive" });
-      setFullSeedLog(String(err.message || err));
+      toast({ title: dryRun ? "Dry-run failed" : "Reset failed", description: err.message, variant: "destructive" });
+      if (!dryRun) setFullSeedLog(String(err.message || err));
       await logDemoAudit("demo_seed_transactions_only", "transactions", "failed", err.message || String(err), currentUser);
     } finally {
-      setResettingTxn(false);
+      if (dryRun) setDryRunTxn(false); else setResettingTxn(false);
     }
   };
+
+  const handleOpenAuditTables = async () => {
+    if (!isSuperAdmin) {
+      toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
+      return;
+    }
+    setAuditTablesOpen(true);
+    setLoadingAuditTables(true);
+    setAuditTablesData(null);
+    try {
+      if (USE_LARAVEL) {
+        const res = await fetch(`${API_BASE}/v1/admin/demo/audit-tables`, { headers: { ...getAuthHeaders() } });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
+        setAuditTablesData(json.data ?? json);
+      } else {
+        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "audit" } });
+        if (r.error) throw r.error;
+        setAuditTablesData(r.data?.data ?? r.data);
+      }
+    } catch (err: any) {
+      toast({ title: "Failed to load table audit", description: err.message, variant: "destructive" });
+    } finally {
+      setLoadingAuditTables(false);
+    }
+  };
+
+  const handleExportAuditLog = async () => {
+    if (!isSuperAdmin) {
+      toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
+      return;
+    }
+    setExportingAuditLog(true);
+    try {
+      let csv: string;
+      if (USE_LARAVEL) {
+        const res = await fetch(`${API_BASE}/v1/admin/demo/audit-log/export`, { headers: { ...getAuthHeaders() } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        csv = await res.text();
+      } else {
+        const { data, error } = await supabase
+          .from("audit_log")
+          .select("created_at,user_name,action,details,ip_address,user_agent")
+          .eq("module", "backup")
+          .in("action", ["demo_seed_full","demo_seed_reset","demo_seed_transactions_only","demo_reset","demo_reset_transactions_only"])
+          .order("created_at", { ascending: false })
+          .limit(5000);
+        if (error) throw error;
+        const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+        csv = ["created_at,user_name,action,details,ip_address,user_agent"]
+          .concat((data || []).map(r => [r.created_at, r.user_name, r.action, r.details, r.ip_address, r.user_agent].map(esc).join(",")))
+          .join("\n");
+      }
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `demo-seed-audit-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: "✓ Audit log exported" });
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+    } finally {
+      setExportingAuditLog(false);
+    }
+  };
+
 
 
 
