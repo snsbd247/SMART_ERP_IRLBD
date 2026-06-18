@@ -164,18 +164,24 @@ class SeedDemoData extends Command
 
     private function resetData(): void
     {
-        $this->info('Resetting transactional data...');
+        $this->info('Resetting transactional + master data...');
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
 
         $resetGroups = [
+            // Purchase v2 child rows first (must precede suppliers / items)
+            ['lc_charges','purchase_return_items_v2','supplier_payment_allocations','supplier_bill_items_v2','grn_items_v2','po_amendments_v2','po_pr_links','purchase_order_items_v2','purchase_requisition_items','purchase_approval_history','purchase_audit_log'],
+            ['purchase_returns_v2','supplier_payments_v2','supplier_bills_v2','grns_v2','lc_documents'],
+            ['purchase_orders_v2','purchase_requisitions'],
+            // Leaf child rows
             ['voucher_entries','payment_allocations','sales_invoice_items','sales_return_items','purchase_items','purchase_return_items','stock_movements','stock_ledger','stock_transfers','production_materials','bom_items','fund_transactions','employee_fund_settings','overtime_records','leave_requests','attendance','employee_documents','employee_bank_info','employee_education','employee_experience','employee_emergency_contacts','salary_structures','face_data','biometric_logs','payroll','party_notes','login_logs','backup_history','messages','conversation_participants',
              'tds_entries','invoice_payments','invoice_challans','sales_invoice_items_v2','customer_receives','ho_receives','vat_challan_items','purchase_order_items',
-             'invoice_status_logs','po_amendments'],
-            ['sales_returns','purchase_returns'],
+             'invoice_status_logs','po_amendments','stock_adjustments','physical_stock_items','stock_damage_items','consumption_items','sms_logs','user_activities','warehouse_stock','stock_batches'],
+            ['sales_returns','purchase_returns','physical_stock_entries','stock_damage_entries','consumption_entries','finished_goods_entries'],
             ['sales_invoices_v2','delivery_challans','vat_challans','purchase_orders'],
             ['acc_vouchers','party_payments','sales_invoices','purchases','production_entries','bill_of_materials','employees','conversations','number_sequences'],
+            ['sections','shifts','biometric_devices'],
             ['customers','suppliers','item_master','products','raw_materials'],
-            ['item_categories','units','warehouses','product_categories'],
+            ['item_categories','units','warehouses','product_categories','stock_groups'],
         ];
 
         foreach ($resetGroups as $grp) {
@@ -204,10 +210,15 @@ class SeedDemoData extends Command
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
 
         $txnGroups = [
-            // Child / dependent rows first
-            ['voucher_entries','payment_allocations','sales_invoice_items','sales_return_items','purchase_items','purchase_return_items','purchase_order_items','sales_invoice_items_v2','invoice_status_logs','po_amendments','vat_challan_items','invoice_payments','invoice_challans','tds_entries','customer_receives','ho_receives','stock_movements','stock_ledger','production_materials','fund_transactions','overtime_records','leave_requests','attendance','biometric_logs','login_logs','backup_history','party_notes','messages','conversation_participants','payroll'],
-            // Parents
-            ['sales_returns','purchase_returns'],
+            // Purchase v2 child rows first
+            ['lc_charges','purchase_return_items_v2','supplier_payment_allocations','supplier_bill_items_v2','grn_items_v2','po_amendments_v2','po_pr_links','purchase_order_items_v2','purchase_requisition_items','purchase_approval_history','purchase_audit_log'],
+            ['purchase_returns_v2','supplier_payments_v2','supplier_bills_v2','grns_v2','lc_documents'],
+            ['purchase_orders_v2','purchase_requisitions'],
+            // Leaf transactional child rows
+            ['voucher_entries','payment_allocations','sales_invoice_items','sales_return_items','purchase_items','purchase_return_items','purchase_order_items','sales_invoice_items_v2','invoice_status_logs','po_amendments','vat_challan_items','invoice_payments','invoice_challans','tds_entries','customer_receives','ho_receives','stock_movements','stock_ledger','production_materials','fund_transactions','overtime_records','leave_requests','attendance','biometric_logs','login_logs','backup_history','party_notes','messages','conversation_participants','payroll',
+             'stock_adjustments','physical_stock_items','stock_damage_items','consumption_items','sms_logs','user_activities','warehouse_stock','stock_batches'],
+            // Parents (transactional headers)
+            ['sales_returns','purchase_returns','physical_stock_entries','stock_damage_entries','consumption_entries','finished_goods_entries'],
             ['sales_invoices_v2','delivery_challans','vat_challans','purchase_orders','stock_transfers'],
             ['acc_vouchers','party_payments','sales_invoices','purchases','production_entries','conversations','number_sequences'],
         ];
@@ -223,6 +234,7 @@ class SeedDemoData extends Command
         DB::statement('SET FOREIGN_KEY_CHECKS=1');
         $this->info('Transactional data reset complete.');
     }
+
 
     private function resolveMasters(): void
     {
