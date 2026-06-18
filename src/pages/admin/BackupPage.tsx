@@ -67,9 +67,23 @@ async function laravelApiCall(url: string, options: RequestInit = {}) {
   return res;
 }
 
+async function logDemoAudit(action: "demo_seed_full" | "demo_seed_reset", mode: string, status: "started" | "success" | "failed", details: string, user: { id?: string; name?: string; email?: string } | null) {
+  try {
+    await supabase.from("audit_log").insert({
+      user_id: user?.id ?? null,
+      user_name: user?.name || user?.email || "unknown",
+      module: "backup",
+      action,
+      record_id: mode,
+      details: `[${status}] ${details}`.slice(0, 1000),
+    });
+  } catch { /* ignore audit failure */ }
+}
+
 const BackupPage = () => {
   const { toast } = useToast();
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, user, profile } = useAuth();
+  const currentUser = { id: user?.id, name: (profile as any)?.name, email: user?.email };
   const [activeTab, setActiveTab] = useState("local");
   const [exporting, setExporting] = useState(false);
   const [restoring, setRestoring] = useState(false);
