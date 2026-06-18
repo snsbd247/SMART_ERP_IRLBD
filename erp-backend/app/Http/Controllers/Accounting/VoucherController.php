@@ -7,6 +7,7 @@ use App\Models\AccVoucher;
 use App\Models\VoucherEntry;
 use App\Repositories\VoucherRepository;
 use App\Services\AccountingService;
+use App\Services\FinancialPeriodGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -15,6 +16,7 @@ class VoucherController extends BaseController
     public function __construct(
         private VoucherRepository $repo,
         private AccountingService $service,
+        private FinancialPeriodGuard $period,
     ) {}
 
     public function index(Request $request)
