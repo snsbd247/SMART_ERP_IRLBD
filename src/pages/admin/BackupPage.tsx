@@ -229,11 +229,23 @@ const BackupPage = () => {
     setSeedingFull(true);
     setFullSeedLog(null);
     try {
-      const { data, error } = await supabase.functions.invoke("reset-and-seed-demo", { body: {} });
-      if (error) throw error;
-      if (data?.success === false) throw new Error(data.error || "Seed failed");
+      let data: any;
+      if (USE_LARAVEL) {
+        const res = await fetch(`${API_BASE}/v1/admin/demo/seed`, {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "full" }),
+        });
+        data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.success === false) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+      } else {
+        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: {} });
+        if (r.error) throw r.error;
+        data = r.data;
+        if (data?.success === false) throw new Error(data.error || "Seed failed");
+      }
       setFullSeedLog(JSON.stringify(data, null, 2));
-      toast({ title: "Demo data seeded", description: `Completed in ${data?.elapsedMs ?? "?"}ms.` });
+      toast({ title: "Demo data seeded", description: `Completed in ${data?.elapsedMs ?? data?.data?.output ? "OK" : "?"}.` });
     } catch (err: any) {
       toast({ title: "Seed failed", description: err.message, variant: "destructive" });
       setFullSeedLog(String(err.message || err));
@@ -254,9 +266,21 @@ const BackupPage = () => {
     setResettingDemo(true);
     setFullSeedLog(null);
     try {
-      const { data, error } = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "reset" } });
-      if (error) throw error;
-      if (data?.success === false) throw new Error(data.error || "Reset failed");
+      let data: any;
+      if (USE_LARAVEL) {
+        const res = await fetch(`${API_BASE}/v1/admin/demo/seed`, {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "reset" }),
+        });
+        data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.success === false) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+      } else {
+        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "reset" } });
+        if (r.error) throw r.error;
+        data = r.data;
+        if (data?.success === false) throw new Error(data.error || "Reset failed");
+      }
       setFullSeedLog(JSON.stringify(data, null, 2));
       toast({ title: "Demo data reset", description: `Completed in ${data?.elapsedMs ?? "?"}ms.` });
     } catch (err: any) {
