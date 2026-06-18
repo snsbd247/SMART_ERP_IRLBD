@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\BaseController;
 use App\Services\AccountingService;
+use App\Services\FinancialPeriodGuard;
 use App\Services\NumberSequenceService;
 use App\Services\StockService;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ class StockAdjustmentController extends BaseController
         private NumberSequenceService $seq,
         private AccountingService $acct,
         private StockService $stock,
+        private FinancialPeriodGuard $period,
     ) {}
 
     public function index(Request $r)
@@ -47,6 +49,9 @@ class StockAdjustmentController extends BaseController
             'quantity'        => 'required|numeric|min:0.01',
             'unit_cost'       => 'nullable|numeric|min:0',
         ]);
+
+        // Period close lock
+        $this->period->assertOpen($r->adjustment_date, 'stock adjustment');
 
         // Try to allocate a number from sequence; gracefully fall back to ad-hoc number.
         try { $number = $this->seq->next('stock_adjustment'); }
@@ -89,6 +94,12 @@ class StockAdjustmentController extends BaseController
         $row = DB::table('stock_adjustments')->where('id', $id)->first();
         if (!$row) return $this->error('Not found', 404);
         if (($row->status ?? 'draft') === 'posted') return $this->error('Already posted', 422);
+
+        // Period close lock + negative-stock guard before posting
+        $this->period->assertOpen($row->adjustment_date, 'stock adjustment approval');
+        if ($row->adjustment_type === 'decrease') {
+            $this->stock->assertSufficient($row->product_id, $row->warehouse_id ?? null, (float) $row->quantity);
+        }
 
         DB::transaction(function () use ($row, $r) {
             $multiplier = $row->adjustment_type === 'increase' ? +1 : -1;
