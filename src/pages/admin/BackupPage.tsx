@@ -1467,6 +1467,67 @@ const BackupPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={auditTablesOpen} onOpenChange={setAuditTablesOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Database Table Audit Report</DialogTitle>
+            <DialogDescription>
+              Live inventory of transactional tables (cleared by "Reset Transactions Only") and preserved master/configuration tables.
+            </DialogDescription>
+          </DialogHeader>
+          {loadingAuditTables && (
+            <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+            </div>
+          )}
+          {!loadingAuditTables && auditTablesData && (
+            <div className="space-y-4 overflow-auto">
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="rounded border border-border p-2"><div className="text-muted-foreground">Transactional tables</div><div className="text-lg font-semibold">{auditTablesData.summary?.transactional_tables ?? 0}</div></div>
+                <div className="rounded border border-border p-2"><div className="text-muted-foreground">Transactional rows</div><div className="text-lg font-semibold">{auditTablesData.summary?.transactional_rows ?? 0}</div></div>
+                <div className="rounded border border-border p-2"><div className="text-muted-foreground">Preserved tables</div><div className="text-lg font-semibold">{auditTablesData.summary?.preserved_tables ?? 0}</div></div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold mb-1 text-red-600 dark:text-red-400">Transactional (will be wiped)</div>
+                <div className="rounded border border-border max-h-64 overflow-auto">
+                  <table className="w-full text-[11px]">
+                    <thead className="bg-muted/50 sticky top-0"><tr><th className="text-left px-2 py-1">Table</th><th className="text-right px-2 py-1">Rows</th><th className="text-center px-2 py-1">Status</th></tr></thead>
+                    <tbody>
+                      {(auditTablesData.transactional || []).map((t: any) => (
+                        <tr key={t.table} className="border-t border-border">
+                          <td className="px-2 py-1 font-mono">{t.table}</td>
+                          <td className="px-2 py-1 text-right">{t.exists ? t.rows : "—"}</td>
+                          <td className="px-2 py-1 text-center">{t.exists ? "will wipe" : <span className="text-muted-foreground">missing</span>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold mb-1 text-green-600 dark:text-green-400">Preserved (masters + configuration)</div>
+                <div className="rounded border border-border max-h-64 overflow-auto">
+                  <table className="w-full text-[11px]">
+                    <thead className="bg-muted/50 sticky top-0"><tr><th className="text-left px-2 py-1">Table</th><th className="text-right px-2 py-1">Rows</th><th className="text-center px-2 py-1">Status</th></tr></thead>
+                    <tbody>
+                      {(auditTablesData.preserved || []).map((t: any) => (
+                        <tr key={t.table} className="border-t border-border">
+                          <td className="px-2 py-1 font-mono">{t.table}</td>
+                          <td className="px-2 py-1 text-right">{t.exists ? t.rows : "—"}</td>
+                          <td className="px-2 py-1 text-center">{t.exists ? "preserved" : <span className="text-muted-foreground">missing</span>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAuditTablesOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
