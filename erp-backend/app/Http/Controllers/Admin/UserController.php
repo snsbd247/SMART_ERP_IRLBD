@@ -9,6 +9,7 @@ use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class UserController extends BaseController
 {
@@ -92,6 +93,41 @@ class UserController extends BaseController
     public function show(string $id)
     {
         return $this->success(User::with('roles.permissions', 'branch', 'branches')->findOrFail($id));
+    }
+
+    private function createEmployeeForUser(array $data, Request $request): Employee
+    {
+        $parts = preg_split('/\s+/', trim($data['name']), 2);
+        $employeeData = [
+            'employee_code' => $this->nextEmployeeCode(),
+            'first_name' => substr($parts[0] ?: $data['username'], 0, 100),
+            'last_name' => substr($parts[1] ?? '-', 0, 100),
+            'email' => $data['email'] ?? null,
+            'mobile' => $data['phone'] ?? null,
+            'branch_id' => $data['branch_id'] ?? null,
+            'joining_date' => now()->toDateString(),
+            'employment_type' => 'permanent',
+            'status' => $data['status'] ?? 'active',
+        ];
+        if (Schema::hasColumn('employees', 'approval_status')) {
+            $employeeData['approval_status'] = 'approved';
+            $employeeData['approved_at'] = now();
+            $employeeData['approved_by'] = $request->user()?->id;
+        }
+
+        return Employee::create($employeeData);
+    }
+
+    private function nextEmployeeCode(): string
+    {
+        do {
+            $next = ((int) Employee::where('employee_code', 'like', 'USR-%')->lockForUpdate()
+                ->selectRaw("MAX(CAST(SUBSTRING(employee_code, 5) AS UNSIGNED)) as max_no")
+                ->value('max_no')) + 1;
+            $code = 'USR-' . str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+        } while (Employee::where('employee_code', $code)->exists());
+
+        return $code;
     }
 
     public function update(Request $request, string $id)
