@@ -24,7 +24,7 @@ use App\Models\{
 
 class SeedDemoData extends Command
 {
-    protected $signature = 'demo:seed {--reset : Reset all transactional/demo data first} {--wipe : Wipe transactional/demo data and exit (do not seed)}';
+    protected $signature = 'demo:seed {--reset : Reset all transactional/demo data first} {--wipe : Wipe transactional/demo data and exit (do not seed)} {--wipe-transactions : Wipe ONLY transactional data, keep all masters & configuration, then exit}';
     protected $description = 'Seed 1-year operational demo data covering all ERP modules';
 
     // Deterministic RNG state
