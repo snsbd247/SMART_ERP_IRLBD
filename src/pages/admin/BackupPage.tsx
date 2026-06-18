@@ -942,7 +942,7 @@ const BackupPage = () => {
                 <Button
                   variant="outline"
                   onClick={handleResetDemoOnly}
-                  disabled={resettingDemo || seedingFull || !isSuperAdmin}
+                  disabled={resettingDemo || seedingFull || resettingTxn || !isSuperAdmin}
                   className="w-full"
                 >
                   {resettingDemo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
@@ -950,6 +950,18 @@ const BackupPage = () => {
                 </Button>
                 <p className="text-[11px] text-muted-foreground">
                   <strong>Reset Demo Data Only</strong> wipes all transactions + masters but PRESERVES Chart of Accounts, IFRS Mapping, Document Numbering, Page Shortcuts, General Settings, SMS Integration, Branding &amp; GitHub Deploy Sync.
+                </p>
+                <Button
+                  variant="secondary"
+                  onClick={handleResetTransactionsOnly}
+                  disabled={resettingTxn || seedingFull || resettingDemo || !isSuperAdmin}
+                  className="w-full"
+                >
+                  {resettingTxn ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  {resettingTxn ? "Clearing transactional data..." : "Reset Transactions Only (keep masters + config)"}
+                </Button>
+                <p className="text-[11px] text-muted-foreground">
+                  <strong>Reset Transactions Only</strong> wipes vouchers, invoices, POs, stock movements, payroll, attendance &amp; payments. PRESERVES all masters (customers, suppliers, products, employees, BOMs, salary structures) AND all configuration.
                 </p>
                 {fullSeedLog && (
                   <pre className="text-[10px] p-2 bg-muted rounded max-h-48 overflow-auto">{fullSeedLog}</pre>
