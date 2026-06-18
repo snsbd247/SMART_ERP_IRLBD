@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Models\{
@@ -23,7 +24,7 @@ use App\Models\{
 
 class SeedDemoData extends Command
 {
-    protected $signature = 'demo:seed {--reset : Reset all transactional data first} {--wipe : Wipe transactional data and exit (do not seed)}';
+    protected $signature = 'demo:seed {--reset : Reset all transactional/demo data first} {--wipe : Wipe transactional/demo data and exit (do not seed)}';
     protected $description = 'Seed 1-year operational demo data covering all ERP modules';
 
     // Deterministic RNG state
@@ -67,13 +68,25 @@ class SeedDemoData extends Command
         return round($n, 2);
     }
 
-    // Bulk insert helper
+    // Bulk insert helper. Keep the demo seeder resilient when older installations
+    // have additive columns while fresh Laravel installs still use base columns.
     private function bulk(string $table, array $rows, int $chunk = 500): void
     {
         if (empty($rows)) return;
+        $rows = array_map(fn (array $row) => $this->normalizeRow($table, $row), $rows);
         foreach (array_chunk($rows, $chunk) as $batch) {
             DB::table($table)->insert($batch);
         }
+    }
+
+    private function normalizeRow(string $table, array $row): array
+    {
+        static $columns = [];
+        if (!isset($columns[$table])) {
+            $columns[$table] = Schema::hasTable($table) ? Schema::getColumnListing($table) : [];
+        }
+        $allowed = array_flip($columns[$table]);
+        return array_intersect_key($row, $allowed);
     }
 
     // Master references
@@ -149,7 +162,7 @@ class SeedDemoData extends Command
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
 
         $resetGroups = [
-            ['voucher_entries','payment_allocations','sales_invoice_items','sales_return_items','purchase_items','purchase_return_items','stock_movements','stock_ledger','stock_transfers','production_materials','bom_items','fund_transactions','employee_fund_settings','overtime_records','leave_requests','attendance','employee_documents','employee_bank_info','employee_education','employee_experience','employee_emergency_contacts','salary_structures','face_data','biometric_logs','payroll','party_notes','audit_log','login_logs','backup_history','messages','conversation_participants',
+            ['voucher_entries','payment_allocations','sales_invoice_items','sales_return_items','purchase_items','purchase_return_items','stock_movements','stock_ledger','stock_transfers','production_materials','bom_items','fund_transactions','employee_fund_settings','overtime_records','leave_requests','attendance','employee_documents','employee_bank_info','employee_education','employee_experience','employee_emergency_contacts','salary_structures','face_data','biometric_logs','payroll','party_notes','login_logs','backup_history','messages','conversation_participants',
              'tds_entries','invoice_payments','invoice_challans','sales_invoice_items_v2','customer_receives','ho_receives','vat_challan_items','purchase_order_items',
              'invoice_status_logs','po_amendments'],
             ['sales_returns','purchase_returns'],
@@ -305,9 +318,9 @@ class SeedDemoData extends Command
 
         $this->WH_DHK = $this->U();
         $this->WH_CTG = $this->U();
-        DB::table('warehouses')->insert([
-            ['id'=>$this->WH_DHK,'name'=>'Dhaka Main Warehouse','warehouse_code'=>'WH-DHK','warehouse_name'=>'Dhaka Main Warehouse','branch_id'=>$this->BR_DHK,'status'=>'active','created_at'=>now(),'updated_at'=>now()],
-            ['id'=>$this->WH_CTG,'name'=>'Chittagong Warehouse','warehouse_code'=>'WH-CTG','warehouse_name'=>'Chittagong Warehouse','branch_id'=>$this->BR_CTG,'status'=>'active','created_at'=>now(),'updated_at'=>now()],
+        $this->bulk('warehouses', [
+            ['id'=>$this->WH_DHK,'name'=>'Dhaka Main Warehouse','code'=>'WH-DHK','warehouse_code'=>'WH-DHK','warehouse_name'=>'Dhaka Main Warehouse','branch_id'=>$this->BR_DHK,'is_active'=>1,'status'=>'active','created_at'=>now(),'updated_at'=>now()],
+            ['id'=>$this->WH_CTG,'name'=>'Chittagong Warehouse','code'=>'WH-CTG','warehouse_code'=>'WH-CTG','warehouse_name'=>'Chittagong Warehouse','branch_id'=>$this->BR_CTG,'is_active'=>1,'status'=>'active','created_at'=>now(),'updated_at'=>now()],
         ]);
 
         $ud = [['PCS','Pieces'],['KG','Kilogram'],['LTR','Litre'],['BOX','Box'],['MTR','Meter']];
