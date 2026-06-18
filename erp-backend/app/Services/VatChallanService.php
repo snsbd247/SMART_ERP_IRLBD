@@ -51,7 +51,13 @@ class VatChallanService
                 $remaining = (float) $poi->qty_remaining;
                 if ((float) $row['qty'] > $remaining + 0.0001) {
                     throw new \InvalidArgumentException("Qty {$row['qty']} for product exceeds PO remaining {$remaining}.");
-                }
+                // Negative-stock guard: ensure on-hand qty supports the outflow.
+                $this->stock->assertSufficient(
+                    $row['product_id'],
+                    $data['warehouse_id'] ?? null,
+                    (float) $row['qty'],
+                    "product {$row['product_id']}"
+                );
             }
 
             [$sub, $vat, $grand] = $this->computeTotals($items);
