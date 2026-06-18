@@ -73,7 +73,7 @@ class DemoSeedController extends BaseController
                 'action'     => $mode === 'reset' ? 'demo_seed_reset' : 'demo_seed_full',
                 'record_id'  => null,
                 'details'    => sprintf('[%s] mode=%s timestamp=%s user=%s. %s', $status, $mode, now()->toIso8601String(), $user?->email ?? $user?->name ?? 'System', $details),
-                'new_data'   => array_merge(['mode' => $mode, 'status' => $status, 'timestamp' => now()->toIso8601String()], $payload),
+                'new_data'   => json_encode(array_merge(['mode' => $mode, 'status' => $status, 'timestamp' => now()->toIso8601String()], $payload)),
                 'ip_address' => $request->ip(),
                 'user_agent' => substr((string) $request->userAgent(), 0, 250),
                 'created_at' => now(),

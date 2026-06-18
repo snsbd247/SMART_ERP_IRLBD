@@ -162,7 +162,7 @@ class SeedDemoData extends Command
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
 
         $resetGroups = [
-            ['voucher_entries','payment_allocations','sales_invoice_items','sales_return_items','purchase_items','purchase_return_items','stock_movements','stock_ledger','stock_transfers','production_materials','bom_items','fund_transactions','employee_fund_settings','overtime_records','leave_requests','attendance','employee_documents','employee_bank_info','employee_education','employee_experience','employee_emergency_contacts','salary_structures','face_data','biometric_logs','payroll','party_notes','audit_log','login_logs','backup_history','messages','conversation_participants',
+            ['voucher_entries','payment_allocations','sales_invoice_items','sales_return_items','purchase_items','purchase_return_items','stock_movements','stock_ledger','stock_transfers','production_materials','bom_items','fund_transactions','employee_fund_settings','overtime_records','leave_requests','attendance','employee_documents','employee_bank_info','employee_education','employee_experience','employee_emergency_contacts','salary_structures','face_data','biometric_logs','payroll','party_notes','login_logs','backup_history','messages','conversation_participants',
              'tds_entries','invoice_payments','invoice_challans','sales_invoice_items_v2','customer_receives','ho_receives','vat_challan_items','purchase_order_items',
              'invoice_status_logs','po_amendments'],
             ['sales_returns','purchase_returns'],
