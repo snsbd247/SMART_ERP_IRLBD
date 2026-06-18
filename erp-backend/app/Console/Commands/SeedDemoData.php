@@ -122,6 +122,12 @@ class SeedDemoData extends Command
         }
         $this->UID = $admin->id;
 
+        if ($this->option('wipe-transactions')) {
+            $this->resetTransactionsOnly();
+            $this->info('Wipe-transactions mode: transactional data cleared, masters & configuration preserved.');
+            return 0;
+        }
+
         if ($this->option('reset') || $this->option('wipe')) {
             $this->resetData();
         }
