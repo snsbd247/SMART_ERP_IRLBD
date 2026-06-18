@@ -311,6 +311,49 @@ const BackupPage = () => {
     }
   };
 
+  const [resettingTxn, setResettingTxn] = useState(false);
+  const handleResetTransactionsOnly = async () => {
+    if (!isSuperAdmin) {
+      toast({ title: "Access Denied", description: "Super Admin only.", variant: "destructive" });
+      return;
+    }
+    if (!confirm(
+      "This will WIPE only TRANSACTIONAL data (vouchers, invoices, POs, stock movements, payroll, attendance, payments, etc.).\n\n" +
+      "PRESERVED: All masters (customers, suppliers, products, items, employees, salary structures, BOMs) AND all configuration (Chart of Accounts, branches, financial years, units, categories, warehouses, departments, designations, leave types, company settings, users, roles, document numbering, page shortcuts, branding).\n\nContinue?"
+    )) return;
+    setResettingTxn(true);
+    setFullSeedLog(null);
+    await logDemoAudit("demo_seed_transactions_only", "transactions", "started", "Reset Transactions Only initiated", currentUser);
+    try {
+      let data: any;
+      if (USE_LARAVEL) {
+        const res = await fetch(`${API_BASE}/v1/admin/demo/seed`, {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "transactions" }),
+        });
+        data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.success === false) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
+      } else {
+        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "transactions" } });
+        if (r.error) throw r.error;
+        data = r.data;
+        if (data?.success === false) throw new Error(data.error || "Reset failed");
+      }
+      setFullSeedLog(JSON.stringify(data, null, 2));
+      toast({ title: "✓ Transactional data cleared", description: data?.message || "Masters & configuration preserved." });
+      await logDemoAudit("demo_seed_transactions_only", "transactions", "success", data?.message || "Reset completed", currentUser);
+    } catch (err: any) {
+      toast({ title: "Reset failed", description: err.message, variant: "destructive" });
+      setFullSeedLog(String(err.message || err));
+      await logDemoAudit("demo_seed_transactions_only", "transactions", "failed", err.message || String(err), currentUser);
+    } finally {
+      setResettingTxn(false);
+    }
+  };
+
+
+
 
 
   const fetchHistory = useCallback(async () => {
