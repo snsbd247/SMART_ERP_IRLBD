@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\BaseController;
+use App\Models\Employee;
 use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class UserController extends BaseController
 {
@@ -36,32 +38,96 @@ class UserController extends BaseController
         $data = $request->validate([
             'username' => 'required|unique:users',
             'name' => 'required|max:100',
-            'email' => 'nullable|email',
+            'email' => 'nullable|email|max:100',
+            'phone' => 'nullable|string|max:30',
             'password' => 'required|min:6',
             'branch_id' => 'nullable|exists:branches,id',
+            'employee_id' => 'nullable|exists:employees,id',
+            'status' => 'nullable|in:active,inactive',
+            'system_role' => 'nullable|in:user,super_admin',
             'branch_ids' => 'array',
             'branch_ids.*' => 'exists:branches,id',
             'role_ids' => 'array',
             'role_ids.*' => 'exists:custom_roles,id',
         ]);
-        $data['password'] = Hash::make($data['password']);
-        $branchIds = $data['branch_ids'] ?? [];
-        // Default primary branch to first selected if not explicitly set
-        if (empty($data['branch_id']) && !empty($branchIds)) {
-            $data['branch_id'] = $branchIds[0];
+        $systemRole = $data['system_role'] ?? 'user';
+        if ($systemRole === 'super_admin' && !$request->user()?->isSuperAdmin()) {
+            return $this->error('Only Super Admin can create another Super Admin user.', 403);
         }
-        $user = User::create(collect($data)->except(['role_ids', 'branch_ids'])->toArray());
-        if (!empty($data['role_ids'])) $user->roles()->sync($data['role_ids']);
-        $user->branches()->sync($branchIds ?: ($data['branch_id'] ? [$data['branch_id']] : []));
 
-        $this->auditService->logCreate('users', $user->id, $user->toArray(), $request);
+        return DB::transaction(function () use ($data, $request, $systemRole) {
+            $branchIds = $data['branch_ids'] ?? [];
+            if (empty($data['branch_id']) && !empty($branchIds)) {
+                $data['branch_id'] = $branchIds[0];
+            }
 
-        return $this->created($user->load('roles', 'branches'));
+            $employeeId = $data['employee_id'] ?? null;
+            if ($systemRole !== 'super_admin' && empty($employeeId)) {
+                $employee = $this->createEmployeeForUser($data, $request);
+                $employeeId = $employee->id;
+            }
+
+            $user = User::create([
+                'username' => $data['username'],
+                'name' => $data['name'],
+                'email' => $data['email'] ?? null,
+                'phone' => $data['phone'] ?? null,
+                'password' => Hash::make($data['password']),
+                'branch_id' => $data['branch_id'] ?? null,
+                'employee_id' => $systemRole === 'super_admin' ? null : $employeeId,
+                'status' => $data['status'] ?? 'active',
+            ]);
+
+            if ($employeeId) {
+                Employee::where('id', $employeeId)->update(['user_id' => $user->id]);
+            }
+            $user->roles()->sync($data['role_ids'] ?? []);
+            $user->branches()->sync($branchIds ?: (!empty($data['branch_id']) ? [$data['branch_id']] : []));
+
+            $this->auditService->logCreate('users', $user->id, $user->toArray(), $request);
+
+            return $this->created($user->load('roles', 'branches', 'employee'));
+        });
     }
 
     public function show(string $id)
     {
         return $this->success(User::with('roles.permissions', 'branch', 'branches')->findOrFail($id));
+    }
+
+    private function createEmployeeForUser(array $data, Request $request): Employee
+    {
+        $parts = preg_split('/\s+/', trim($data['name']), 2);
+        $employeeData = [
+            'employee_code' => $this->nextEmployeeCode(),
+            'first_name' => substr($parts[0] ?: $data['username'], 0, 100),
+            'last_name' => substr($parts[1] ?? '-', 0, 100),
+            'email' => $data['email'] ?? null,
+            'mobile' => $data['phone'] ?? null,
+            'branch_id' => $data['branch_id'] ?? null,
+            'joining_date' => now()->toDateString(),
+            'employment_type' => 'permanent',
+            'status' => $data['status'] ?? 'active',
+        ];
+        if (Schema::hasColumn('employees', 'approval_status')) {
+            $employeeData['approval_status'] = 'approved';
+            $employeeData['approved_at'] = now();
+            $employeeData['approved_by'] = $request->user()?->id;
+        }
+
+        return Employee::create($employeeData);
+    }
+
+    private function nextEmployeeCode(): string
+    {
+        do {
+            $next = ((int) Employee::where('employee_code', 'like', 'EMP-%')
+                ->selectRaw("MAX(CAST(SUBSTRING(employee_code, 5) AS UNSIGNED)) as max_no")
+                ->value('max_no')) + 1;
+            $code = 'EMP-' . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        } while (Employee::where('employee_code', $code)->exists());
+
+        return $code;
     }
 
     public function update(Request $request, string $id)
