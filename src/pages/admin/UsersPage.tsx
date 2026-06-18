@@ -114,7 +114,42 @@ const UsersPage = () => {
   const handleSave = async () => {
     setCreating(true);
     try {
-      if (editUser) {
+      if (isLaravelMode()) {
+        const base = getApiBaseUrl();
+        if (!base) throw new Error("Laravel API URL not configured");
+        const headers = getLaravelAuthHeaders(true);
+        const payload: any = {
+          name: formName,
+          username: formUsername,
+          email: formEmail || null,
+          phone: formPhone || null,
+          branch_id: formBranch || null,
+          status: formStatus,
+          role_ids: formCustomRole && formCustomRole !== "none" ? [formCustomRole] : [],
+        };
+        if (formPassword) payload.password = formPassword;
+
+        if (editUser) {
+          const res = await fetch(`${base}/v1/admin/users/${editUser.id}`, {
+            method: "PUT", headers, body: JSON.stringify(payload),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(json?.message || json?.error || `HTTP ${res.status}`);
+          toast({ title: "User updated" });
+        } else {
+          if (!formPassword) throw new Error("Password is required");
+          const res = await fetch(`${base}/v1/admin/users`, {
+            method: "POST", headers, body: JSON.stringify(payload),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            const errMsg = json?.message || json?.error ||
+              (json?.errors ? Object.values(json.errors).flat().join(", ") : `HTTP ${res.status}`);
+            throw new Error(errMsg);
+          }
+          toast({ title: "User created" });
+        }
+      } else if (editUser) {
         const { error } = await supabase.from("profiles").update({
           name: formName, username: formUsername, email: formEmail, phone: formPhone,
           branch_id: formBranch || null, status: formStatus,
@@ -166,6 +201,7 @@ const UsersPage = () => {
       setCreating(false);
     }
   };
+
 
   const roleColor = (role: string) => {
     if (role === "super_admin") return "destructive" as const;
