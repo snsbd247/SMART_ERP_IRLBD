@@ -306,8 +306,8 @@ class SeedDemoData extends Command
         $this->WH_DHK = $this->U();
         $this->WH_CTG = $this->U();
         DB::table('warehouses')->insert([
-            ['id'=>$this->WH_DHK,'warehouse_code'=>'WH-DHK','warehouse_name'=>'Dhaka Main Warehouse','branch_id'=>$this->BR_DHK,'status'=>'active','created_at'=>now(),'updated_at'=>now()],
-            ['id'=>$this->WH_CTG,'warehouse_code'=>'WH-CTG','warehouse_name'=>'Chittagong Warehouse','branch_id'=>$this->BR_CTG,'status'=>'active','created_at'=>now(),'updated_at'=>now()],
+            ['id'=>$this->WH_DHK,'name'=>'Dhaka Main Warehouse','warehouse_code'=>'WH-DHK','warehouse_name'=>'Dhaka Main Warehouse','branch_id'=>$this->BR_DHK,'status'=>'active','created_at'=>now(),'updated_at'=>now()],
+            ['id'=>$this->WH_CTG,'name'=>'Chittagong Warehouse','warehouse_code'=>'WH-CTG','warehouse_name'=>'Chittagong Warehouse','branch_id'=>$this->BR_CTG,'status'=>'active','created_at'=>now(),'updated_at'=>now()],
         ]);
 
         $ud = [['PCS','Pieces'],['KG','Kilogram'],['LTR','Litre'],['BOX','Box'],['MTR','Meter']];
