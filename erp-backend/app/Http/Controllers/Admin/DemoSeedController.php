@@ -27,14 +27,19 @@ class DemoSeedController extends BaseController
         @ini_set('memory_limit', '512M');
 
         $mode = $request->input('mode', 'full');
-        if (!in_array($mode, ['full', 'reset'], true)) {
+        if (!in_array($mode, ['full', 'reset', 'transactions'], true)) {
             return $this->error('Invalid demo seed mode.', 422);
         }
 
         $this->audit($request, $mode, 'started', 'Demo seed action started.');
 
         try {
-            $exitCode = Artisan::call('demo:seed', $mode === 'reset' ? ['--wipe' => true] : ['--reset' => true]);
+            $args = match ($mode) {
+                'reset'        => ['--wipe' => true],
+                'transactions' => ['--wipe-transactions' => true],
+                default        => ['--reset' => true],
+            };
+            $exitCode = Artisan::call('demo:seed', $args);
             $output = Artisan::output();
 
             if ($exitCode !== 0) {
