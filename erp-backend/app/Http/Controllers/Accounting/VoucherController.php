@@ -73,6 +73,14 @@ class VoucherController extends BaseController
         }
         // Approval system removed — vouchers are always editable by users with accounts.edit.
 
+        // Concurrent edit guard: client must echo back the row's last `updated_at`.
+        $expected = $request->input('expected_updated_at');
+        if ($expected && (string) $voucher->updated_at !== (string) $expected) {
+            return $this->error(
+                'This voucher was modified by another user. Refresh and try again.',
+                409
+            );
+        }
 
         $data = $request->validate([
             'voucher_date' => 'required|date',
@@ -86,6 +94,10 @@ class VoucherController extends BaseController
             'entries.*.credit' => 'numeric|min:0',
             'entries.*.narration' => 'nullable|string',
         ]);
+
+        // Period close lock — both old and new date must be in an open period.
+        $this->period->assertOpen($voucher->voucher_date, 'original voucher date');
+        $this->period->assertOpen($data['voucher_date'], 'voucher update');
 
         $totalDebit = collect($data['entries'])->sum('debit');
         $totalCredit = collect($data['entries'])->sum('credit');
