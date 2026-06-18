@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  */
 class VatChallanService
 {
-    public function __construct(private NumberSequenceService $seq, private FinancialPeriodGuard $period) {}
+    public function __construct(private NumberSequenceService $seq, private FinancialPeriodGuard $period, private StockService $stock) {}
 
     public function create(array $data, array $items): VatChallan
     {
