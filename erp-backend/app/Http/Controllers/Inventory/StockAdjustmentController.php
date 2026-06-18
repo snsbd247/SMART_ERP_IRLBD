@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\BaseController;
 use App\Services\AccountingService;
+use App\Services\FinancialPeriodGuard;
 use App\Services\NumberSequenceService;
 use App\Services\StockService;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ class StockAdjustmentController extends BaseController
         private NumberSequenceService $seq,
         private AccountingService $acct,
         private StockService $stock,
+        private FinancialPeriodGuard $period,
     ) {}
 
     public function index(Request $r)
