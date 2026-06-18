@@ -242,6 +242,7 @@ const BackupPage = () => {
     if (!confirm("This will WIPE all transactions/masters and seed a full year of demo data across Accounts, Bank, Inventory, Purchase, Manufacturing, Sales (BD VAT) and HRM for 2 branches (Head Office, Factory). Continue?")) return;
     setSeedingFull(true);
     setFullSeedLog(null);
+    await logDemoAudit("demo_seed_full", "full", "started", "Wipe & Seed Full Demo Data initiated", currentUser);
     try {
       let data: any;
       if (USE_LARAVEL) {
@@ -259,10 +260,12 @@ const BackupPage = () => {
         if (data?.success === false) throw new Error(data.error || "Seed failed");
       }
       setFullSeedLog(JSON.stringify(data, null, 2));
-      toast({ title: "Demo data seeded", description: `Completed in ${data?.elapsedMs ?? data?.data?.output ? "OK" : "?"}.` });
+      toast({ title: "✓ Demo data seeded", description: data?.message || `Completed${data?.elapsedMs ? ` in ${data.elapsedMs}ms` : ""}.` });
+      await logDemoAudit("demo_seed_full", "full", "success", data?.message || "Seed completed", currentUser);
     } catch (err: any) {
       toast({ title: "Seed failed", description: err.message, variant: "destructive" });
       setFullSeedLog(String(err.message || err));
+      await logDemoAudit("demo_seed_full", "full", "failed", err.message || String(err), currentUser);
     } finally {
       setSeedingFull(false);
     }
