@@ -97,6 +97,21 @@ const ChartOfAccounts = () => {
     }
   }, [accounts, loading, searchParams, setSearchParams]);
 
+  // Trigger delete flow when navigated with ?delete=<id>
+  const handledDeleteRef = useRef<string | null>(null);
+  useEffect(() => {
+    const delId = searchParams.get("delete");
+    if (!delId || loading || handledDeleteRef.current === delId) return;
+    const acc = accounts.find((a) => a.id === delId);
+    if (acc) {
+      handledDeleteRef.current = delId;
+      const next = new URLSearchParams(searchParams);
+      next.delete("delete");
+      setSearchParams(next, { replace: true });
+      handleDelete(acc);
+    }
+  }, [accounts, loading, searchParams, setSearchParams]);
+
   const handleDelete = async (a: AccountWithBalance) => {
     // Block delete when account has children
     const hasChildren = accounts.some((x) => x.parent_id === a.id);
