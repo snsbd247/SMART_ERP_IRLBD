@@ -1,23 +1,31 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
-import { ScrollText } from "lucide-react";
+import { downloadCSV } from "@/lib/csv-export";
+import { ScrollText, FileDown } from "lucide-react";
 
 const AccountLedgerReport = () => {
   const { accounts, branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
   const [selectedAccount, setSelectedAccount] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"both" | "approved" | "posted">("both");
   const [data, setData] = useState<any[]>([]);
+  const hasFetched = useRef(false);
 
   const fetchData = async () => {
     if (!selectedAccount || selectedAccount === "all") return;
     setLoading(true);
+    hasFetched.current = true;
+    const statuses = statusFilter === "both" ? ["approved", "posted"] : [statusFilter];
     const entries = await fetchAllVoucherEntries({
-      dateFrom, dateTo, branchId: branch, accountId: selectedAccount,
+      dateFrom, dateTo, branchId: branch, accountId: selectedAccount, statuses,
     });
     const acc = accounts.find((a) => a.id === selectedAccount);
     let runBal = acc ? (acc.opening_balance_type === "debit" ? num(acc.opening_balance) : -num(acc.opening_balance)) : 0;
@@ -61,6 +69,18 @@ const AccountLedgerReport = () => {
     setLoading(false);
   };
 
+  // Auto-refresh on voucher status changes (post/approve)
+  useEffect(() => {
+    const channel = supabase
+      .channel("account-ledger-vouchers")
+      .on("postgres_changes", { event: "*", schema: "public", table: "acc_vouchers" }, () => {
+        if (hasFetched.current) fetchData();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAccount, statusFilter, dateFrom, dateTo, branch]);
+
 
   const selectedAcc = accounts.find((a) => a.id === selectedAccount);
   const title = selectedAcc ? `${selectedAcc.account_name} Ledger` : "Account Ledger";
@@ -88,7 +108,22 @@ const AccountLedgerReport = () => {
         onPrint={() => handlePrint(title)}
         onExportExcel={() => handleExportExcel(data, columns, "account-ledger")}
         onExportPDF={() => handleExportPDF(title)}
-      />
+      >
+        <div className="space-y-1.5">
+          <Label className="text-xs">Status</Label>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+            <SelectTrigger className="w-36 h-9 text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="both">Approved + Posted</SelectItem>
+              <SelectItem value="approved">Approved only</SelectItem>
+              <SelectItem value="posted">Posted only</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => downloadCSV("account-ledger", columns, data)} disabled={!data.length} className="h-9">
+          <FileDown className="w-4 h-4 mr-1" />CSV
+        </Button>
+      </ReportFilters>
       <div ref={printRef}>
         {selectedAcc && (
           <div className="mb-3 text-sm text-muted-foreground">
@@ -107,7 +142,13 @@ const AccountLedgerReport = () => {
             </TableRow></TableHeader>
             <TableBody>
               {data.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Select an account and click "Generate"</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  {!selectedAccount || selectedAccount === "all"
+                    ? 'Select an account and click "Generate"'
+                    : hasFetched.current
+                      ? `No ${statusFilter === "both" ? "approved or posted" : statusFilter} voucher entries found for the selected account, date range and branch.`
+                      : 'Click "Generate" to load entries'}
+                </TableCell></TableRow>
               ) : data.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell>{e.voucher_date}</TableCell>
