@@ -325,9 +325,38 @@ const ChartOfAccounts = () => {
                 />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-              Opening balance is fixed at 0. Post any historical balance through an opening journal voucher.
-            </p>
+            {isSuperAdmin ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Opening Balance</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formOpeningBalance}
+                    onChange={(e) => setFormOpeningBalance(e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Opening Balance Type</Label>
+                  <Select value={formOpeningBalanceType} onValueChange={(v) => setFormOpeningBalanceType(v as "debit" | "credit")}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="debit">Debit</SelectItem>
+                      <SelectItem value="credit">Credit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="col-span-2 text-xs text-muted-foreground bg-amber-500/10 border border-amber-500/20 p-2 rounded">
+                  Super Admin only. Opening balances must be balanced across the ledger (total debits = total credits) — post the offsetting entry to Opening Balance Equity if needed.
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                Opening balance entries are restricted to Super Admin. Post any historical balance through an opening journal voucher.
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
