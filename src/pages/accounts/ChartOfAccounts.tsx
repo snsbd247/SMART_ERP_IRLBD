@@ -50,7 +50,25 @@ const ChartOfAccounts = () => {
   const [formParent, setFormParent] = useState<string>("");
   const [formOpeningBalance, setFormOpeningBalance] = useState<string>("0");
   const [formOpeningBalanceType, setFormOpeningBalanceType] = useState<"debit" | "credit">("debit");
+  const [formCodeTouched, setFormCodeTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const TYPE_BASE: Record<string, number> = { asset: 1000, liability: 2000, equity: 3000, income: 4000, expense: 5000 };
+  const suggestAccountCode = (type: string, parentId: string): string => {
+    const used = new Set(accounts.filter((a) => a.id !== editAcc?.id).map((a) => a.account_code));
+    let start: number;
+    const parent = parentId ? accounts.find((a) => a.id === parentId) : null;
+    if (parent && /^\d{4}$/.test(parent.account_code)) {
+      start = parseInt(parent.account_code, 10) + 1;
+    } else {
+      start = (TYPE_BASE[type] ?? 1000) + 1;
+    }
+    for (let n = start; n <= 9999; n++) {
+      const code = String(n).padStart(4, "0");
+      if (!used.has(code)) return code;
+    }
+    return "";
+  };
 
   // Ledger dialog
   const [ledgerAccount, setLedgerAccount] = useState<AccountWithBalance | null>(null);
