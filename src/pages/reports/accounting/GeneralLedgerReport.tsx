@@ -123,7 +123,11 @@ const GeneralLedgerReport = () => {
             </TableRow></TableHeader>
             <TableBody>
               {data.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Select filters and click "Generate"</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  {hasFetched.current
+                    ? `No ${statusFilter === "both" ? "approved or posted" : statusFilter} voucher entries found for the selected filters.`
+                    : 'Select filters and click "Generate"'}
+                </TableCell></TableRow>
               ) : data.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="text-sm">{e.voucher_date}</TableCell>
