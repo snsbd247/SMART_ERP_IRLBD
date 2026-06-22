@@ -54,20 +54,31 @@ const ChartOfAccounts = () => {
   const [saving, setSaving] = useState(false);
 
   const TYPE_BASE: Record<string, number> = { asset: 1000, liability: 2000, equity: 3000, income: 4000, expense: 5000 };
-  const suggestAccountCode = (type: string, parentId: string): string => {
+  // Local fallback for offline / pre-RPC scenarios. Server-side `suggest_account_code` is the source of truth.
+  const suggestAccountCodeLocal = (type: string, parentId: string): string => {
     const used = new Set(accounts.filter((a) => a.id !== editAcc?.id).map((a) => a.account_code));
     let start: number;
     const parent = parentId ? accounts.find((a) => a.id === parentId) : null;
-    if (parent && /^\d{4}$/.test(parent.account_code)) {
+    if (parent && /^\d+$/.test(parent.account_code)) {
       start = parseInt(parent.account_code, 10) + 1;
     } else {
       start = (TYPE_BASE[type] ?? 1000) + 1;
     }
-    for (let n = start; n <= 9999; n++) {
+    for (let n = start; n <= 9999999; n++) {
       const code = String(n).padStart(4, "0");
       if (!used.has(code)) return code;
     }
     return "";
+  };
+  const suggestAccountCode = async (type: string, parentId: string): Promise<string> => {
+    try {
+      const { data, error } = await supabase.rpc("suggest_account_code", {
+        _type: type,
+        _parent_id: parentId || null,
+      });
+      if (!error && typeof data === "string" && data) return data;
+    } catch { /* fall through to local */ }
+    return suggestAccountCodeLocal(type, parentId);
   };
 
   // Ledger dialog
