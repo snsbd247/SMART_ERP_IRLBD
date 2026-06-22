@@ -1,12 +1,20 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isLaravelMode, getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 
 /**
- * Fetch ALL approved voucher_entries for a date range (paginated past the
- * 1000-row Supabase default so reports stay accurate as data grows).
+ * Fetch ALL voucher_entries for a date range with the parent voucher embedded
+ * under `acc_vouchers`. Works in BOTH modes:
  *
- * The shape matches a typical report select:
- *   account_id, debit, credit, narration, voucher_id,
- *   acc_vouchers!inner(id, voucher_number, voucher_date, voucher_type, status, description, branch_id)
+ *  - Supabase mode: uses a PostgREST relation embed with `acc_vouchers!inner`
+ *    so the date/status/branch filters live on the parent table.
+ *  - Laravel mode (VPS): the generic CRUD endpoint cannot honor foreign-table
+ *    filters, so we first fetch the matching `acc_vouchers` rows directly
+ *    (date range + status + branch), then load their `voucher_entries` in
+ *    chunked `voucher_id IN (...)` queries and stitch the voucher back onto
+ *    each entry under the `acc_vouchers` key so the existing report code
+ *    keeps working unchanged.
+ *
+ * Paginates past the default 1000-row cap so reports stay accurate as data grows.
  */
 export async function fetchAllVoucherEntries(opts: {
   dateFrom: string;
@@ -18,9 +26,15 @@ export async function fetchAllVoucherEntries(opts: {
 }): Promise<any[]> {
   const pageSize = opts.pageSize ?? 1000;
   const statuses = opts.statuses && opts.statuses.length > 0 ? opts.statuses : ["approved", "posted"];
+
+  // -------- Laravel (VPS) mode --------
+  if (isLaravelMode()) {
+    return fetchAllVoucherEntriesLaravel({ ...opts, statuses, pageSize });
+  }
+
+  // -------- Supabase mode --------
   const all: any[] = [];
   let from = 0;
-  // Hard cap to avoid runaway loops (50k entries)
   for (let safety = 0; safety < 50; safety++) {
     let q = supabase
       .from("voucher_entries")
@@ -45,6 +59,94 @@ export async function fetchAllVoucherEntries(opts: {
     from += pageSize;
   }
   return all;
+}
+
+async function laravelGet(path: string): Promise<any> {
+  const base = (getApiBaseUrl() || "").replace(/\/$/, "");
+  const res = await fetch(`${base}/v1/${path.replace(/^\//, "")}`, {
+    headers: { Accept: "application/json", ...getLaravelAuthHeaders() },
+  });
+  const text = await res.text();
+  const json = text ? JSON.parse(text) : null;
+  if (!res.ok) throw new Error(json?.message || json?.error || `HTTP ${res.status}`);
+  return json;
+}
+
+function unwrapList(json: any): any[] {
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json?.data)) return json.data;
+  if (Array.isArray(json?.data?.data)) return json.data.data;
+  return [];
+}
+
+async function fetchAllVoucherEntriesLaravel(opts: {
+  dateFrom: string;
+  dateTo: string;
+  branchId?: string | null;
+  accountId?: string | null;
+  statuses: string[];
+  pageSize: number;
+}): Promise<any[]> {
+  // 1) Fetch matching vouchers (date range + status [+ branch]) via the
+  //    generic CRUD endpoint. Paginate to avoid the 1000-row cap.
+  const vouchers: any[] = [];
+  let offset = 0;
+  for (let safety = 0; safety < 50; safety++) {
+    const parts: string[] = [
+      "select=id,voucher_number,voucher_date,voucher_type,status,description,branch_id",
+      `f[voucher_date][gte]=${encodeURIComponent(opts.dateFrom)}`,
+      `f[voucher_date][lte]=${encodeURIComponent(opts.dateTo)}`,
+      `f[status][in]=${encodeURIComponent(opts.statuses.join(","))}`,
+      `order[voucher_date]=asc`,
+      `limit=${opts.pageSize}`,
+      `offset=${offset}`,
+    ];
+    if (opts.branchId && opts.branchId !== "all") {
+      parts.push(`f[branch_id][eq]=${encodeURIComponent(opts.branchId)}`);
+    }
+    let page: any[] = [];
+    try {
+      const json = await laravelGet(`db/acc_vouchers?${parts.join("&")}`);
+      page = unwrapList(json);
+    } catch (e) {
+      console.error("[report-fetch] laravel vouchers page error", e);
+      break;
+    }
+    vouchers.push(...page);
+    if (page.length < opts.pageSize) break;
+    offset += opts.pageSize;
+  }
+  if (vouchers.length === 0) return [];
+
+  const voucherById = new Map<string, any>(vouchers.map((v) => [String(v.id), v]));
+  const voucherIds = vouchers.map((v) => String(v.id));
+
+  // 2) Fetch voucher_entries in chunks of IDs. Optionally filter by account.
+  const entries: any[] = [];
+  const CHUNK = 200;
+  for (let i = 0; i < voucherIds.length; i += CHUNK) {
+    const slice = voucherIds.slice(i, i + CHUNK);
+    const parts: string[] = [
+      "select=id,account_id,debit,credit,narration,voucher_id",
+      `f[voucher_id][in]=${encodeURIComponent(slice.join(","))}`,
+      `limit=10000`,
+    ];
+    if (opts.accountId) parts.push(`f[account_id][eq]=${encodeURIComponent(opts.accountId)}`);
+    try {
+      const json = await laravelGet(`db/voucher_entries?${parts.join("&")}`);
+      for (const e of unwrapList(json)) {
+        const v = voucherById.get(String(e.voucher_id));
+        if (!v) continue;
+        entries.push({ ...e, acc_vouchers: v });
+      }
+    } catch (e) {
+      console.error("[report-fetch] laravel entries page error", e);
+    }
+  }
+
+  // 3) Sort by voucher_date asc (parity with Supabase branch).
+  entries.sort((a, b) => String(a.acc_vouchers?.voucher_date || "").localeCompare(String(b.acc_vouchers?.voucher_date || "")));
+  return entries;
 }
 
 /** Coerce a possibly-string numeric column (Supabase decimal) to a number. */
