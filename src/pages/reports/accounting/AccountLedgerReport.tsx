@@ -108,7 +108,22 @@ const AccountLedgerReport = () => {
         onPrint={() => handlePrint(title)}
         onExportExcel={() => handleExportExcel(data, columns, "account-ledger")}
         onExportPDF={() => handleExportPDF(title)}
-      />
+      >
+        <div className="space-y-1.5">
+          <Label className="text-xs">Status</Label>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+            <SelectTrigger className="w-36 h-9 text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="both">Approved + Posted</SelectItem>
+              <SelectItem value="approved">Approved only</SelectItem>
+              <SelectItem value="posted">Posted only</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => downloadCSV("account-ledger", columns, data)} disabled={!data.length} className="h-9">
+          <FileDown className="w-4 h-4 mr-1" />CSV
+        </Button>
+      </ReportFilters>
       <div ref={printRef}>
         {selectedAcc && (
           <div className="mb-3 text-sm text-muted-foreground">
