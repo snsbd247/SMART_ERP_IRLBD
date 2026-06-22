@@ -115,8 +115,12 @@ const ChartOfAccounts = () => {
   // Auto-generate Account Code from Type / Parent until the user types one manually
   useEffect(() => {
     if (!dialogOpen || editAcc || formCodeTouched) return;
-    const suggested = suggestAccountCode(formType, formParent);
-    if (suggested) setFormCode(suggested);
+    let cancelled = false;
+    (async () => {
+      const suggested = await suggestAccountCode(formType, formParent);
+      if (!cancelled && suggested) setFormCode(suggested);
+    })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogOpen, formType, formParent, accounts]);
 
