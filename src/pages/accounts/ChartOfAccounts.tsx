@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, BookOpen, Filter, Search, X } from "lucide-react";
 import { useAccountBalances, AccountWithBalance } from "@/hooks/useAccountBalances";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { AccountTreeTable } from "@/components/accounts/AccountTreeTable";
 import { AccountLedgerDialog } from "@/components/accounts/AccountLedgerDialog";
@@ -18,6 +19,7 @@ const ACCOUNT_TYPES = ["asset", "liability", "income", "expense", "equity"] as c
 
 const ChartOfAccounts = () => {
   const { toast } = useToast();
+  const { isSuperAdmin } = useAuth();
 
   // Filters
   const [financialYears, setFinancialYears] = useState<{ id: string; name: string }[]>([]);
@@ -43,6 +45,8 @@ const ChartOfAccounts = () => {
   const [formCode, setFormCode] = useState("");
   const [formType, setFormType] = useState<string>("asset");
   const [formParent, setFormParent] = useState<string>("");
+  const [formOpeningBalance, setFormOpeningBalance] = useState<string>("0");
+  const [formOpeningBalanceType, setFormOpeningBalanceType] = useState<"debit" | "credit">("debit");
   const [saving, setSaving] = useState(false);
 
   // Ledger dialog
@@ -61,6 +65,7 @@ const ChartOfAccounts = () => {
   const openCreate = () => {
     setEditAcc(null);
     setFormName(""); setFormCode(""); setFormType("asset"); setFormParent("");
+    setFormOpeningBalance("0"); setFormOpeningBalanceType("debit");
     setDialogOpen(true);
   };
 
@@ -68,6 +73,8 @@ const ChartOfAccounts = () => {
     setEditAcc(a);
     setFormName(a.account_name); setFormCode(a.account_code); setFormType(a.account_type);
     setFormParent(a.parent_id || "");
+    setFormOpeningBalance(String(a.opening_balance ?? 0));
+    setFormOpeningBalanceType((a.opening_balance_type as "debit" | "credit") || "debit");
     setDialogOpen(true);
   };
 
@@ -168,9 +175,20 @@ const ChartOfAccounts = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Ledger opening balances are kept at zero; historical balances must be posted by voucher.
-      payload.opening_balance = 0;
-      payload.opening_balance_type = "debit";
+      // Opening balance: editable by Super Admin only; others keep existing/zero.
+      if (isSuperAdmin) {
+        const ob = parseFloat(formOpeningBalance);
+        if (isNaN(ob) || ob < 0) {
+          toast({ title: "Invalid opening balance", description: "Opening balance must be a non-negative number.", variant: "destructive" });
+          setSaving(false);
+          return;
+        }
+        payload.opening_balance = ob;
+        payload.opening_balance_type = formOpeningBalanceType;
+      } else if (!editAcc) {
+        payload.opening_balance = 0;
+        payload.opening_balance_type = "debit";
+      }
 
       if (editAcc) {
         const { error } = await supabase.from("chart_of_accounts").update(payload).eq("id", editAcc.id);
@@ -307,9 +325,38 @@ const ChartOfAccounts = () => {
                 />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-              Opening balance is fixed at 0. Post any historical balance through an opening journal voucher.
-            </p>
+            {isSuperAdmin ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Opening Balance</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formOpeningBalance}
+                    onChange={(e) => setFormOpeningBalance(e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Opening Balance Type</Label>
+                  <Select value={formOpeningBalanceType} onValueChange={(v) => setFormOpeningBalanceType(v as "debit" | "credit")}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="debit">Debit</SelectItem>
+                      <SelectItem value="credit">Credit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="col-span-2 text-xs text-muted-foreground bg-amber-500/10 border border-amber-500/20 p-2 rounded">
+                  Super Admin only. Opening balances must be balanced across the ledger (total debits = total credits) — post the offsetting entry to Opening Balance Equity if needed.
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                Opening balance entries are restricted to Super Admin. Post any historical balance through an opening journal voucher.
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
