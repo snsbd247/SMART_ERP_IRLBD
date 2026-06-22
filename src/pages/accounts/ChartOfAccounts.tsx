@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, BookOpen, Filter, Search, X } from "lucide-react";
 import { useAccountBalances, AccountWithBalance } from "@/hooks/useAccountBalances";
 import { useAuth } from "@/contexts/AuthContext";
+import { validateOpeningBalance, isOverdraftAccount } from "@/lib/opening-balance";
+import { logUpdate } from "@/lib/audit-utils";
 
 import { AccountTreeTable } from "@/components/accounts/AccountTreeTable";
 import { AccountLedgerDialog } from "@/components/accounts/AccountLedgerDialog";
@@ -177,13 +179,13 @@ const ChartOfAccounts = () => {
 
       // Opening balance: editable by Super Admin only; others keep existing/zero.
       if (isSuperAdmin) {
-        const ob = parseFloat(formOpeningBalance);
-        if (isNaN(ob)) {
-          toast({ title: "Invalid opening balance", description: "Opening balance must be a valid number (negative allowed for overdraft/CC accounts).", variant: "destructive" });
+        const v = validateOpeningBalance(formOpeningBalance, name);
+        if (!v.ok) {
+          toast({ title: "Invalid opening balance", description: v.error, variant: "destructive" });
           setSaving(false);
           return;
         }
-        payload.opening_balance = ob;
+        payload.opening_balance = v.value;
         payload.opening_balance_type = formOpeningBalanceType;
       } else if (!editAcc) {
         payload.opening_balance = 0;
@@ -193,6 +195,30 @@ const ChartOfAccounts = () => {
       if (editAcc) {
         const { error } = await supabase.from("chart_of_accounts").update(payload).eq("id", editAcc.id);
         if (error) throw error;
+        // Audit log: capture opening-balance changes explicitly with before/after values.
+        if (
+          isSuperAdmin &&
+          (payload.opening_balance !== editAcc.opening_balance ||
+            payload.opening_balance_type !== editAcc.opening_balance_type)
+        ) {
+          try {
+            await logUpdate({
+              module: "chart_of_accounts",
+              recordId: editAcc.id,
+              oldData: {
+                opening_balance: editAcc.opening_balance,
+                opening_balance_type: editAcc.opening_balance_type,
+              },
+              newData: {
+                opening_balance: payload.opening_balance,
+                opening_balance_type: payload.opening_balance_type,
+              },
+              details: `Opening balance changed for ${name} (${code})`,
+            });
+          } catch {
+            // Audit failure must not block the save.
+          }
+        }
       } else {
         const { error } = await supabase.from("chart_of_accounts").insert(payload);
         if (error) throw error;
@@ -336,6 +362,15 @@ const ChartOfAccounts = () => {
                     onChange={(e) => setFormOpeningBalance(e.target.value)}
                     placeholder="0.00"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Negative values are only allowed for CC / Overdraft bank accounts
+                    (account name must contain "CC" or "Overdraft").
+                    {isOverdraftAccount(formName) && (
+                      <span className="ml-1 text-amber-600 font-medium">
+                        Overdraft account detected — negative balance permitted.
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Opening Balance Type</Label>
@@ -348,7 +383,7 @@ const ChartOfAccounts = () => {
                   </Select>
                 </div>
                 <p className="col-span-2 text-xs text-muted-foreground bg-amber-500/10 border border-amber-500/20 p-2 rounded">
-                  Super Admin only. Opening balances must be balanced across the ledger (total debits = total credits) — post the offsetting entry to Opening Balance Equity if needed.
+                  Super Admin only. Opening balances must be balanced across the ledger (total debits = total credits) — post the offsetting entry to Opening Balance Equity if needed. Changes are recorded in the audit log.
                 </p>
               </div>
             ) : (
