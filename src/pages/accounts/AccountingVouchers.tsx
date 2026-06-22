@@ -53,15 +53,20 @@ interface Voucher {
 type SuperAdminAction = "delete" | "reopen" | "reverse" | "restore" | "purge" | null;
 
 const AccountingVouchers = () => {
-  const { isSuperAdmin, hasPermission } = useAuth();
+  const { isSuperAdmin, hasPermission, user } = useAuth();
   const { toast } = useToast();
   const { fc } = useCurrency();
 
-  // Per-voucher-type permission checks
-  const canViewJournal = isSuperAdmin || hasPermission("journal.view");
-  const canViewPayment = isSuperAdmin || hasPermission("payment.view");
-  const canViewReceipt = isSuperAdmin || hasPermission("receipt.view");
-  const canViewContra = isSuperAdmin || hasPermission("contra.view");
+  // Centralised permission spec — mirrors backend App\Support\VoucherPermissions.
+  const permCtx = { isSuperAdmin, hasPermission };
+  const evalPerm = (type: string, action: "view" | "create" | "edit" | "delete") =>
+    evaluateVoucherPermission(permCtx, type as VoucherType, action);
+
+  // Per-voucher-type view checks (drives tab visibility)
+  const canViewJournal = evalPerm("journal", "view").allowed;
+  const canViewPayment = evalPerm("payment", "view").allowed;
+  const canViewReceipt = evalPerm("receipt", "view").allowed;
+  const canViewContra = evalPerm("contra", "view").allowed;
 
   const voucherPermMap: Record<string, boolean> = {
     journal: canViewJournal,
@@ -70,12 +75,9 @@ const AccountingVouchers = () => {
     contra: canViewContra,
   };
 
-  const canCreateForType = (type: string) =>
-    isSuperAdmin || hasPermission(`${type}.create`);
-  const canEditForType = (type: string) =>
-    isSuperAdmin || hasPermission(`${type}.edit`);
-  const canDeleteForType = (type: string) =>
-    isSuperAdmin || hasPermission(`${type}.delete`);
+  const canCreateForType = (type: string) => evalPerm(type, "create").allowed;
+  const canEditForType = (type: string) => evalPerm(type, "edit").allowed;
+  const canDeleteForType = (type: string) => evalPerm(type, "delete").allowed;
 
   const allowedTypes = VOUCHER_TYPES.filter((vt) => voucherPermMap[vt.id]);
   const defaultTab = allowedTypes.length > 0 ? allowedTypes[0].id : "journal";
