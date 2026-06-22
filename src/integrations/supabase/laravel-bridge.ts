@@ -195,6 +195,7 @@ function projectRow(row: any, select?: string): any {
 
 class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
   private _select?: string;
+  private _relationEmbeds: RelationEmbed[] = [];
   private _filters: FilterEntry[] = [];
   private _orders: { col: string; asc: boolean }[] = [];
   private _limit?: number;
@@ -215,6 +216,7 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
     } else {
       this._mode = "select";
     }
+    this._relationEmbeds = parseRelationEmbeds(cols);
     this._select = cols === "*" ? undefined : stripRelationCols(cols) || undefined;
     return this;
   }
@@ -357,12 +359,45 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
 
     // Post-process: emulate Supabase return shapes.
     let data: any = res.data;
+    if (this._mode === "select" && this._relationEmbeds.length > 0) {
+      data = await this.attachRelationEmbeds(data);
+    }
     if (this._mode !== "select" && Array.isArray(data) && this._single) data = data[0] ?? null;
     if (this._mode === "select" && this._single && Array.isArray(data)) data = data[0] ?? null;
     if (this._mode === "select" && this._single && !this._maybeSingle && data == null) {
       return { data: null, error: { message: "Row not found", code: "PGRST116" } };
     }
     return { data: data as T, error: null };
+  }
+
+  private async attachRelationEmbeds(data: any): Promise<any> {
+    const rows = Array.isArray(data) ? data : data ? [data] : [];
+    if (rows.length === 0) return data;
+
+    for (const rel of this._relationEmbeds) {
+      const fk = relationForeignKey(rel.table);
+      if (!fk) continue;
+      const ids = Array.from(new Set(rows.map((r: any) => r?.[fk]).filter(Boolean).map(String)));
+      if (ids.length === 0) {
+        rows.forEach((r: any) => { r[rel.alias] = null; });
+        continue;
+      }
+
+      const relatedById = new Map<string, any>();
+      const CHUNK = 200;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const slice = ids.slice(i, i + CHUNK);
+        const cols = rel.columns.includes("*") ? undefined : Array.from(new Set(["id", ...rel.columns])).join(",");
+        const qs = buildQS({ select: cols, filters: [{ col: "id", op: "in", val: slice }], orders: [], limit: slice.length });
+        const relRes = await call<any>("GET", `/v1/db/${rel.table}${qs}`);
+        if (relRes.error) continue;
+        for (const related of unwrapLaravelRows(relRes.data)) relatedById.set(String(related.id), related);
+      }
+
+      rows.forEach((r: any) => { r[rel.alias] = relatedById.get(String(r?.[fk])) ?? null; });
+    }
+
+    return Array.isArray(data) ? rows : rows[0] ?? null;
   }
 
   then<R1 = Result<T>, R2 = never>(
