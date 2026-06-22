@@ -23,6 +23,12 @@ import { AuditLogViewer } from "@/components/AuditLogViewer";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { PrintLayout } from "@/components/PrintLayout";
 import { formatDateDMY } from "@/lib/date-format";
+import {
+  evaluateVoucherPermission,
+  logVoucherPermissionDenial,
+  type VoucherType,
+} from "@/lib/voucher-permissions";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 
