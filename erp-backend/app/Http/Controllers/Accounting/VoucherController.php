@@ -41,6 +41,9 @@ class VoucherController extends BaseController
 
     public function store(Request $request)
     {
+        // Correlation id so client + server logs can be tied together for fast root-cause.
+        $cid = (string) \Illuminate\Support\Str::uuid();
+
         // Infer voucher_type from URL when the client omits it (e.g. POST /vouchers/journal).
         if (!$request->filled('voucher_type')) {
             $segments = collect(explode('/', trim($request->path(), '/')));
@@ -50,8 +53,15 @@ class VoucherController extends BaseController
             }
         }
 
+        // Drop empty/sentinel branch_id at the request level so validation + payload both see null.
+        $branchIn = $request->input('branch_id');
+        if ($branchIn === '' || $branchIn === 'null' || $branchIn === 'undefined') {
+            $request->request->remove('branch_id');
+            $request->offsetUnset('branch_id');
+        }
+
         // Normalise entries: coerce numeric strings, default missing debit/credit to 0,
-        // drop blank rows (no account selected), and ensure narration is a string.
+        // drop blank rows (no account, or both sides zero), and ensure narration is a string.
         $rawEntries = $request->input('entries', []);
         if (is_array($rawEntries)) {
             $normalised = [];
@@ -59,10 +69,13 @@ class VoucherController extends BaseController
                 if (!is_array($row)) continue;
                 $accountId = $row['account_id'] ?? null;
                 if (!$accountId) continue;
+                $debit = (float) ($row['debit'] ?? 0);
+                $credit = (float) ($row['credit'] ?? 0);
+                if ($debit == 0.0 && $credit == 0.0) continue;
                 $normalised[] = [
                     'account_id' => $accountId,
-                    'debit' => (float) ($row['debit'] ?? 0),
-                    'credit' => (float) ($row['credit'] ?? 0),
+                    'debit' => $debit,
+                    'credit' => $credit,
                     'narration' => (string) ($row['narration'] ?? ''),
                 ];
             }
@@ -72,6 +85,7 @@ class VoucherController extends BaseController
         $request->validate([
             'voucher_type' => 'required|in:journal,payment,receipt,contra',
             'voucher_date' => 'required|date',
+            'branch_id' => 'nullable|exists:branches,id',
             'entries' => 'required|array|min:2',
             'entries.*.account_id' => 'required|exists:chart_of_accounts,id',
             'entries.*.debit' => 'numeric|min:0',
@@ -87,7 +101,6 @@ class VoucherController extends BaseController
             if (empty($payload['financial_year_id'])) {
                 $payload['financial_year_id'] = $this->period->resolveId($request->voucher_date);
             }
-            // Drop empty branch_id so it stores NULL instead of failing FK on "".
             if (array_key_exists('branch_id', $payload) && ($payload['branch_id'] === '' || $payload['branch_id'] === null)) {
                 unset($payload['branch_id']);
             }
@@ -100,18 +113,33 @@ class VoucherController extends BaseController
             );
 
             return $this->created($voucher);
-        } catch (\InvalidArgumentException $e) {
-            return $this->error($e->getMessage(), 422);
-        } catch (\RuntimeException $e) {
-            return $this->error($e->getMessage(), 422);
+        } catch (\InvalidArgumentException | \RuntimeException $e) {
+            \Log::warning('Voucher store rejected', [
+                'cid' => $cid,
+                'voucher_type' => $request->input('voucher_type'),
+                'user_id' => optional($request->user())->id,
+                'reason' => $e->getMessage(),
+            ]);
+            return $this->error($e->getMessage(), 422, ['correlation_id' => $cid]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('Voucher store DB error', [
+                'cid' => $cid,
+                'voucher_type' => $request->input('voucher_type'),
+                'user_id' => optional($request->user())->id,
+                'sql_state' => $e->getCode(),
+                'error' => $e->getMessage(),
+            ]);
+            // FK / not-null / unique → user-actionable 422 with correlation id.
+            return $this->error('Could not save voucher (data error). Ref: ' . $cid, 422, ['correlation_id' => $cid]);
         } catch (\Throwable $e) {
             \Log::error('Voucher store failed', [
+                'cid' => $cid,
                 'voucher_type' => $request->input('voucher_type'),
                 'user_id' => optional($request->user())->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return $this->error('Could not save voucher: ' . $e->getMessage(), 500);
+            return $this->error('Could not save voucher. Ref: ' . $cid, 500, ['correlation_id' => $cid]);
         }
     }
 
