@@ -50,7 +50,25 @@ const ChartOfAccounts = () => {
   const [formParent, setFormParent] = useState<string>("");
   const [formOpeningBalance, setFormOpeningBalance] = useState<string>("0");
   const [formOpeningBalanceType, setFormOpeningBalanceType] = useState<"debit" | "credit">("debit");
+  const [formCodeTouched, setFormCodeTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const TYPE_BASE: Record<string, number> = { asset: 1000, liability: 2000, equity: 3000, income: 4000, expense: 5000 };
+  const suggestAccountCode = (type: string, parentId: string): string => {
+    const used = new Set(accounts.filter((a) => a.id !== editAcc?.id).map((a) => a.account_code));
+    let start: number;
+    const parent = parentId ? accounts.find((a) => a.id === parentId) : null;
+    if (parent && /^\d{4}$/.test(parent.account_code)) {
+      start = parseInt(parent.account_code, 10) + 1;
+    } else {
+      start = (TYPE_BASE[type] ?? 1000) + 1;
+    }
+    for (let n = start; n <= 9999; n++) {
+      const code = String(n).padStart(4, "0");
+      if (!used.has(code)) return code;
+    }
+    return "";
+  };
 
   // Ledger dialog
   const [ledgerAccount, setLedgerAccount] = useState<AccountWithBalance | null>(null);
@@ -69,6 +87,7 @@ const ChartOfAccounts = () => {
     setEditAcc(null);
     setFormName(""); setFormCode(""); setFormType("asset"); setFormParent("");
     setFormOpeningBalance("0"); setFormOpeningBalanceType("debit");
+    setFormCodeTouched(false);
     setDialogOpen(true);
   };
 
@@ -78,8 +97,18 @@ const ChartOfAccounts = () => {
     setFormParent(a.parent_id || "");
     setFormOpeningBalance(String(a.opening_balance ?? 0));
     setFormOpeningBalanceType((a.opening_balance_type as "debit" | "credit") || "debit");
+    setFormCodeTouched(true); // preserve existing code; user may still edit manually
     setDialogOpen(true);
   };
+
+  // Auto-generate Account Code from Type / Parent until the user types one manually
+  useEffect(() => {
+    if (!dialogOpen || editAcc || formCodeTouched) return;
+    const suggested = suggestAccountCode(formType, formParent);
+    if (suggested) setFormCode(suggested);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogOpen, formType, formParent, accounts]);
+
 
   // Open edit dialog automatically when navigated with ?edit=<id> (e.g. from Bank Accounts page)
   const [searchParams, setSearchParams] = useSearchParams();
@@ -360,7 +389,14 @@ const ChartOfAccounts = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Account Name</Label><Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Cash in Hand" /></div>
-              <div className="space-y-2"><Label>Account Code</Label><Input value={formCode} onChange={(e) => setFormCode(e.target.value)} placeholder="1001" /></div>
+              <div className="space-y-2">
+                <Label>Account Code {!editAcc && !formCodeTouched && <span className="text-xs text-muted-foreground font-normal">(auto)</span>}</Label>
+                <Input
+                  value={formCode}
+                  onChange={(e) => { setFormCode(e.target.value); setFormCodeTouched(true); }}
+                  placeholder="1001"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
