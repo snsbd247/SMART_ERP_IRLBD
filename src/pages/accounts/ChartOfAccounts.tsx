@@ -214,9 +214,9 @@ const ChartOfAccounts = () => {
       toast({ title: "Validation", description: "Account name and code are required.", variant: "destructive" });
       return;
     }
-    // Enforce 4-digit numeric code (Bangladesh CoA standard)
-    if (!/^\d{4}$/.test(code)) {
-      toast({ title: "Invalid code", description: "Account code must be exactly 4 digits (e.g. 1201).", variant: "destructive" });
+    // Enforce numeric code (3-10 digits) — matches DB CHECK constraint.
+    if (!/^\d{3,10}$/.test(code)) {
+      toast({ title: "Invalid code", description: "Account code must be 3-10 digits (e.g. 1201).", variant: "destructive" });
       return;
     }
     // Prevent duplicates (DB has unique constraint, but catch early)
