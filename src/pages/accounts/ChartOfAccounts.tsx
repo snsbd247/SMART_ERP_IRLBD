@@ -45,6 +45,8 @@ const ChartOfAccounts = () => {
   const [formCode, setFormCode] = useState("");
   const [formType, setFormType] = useState<string>("asset");
   const [formParent, setFormParent] = useState<string>("");
+  const [formOpeningBalance, setFormOpeningBalance] = useState<string>("0");
+  const [formOpeningBalanceType, setFormOpeningBalanceType] = useState<"debit" | "credit">("debit");
   const [saving, setSaving] = useState(false);
 
   // Ledger dialog
