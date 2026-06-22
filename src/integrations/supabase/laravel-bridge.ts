@@ -43,7 +43,7 @@ function stripRelationCols(cols: string): string {
     .join(",");
 }
 
-type RelationEmbed = { alias: string; table: string; columns: string[] };
+type RelationEmbed = { alias: string; table: string; columns: string[]; fk?: string };
 
 function parseRelationEmbeds(select?: string): RelationEmbed[] {
   if (!select) return [];
@@ -63,13 +63,15 @@ function parseRelationEmbeds(select?: string): RelationEmbed[] {
     const rawCols = select.slice(start + 1, i).trim();
     if (!token || token.includes(".")) continue;
     const [aliasPart, relationPart = aliasPart] = token.includes(":") ? token.split(":", 2) : [token, token];
-    const table = relationPart.split("!")[0]?.trim();
+    const relationName = relationPart.split("!")[0]?.trim();
     const alias = aliasPart.trim();
+    const fk = token.includes(":") && relationName?.endsWith("_id") ? relationName : undefined;
+    const table = fk ? alias : relationName;
     if (!alias || !table || !/^[a-z_][a-z0-9_]*$/i.test(table)) continue;
     const columns = rawCols === "*"
       ? ["*"]
       : rawCols.split(",").map((c) => c.trim()).filter((c) => /^[a-z_][a-z0-9_]*$/i.test(c));
-    embeds.push({ alias, table, columns: columns.length ? columns : ["*"] });
+    embeds.push({ alias, table, columns: columns.length ? columns : ["*"], fk });
   }
   return embeds;
 }
@@ -375,7 +377,7 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
     if (rows.length === 0) return data;
 
     for (const rel of this._relationEmbeds) {
-      const fk = relationForeignKey(rel.table);
+      const fk = rel.fk || relationForeignKey(rel.table);
       if (!fk) continue;
       const ids = Array.from(new Set(rows.map((r: any) => r?.[fk]).filter(Boolean).map(String)));
       if (ids.length === 0) {
