@@ -45,7 +45,8 @@ const VoucherTypeReport = ({ voucherType, title }: VoucherReportProps) => {
       (v.voucher_entries || []).forEach((e: any) => {
         result.push({
           id: e.id,
-          voucher_date: v.voucher_date,
+          voucher_date: formatDateDMY(v.voucher_date),
+          _sort_date: v.voucher_date,
           voucher_number: v.voucher_number,
           account_name: (e.chart_of_accounts as any)?.account_name || "—",
           account_code: (e.chart_of_accounts as any)?.account_code || "",
