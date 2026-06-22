@@ -274,4 +274,23 @@ class VoucherController extends BaseController
         ])->all(), true);
         return $this->success($reversal->load('entries'));
     }
+
+    /** Permanently delete a soft-deleted voucher (Super Admin only). */
+    public function purge(Request $request, string $id)
+    {
+        $user = $request->user();
+        if (!$user->isSuperAdmin()) {
+            return $this->error('Only Super Admin can permanently delete vouchers', 403);
+        }
+        $voucher = AccVoucher::findOrFail($id);
+        if (!$voucher->deleted_at) {
+            return $this->error('Only soft-deleted vouchers can be permanently deleted', 422);
+        }
+        return \DB::transaction(function () use ($voucher) {
+            $voucher->entries()->delete();
+            $vid = $voucher->id;
+            $voucher->delete();
+            return $this->success(['purged' => true, 'id' => $vid]);
+        });
+    }
 }
