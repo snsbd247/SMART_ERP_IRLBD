@@ -19,6 +19,7 @@ const ACCOUNT_TYPES = ["asset", "liability", "income", "expense", "equity"] as c
 
 const ChartOfAccounts = () => {
   const { toast } = useToast();
+  const { isSuperAdmin } = useAuth();
 
   // Filters
   const [financialYears, setFinancialYears] = useState<{ id: string; name: string }[]>([]);
