@@ -293,7 +293,7 @@ const AccountingVouchers = () => {
   const openEdit = async (v: Voucher) => {
     const { entries: data } = await voucherApi.get(v.id);
     setEditingVoucher(v);
-    setFormDate(v.voucher_date);
+    setFormDate(String(v.voucher_date || "").slice(0, 10));
     setFormBranch(v.branch_id || "");
     setFormFinYear(v.financial_year_id || "");
     setFormDesc(v.description || ""); setDescAuto(false);
