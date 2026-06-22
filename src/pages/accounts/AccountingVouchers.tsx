@@ -23,6 +23,14 @@ import { AuditLogViewer } from "@/components/AuditLogViewer";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { PrintLayout } from "@/components/PrintLayout";
 
+const formatDateDMY = (d?: string | null) => {
+  if (!d) return "—";
+  const s = String(d).slice(0, 10);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : s;
+};
+
+
 const VOUCHER_TYPES = [
   { id: "journal", label: "Journal Voucher", prefix: "JV" },
   { id: "payment", label: "Payment Voucher", prefix: "PV" },
@@ -562,7 +570,7 @@ const AccountingVouchers = () => {
                     ) : filteredVouchers.map((v) => (
                       <TableRow key={v.id}>
                         <TableCell className="font-geist-mono text-xs font-medium">{v.voucher_number}</TableCell>
-                        <TableCell className="text-sm">{v.voucher_date}</TableCell>
+                        <TableCell className="text-sm">{formatDateDMY(v.voucher_date)}</TableCell>
                         <TableCell className="text-sm">{(voucherAccountsMap[v.id] || []).length > 0 ? (voucherAccountsMap[v.id] || []).join(", ") : <span className="text-muted-foreground italic">No ledger entries</span>}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{v.description || "—"}</TableCell>
                         <TableCell className="text-right tabular-nums font-medium">{fc(v.total_amount)}</TableCell>
@@ -870,7 +878,7 @@ const AccountingVouchers = () => {
           onClose={() => setPrintVoucher(null)}
           title={VOUCHER_TYPES.find((vt) => vt.id === printVoucher.voucher_type)?.label || "Voucher"}
           docNumber={printVoucher.voucher_number}
-          docDate={printVoucher.voucher_date}
+          docDate={formatDateDMY(printVoucher.voucher_date)}
           branch={printVoucher.branch_id ? branchMap.get(printVoucher.branch_id) : undefined}
           notes={printVoucher.description || undefined}
         >
@@ -921,7 +929,7 @@ const AccountingVouchers = () => {
           {viewVoucher && (
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-4 text-sm">
-                <div><span className="text-muted-foreground">Date:</span> <span className="font-medium">{viewVoucher.voucher_date}</span></div>
+                <div><span className="text-muted-foreground">Date:</span> <span className="font-medium">{formatDateDMY(viewVoucher.voucher_date)}</span></div>
                 <div><span className="text-muted-foreground">Branch:</span> <span className="font-medium">{viewVoucher.branch_id ? branchMap.get(viewVoucher.branch_id) || "—" : "—"}</span></div>
                 <div><span className="text-muted-foreground">Amount:</span> <span className="font-medium">{fc(viewVoucher.total_amount)}</span></div>
               </div>
