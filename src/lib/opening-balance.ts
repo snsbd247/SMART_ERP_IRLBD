@@ -39,7 +39,8 @@ export type OpeningBalanceValidation =
  */
 export function validateOpeningBalance(
   raw: string,
-  accountName: string
+  accountName: string,
+  openingBalanceType?: "debit" | "credit" | null
 ): OpeningBalanceValidation {
   const trimmed = (raw ?? "").toString().trim();
   if (trimmed === "") return { ok: true, value: 0 };
@@ -47,11 +48,15 @@ export function validateOpeningBalance(
   if (isNaN(value) || !isFinite(value)) {
     return { ok: false, error: "Opening balance must be a valid number." };
   }
-  if (value < 0 && !isOverdraftAccount(accountName)) {
+  if (
+    value < 0 &&
+    !isOverdraftAccount(accountName) &&
+    openingBalanceType !== "credit"
+  ) {
     return {
       ok: false,
       error:
-        "Negative opening balance is only allowed for CC / Overdraft bank accounts. Include 'CC' or 'Overdraft' in the account name, or use the Debit/Credit type to set direction.",
+        "Negative opening balance is only allowed for CC / Overdraft bank accounts, or when the Opening Balance Type is set to Credit.",
     };
   }
   return { ok: true, value };
