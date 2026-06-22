@@ -389,7 +389,14 @@ const ChartOfAccounts = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Account Name</Label><Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Cash in Hand" /></div>
-              <div className="space-y-2"><Label>Account Code</Label><Input value={formCode} onChange={(e) => setFormCode(e.target.value)} placeholder="1001" /></div>
+              <div className="space-y-2">
+                <Label>Account Code {!editAcc && !formCodeTouched && <span className="text-xs text-muted-foreground font-normal">(auto)</span>}</Label>
+                <Input
+                  value={formCode}
+                  onChange={(e) => { setFormCode(e.target.value); setFormCodeTouched(true); }}
+                  placeholder="1001"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
