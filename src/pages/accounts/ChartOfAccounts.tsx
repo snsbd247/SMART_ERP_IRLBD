@@ -268,6 +268,8 @@ const ChartOfAccounts = () => {
         payload.opening_balance_type = "debit";
       }
 
+      const codeSource = formCodeTouched ? "manual" : "auto";
+
       if (editAcc) {
         const { error } = await supabase.from("chart_of_accounts").update(payload).eq("id", editAcc.id);
         if (error) throw error;
@@ -291,13 +293,36 @@ const ChartOfAccounts = () => {
               },
               details: `Opening balance changed for ${name} (${code})`,
             });
-          } catch {
-            // Audit failure must not block the save.
-          }
+          } catch { /* Audit failure must not block the save. */ }
+        }
+        // Audit log: account_code change (with source: auto/manual)
+        if (editAcc.account_code !== code) {
+          try {
+            await logUpdate({
+              module: "chart_of_accounts",
+              recordId: editAcc.id,
+              oldData: { account_code: editAcc.account_code },
+              newData: { account_code: code },
+              details: `Account code changed for ${name}: ${editAcc.account_code} → ${code} (source: ${codeSource})`,
+            });
+          } catch { /* ignore */ }
         }
       } else {
-        const { error } = await supabase.from("chart_of_accounts").insert(payload);
+        const { data: inserted, error } = await supabase
+          .from("chart_of_accounts")
+          .insert(payload)
+          .select("id")
+          .single();
         if (error) throw error;
+        try {
+          await logUpdate({
+            module: "chart_of_accounts",
+            recordId: inserted?.id || "",
+            oldData: {},
+            newData: { account_code: code, account_type: formType, parent_id: formParent || null },
+            details: `Account created: ${name} (${code}) — code source: ${codeSource}`,
+          });
+        } catch { /* ignore */ }
       }
       toast({ title: editAcc ? "Account updated" : "Account created" });
       setDialogOpen(false);
