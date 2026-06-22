@@ -43,6 +43,37 @@ function stripRelationCols(cols: string): string {
     .join(",");
 }
 
+type RelationEmbed = { alias: string; table: string; columns: string[] };
+
+function parseRelationEmbeds(select?: string): RelationEmbed[] {
+  if (!select) return [];
+  const embeds: RelationEmbed[] = [];
+  for (let i = 0; i < select.length; i++) {
+    if (select[i] !== "(") continue;
+    let start = i;
+    let depth = 1;
+    while (++i < select.length && depth > 0) {
+      if (select[i] === "(") depth++;
+      else if (select[i] === ")") depth--;
+    }
+    if (depth !== 0) break;
+    let tokenStart = start - 1;
+    while (tokenStart >= 0 && select[tokenStart] !== ",") tokenStart--;
+    const token = select.slice(tokenStart + 1, start).trim();
+    const rawCols = select.slice(start + 1, i).trim();
+    if (!token || token.includes(".")) continue;
+    const [aliasPart, relationPart = aliasPart] = token.includes(":") ? token.split(":", 2) : [token, token];
+    const table = relationPart.split("!")[0]?.trim();
+    const alias = aliasPart.trim();
+    if (!alias || !table || !/^[a-z_][a-z0-9_]*$/i.test(table)) continue;
+    const columns = rawCols === "*"
+      ? ["*"]
+      : rawCols.split(",").map((c) => c.trim()).filter((c) => /^[a-z_][a-z0-9_]*$/i.test(c));
+    embeds.push({ alias, table, columns: columns.length ? columns : ["*"] });
+  }
+  return embeds;
+}
+
 /**
  * Conventional foreign-key column on the child table for a given parent table.
  * Used to translate PostgREST relation filters (e.g. `acc_vouchers.status`) into
@@ -99,6 +130,13 @@ function buildQS(params: {
   if (params.onConflict) sp.set("on_conflict", params.onConflict);
   const s = sp.toString();
   return s ? `?${s}` : "";
+}
+
+function unwrapLaravelRows(json: any): any[] {
+  const payload = unwrapSuccessPayload(json);
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
 }
 
 // Convert ISO 8601 'Z' timestamps to MySQL-compatible 'YYYY-MM-DD HH:MM:SS'
