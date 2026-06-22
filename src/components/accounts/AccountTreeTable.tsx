@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronDown, Pencil, ChevronsDownUp, ChevronsUpDown, Trash2 } from "lucide-react";
@@ -10,9 +10,12 @@ interface Props {
   onEdit: (account: AccountWithBalance) => void;
   onDrillDown: (account: AccountWithBalance) => void;
   onDelete?: (account: AccountWithBalance) => void;
+  /** When true, all parent rows in the current `accounts` list are auto-expanded
+   *  (used while a search filter is active so matches stay visible). */
+  autoExpand?: boolean;
 }
 
-export function AccountTreeTable({ accounts, onEdit, onDrillDown, onDelete }: Props) {
+export function AccountTreeTable({ accounts, onEdit, onDrillDown, onDelete, autoExpand = false }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const { fc } = useCurrency();
 
@@ -151,6 +154,15 @@ export function AccountTreeTable({ accounts, onEdit, onDrillDown, onDelete }: Pr
     () => accounts.filter((a) => childMap.has(a.id)).map((a) => a.id),
     [accounts, childMap],
   );
+
+  // When a search filter is applied upstream, auto-expand every parent in the
+  // current (already-filtered) account list so matched children stay visible.
+  useEffect(() => {
+    if (autoExpand) {
+      setExpanded(new Set(parentIds));
+    }
+  }, [autoExpand, parentIds]);
+
   const allExpanded = parentIds.length > 0 && parentIds.every((id) => expanded.has(id));
 
   const expandAll = () => setExpanded(new Set(parentIds));
