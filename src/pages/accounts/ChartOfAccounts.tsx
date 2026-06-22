@@ -180,7 +180,7 @@ const ChartOfAccounts = () => {
       // Opening balance: editable by Super Admin only; others keep existing/zero.
       if (isSuperAdmin) {
         const v = validateOpeningBalance(formOpeningBalance, name);
-        if (!v.ok) {
+        if (v.ok === false) {
           toast({ title: "Invalid opening balance", description: v.error, variant: "destructive" });
           setSaving(false);
           return;
