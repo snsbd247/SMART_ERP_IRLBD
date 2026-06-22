@@ -149,13 +149,13 @@ class VoucherController extends BaseController
     {
         $voucher = AccVoucher::findOrFail($id);
         $user = $request->user();
-        // Accept any of: per-type (journal.edit), generic vouchers.edit, or module-wide accounts.edit.
-        $allowed = $user->isSuperAdmin()
-            || $user->hasPermission($voucher->voucher_type . '.edit')
-            || $user->hasPermission('vouchers.edit')
-            || $user->hasPermission('accounts.edit');
-        if (!$allowed) {
-            return $this->error('Forbidden', 403);
+        $auth = \App\Support\VoucherPermissions::authorize($user, $voucher->voucher_type, 'edit', $voucher->id, $request);
+        if (!$auth['allowed']) {
+            return $this->error(
+                'You do not have permission to edit this voucher.',
+                403,
+                ['correlation_id' => $auth['correlation_id'], 'required_any_of' => $auth['candidates']]
+            );
         }
         // Approval system removed — vouchers are always editable by users with accounts.edit.
 
