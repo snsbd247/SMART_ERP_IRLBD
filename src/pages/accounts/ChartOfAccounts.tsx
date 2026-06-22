@@ -175,9 +175,20 @@ const ChartOfAccounts = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Ledger opening balances are kept at zero; historical balances must be posted by voucher.
-      payload.opening_balance = 0;
-      payload.opening_balance_type = "debit";
+      // Opening balance: editable by Super Admin only; others keep existing/zero.
+      if (isSuperAdmin) {
+        const ob = parseFloat(formOpeningBalance);
+        if (isNaN(ob) || ob < 0) {
+          toast({ title: "Invalid opening balance", description: "Opening balance must be a non-negative number.", variant: "destructive" });
+          setSaving(false);
+          return;
+        }
+        payload.opening_balance = ob;
+        payload.opening_balance_type = formOpeningBalanceType;
+      } else if (!editAcc) {
+        payload.opening_balance = 0;
+        payload.opening_balance_type = "debit";
+      }
 
       if (editAcc) {
         const { error } = await supabase.from("chart_of_accounts").update(payload).eq("id", editAcc.id);
