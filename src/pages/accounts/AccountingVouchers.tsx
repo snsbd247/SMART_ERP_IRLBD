@@ -529,7 +529,7 @@ const AccountingVouchers = () => {
           const q = searchQuery.trim().toLowerCase();
           const filteredVouchers = q
             ? vouchers.filter((v) =>
-                [v.voucher_number, v.voucher_date, v.description || "", v.status, String(v.total_amount), (voucherAccountsMap[v.id] || []).join(" ")]
+                [v.voucher_number, v.voucher_date, formatDateDMY(v.voucher_date), v.description || "", v.status, String(v.total_amount), (voucherAccountsMap[v.id] || []).join(" ")]
                   .some((f) => f.toLowerCase().includes(q))
               )
             : vouchers;
