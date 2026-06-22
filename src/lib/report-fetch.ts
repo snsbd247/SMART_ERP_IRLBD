@@ -13,9 +13,11 @@ export async function fetchAllVoucherEntries(opts: {
   dateTo: string;
   branchId?: string | null;
   accountId?: string | null;
+  statuses?: string[];
   pageSize?: number;
 }): Promise<any[]> {
   const pageSize = opts.pageSize ?? 1000;
+  const statuses = opts.statuses && opts.statuses.length > 0 ? opts.statuses : ["approved", "posted"];
   const all: any[] = [];
   let from = 0;
   // Hard cap to avoid runaway loops (50k entries)
@@ -25,7 +27,7 @@ export async function fetchAllVoucherEntries(opts: {
       .select(
         "id, account_id, debit, credit, narration, voucher_id, acc_vouchers!inner(id, voucher_number, voucher_date, voucher_type, status, description, branch_id)"
       )
-      .in("acc_vouchers.status", ["approved", "posted"])
+      .in("acc_vouchers.status", statuses)
       .gte("acc_vouchers.voucher_date", opts.dateFrom)
       .lte("acc_vouchers.voucher_date", opts.dateTo)
       .order("voucher_date", { foreignTable: "acc_vouchers", ascending: true })

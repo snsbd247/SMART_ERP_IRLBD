@@ -1,22 +1,32 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
+import { supabase } from "@/integrations/supabase/client";
 import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
-import { BookOpen } from "lucide-react";
+import { downloadCSV } from "@/lib/csv-export";
+import { BookOpen, FileDown } from "lucide-react";
 
 const GeneralLedgerReport = () => {
   const { accounts, branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
   const [selectedAccount, setSelectedAccount] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<"both" | "approved" | "posted">("both");
   const [data, setData] = useState<any[]>([]);
+  const hasFetched = useRef(false);
 
   const fetchData = async () => {
     setLoading(true);
+    hasFetched.current = true;
+    const statuses = statusFilter === "both" ? ["approved", "posted"] : [statusFilter];
     const entries = await fetchAllVoucherEntries({
       dateFrom, dateTo, branchId: branch,
       accountId: selectedAccount !== "all" ? selectedAccount : null,
+      statuses,
     });
 
     // Group by account and compute running balance (entries are date-ordered)
@@ -50,6 +60,18 @@ const GeneralLedgerReport = () => {
     setLoading(false);
   };
 
+  // Auto-refresh on voucher status changes (post/approve)
+  useEffect(() => {
+    const channel = supabase
+      .channel("general-ledger-vouchers")
+      .on("postgres_changes", { event: "*", schema: "public", table: "acc_vouchers" }, () => {
+        if (hasFetched.current) fetchData();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAccount, statusFilter, dateFrom, dateTo, branch]);
+
 
   const columns = [
     { key: "voucher_date", label: "Date" }, { key: "account_name", label: "Account" },
@@ -74,7 +96,22 @@ const GeneralLedgerReport = () => {
         onPrint={() => handlePrint("General Ledger")}
         onExportExcel={() => handleExportExcel(data, columns, "general-ledger")}
         onExportPDF={() => handleExportPDF("General Ledger")}
-      />
+      >
+        <div className="space-y-1.5">
+          <Label className="text-xs">Status</Label>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+            <SelectTrigger className="w-36 h-9 text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="both">Approved + Posted</SelectItem>
+              <SelectItem value="approved">Approved only</SelectItem>
+              <SelectItem value="posted">Posted only</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => downloadCSV("general-ledger", columns, data)} disabled={!data.length} className="h-9">
+          <FileDown className="w-4 h-4 mr-1" />CSV
+        </Button>
+      </ReportFilters>
       <div ref={printRef}>
         <Card><CardContent className="p-0">
           <Table>
@@ -86,7 +123,11 @@ const GeneralLedgerReport = () => {
             </TableRow></TableHeader>
             <TableBody>
               {data.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Select filters and click "Generate"</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  {hasFetched.current
+                    ? `No ${statusFilter === "both" ? "approved or posted" : statusFilter} voucher entries found for the selected filters.`
+                    : 'Select filters and click "Generate"'}
+                </TableCell></TableRow>
               ) : data.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="text-sm">{e.voucher_date}</TableCell>
