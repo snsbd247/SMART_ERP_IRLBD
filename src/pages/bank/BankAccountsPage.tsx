@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Landmark, Plus } from "lucide-react";
+import { Landmark, Plus, Pencil } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
 const BankAccountsPage = () => {
