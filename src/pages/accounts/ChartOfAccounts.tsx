@@ -65,6 +65,7 @@ const ChartOfAccounts = () => {
   const openCreate = () => {
     setEditAcc(null);
     setFormName(""); setFormCode(""); setFormType("asset"); setFormParent("");
+    setFormOpeningBalance("0"); setFormOpeningBalanceType("debit");
     setDialogOpen(true);
   };
 
@@ -72,6 +73,8 @@ const ChartOfAccounts = () => {
     setEditAcc(a);
     setFormName(a.account_name); setFormCode(a.account_code); setFormType(a.account_type);
     setFormParent(a.parent_id || "");
+    setFormOpeningBalance(String(a.opening_balance ?? 0));
+    setFormOpeningBalanceType((a.opening_balance_type as "debit" | "credit") || "debit");
     setDialogOpen(true);
   };
 
