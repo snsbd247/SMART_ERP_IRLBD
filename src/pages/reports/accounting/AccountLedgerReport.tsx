@@ -22,8 +22,10 @@ const AccountLedgerReport = () => {
   const fetchData = async () => {
     if (!selectedAccount || selectedAccount === "all") return;
     setLoading(true);
+    hasFetched.current = true;
+    const statuses = statusFilter === "both" ? ["approved", "posted"] : [statusFilter];
     const entries = await fetchAllVoucherEntries({
-      dateFrom, dateTo, branchId: branch, accountId: selectedAccount,
+      dateFrom, dateTo, branchId: branch, accountId: selectedAccount, statuses,
     });
     const acc = accounts.find((a) => a.id === selectedAccount);
     let runBal = acc ? (acc.opening_balance_type === "debit" ? num(acc.opening_balance) : -num(acc.opening_balance)) : 0;
