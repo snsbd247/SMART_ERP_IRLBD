@@ -570,7 +570,7 @@ const AccountingVouchers = () => {
                     ) : filteredVouchers.map((v) => (
                       <TableRow key={v.id}>
                         <TableCell className="font-geist-mono text-xs font-medium">{v.voucher_number}</TableCell>
-                        <TableCell className="text-sm">{v.voucher_date}</TableCell>
+                        <TableCell className="text-sm">{formatDateDMY(v.voucher_date)}</TableCell>
                         <TableCell className="text-sm">{(voucherAccountsMap[v.id] || []).length > 0 ? (voucherAccountsMap[v.id] || []).join(", ") : <span className="text-muted-foreground italic">No ledger entries</span>}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{v.description || "—"}</TableCell>
                         <TableCell className="text-right tabular-nums font-medium">{fc(v.total_amount)}</TableCell>
