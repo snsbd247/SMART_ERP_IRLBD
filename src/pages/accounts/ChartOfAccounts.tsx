@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +80,22 @@ const ChartOfAccounts = () => {
     setFormOpeningBalanceType((a.opening_balance_type as "debit" | "credit") || "debit");
     setDialogOpen(true);
   };
+
+  // Open edit dialog automatically when navigated with ?edit=<id> (e.g. from Bank Accounts page)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const handledEditRef = useRef<string | null>(null);
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId || loading || handledEditRef.current === editId) return;
+    const acc = accounts.find((a) => a.id === editId);
+    if (acc) {
+      handledEditRef.current = editId;
+      openEdit(acc);
+      const next = new URLSearchParams(searchParams);
+      next.delete("edit");
+      setSearchParams(next, { replace: true });
+    }
+  }, [accounts, loading, searchParams, setSearchParams]);
 
   const handleDelete = async (a: AccountWithBalance) => {
     // Block delete when account has children
