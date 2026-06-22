@@ -178,8 +178,8 @@ const ChartOfAccounts = () => {
       // Opening balance: editable by Super Admin only; others keep existing/zero.
       if (isSuperAdmin) {
         const ob = parseFloat(formOpeningBalance);
-        if (isNaN(ob) || ob < 0) {
-          toast({ title: "Invalid opening balance", description: "Opening balance must be a non-negative number.", variant: "destructive" });
+        if (isNaN(ob)) {
+          toast({ title: "Invalid opening balance", description: "Opening balance must be a valid number (negative allowed for overdraft/CC accounts).", variant: "destructive" });
           setSaving(false);
           return;
         }
@@ -331,7 +331,6 @@ const ChartOfAccounts = () => {
                   <Label>Opening Balance</Label>
                   <Input
                     type="number"
-                    min="0"
                     step="0.01"
                     value={formOpeningBalance}
                     onChange={(e) => setFormOpeningBalance(e.target.value)}
