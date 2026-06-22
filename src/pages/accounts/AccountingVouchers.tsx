@@ -929,7 +929,7 @@ const AccountingVouchers = () => {
           {viewVoucher && (
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-4 text-sm">
-                <div><span className="text-muted-foreground">Date:</span> <span className="font-medium">{viewVoucher.voucher_date}</span></div>
+                <div><span className="text-muted-foreground">Date:</span> <span className="font-medium">{formatDateDMY(viewVoucher.voucher_date)}</span></div>
                 <div><span className="text-muted-foreground">Branch:</span> <span className="font-medium">{viewVoucher.branch_id ? branchMap.get(viewVoucher.branch_id) || "—" : "—"}</span></div>
                 <div><span className="text-muted-foreground">Amount:</span> <span className="font-medium">{fc(viewVoucher.total_amount)}</span></div>
               </div>
