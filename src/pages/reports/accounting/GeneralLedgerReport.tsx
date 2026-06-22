@@ -96,7 +96,22 @@ const GeneralLedgerReport = () => {
         onPrint={() => handlePrint("General Ledger")}
         onExportExcel={() => handleExportExcel(data, columns, "general-ledger")}
         onExportPDF={() => handleExportPDF("General Ledger")}
-      />
+      >
+        <div className="space-y-1.5">
+          <Label className="text-xs">Status</Label>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+            <SelectTrigger className="w-36 h-9 text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="both">Approved + Posted</SelectItem>
+              <SelectItem value="approved">Approved only</SelectItem>
+              <SelectItem value="posted">Posted only</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => downloadCSV("general-ledger", columns, data)} disabled={!data.length} className="h-9">
+          <FileDown className="w-4 h-4 mr-1" />CSV
+        </Button>
+      </ReportFilters>
       <div ref={printRef}>
         <Card><CardContent className="p-0">
           <Table>
