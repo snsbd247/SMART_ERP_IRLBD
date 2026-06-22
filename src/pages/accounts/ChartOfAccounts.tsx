@@ -54,20 +54,31 @@ const ChartOfAccounts = () => {
   const [saving, setSaving] = useState(false);
 
   const TYPE_BASE: Record<string, number> = { asset: 1000, liability: 2000, equity: 3000, income: 4000, expense: 5000 };
-  const suggestAccountCode = (type: string, parentId: string): string => {
+  // Local fallback for offline / pre-RPC scenarios. Server-side `suggest_account_code` is the source of truth.
+  const suggestAccountCodeLocal = (type: string, parentId: string): string => {
     const used = new Set(accounts.filter((a) => a.id !== editAcc?.id).map((a) => a.account_code));
     let start: number;
     const parent = parentId ? accounts.find((a) => a.id === parentId) : null;
-    if (parent && /^\d{4}$/.test(parent.account_code)) {
+    if (parent && /^\d+$/.test(parent.account_code)) {
       start = parseInt(parent.account_code, 10) + 1;
     } else {
       start = (TYPE_BASE[type] ?? 1000) + 1;
     }
-    for (let n = start; n <= 9999; n++) {
+    for (let n = start; n <= 9999999; n++) {
       const code = String(n).padStart(4, "0");
       if (!used.has(code)) return code;
     }
     return "";
+  };
+  const suggestAccountCode = async (type: string, parentId: string): Promise<string> => {
+    try {
+      const { data, error } = await supabase.rpc("suggest_account_code", {
+        _type: type,
+        _parent_id: parentId || null,
+      });
+      if (!error && typeof data === "string" && data) return data;
+    } catch { /* fall through to local */ }
+    return suggestAccountCodeLocal(type, parentId);
   };
 
   // Ledger dialog
@@ -104,8 +115,12 @@ const ChartOfAccounts = () => {
   // Auto-generate Account Code from Type / Parent until the user types one manually
   useEffect(() => {
     if (!dialogOpen || editAcc || formCodeTouched) return;
-    const suggested = suggestAccountCode(formType, formParent);
-    if (suggested) setFormCode(suggested);
+    let cancelled = false;
+    (async () => {
+      const suggested = await suggestAccountCode(formType, formParent);
+      if (!cancelled && suggested) setFormCode(suggested);
+    })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogOpen, formType, formParent, accounts]);
 
@@ -199,9 +214,9 @@ const ChartOfAccounts = () => {
       toast({ title: "Validation", description: "Account name and code are required.", variant: "destructive" });
       return;
     }
-    // Enforce 4-digit numeric code (Bangladesh CoA standard)
-    if (!/^\d{4}$/.test(code)) {
-      toast({ title: "Invalid code", description: "Account code must be exactly 4 digits (e.g. 1201).", variant: "destructive" });
+    // Enforce numeric code (3-10 digits) — matches DB CHECK constraint.
+    if (!/^\d{3,10}$/.test(code)) {
+      toast({ title: "Invalid code", description: "Account code must be 3-10 digits (e.g. 1201).", variant: "destructive" });
       return;
     }
     // Prevent duplicates (DB has unique constraint, but catch early)
@@ -253,6 +268,8 @@ const ChartOfAccounts = () => {
         payload.opening_balance_type = "debit";
       }
 
+      const codeSource = formCodeTouched ? "manual" : "auto";
+
       if (editAcc) {
         const { error } = await supabase.from("chart_of_accounts").update(payload).eq("id", editAcc.id);
         if (error) throw error;
@@ -276,13 +293,36 @@ const ChartOfAccounts = () => {
               },
               details: `Opening balance changed for ${name} (${code})`,
             });
-          } catch {
-            // Audit failure must not block the save.
-          }
+          } catch { /* Audit failure must not block the save. */ }
+        }
+        // Audit log: account_code change (with source: auto/manual)
+        if (editAcc.account_code !== code) {
+          try {
+            await logUpdate({
+              module: "chart_of_accounts",
+              recordId: editAcc.id,
+              oldData: { account_code: editAcc.account_code },
+              newData: { account_code: code },
+              details: `Account code changed for ${name}: ${editAcc.account_code} → ${code} (source: ${codeSource})`,
+            });
+          } catch { /* ignore */ }
         }
       } else {
-        const { error } = await supabase.from("chart_of_accounts").insert(payload);
+        const { data: inserted, error } = await supabase
+          .from("chart_of_accounts")
+          .insert(payload)
+          .select("id")
+          .single();
         if (error) throw error;
+        try {
+          await logUpdate({
+            module: "chart_of_accounts",
+            recordId: inserted?.id || "",
+            oldData: {},
+            newData: { account_code: code, account_type: formType, parent_id: formParent || null },
+            details: `Account created: ${name} (${code}) — code source: ${codeSource}`,
+          });
+        } catch { /* ignore */ }
       }
       toast({ title: editAcc ? "Account updated" : "Account created" });
       setDialogOpen(false);
