@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { usePermission } from "@/hooks/usePermission";
 import { Check, X, FileCheck2, Clock, History } from "lucide-react";
+import { formatDateDMY } from "@/lib/date-format";
 
 type Voucher = {
   id: string;
@@ -135,7 +136,7 @@ export default function VoucherApprovalDashboard() {
                     <TableRow key={v.id}>
                       <TableCell className="font-mono">{v.voucher_number}</TableCell>
                       <TableCell><Badge variant="outline">{v.voucher_type}</Badge></TableCell>
-                      <TableCell>{v.voucher_date}</TableCell>
+                      <TableCell>{formatDateDMY(v.voucher_date)}</TableCell>
                       <TableCell className="text-right tabular-nums">{Number(v.total_amount).toLocaleString()}</TableCell>
                       <TableCell className="max-w-xs truncate">{v.description}</TableCell>
                       <TableCell><Badge>{v.status}</Badge></TableCell>
