@@ -25,7 +25,7 @@ export async function fetchAllVoucherEntries(opts: {
       .select(
         "id, account_id, debit, credit, narration, voucher_id, acc_vouchers!inner(id, voucher_number, voucher_date, voucher_type, status, description, branch_id)"
       )
-      .eq("acc_vouchers.status", "approved")
+      .in("acc_vouchers.status", ["approved", "posted"])
       .gte("acc_vouchers.voucher_date", opts.dateFrom)
       .lte("acc_vouchers.voucher_date", opts.dateTo)
       .order("voucher_date", { foreignTable: "acc_vouchers", ascending: true })
