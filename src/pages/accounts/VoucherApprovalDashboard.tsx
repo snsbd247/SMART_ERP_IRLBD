@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { usePermission } from "@/hooks/usePermission";
 import { Check, X, FileCheck2, Clock, History } from "lucide-react";
+import { formatDateDMY } from "@/lib/date-format";
 
 type Voucher = {
   id: string;
