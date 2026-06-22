@@ -43,6 +43,40 @@ function stripRelationCols(cols: string): string {
     .join(",");
 }
 
+type RelationEmbed = { alias: string; table: string; columns: string[]; fk?: string };
+
+function parseRelationEmbeds(select?: string): RelationEmbed[] {
+  if (!select) return [];
+  const embeds: RelationEmbed[] = [];
+  for (let i = 0; i < select.length; i++) {
+    if (select[i] !== "(") continue;
+    let start = i;
+    let depth = 1;
+    while (++i < select.length && depth > 0) {
+      if (select[i] === "(") depth++;
+      else if (select[i] === ")") depth--;
+    }
+    if (depth !== 0) break;
+    let tokenStart = start - 1;
+    while (tokenStart >= 0 && select[tokenStart] !== ",") tokenStart--;
+    const token = select.slice(tokenStart + 1, start).trim();
+    const rawCols = select.slice(start + 1, i).trim();
+    if (!token || token.includes(".")) continue;
+    const hasAlias = token.includes(":");
+    const [aliasPart, relationPart = aliasPart] = hasAlias ? token.split(":", 2) : [token, token];
+    const relationName = relationPart.split("!")[0]?.trim();
+    const alias = hasAlias ? aliasPart.trim() : relationName;
+    const fk = hasAlias && relationName?.endsWith("_id") ? relationName : undefined;
+    const table = fk ? alias : relationName;
+    if (!alias || !table || !/^[a-z_][a-z0-9_]*$/i.test(table)) continue;
+    const columns = rawCols === "*"
+      ? ["*"]
+      : rawCols.split(",").map((c) => c.trim()).filter((c) => /^[a-z_][a-z0-9_]*$/i.test(c));
+    embeds.push({ alias, table, columns: columns.length ? columns : ["*"], fk });
+  }
+  return embeds;
+}
+
 /**
  * Conventional foreign-key column on the child table for a given parent table.
  * Used to translate PostgREST relation filters (e.g. `acc_vouchers.status`) into
@@ -101,6 +135,13 @@ function buildQS(params: {
   return s ? `?${s}` : "";
 }
 
+function unwrapLaravelRows(json: any): any[] {
+  const payload = unwrapSuccessPayload(json);
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+}
+
 // Convert ISO 8601 'Z' timestamps to MySQL-compatible 'YYYY-MM-DD HH:MM:SS'
 // so Laravel/MySQL doesn't reject values like "2026-06-10T08:09:08.432Z".
 const ISO_Z_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
@@ -157,6 +198,7 @@ function projectRow(row: any, select?: string): any {
 
 class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
   private _select?: string;
+  private _relationEmbeds: RelationEmbed[] = [];
   private _filters: FilterEntry[] = [];
   private _orders: { col: string; asc: boolean }[] = [];
   private _limit?: number;
@@ -177,6 +219,7 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
     } else {
       this._mode = "select";
     }
+    this._relationEmbeds = parseRelationEmbeds(cols);
     this._select = cols === "*" ? undefined : stripRelationCols(cols) || undefined;
     return this;
   }
@@ -319,12 +362,45 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
 
     // Post-process: emulate Supabase return shapes.
     let data: any = res.data;
+    if (this._mode === "select" && this._relationEmbeds.length > 0) {
+      data = await this.attachRelationEmbeds(data);
+    }
     if (this._mode !== "select" && Array.isArray(data) && this._single) data = data[0] ?? null;
     if (this._mode === "select" && this._single && Array.isArray(data)) data = data[0] ?? null;
     if (this._mode === "select" && this._single && !this._maybeSingle && data == null) {
       return { data: null, error: { message: "Row not found", code: "PGRST116" } };
     }
     return { data: data as T, error: null };
+  }
+
+  private async attachRelationEmbeds(data: any): Promise<any> {
+    const rows = Array.isArray(data) ? data : data ? [data] : [];
+    if (rows.length === 0) return data;
+
+    for (const rel of this._relationEmbeds) {
+      const fk = rel.fk || relationForeignKey(rel.table);
+      if (!fk) continue;
+      const ids = Array.from(new Set(rows.map((r: any) => r?.[fk]).filter(Boolean).map(String)));
+      if (ids.length === 0) {
+        rows.forEach((r: any) => { r[rel.alias] = null; });
+        continue;
+      }
+
+      const relatedById = new Map<string, any>();
+      const CHUNK = 200;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const slice = ids.slice(i, i + CHUNK);
+        const cols = rel.columns.includes("*") ? undefined : Array.from(new Set(["id", ...rel.columns])).join(",");
+        const qs = buildQS({ select: cols, filters: [{ col: "id", op: "in", val: slice }], orders: [], limit: slice.length });
+        const relRes = await call<any>("GET", `/v1/db/${rel.table}${qs}`);
+        if (relRes.error) continue;
+        for (const related of unwrapLaravelRows(relRes.data)) relatedById.set(String(related.id), related);
+      }
+
+      rows.forEach((r: any) => { r[rel.alias] = relatedById.get(String(r?.[fk])) ?? null; });
+    }
+
+    return Array.isArray(data) ? rows : rows[0] ?? null;
   }
 
   then<R1 = Result<T>, R2 = never>(
