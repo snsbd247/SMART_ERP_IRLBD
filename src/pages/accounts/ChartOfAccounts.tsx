@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, BookOpen, Filter, Search, X } from "lucide-react";
 import { useAccountBalances, AccountWithBalance } from "@/hooks/useAccountBalances";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { AccountTreeTable } from "@/components/accounts/AccountTreeTable";
 import { AccountLedgerDialog } from "@/components/accounts/AccountLedgerDialog";
