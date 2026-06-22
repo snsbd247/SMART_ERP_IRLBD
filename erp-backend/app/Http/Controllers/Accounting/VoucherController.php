@@ -41,6 +41,34 @@ class VoucherController extends BaseController
 
     public function store(Request $request)
     {
+        // Infer voucher_type from URL when the client omits it (e.g. POST /vouchers/journal).
+        if (!$request->filled('voucher_type')) {
+            $segments = collect(explode('/', trim($request->path(), '/')));
+            $last = $segments->last();
+            if (in_array($last, ['journal', 'payment', 'receipt', 'contra'], true)) {
+                $request->merge(['voucher_type' => $last]);
+            }
+        }
+
+        // Normalise entries: coerce numeric strings, default missing debit/credit to 0,
+        // drop blank rows (no account selected), and ensure narration is a string.
+        $rawEntries = $request->input('entries', []);
+        if (is_array($rawEntries)) {
+            $normalised = [];
+            foreach ($rawEntries as $row) {
+                if (!is_array($row)) continue;
+                $accountId = $row['account_id'] ?? null;
+                if (!$accountId) continue;
+                $normalised[] = [
+                    'account_id' => $accountId,
+                    'debit' => (float) ($row['debit'] ?? 0),
+                    'credit' => (float) ($row['credit'] ?? 0),
+                    'narration' => (string) ($row['narration'] ?? ''),
+                ];
+            }
+            $request->merge(['entries' => $normalised]);
+        }
+
         $request->validate([
             'voucher_type' => 'required|in:journal,payment,receipt,contra',
             'voucher_date' => 'required|date',
@@ -50,16 +78,41 @@ class VoucherController extends BaseController
             'entries.*.credit' => 'numeric|min:0',
         ]);
 
-        // Period close lock
-        $this->period->assertOpen($request->voucher_date, 'voucher');
+        try {
+            // Period close lock — return a friendly 422 instead of a generic 500.
+            $this->period->assertOpen($request->voucher_date, 'voucher');
 
-        $voucher = $this->service->createVoucher(
-            array_merge($request->only('voucher_type', 'voucher_date', 'description', 'branch_id', 'financial_year_id'), ['created_by' => $request->user()->id]),
-            $request->entries,
-            true // approval system removed — auto-post directly to accounts
-        );
+            // Resolve financial_year_id from the voucher date when the client did not send one.
+            $payload = $request->only('voucher_type', 'voucher_date', 'description', 'branch_id', 'financial_year_id');
+            if (empty($payload['financial_year_id'])) {
+                $payload['financial_year_id'] = $this->period->resolveId($request->voucher_date);
+            }
+            // Drop empty branch_id so it stores NULL instead of failing FK on "".
+            if (array_key_exists('branch_id', $payload) && ($payload['branch_id'] === '' || $payload['branch_id'] === null)) {
+                unset($payload['branch_id']);
+            }
+            $payload['created_by'] = $request->user()?->id;
 
-        return $this->created($voucher);
+            $voucher = $this->service->createVoucher(
+                $payload,
+                $request->entries,
+                true // approval system removed — auto-post directly to accounts
+            );
+
+            return $this->created($voucher);
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), 422);
+        } catch (\RuntimeException $e) {
+            return $this->error($e->getMessage(), 422);
+        } catch (\Throwable $e) {
+            \Log::error('Voucher store failed', [
+                'voucher_type' => $request->input('voucher_type'),
+                'user_id' => optional($request->user())->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->error('Could not save voucher: ' . $e->getMessage(), 500);
+        }
     }
 
     public function show(string $id) { return $this->success($this->repo->findWithEntries($id)); }
