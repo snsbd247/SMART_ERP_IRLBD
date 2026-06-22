@@ -22,13 +22,8 @@ import { Plus, Check, X, FileText, Trash2, RotateCcw, Pencil, ArrowLeftRight, Lo
 import { AuditLogViewer } from "@/components/AuditLogViewer";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { PrintLayout } from "@/components/PrintLayout";
+import { formatDateDMY } from "@/lib/date-format";
 
-const formatDateDMY = (d?: string | null) => {
-  if (!d) return "—";
-  const s = String(d).slice(0, 10);
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : s;
-};
 
 
 const VOUCHER_TYPES = [
