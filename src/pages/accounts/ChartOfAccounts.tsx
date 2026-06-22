@@ -87,6 +87,7 @@ const ChartOfAccounts = () => {
     setEditAcc(null);
     setFormName(""); setFormCode(""); setFormType("asset"); setFormParent("");
     setFormOpeningBalance("0"); setFormOpeningBalanceType("debit");
+    setFormCodeTouched(false);
     setDialogOpen(true);
   };
 
@@ -96,8 +97,18 @@ const ChartOfAccounts = () => {
     setFormParent(a.parent_id || "");
     setFormOpeningBalance(String(a.opening_balance ?? 0));
     setFormOpeningBalanceType((a.opening_balance_type as "debit" | "credit") || "debit");
+    setFormCodeTouched(true); // preserve existing code; user may still edit manually
     setDialogOpen(true);
   };
+
+  // Auto-generate Account Code from Type / Parent until the user types one manually
+  useEffect(() => {
+    if (!dialogOpen || editAcc || formCodeTouched) return;
+    const suggested = suggestAccountCode(formType, formParent);
+    if (suggested) setFormCode(suggested);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogOpen, formType, formParent, accounts]);
+
 
   // Open edit dialog automatically when navigated with ?edit=<id> (e.g. from Bank Accounts page)
   const [searchParams, setSearchParams] = useSearchParams();
