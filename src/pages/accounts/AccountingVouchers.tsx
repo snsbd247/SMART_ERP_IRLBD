@@ -878,7 +878,7 @@ const AccountingVouchers = () => {
           onClose={() => setPrintVoucher(null)}
           title={VOUCHER_TYPES.find((vt) => vt.id === printVoucher.voucher_type)?.label || "Voucher"}
           docNumber={printVoucher.voucher_number}
-          docDate={printVoucher.voucher_date}
+          docDate={formatDateDMY(printVoucher.voucher_date)}
           branch={printVoucher.branch_id ? branchMap.get(printVoucher.branch_id) : undefined}
           notes={printVoucher.description || undefined}
         >
