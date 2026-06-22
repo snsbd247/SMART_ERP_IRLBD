@@ -62,10 +62,11 @@ function parseRelationEmbeds(select?: string): RelationEmbed[] {
     const token = select.slice(tokenStart + 1, start).trim();
     const rawCols = select.slice(start + 1, i).trim();
     if (!token || token.includes(".")) continue;
-    const [aliasPart, relationPart = aliasPart] = token.includes(":") ? token.split(":", 2) : [token, token];
+    const hasAlias = token.includes(":");
+    const [aliasPart, relationPart = aliasPart] = hasAlias ? token.split(":", 2) : [token, token];
     const relationName = relationPart.split("!")[0]?.trim();
-    const alias = aliasPart.trim();
-    const fk = token.includes(":") && relationName?.endsWith("_id") ? relationName : undefined;
+    const alias = hasAlias ? aliasPart.trim() : relationName;
+    const fk = hasAlias && relationName?.endsWith("_id") ? relationName : undefined;
     const table = fk ? alias : relationName;
     if (!alias || !table || !/^[a-z_][a-z0-9_]*$/i.test(table)) continue;
     const columns = rawCols === "*"
