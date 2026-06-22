@@ -69,6 +69,18 @@ const AccountLedgerReport = () => {
     setLoading(false);
   };
 
+  // Auto-refresh on voucher status changes (post/approve)
+  useEffect(() => {
+    const channel = supabase
+      .channel("account-ledger-vouchers")
+      .on("postgres_changes", { event: "*", schema: "public", table: "acc_vouchers" }, () => {
+        if (hasFetched.current) fetchData();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAccount, statusFilter, dateFrom, dateTo, branch]);
+
 
   const selectedAcc = accounts.find((a) => a.id === selectedAccount);
   const title = selectedAcc ? `${selectedAcc.account_name} Ledger` : "Account Ledger";
