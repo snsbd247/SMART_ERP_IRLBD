@@ -331,7 +331,6 @@ const ChartOfAccounts = () => {
                   <Label>Opening Balance</Label>
                   <Input
                     type="number"
-                    min="0"
                     step="0.01"
                     value={formOpeningBalance}
                     onChange={(e) => setFormOpeningBalance(e.target.value)}
