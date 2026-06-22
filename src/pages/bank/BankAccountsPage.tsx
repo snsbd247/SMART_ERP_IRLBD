@@ -43,6 +43,7 @@ const BankAccountsPage = () => {
                 <TableHead>Account Name</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead className="text-right">Opening Balance</TableHead>
+                <TableHead className="w-20 text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -52,9 +53,19 @@ const BankAccountsPage = () => {
                   <TableCell className="font-medium">{a.account_name}</TableCell>
                   <TableCell>{a.account_type}</TableCell>
                   <TableCell className="text-right tabular-nums">{fc(Number(a.opening_balance))}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => navigate(`/accounts/chart?edit=${a.id}`)}
+                      aria-label={`Edit ${a.account_name}`}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
-              {accounts.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No bank accounts found. Click "Add Bank Account" to create one (account name must contain "Bank").</TableCell></TableRow>}
+              {accounts.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No bank accounts found. Click "Add Bank Account" to create one (account name must contain "Bank").</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
