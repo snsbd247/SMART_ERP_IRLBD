@@ -54,14 +54,24 @@ const BankAccountsPage = () => {
                   <TableCell>{a.account_type}</TableCell>
                   <TableCell className="text-right tabular-nums">{fc(Number(a.opening_balance))}</TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => navigate(`/accounts/chart?edit=${a.id}`)}
-                      aria-label={`Edit ${a.account_name}`}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => navigate(`/accounts/chart?edit=${a.id}`)}
+                        aria-label={`Edit ${a.account_name}`}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => navigate(`/accounts/chart?delete=${a.id}`)}
+                        aria-label={`Delete ${a.account_name}`}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
