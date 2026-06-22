@@ -589,13 +589,53 @@ const AccountingVouchers = () => {
                             <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View voucher" onClick={() => openView(v)} title="View">
                               <Eye className="w-3.5 h-3.5" />
                             </Button>
-                            {/* Edit - based on role & status */}
-                            {canEditVoucher(v) && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit voucher" onClick={() => openEdit(v)} title="Edit">
-                                <Pencil className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-                            {/* Print - always visible */}
+                            {/* Edit — always rendered. Disabled with reason when denied. */}
+                            {(() => {
+                              const evalRes = evalPerm(v.voucher_type, "edit");
+                              const lockedByStatus = v.status === "approved" && !isSuperAdmin;
+                              const allowed = evalRes.allowed && !lockedByStatus;
+                              const reason = lockedByStatus
+                                ? "Approved vouchers can only be edited by Super Admin."
+                                : evalRes.reason;
+                              const onDenied = () => {
+                                logVoucherPermissionDenial({
+                                  userId: user?.id,
+                                  voucherType: v.voucher_type as VoucherType,
+                                  voucherId: v.id,
+                                  action: "edit",
+                                  evaluation: evalRes,
+                                });
+                                toast({
+                                  title: "Edit not allowed",
+                                  description: `${reason} (ref: ${evalRes.correlationId})`,
+                                  variant: "destructive",
+                                });
+                              };
+                              return (
+                                <TooltipProvider delayDuration={150}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          aria-label="Edit voucher"
+                                          aria-disabled={!allowed}
+                                          data-permission-cid={evalRes.correlationId}
+                                          onClick={allowed ? () => openEdit(v) : onDenied}
+                                        >
+                                          <Pencil className={`w-3.5 h-3.5 ${allowed ? "" : "opacity-40"}`} />
+                                        </Button>
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                      {allowed ? "Edit" : `${reason}\nref: ${evalRes.correlationId}`}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            })()}
                             <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Print voucher" onClick={() => openPrintVoucher(v)} title="Print">
                               <Printer className="w-3.5 h-3.5" />
                             </Button>
