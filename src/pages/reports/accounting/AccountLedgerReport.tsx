@@ -142,7 +142,13 @@ const AccountLedgerReport = () => {
             </TableRow></TableHeader>
             <TableBody>
               {data.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Select an account and click "Generate"</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  {!selectedAccount || selectedAccount === "all"
+                    ? 'Select an account and click "Generate"'
+                    : hasFetched.current
+                      ? `No ${statusFilter === "both" ? "approved or posted" : statusFilter} voucher entries found for the selected account, date range and branch.`
+                      : 'Click "Generate" to load entries'}
+                </TableCell></TableRow>
               ) : data.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell>{e.voucher_date}</TableCell>
