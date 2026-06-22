@@ -21,9 +21,12 @@ const GeneralLedgerReport = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    hasFetched.current = true;
+    const statuses = statusFilter === "both" ? ["approved", "posted"] : [statusFilter];
     const entries = await fetchAllVoucherEntries({
       dateFrom, dateTo, branchId: branch,
       accountId: selectedAccount !== "all" ? selectedAccount : null,
+      statuses,
     });
 
     // Group by account and compute running balance (entries are date-ordered)
