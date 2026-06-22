@@ -81,6 +81,22 @@ const ChartOfAccounts = () => {
     setDialogOpen(true);
   };
 
+  // Open edit dialog automatically when navigated with ?edit=<id> (e.g. from Bank Accounts page)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const handledEditRef = useRef<string | null>(null);
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId || loading || handledEditRef.current === editId) return;
+    const acc = accounts.find((a) => a.id === editId);
+    if (acc) {
+      handledEditRef.current = editId;
+      openEdit(acc);
+      const next = new URLSearchParams(searchParams);
+      next.delete("edit");
+      setSearchParams(next, { replace: true });
+    }
+  }, [accounts, loading, searchParams, setSearchParams]);
+
   const handleDelete = async (a: AccountWithBalance) => {
     // Block delete when account has children
     const hasChildren = accounts.some((x) => x.parent_id === a.id);
