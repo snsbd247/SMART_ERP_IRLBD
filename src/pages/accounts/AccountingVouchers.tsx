@@ -23,6 +23,12 @@ import { AuditLogViewer } from "@/components/AuditLogViewer";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { PrintLayout } from "@/components/PrintLayout";
 import { formatDateDMY } from "@/lib/date-format";
+import {
+  evaluateVoucherPermission,
+  logVoucherPermissionDenial,
+  type VoucherType,
+} from "@/lib/voucher-permissions";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 
@@ -47,15 +53,20 @@ interface Voucher {
 type SuperAdminAction = "delete" | "reopen" | "reverse" | "restore" | "purge" | null;
 
 const AccountingVouchers = () => {
-  const { isSuperAdmin, hasPermission } = useAuth();
+  const { isSuperAdmin, hasPermission, user } = useAuth();
   const { toast } = useToast();
   const { fc } = useCurrency();
 
-  // Per-voucher-type permission checks
-  const canViewJournal = isSuperAdmin || hasPermission("journal.view");
-  const canViewPayment = isSuperAdmin || hasPermission("payment.view");
-  const canViewReceipt = isSuperAdmin || hasPermission("receipt.view");
-  const canViewContra = isSuperAdmin || hasPermission("contra.view");
+  // Centralised permission spec — mirrors backend App\Support\VoucherPermissions.
+  const permCtx = { isSuperAdmin, hasPermission };
+  const evalPerm = (type: string, action: "view" | "create" | "edit" | "delete") =>
+    evaluateVoucherPermission(permCtx, type as VoucherType, action);
+
+  // Per-voucher-type view checks (drives tab visibility)
+  const canViewJournal = evalPerm("journal", "view").allowed;
+  const canViewPayment = evalPerm("payment", "view").allowed;
+  const canViewReceipt = evalPerm("receipt", "view").allowed;
+  const canViewContra = evalPerm("contra", "view").allowed;
 
   const voucherPermMap: Record<string, boolean> = {
     journal: canViewJournal,
@@ -64,12 +75,9 @@ const AccountingVouchers = () => {
     contra: canViewContra,
   };
 
-  const canCreateForType = (type: string) =>
-    isSuperAdmin || hasPermission(`${type}.create`);
-  const canEditForType = (type: string) =>
-    isSuperAdmin || hasPermission(`${type}.edit`);
-  const canDeleteForType = (type: string) =>
-    isSuperAdmin || hasPermission(`${type}.delete`);
+  const canCreateForType = (type: string) => evalPerm(type, "create").allowed;
+  const canEditForType = (type: string) => evalPerm(type, "edit").allowed;
+  const canDeleteForType = (type: string) => evalPerm(type, "delete").allowed;
 
   const allowedTypes = VOUCHER_TYPES.filter((vt) => voucherPermMap[vt.id]);
   const defaultTab = allowedTypes.length > 0 ? allowedTypes[0].id : "journal";
@@ -581,13 +589,53 @@ const AccountingVouchers = () => {
                             <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View voucher" onClick={() => openView(v)} title="View">
                               <Eye className="w-3.5 h-3.5" />
                             </Button>
-                            {/* Edit - based on role & status */}
-                            {canEditVoucher(v) && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit voucher" onClick={() => openEdit(v)} title="Edit">
-                                <Pencil className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-                            {/* Print - always visible */}
+                            {/* Edit — always rendered. Disabled with reason when denied. */}
+                            {(() => {
+                              const evalRes = evalPerm(v.voucher_type, "edit");
+                              const lockedByStatus = v.status === "approved" && !isSuperAdmin;
+                              const allowed = evalRes.allowed && !lockedByStatus;
+                              const reason = lockedByStatus
+                                ? "Approved vouchers can only be edited by Super Admin."
+                                : evalRes.reason;
+                              const onDenied = () => {
+                                logVoucherPermissionDenial({
+                                  userId: user?.id,
+                                  voucherType: v.voucher_type as VoucherType,
+                                  voucherId: v.id,
+                                  action: "edit",
+                                  evaluation: evalRes,
+                                });
+                                toast({
+                                  title: "Edit not allowed",
+                                  description: `${reason} (ref: ${evalRes.correlationId})`,
+                                  variant: "destructive",
+                                });
+                              };
+                              return (
+                                <TooltipProvider delayDuration={150}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          aria-label="Edit voucher"
+                                          aria-disabled={!allowed}
+                                          data-permission-cid={evalRes.correlationId}
+                                          onClick={allowed ? () => openEdit(v) : onDenied}
+                                        >
+                                          <Pencil className={`w-3.5 h-3.5 ${allowed ? "" : "opacity-40"}`} />
+                                        </Button>
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                      {allowed ? "Edit" : `${reason}\nref: ${evalRes.correlationId}`}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            })()}
                             <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Print voucher" onClick={() => openPrintVoucher(v)} title="Print">
                               <Printer className="w-3.5 h-3.5" />
                             </Button>
