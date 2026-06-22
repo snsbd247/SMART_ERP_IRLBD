@@ -1,16 +1,23 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
+import { supabase } from "@/integrations/supabase/client";
 import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
-import { BookOpen } from "lucide-react";
+import { downloadCSV } from "@/lib/csv-export";
+import { BookOpen, FileDown } from "lucide-react";
 
 const GeneralLedgerReport = () => {
   const { accounts, branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
   const [selectedAccount, setSelectedAccount] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<"both" | "approved" | "posted">("both");
   const [data, setData] = useState<any[]>([]);
+  const hasFetched = useRef(false);
 
   const fetchData = async () => {
     setLoading(true);
