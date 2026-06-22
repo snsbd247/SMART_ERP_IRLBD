@@ -154,6 +154,15 @@ export function AccountTreeTable({ accounts, onEdit, onDrillDown, onDelete, auto
     () => accounts.filter((a) => childMap.has(a.id)).map((a) => a.id),
     [accounts, childMap],
   );
+
+  // When a search filter is applied upstream, auto-expand every parent in the
+  // current (already-filtered) account list so matched children stay visible.
+  useEffect(() => {
+    if (autoExpand) {
+      setExpanded(new Set(parentIds));
+    }
+  }, [autoExpand, parentIds]);
+
   const allExpanded = parentIds.length > 0 && parentIds.every((id) => expanded.has(id));
 
   const expandAll = () => setExpanded(new Set(parentIds));
