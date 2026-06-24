@@ -38,7 +38,7 @@ const BankBookReport = () => {
     let runBal = opening;
 
     const result = (entries || []).map((e: any) => {
-      runBal += Number(e.credit) - Number(e.debit);
+      runBal = applyEntry(runBal, { debit: e.debit, credit: e.credit });
       const acc = bankAccounts.find((a) => a.id === e.account_id);
       return {
         ...e,
@@ -49,6 +49,9 @@ const BankBookReport = () => {
         running_balance: runBal,
       };
     });
+    if (!verifyClosingBalance(opening, (entries || []) as any, runBal)) {
+      console.error("[BankBookReport] closing balance mismatch", { opening, runBal });
+    }
     setData(result);
     setLoading(false);
   };
