@@ -36,6 +36,26 @@ export const formatBalance = (value: number, fc: CurrencyFormatter): string => {
 };
 
 /**
+ * Format a signed balance for screens that show the raw signed value
+ * (no Dr/Cr suffix) — e.g. the voucher form's "Curr Bal" line, which must
+ * match the Account Ledger closing-balance column.
+ *
+ * - Negatives render with a single leading "-" before the currency-formatted
+ *   absolute amount (e.g. "-৳ 12,735,308.96").
+ * - Positives render unchanged (e.g. "৳ 16,512,262.86").
+ * - Zero renders without a sign.
+ *
+ * Use this anywhere the convention is "negative when negative, positive
+ * when positive" — do NOT use it on screens that intentionally show a
+ * Dr/Cr suffix (customer statement, account tree, ledger dialog).
+ */
+export const formatSignedBalance = (value: number, fc: CurrencyFormatter): string => {
+  const n = Number(value) || 0;
+  const abs = fc(Math.abs(n));
+  return n < 0 ? `-${abs}` : abs;
+};
+
+/**
  * Tailwind class helper: red text for negative balances, empty otherwise.
  */
 export const balanceToneClass = (value: number): string =>
