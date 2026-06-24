@@ -43,7 +43,6 @@ const CashBookReport = () => {
     let runBal = opening;
 
     const result = (entries || []).map((e: any) => {
-    const result = (entries || []).map((e: any) => {
       runBal = applyEntry(runBal, { debit: e.debit, credit: e.credit });
       return {
         ...e,
