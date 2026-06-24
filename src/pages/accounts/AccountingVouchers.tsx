@@ -30,6 +30,10 @@ import {
   type VoucherType,
 } from "@/lib/voucher-permissions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { validateEntryNature } from "@/lib/account-nature";
+import { logAudit } from "@/lib/audit-utils";
+import { signedOpeningBalance } from "@/lib/balance-format";
+
 
 
 
@@ -167,6 +171,15 @@ const AccountingVouchers = () => {
 
   const { accounts: accountsWithBal } = useAccountBalances();
   const balanceMap = new Map(accountsWithBal.map((a) => [a.id, { amt: a.closing_balance, type: a.closing_balance_type }]));
+  // Dev debug — Opening / Debit / Credit / Closing per account for the form.
+  const debugMap = new Map(accountsWithBal.map((a) => [a.id, {
+    opening: signedOpeningBalance(a.opening_balance, a.opening_balance_type),
+    debit: a.total_debit,
+    credit: a.total_credit,
+    closing: (a.closing_balance_type === "credit" ? -1 : 1) * a.closing_balance,
+    account_type: a.account_type,
+  }]));
+
 
   const totalDebit = entries.reduce((s, e) => s + (e.debit || 0), 0);
   const totalCredit = entries.reduce((s, e) => s + (e.credit || 0), 0);
@@ -340,6 +353,20 @@ const AccountingVouchers = () => {
       toast({ title: "At least 2 entries required", variant: "destructive" });
       return;
     }
+    // Front-end debit/credit nature validation — blocks hard errors,
+    // surfaces contra-side warnings as a non-blocking toast.
+    const nature = validateEntryNature(
+      validEntries.map((e) => ({ account_id: e.account_id, dr_cr: e.dr_cr, debit: e.debit, credit: e.credit })),
+      accountsWithBal.map((a) => ({ id: a.id, account_code: a.account_code, account_name: a.account_name, account_type: a.account_type })),
+    );
+    if (nature.errors.length > 0) {
+      toast({ title: "Entry validation failed", description: nature.errors.map((i) => i.message).join("\n"), variant: "destructive" });
+      return;
+    }
+    if (nature.warnings.length > 0) {
+      toast({ title: "Heads up — contra posting", description: nature.warnings.map((i) => i.message).join("\n") });
+    }
+
     setSaving(true);
     try {
       if (editingVoucher) {
@@ -390,6 +417,41 @@ const AccountingVouchers = () => {
         });
         toast({ title: "Voucher created successfully" });
       }
+      // Audit log: capture per-account computed balance fields (Opening,
+      // Debit, Credit, Closing) used by the form at save time. This makes
+      // future Current/Closing mismatches traceable to the exact figures
+      // shown to the user when they saved.
+      try {
+        const affected = validEntries.map((e) => {
+          const dbg = debugMap.get(e.account_id);
+          return {
+            account_id: e.account_id,
+            dr_cr: e.dr_cr,
+            entry_debit: e.debit,
+            entry_credit: e.credit,
+            displayed_opening: dbg?.opening ?? null,
+            displayed_total_debit: dbg?.debit ?? null,
+            displayed_total_credit: dbg?.credit ?? null,
+            displayed_closing: dbg?.closing ?? null,
+          };
+        });
+        await logAudit({
+          userId: user?.id,
+          module: "accounting",
+          action: editingVoucher ? "voucher_edit_balance_impact" : "voucher_create_balance_impact",
+          recordId: editingVoucher?.id,
+          newData: {
+            voucher_type: activeTab,
+            voucher_date: formDate,
+            total_debit: totalDebit,
+            total_credit: totalCredit,
+            affected_accounts: affected,
+          },
+        });
+      } catch {
+        // Audit-log failures must never block voucher save.
+      }
+
       if (resetForNew) {
         resetNewVoucherEntries();
       } else {
@@ -784,6 +846,7 @@ const AccountingVouchers = () => {
                   <TableBody>
                     {entries.map((entry, idx) => {
                       const bal = entry.account_id ? balanceMap.get(entry.account_id) : undefined;
+                      const dbg = entry.account_id ? debugMap.get(entry.account_id) : undefined;
                       const isLast = idx === entries.length - 1;
                       return (
                         <TableRow key={entry.id} className="align-top">
@@ -805,7 +868,17 @@ const AccountingVouchers = () => {
                             <div className="mt-1 text-xs text-muted-foreground">
                               Curr Bal : {bal ? `${fc(bal.amt)} ${bal.type === "debit" ? "Dr" : "Cr"}` : ""}
                             </div>
+                            {import.meta.env.DEV && dbg && (
+                              <div className="mt-1 rounded border border-dashed border-amber-400/60 bg-amber-50/60 dark:bg-amber-950/20 px-2 py-1 text-[10px] font-mono leading-tight text-amber-900 dark:text-amber-200">
+                                <div>DEBUG · type={dbg.account_type ?? "—"}</div>
+                                <div>Opening: {dbg.opening.toFixed(2)}</div>
+                                <div>+ Credit: {dbg.credit.toFixed(2)}</div>
+                                <div>− Debit:  {dbg.debit.toFixed(2)}</div>
+                                <div>= Closing: {dbg.closing.toFixed(2)}</div>
+                              </div>
+                            )}
                           </TableCell>
+
                           <TableCell className="pt-3">
                             <Input
                               type="text" inputMode="decimal"
