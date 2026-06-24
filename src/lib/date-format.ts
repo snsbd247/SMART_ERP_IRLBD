@@ -31,9 +31,41 @@ export const toDateInputValue = (d?: string | Date | null): string => {
   return s.slice(0, 10);
 };
 
+export const isoToDmy = (iso?: string | Date | null): string => {
+  const normalized = toDateInputValue(iso);
+  const m = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+};
+
+export const dmyToIso = (dmy?: string | null): string => {
+  if (!dmy) return "";
+  const m = String(dmy).trim().match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (!m) return "";
+  const d = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10);
+  const y = parseInt(m[3], 10);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return "";
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return "";
+  return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+};
+
+export const isoToLocalDate = (iso?: string | Date | null): Date | undefined => {
+  const normalized = toDateInputValue(iso);
+  const m = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return undefined;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+};
+
+export const localDateToIso = (date?: Date | null): string => {
+  if (!date) return "";
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 export const formatDateDMY = (d?: string | Date | null): string => {
   if (!d) return "—";
-  const iso = toDateInputValue(d);
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : iso || "—";
+  return isoToDmy(d) || toDateInputValue(d) || "—";
 };
