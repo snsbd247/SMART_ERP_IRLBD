@@ -34,7 +34,7 @@ interface VoucherEntryBalanceRow {
   credit: number | string | null;
 }
 
-type AccountRow = Omit<AccountWithBalance, "total_debit" | "total_credit" | "closing_balance" | "closing_balance_type">;
+type AccountRow = Omit<AccountWithBalance, "total_debit" | "total_credit" | "closing_balance" | "closing_balance_type" | "signed_balance">;
 
 const PAGE_SIZE = 1000;
 
