@@ -5,6 +5,7 @@ import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
+import { signedOpeningBalance } from "@/lib/balance-format";
 import { FileText } from "lucide-react";
 
 const TrialBalanceReport = () => {
