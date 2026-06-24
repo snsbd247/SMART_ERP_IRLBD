@@ -83,7 +83,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
             Opening: {fc(openingBalance)} {openingBalanceType === "debit" ? "Dr" : "Cr"}
           </Badge>
           <Badge variant="outline" className="text-sm px-3 py-1">
-            Closing: {fc(Math.abs(closingBalance))} {closingBalance >= 0 ? "Dr" : "Cr"}
+            Closing: <span className={closingBalance < 0 ? "text-destructive" : ""}>{fc(closingBalance)}</span>
           </Badge>
         </div>
 
