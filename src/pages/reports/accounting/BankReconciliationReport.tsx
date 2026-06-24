@@ -9,6 +9,7 @@ import { ReportHeader } from "@/components/ReportHeader";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { GitCompare, Printer, Download, FileSpreadsheet } from "lucide-react";
+import { signedOpeningBalance } from "@/lib/balance-format";
 
 const BankReconciliationReport = () => {
   const { accounts, fc, printRef, handlePrint, handleExportExcel } = useReportData();
