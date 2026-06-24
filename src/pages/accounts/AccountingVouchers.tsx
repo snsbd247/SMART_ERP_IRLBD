@@ -30,6 +30,10 @@ import {
   type VoucherType,
 } from "@/lib/voucher-permissions";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { validateEntryNature } from "@/lib/account-nature";
+import { logAudit } from "@/lib/audit-utils";
+import { signedOpeningBalance } from "@/lib/balance-format";
+
 
 
 
