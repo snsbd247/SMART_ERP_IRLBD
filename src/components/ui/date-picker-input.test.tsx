@@ -40,7 +40,7 @@ describe("DatePickerInput", () => {
     render(<DatePickerInput value="2026-07-10" onChange={() => {}} />);
     const input = screen.getByPlaceholderText("DD-MM-YYYY") as HTMLInputElement;
 
-    fireEvent.change(input, { target: { value: "abc" } });
+    fireEvent.change(input, { target: { value: "99-99-9999" } });
     fireEvent.blur(input);
     expect(input.value).toBe("10-07-2026");
   });
