@@ -27,7 +27,7 @@ const BalanceSheetReport = () => {
 
     const getBalance = (a: any) => {
       const txn = balMap.get(a.id) || 0;
-      const open = a.opening_balance_type === "debit" ? num(a.opening_balance) : -num(a.opening_balance);
+      const open = signedOpeningBalance(a.opening_balance, a.opening_balance_type);
       return open + txn;
     };
 
