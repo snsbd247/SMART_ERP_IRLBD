@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { formatSignedBalance } from "./balance-format";
+import { formatSignedBalance } from "@/lib/balance-format";
 
 // Mirrors the exact JSX pattern used in AccountingVouchers.tsx for the
 // "Curr Bal" line, so a future refactor that breaks the signed-value
