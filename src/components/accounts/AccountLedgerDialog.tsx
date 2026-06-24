@@ -135,8 +135,8 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
               <TableCell colSpan={3} className="text-right">Total</TableCell>
               <TableCell className="text-right tabular-nums">{fc(totalDebit)}</TableCell>
               <TableCell className="text-right tabular-nums">{fc(totalCredit)}</TableCell>
-              <TableCell className="text-right tabular-nums">
-                {fc(Math.abs(closingBalance))} {closingBalance >= 0 ? "Dr" : "Cr"}
+              <TableCell className={`text-right tabular-nums ${closingBalance < 0 ? "text-destructive" : ""}`}>
+                {fc(closingBalance)}
               </TableCell>
             </TableRow>
           </TableBody>
