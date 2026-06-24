@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { ReportHeader } from "@/components/ReportHeader";
 import { DollarSign, TrendingUp, TrendingDown, PiggyBank, Landmark, BarChart3 } from "lucide-react";
+import { signedOpeningBalance } from "@/lib/balance-format";
 
 const FinancialSummaryDashboard = () => {
   const { fc } = useCurrency();
