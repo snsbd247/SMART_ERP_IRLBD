@@ -44,7 +44,7 @@ const GeneralLedgerReport = () => {
       if (!acc) return;
       let runBal = signedOpeningBalance(acc.opening_balance, acc.opening_balance_type);
       rows.forEach((e) => {
-        runBal += num(e.debit) - num(e.credit);
+        runBal += num(e.credit) - num(e.debit);
         result.push({
           ...e,
           account_name: acc.account_name,
