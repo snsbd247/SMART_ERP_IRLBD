@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { voucherApi } from "@/lib/voucher-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -735,7 +736,7 @@ const AccountingVouchers = () => {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Date</Label>
-                <Input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} />
+                <DateInput value={formDate} onChange={(v) => setFormDate(v)} />
               </div>
               <div className="space-y-2">
                 <Label>Branch</Label>
