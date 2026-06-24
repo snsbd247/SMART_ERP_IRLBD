@@ -592,11 +592,10 @@ const AccountingVouchers = () => {
                             {/* Edit — always rendered. Disabled with reason when denied. */}
                             {(() => {
                               const evalRes = evalPerm(v.voucher_type, "edit");
-                              const lockedByStatus = v.status === "approved" && !isSuperAdmin;
-                              const allowed = evalRes.allowed && !lockedByStatus;
-                              const reason = lockedByStatus
-                                ? "Approved vouchers can only be edited by Super Admin."
-                                : evalRes.reason;
+                              // Edit permission alone is sufficient — approved status no longer
+                              // restricts edit to Super Admin (custom-role edit grant is honored).
+                              const allowed = evalRes.allowed;
+                              const reason = evalRes.reason;
                               const onDenied = () => {
                                 logVoucherPermissionDenial({
                                   userId: user?.id,
