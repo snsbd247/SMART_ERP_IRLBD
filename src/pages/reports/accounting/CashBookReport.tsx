@@ -36,7 +36,7 @@ const CashBookReport = () => {
     query = query.order("acc_vouchers(voucher_date)");
 
     const { data: entries } = await query;
-    let runBal = cashAccounts.reduce((s, a) => s + (a.opening_balance_type === "debit" ? a.opening_balance : -a.opening_balance), 0);
+    let runBal = cashAccounts.reduce((s, a) => s + signedOpeningBalance(a.opening_balance, a.opening_balance_type), 0);
 
     const result = (entries || []).map((e: any) => {
       runBal += Number(e.debit) - Number(e.credit);
