@@ -9,6 +9,7 @@ import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
+import { signedOpeningBalance } from "@/lib/balance-format";
 import { downloadCSV } from "@/lib/csv-export";
 import { ScrollText, FileDown } from "lucide-react";
 
@@ -28,7 +29,7 @@ const AccountLedgerReport = () => {
       dateFrom, dateTo, branchId: branch, accountId: selectedAccount, statuses,
     });
     const acc = accounts.find((a) => a.id === selectedAccount);
-    let runBal = acc ? (acc.opening_balance_type === "debit" ? num(acc.opening_balance) : -num(acc.opening_balance)) : 0;
+    let runBal = acc ? signedOpeningBalance(acc.opening_balance, acc.opening_balance_type) : 0;
 
     // Fetch counter-accounts (other ledger names in the same vouchers), chunked
     const voucherIds = Array.from(new Set(entries.map((e: any) => e.acc_vouchers?.id).filter(Boolean)));
@@ -128,7 +129,7 @@ const AccountLedgerReport = () => {
         {selectedAcc && (
           <div className="mb-3 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">{selectedAcc.account_code}</span> — {selectedAcc.account_name} ({selectedAcc.account_type})
-            {" | Opening: "}{fc(selectedAcc.opening_balance_type === "debit" ? num(selectedAcc.opening_balance) : -num(selectedAcc.opening_balance))}
+            {" | Opening: "}{fc(signedOpeningBalance(selectedAcc.opening_balance, selectedAcc.opening_balance_type))}
           </div>
         )}
         <Card><CardContent className="p-0">

@@ -6,6 +6,7 @@ import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { PiggyBank } from "lucide-react";
+import { signedOpeningBalance } from "@/lib/balance-format";
 
 const CashBookReport = () => {
   const { accounts, branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
@@ -35,7 +36,7 @@ const CashBookReport = () => {
     query = query.order("acc_vouchers(voucher_date)");
 
     const { data: entries } = await query;
-    let runBal = cashAccounts.reduce((s, a) => s + (a.opening_balance_type === "debit" ? a.opening_balance : -a.opening_balance), 0);
+    let runBal = cashAccounts.reduce((s, a) => s + signedOpeningBalance(a.opening_balance, a.opening_balance_type), 0);
 
     const result = (entries || []).map((e: any) => {
       runBal += Number(e.debit) - Number(e.credit);

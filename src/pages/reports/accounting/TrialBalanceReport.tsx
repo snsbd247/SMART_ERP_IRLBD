@@ -5,6 +5,7 @@ import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
+import { signedOpeningBalance } from "@/lib/balance-format";
 import { FileText } from "lucide-react";
 
 const TrialBalanceReport = () => {
@@ -24,9 +25,9 @@ const TrialBalanceReport = () => {
 
     const result = accounts.map((a) => {
       const txn = balMap.get(a.id) || { debit: 0, credit: 0 };
-      const openDr = a.opening_balance_type === "debit" ? num(a.opening_balance) : 0;
-      const openCr = a.opening_balance_type === "credit" ? num(a.opening_balance) : 0;
-      const openBal = openDr - openCr;
+      const openBal = signedOpeningBalance(a.opening_balance, a.opening_balance_type);
+      const openDr = openBal > 0 ? openBal : 0;
+      const openCr = openBal < 0 ? -openBal : 0;
       const closingBal = openBal + txn.debit - txn.credit;
       return { ...a, opening: openBal, total_debit: txn.debit, total_credit: txn.credit, closing: closingBal };
     }).filter((a) => a.total_debit > 0 || a.total_credit > 0 || a.opening !== 0);

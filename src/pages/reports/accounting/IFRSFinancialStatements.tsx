@@ -10,6 +10,7 @@ import {
 import { ReportHeader } from "@/components/ReportHeader";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { signedOpeningBalance } from "@/lib/balance-format";
 import { supabase } from "@/integrations/supabase/client";
 import { printReport } from "@/lib/report-utils";
 import {
@@ -116,9 +117,7 @@ const IFRSFinancialStatements = () => {
     const moveMap = new Map<string, number>();
 
     accounts.forEach(a => {
-      const dr = a.opening_balance_type === "debit" ? Number(a.opening_balance) : 0;
-      const cr = a.opening_balance_type === "credit" ? Number(a.opening_balance) : 0;
-      balMap.set(a.id, dr - cr);
+      balMap.set(a.id, signedOpeningBalance(a.opening_balance, a.opening_balance_type));
       moveMap.set(a.id, 0);
     });
 

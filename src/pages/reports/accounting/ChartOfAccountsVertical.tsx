@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
+import { signedOpeningBalance } from "@/lib/balance-format";
 import { supabase } from "@/integrations/supabase/client";
 import { ListTree } from "lucide-react";
 
@@ -49,9 +50,7 @@ const ChartOfAccountsVertical = () => {
 
     const map = new Map<string, number>();
     accounts.forEach((a) => {
-      const openDr = a.opening_balance_type === "debit" ? Number(a.opening_balance) : 0;
-      const openCr = a.opening_balance_type === "credit" ? Number(a.opening_balance) : 0;
-      map.set(a.id, openDr - openCr);
+      map.set(a.id, signedOpeningBalance(a.opening_balance, a.opening_balance_type));
     });
     (entries || []).forEach((e: any) => {
       map.set(e.account_id, (map.get(e.account_id) || 0) + Number(e.debit) - Number(e.credit));

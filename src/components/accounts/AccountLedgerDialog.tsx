@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { signedOpeningBalance } from "@/lib/balance-format";
 
 interface Props {
   accountId: string | null;
@@ -43,7 +44,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
 
       if (error) console.error("Ledger fetch error:", error);
 
-      let runBal = openingBalanceType === "debit" ? openingBalance : -openingBalance;
+      let runBal = signedOpeningBalance(openingBalance, openingBalanceType);
 
       const mapped = (data || []).map((e: any) => {
         runBal += Number(e.debit) - Number(e.credit);
@@ -65,7 +66,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
     fetchLedger();
   }, [accountId, open, openingBalance, openingBalanceType]);
 
-  const closingBalance = entries.length > 0 ? entries[entries.length - 1].running_balance : (openingBalanceType === "debit" ? openingBalance : -openingBalance);
+  const closingBalance = entries.length > 0 ? entries[entries.length - 1].running_balance : signedOpeningBalance(openingBalance, openingBalanceType);
   const totalDebit = entries.reduce((s, e) => s + e.debit, 0);
   const totalCredit = entries.reduce((s, e) => s + e.credit, 0);
 
