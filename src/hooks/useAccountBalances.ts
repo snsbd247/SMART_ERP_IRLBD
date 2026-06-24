@@ -80,7 +80,7 @@ export function useAccountBalances(filters: Filters = {}) {
         setAccounts((accs as AccountRow[]).map((a) => {
           const txn = balMap.get(a.id) || { debit: 0, credit: 0 };
           const opening = Number(a.opening_balance) || 0;
-          const openSigned = a.opening_balance_type === "debit" ? opening : -opening;
+          const openSigned = signedOpeningBalance(opening, a.opening_balance_type);
           const closing = openSigned + txn.debit - txn.credit;
           return { ...a, total_debit: txn.debit, total_credit: txn.credit, closing_balance: Math.abs(closing), closing_balance_type: (closing >= 0 ? "debit" : "credit") as "debit" | "credit" };
         }));
