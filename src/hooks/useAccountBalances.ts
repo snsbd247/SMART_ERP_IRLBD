@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
+import { signedOpeningBalance } from "@/lib/balance-format";
 
 export interface AccountWithBalance {
   id: string;
