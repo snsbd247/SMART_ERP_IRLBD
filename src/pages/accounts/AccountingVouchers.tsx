@@ -22,7 +22,7 @@ import { Plus, Check, X, FileText, Trash2, RotateCcw, Pencil, ArrowLeftRight, Lo
 import { AuditLogViewer } from "@/components/AuditLogViewer";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { PrintLayout } from "@/components/PrintLayout";
-import { formatDateDMY } from "@/lib/date-format";
+import { formatDateDMY, toDateInputValue } from "@/lib/date-format";
 import {
   evaluateVoucherPermission,
   logVoucherPermissionDenial,
@@ -301,7 +301,7 @@ const AccountingVouchers = () => {
   const openEdit = async (v: Voucher) => {
     const { entries: data } = await voucherApi.get(v.id);
     setEditingVoucher(v);
-    setFormDate(String(v.voucher_date || "").slice(0, 10));
+    setFormDate(toDateInputValue(v.voucher_date));
     setFormBranch(v.branch_id || "");
     setFormFinYear(v.financial_year_id || "");
     setFormDesc(v.description || ""); setDescAuto(false);
