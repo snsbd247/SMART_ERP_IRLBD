@@ -10,6 +10,7 @@ import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
 import { signedOpeningBalance } from "@/lib/balance-format";
+import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
 import { downloadCSV } from "@/lib/csv-export";
 import { BookOpen, FileDown } from "lucide-react";
 
