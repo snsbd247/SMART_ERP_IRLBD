@@ -33,7 +33,7 @@ const FinancialSummaryDashboard = () => {
 
       accounts.forEach((a) => {
         const txnBal = balMap.get(a.id) || 0;
-        const openBal = a.opening_balance_type === "debit" ? a.opening_balance : -a.opening_balance;
+        const openBal = signedOpeningBalance(a.opening_balance, a.opening_balance_type);
         const totalBal = openBal + txnBal;
 
         if (a.account_type === "income") revenue += Math.abs(txnBal);
