@@ -37,7 +37,7 @@ const BankBookReport = () => {
     let runBal = opening;
 
     const result = (entries || []).map((e: any) => {
-      runBal += Number(e.debit) - Number(e.credit);
+      runBal += Number(e.credit) - Number(e.debit);
       const acc = bankAccounts.find((a) => a.id === e.account_id);
       return {
         ...e,
