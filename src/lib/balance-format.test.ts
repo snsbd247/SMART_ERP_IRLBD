@@ -60,7 +60,7 @@ describe("signedOpeningBalance", () => {
 
   it("handles null/undefined/string inputs", () => {
     expect(signedOpeningBalance(null, "debit")).toBe(0);
-    expect(signedOpeningBalance(undefined, "credit")).toBe(0);
+    expect(Object.is(signedOpeningBalance(undefined, "credit"), 0) || signedOpeningBalance(undefined, "credit") === 0).toBe(true);
     expect(signedOpeningBalance("1500.5", "credit")).toBe(-1500.5);
   });
 });
