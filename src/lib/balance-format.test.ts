@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { formatBalance, balanceToneClass } from "@/lib/balance-format";
+import { describe, it, expect, vi } from "vitest";
+import { formatBalance, balanceToneClass, signedOpeningBalance } from "@/lib/balance-format";
 
 const fc = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
