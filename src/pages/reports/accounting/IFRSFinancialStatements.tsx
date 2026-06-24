@@ -10,6 +10,7 @@ import {
 import { ReportHeader } from "@/components/ReportHeader";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { signedOpeningBalance } from "@/lib/balance-format";
 import { supabase } from "@/integrations/supabase/client";
 import { printReport } from "@/lib/report-utils";
 import {
