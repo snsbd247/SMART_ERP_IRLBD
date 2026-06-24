@@ -87,7 +87,17 @@ const BankBookReport = () => {
             <TableBody>
               {data.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Click "Generate" to load bank transactions</TableCell></TableRow>
-              ) : data.map((e) => (
+              ) : (<>
+                <TableRow className="bg-muted/40">
+                  <TableCell>{dateFrom}</TableCell>
+                  <TableCell className="font-medium text-sm">All Bank Accounts</TableCell>
+                  <TableCell className="font-mono text-xs">—</TableCell>
+                  <TableCell className="font-medium">Opening Balance</TableCell>
+                  <TableCell className="text-right tabular-nums" />
+                  <TableCell className="text-right tabular-nums" />
+                  <TableCell className={`text-right tabular-nums font-medium ${openingBalance < 0 ? "text-destructive" : ""}`}>{fc(openingBalance)}</TableCell>
+                </TableRow>
+                {data.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell>{e.voucher_date}</TableCell>
                   <TableCell className="font-medium text-sm">{e.account_name}</TableCell>
@@ -99,7 +109,7 @@ const BankBookReport = () => {
                     {fc(e.running_balance)}
                   </TableCell>
                 </TableRow>
-              ))}
+              ))}</>)}
             </TableBody>
           </Table>
         </CardContent></Card>
