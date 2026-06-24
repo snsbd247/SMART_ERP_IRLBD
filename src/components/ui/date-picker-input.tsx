@@ -96,6 +96,10 @@ export const DatePickerInput = React.forwardRef<HTMLInputElement, DatePickerInpu
     const minDate = isoToLocalDate(min == null ? "" : String(min));
     const maxDate = isoToLocalDate(max == null ? "" : String(max));
 
+    // Visual invalid state: user typed something that does not parse to a
+    // valid DD-MM-YYYY date. Helps prevent saving malformed values.
+    const isInvalid = text.trim() !== "" && !dmyToIso(text);
+
     return (
       <div className={cn("relative", className)}>
         <input
@@ -109,9 +113,12 @@ export const DatePickerInput = React.forwardRef<HTMLInputElement, DatePickerInpu
           readOnly={readOnly}
           onChange={handleTextChange}
           onBlur={handleBlur}
+          aria-invalid={isInvalid || undefined}
+          title={isInvalid ? "Invalid date. Use DD-MM-YYYY format." : undefined}
           className={cn(inputClasses, "pr-10", className)}
           {...props}
         />
+
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <button
