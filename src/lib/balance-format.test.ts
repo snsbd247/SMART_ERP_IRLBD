@@ -1,5 +1,11 @@
-import { describe, it, expect, vi } from "vitest";
-import { formatBalance, balanceToneClass, signedOpeningBalance } from "@/lib/balance-format";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import {
+  formatBalance,
+  balanceToneClass,
+  signedOpeningBalance,
+  signedOpeningBalanceFromRow,
+  normalizeOpeningBalance,
+} from "@/lib/balance-format";
 
 const fc = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -58,10 +64,74 @@ describe("signedOpeningBalance", () => {
     warn.mockRestore();
   });
 
+  it("includes account identifiers in the warning payload", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    signedOpeningBalance(-1, "credit", {
+      accountId: "acc-1",
+      accountCode: "1010",
+      accountName: "HBL CC",
+      voucherId: "v-9",
+      voucherType: "payment",
+    });
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("[signedOpeningBalance]"),
+      expect.objectContaining({
+        accountId: "acc-1",
+        accountCode: "1010",
+        accountName: "HBL CC",
+        voucherId: "v-9",
+        voucherType: "payment",
+        openingBalance: -1,
+        openingBalanceType: "credit",
+      })
+    );
+    warn.mockRestore();
+  });
+
+  it("throws when VITE_BALANCE_FAIL_FAST=true", () => {
+    const prev = (process as any).env.VITE_BALANCE_FAIL_FAST;
+    (process as any).env.VITE_BALANCE_FAIL_FAST = "true";
+    try {
+      expect(() => signedOpeningBalance(-1, "credit", { accountCode: "1010" }))
+        .toThrow(/signedOpeningBalance/);
+    } finally {
+      if (prev === undefined) delete (process as any).env.VITE_BALANCE_FAIL_FAST;
+      else (process as any).env.VITE_BALANCE_FAIL_FAST = prev;
+    }
+  });
+
   it("handles null/undefined/string inputs", () => {
     expect(signedOpeningBalance(null, "debit")).toBe(0);
-    expect(Object.is(signedOpeningBalance(undefined, "credit"), 0) || signedOpeningBalance(undefined, "credit") === 0).toBe(true);
+    expect(signedOpeningBalance(undefined, "credit") === 0).toBe(true);
     expect(signedOpeningBalance("1500.5", "credit")).toBe(-1500.5);
+  });
+});
+
+describe("signedOpeningBalanceFromRow / normalizeOpeningBalance", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("derives the signed balance from a CoA-shaped row", () => {
+    expect(
+      signedOpeningBalanceFromRow({
+        id: "a1",
+        account_code: "1010",
+        account_name: "Cash",
+        opening_balance: 100,
+        opening_balance_type: "credit",
+      })
+    ).toBe(-100);
+  });
+
+  it("normalize attaches signed_opening_balance and never double-negates", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const row = normalizeOpeningBalance({
+      id: "a1",
+      account_code: "1010",
+      account_name: "HBL CC",
+      opening_balance: -16407762.86,
+      opening_balance_type: "credit",
+    });
+    expect(row.signed_opening_balance).toBe(-16407762.86);
   });
 });
 
