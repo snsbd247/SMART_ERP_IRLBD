@@ -11,6 +11,7 @@ import { signedOpeningBalance } from "@/lib/balance-format";
 const CashBookReport = () => {
   const { accounts, branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
   const [data, setData] = useState<any[]>([]);
+  const [openingBalance, setOpeningBalance] = useState<number>(0);
 
   const fetchData = async () => {
     setLoading(true);
@@ -36,7 +37,9 @@ const CashBookReport = () => {
     query = query.order("acc_vouchers(voucher_date)");
 
     const { data: entries } = await query;
-    let runBal = cashAccounts.reduce((s, a) => s + signedOpeningBalance(a.opening_balance, a.opening_balance_type), 0);
+    const opening = cashAccounts.reduce((s, a) => s + signedOpeningBalance(a.opening_balance, a.opening_balance_type), 0);
+    setOpeningBalance(opening);
+    let runBal = opening;
 
     const result = (entries || []).map((e: any) => {
       runBal += Number(e.debit) - Number(e.credit);
