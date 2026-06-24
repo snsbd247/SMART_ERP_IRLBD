@@ -42,7 +42,7 @@ const CashBookReport = () => {
     let runBal = opening;
 
     const result = (entries || []).map((e: any) => {
-      runBal += Number(e.debit) - Number(e.credit);
+      runBal += Number(e.credit) - Number(e.debit);
       return {
         ...e,
         voucher_number: e.acc_vouchers?.voucher_number,
