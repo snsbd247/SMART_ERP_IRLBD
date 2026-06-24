@@ -32,7 +32,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { validateEntryNature } from "@/lib/account-nature";
 import { logAudit } from "@/lib/audit-utils";
-import { signedOpeningBalance } from "@/lib/balance-format";
+import { signedOpeningBalance, formatSignedBalance } from "@/lib/balance-format";
 
 
 
@@ -866,7 +866,7 @@ const AccountingVouchers = () => {
                               onChange={(v) => updateEntry(entry.id, "account_id", v)}
                             />
                             <div className="mt-1 text-xs text-muted-foreground">
-                              Curr Bal : {bal ? `${bal.signed < 0 ? "-" : ""}${fc(Math.abs(bal.signed))}` : ""}
+                              Curr Bal : {bal ? formatSignedBalance(bal.signed, fc) : ""}
                             </div>
                             {import.meta.env.DEV && dbg && (
                               <div className="mt-1 rounded border border-dashed border-amber-400/60 bg-amber-50/60 dark:bg-amber-950/20 px-2 py-1 text-[10px] font-mono leading-tight text-amber-900 dark:text-amber-200">
