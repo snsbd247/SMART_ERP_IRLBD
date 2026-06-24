@@ -117,9 +117,7 @@ const IFRSFinancialStatements = () => {
     const moveMap = new Map<string, number>();
 
     accounts.forEach(a => {
-      const dr = a.opening_balance_type === "debit" ? Number(a.opening_balance) : 0;
-      const cr = a.opening_balance_type === "credit" ? Number(a.opening_balance) : 0;
-      balMap.set(a.id, dr - cr);
+      balMap.set(a.id, signedOpeningBalance(a.opening_balance, a.opening_balance_type));
       moveMap.set(a.id, 0);
     });
 
