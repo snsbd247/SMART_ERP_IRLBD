@@ -42,6 +42,22 @@ export const signedOpeningBalance = (
   openingBalanceType: string | null | undefined
 ): number => {
   const n = Number(openingBalance) || 0;
-  if (n < 0) return n;
+  if (n < 0) {
+    // Stored value is already signed — never double-negate even if the type
+    // says "credit". Surface a one-time dev warning so the data anomaly is
+    // visible without breaking production users.
+    if (
+      openingBalanceType === "credit" &&
+      typeof console !== "undefined" &&
+      typeof process !== "undefined" &&
+      (process as any).env?.NODE_ENV !== "production"
+    ) {
+      console.warn(
+        "[signedOpeningBalance] stored opening_balance is negative AND type='credit'; treating stored value as signed to avoid double-negation",
+        { openingBalance: n, openingBalanceType }
+      );
+    }
+    return n;
+  }
   return openingBalanceType === "credit" ? -n : n;
 };
