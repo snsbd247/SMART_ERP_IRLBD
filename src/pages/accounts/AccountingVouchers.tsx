@@ -353,6 +353,20 @@ const AccountingVouchers = () => {
       toast({ title: "At least 2 entries required", variant: "destructive" });
       return;
     }
+    // Front-end debit/credit nature validation — blocks hard errors,
+    // surfaces contra-side warnings as a non-blocking toast.
+    const nature = validateEntryNature(
+      validEntries.map((e) => ({ account_id: e.account_id, dr_cr: e.dr_cr, debit: e.debit, credit: e.credit })),
+      accountsWithBal.map((a) => ({ id: a.id, account_code: a.account_code, account_name: a.account_name, account_type: a.account_type })),
+    );
+    if (nature.errors.length > 0) {
+      toast({ title: "Entry validation failed", description: nature.errors.map((i) => i.message).join("\n"), variant: "destructive" });
+      return;
+    }
+    if (nature.warnings.length > 0) {
+      toast({ title: "Heads up — contra posting", description: nature.warnings.map((i) => i.message).join("\n") });
+    }
+
     setSaving(true);
     try {
       if (editingVoucher) {
