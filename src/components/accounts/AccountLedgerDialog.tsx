@@ -83,7 +83,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
             Opening: {fc(openingBalance)} {openingBalanceType === "debit" ? "Dr" : "Cr"}
           </Badge>
           <Badge variant="outline" className="text-sm px-3 py-1">
-            Closing: {fc(Math.abs(closingBalance))} {closingBalance >= 0 ? "Dr" : "Cr"}
+            Closing: <span className={closingBalance < 0 ? "text-destructive" : ""}>{fc(closingBalance)}</span>
           </Badge>
         </div>
 
@@ -125,7 +125,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
                 <TableCell className="text-right tabular-nums">{e.debit > 0 ? fc(e.debit) : ""}</TableCell>
                 <TableCell className="text-right tabular-nums">{e.credit > 0 ? fc(e.credit) : ""}</TableCell>
                 <TableCell className={`text-right tabular-nums font-medium ${e.running_balance < 0 ? "text-destructive" : ""}`}>
-                  {fc(Math.abs(e.running_balance))} {e.running_balance >= 0 ? "Dr" : "Cr"}
+                  {fc(e.running_balance)}
                 </TableCell>
               </TableRow>
             ))}
@@ -135,8 +135,8 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
               <TableCell colSpan={3} className="text-right">Total</TableCell>
               <TableCell className="text-right tabular-nums">{fc(totalDebit)}</TableCell>
               <TableCell className="text-right tabular-nums">{fc(totalCredit)}</TableCell>
-              <TableCell className="text-right tabular-nums">
-                {fc(Math.abs(closingBalance))} {closingBalance >= 0 ? "Dr" : "Cr"}
+              <TableCell className={`text-right tabular-nums ${closingBalance < 0 ? "text-destructive" : ""}`}>
+                {fc(closingBalance)}
               </TableCell>
             </TableRow>
           </TableBody>
