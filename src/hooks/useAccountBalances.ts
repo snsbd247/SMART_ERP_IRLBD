@@ -16,6 +16,9 @@ export interface AccountWithBalance {
   total_credit: number;
   closing_balance: number;
   closing_balance_type: "debit" | "credit";
+  /** Signed closing balance: positive = Dr (or net positive), negative = Cr (or overdraft).
+   *  Single source of truth for any UI using the no-Dr/Cr "signed" convention. */
+  signed_balance: number;
 }
 
 interface Filters {
@@ -31,7 +34,7 @@ interface VoucherEntryBalanceRow {
   credit: number | string | null;
 }
 
-type AccountRow = Omit<AccountWithBalance, "total_debit" | "total_credit" | "closing_balance" | "closing_balance_type">;
+type AccountRow = Omit<AccountWithBalance, "total_debit" | "total_credit" | "closing_balance" | "closing_balance_type" | "signed_balance">;
 
 const PAGE_SIZE = 1000;
 
@@ -82,7 +85,7 @@ export function useAccountBalances(filters: Filters = {}) {
           const opening = Number(a.opening_balance) || 0;
           const openSigned = signedOpeningBalance(opening, a.opening_balance_type);
           const closing = openSigned + txn.credit - txn.debit;
-          return { ...a, total_debit: txn.debit, total_credit: txn.credit, closing_balance: Math.abs(closing), closing_balance_type: (closing >= 0 ? "debit" : "credit") as "debit" | "credit" };
+          return { ...a, total_debit: txn.debit, total_credit: txn.credit, closing_balance: Math.abs(closing), closing_balance_type: (closing >= 0 ? "debit" : "credit") as "debit" | "credit", signed_balance: closing };
         }));
       } catch {
         setAccounts([]);
@@ -107,13 +110,17 @@ export function useAccountBalances(filters: Filters = {}) {
       }
 
       // Show accounts immediately with opening-only balances, then refine.
-      setAccounts(accs.map((a) => ({
-        ...a,
-        total_debit: 0,
-        total_credit: 0,
-        closing_balance: Math.abs(Number(a.opening_balance) || 0),
-        closing_balance_type: (a.opening_balance_type === "credit" ? "credit" : "debit") as "debit" | "credit",
-      })));
+      setAccounts(accs.map((a) => {
+        const openSigned = signedOpeningBalance(a.opening_balance, a.opening_balance_type);
+        return {
+          ...a,
+          total_debit: 0,
+          total_credit: 0,
+          closing_balance: Math.abs(openSigned),
+          closing_balance_type: (openSigned >= 0 ? "debit" : "credit") as "debit" | "credit",
+          signed_balance: openSigned,
+        };
+      }));
       setLoading(false);
 
       // 2. Fetch approved voucher IDs that match the filters first.
@@ -166,6 +173,7 @@ export function useAccountBalances(filters: Filters = {}) {
           total_credit: txn.credit,
           closing_balance: Math.abs(closing),
           closing_balance_type: (closing >= 0 ? "debit" : "credit") as "debit" | "credit",
+          signed_balance: closing,
         };
       });
 

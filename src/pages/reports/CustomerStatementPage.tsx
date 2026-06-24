@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatSignedBalance } from "@/lib/balance-format";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { printReport } from "@/lib/report-utils";
 import { ReportHeader } from "@/components/ReportHeader";
@@ -188,7 +189,7 @@ const CustomerStatementPage = () => {
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Period: {dateFrom} to {dateTo}</p>
-              <p className="text-sm font-semibold text-foreground mt-1">Closing Balance: <span className={closingBalance >= 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}>{fc(Math.abs(closingBalance))}</span> {closingBalance >= 0 ? "Dr" : "Cr"}</p>
+              <p className="text-sm font-semibold text-foreground mt-1">Closing Balance: <span className={closingBalance >= 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}>{formatSignedBalance(closingBalance, fc)}</span></p>
             </div>
           </div>
 
@@ -217,7 +218,7 @@ const CustomerStatementPage = () => {
                     <TableCell className="text-xs text-muted-foreground">{e.description}</TableCell>
                     <TableCell className="text-xs text-right tabular-nums">{e.debit > 0 ? fc(e.debit) : "—"}</TableCell>
                     <TableCell className="text-xs text-right tabular-nums">{e.credit > 0 ? fc(e.credit) : "—"}</TableCell>
-                    <TableCell className="text-xs text-right tabular-nums font-medium">{fc(Math.abs(e.balance))} {e.balance >= 0 ? "Dr" : "Cr"}</TableCell>
+                    <TableCell className="text-xs text-right tabular-nums font-medium">{formatSignedBalance(e.balance, fc)}</TableCell>
                   </TableRow>
                 ))}
                 {/* Total Row */}
@@ -225,7 +226,7 @@ const CustomerStatementPage = () => {
                   <TableCell colSpan={4} className="text-xs font-bold">Total / Closing Balance</TableCell>
                   <TableCell className="text-xs text-right tabular-nums font-bold">{fc(totalDebit)}</TableCell>
                   <TableCell className="text-xs text-right tabular-nums font-bold">{fc(totalCredit)}</TableCell>
-                  <TableCell className="text-xs text-right tabular-nums font-bold">{fc(Math.abs(closingBalance))} {closingBalance >= 0 ? "Dr" : "Cr"}</TableCell>
+                  <TableCell className="text-xs text-right tabular-nums font-bold">{formatSignedBalance(closingBalance, fc)}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
