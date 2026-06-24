@@ -129,7 +129,24 @@ const GeneralLedgerReport = () => {
                     ? `No ${statusFilter === "both" ? "approved or posted" : statusFilter} voucher entries found for the selected filters.`
                     : 'Select filters and click "Generate"'}
                 </TableCell></TableRow>
-              ) : data.map((e) => (
+              ) : (<>
+                {selectedAccount !== "all" && (() => {
+                  const acc = accounts.find((a) => a.id === selectedAccount);
+                  if (!acc) return null;
+                  const op = signedOpeningBalance(acc.opening_balance, acc.opening_balance_type);
+                  return (
+                    <TableRow className="bg-muted/40">
+                      <TableCell className="text-sm">{dateFrom}</TableCell>
+                      <TableCell className="font-medium text-sm">{acc.account_name}</TableCell>
+                      <TableCell className="font-mono text-xs">—</TableCell>
+                      <TableCell className="font-medium">Opening Balance</TableCell>
+                      <TableCell className="text-right tabular-nums" />
+                      <TableCell className="text-right tabular-nums" />
+                      <TableCell className={`text-right tabular-nums font-medium ${op < 0 ? "text-destructive" : ""}`}>{fc(op)}</TableCell>
+                    </TableRow>
+                  );
+                })()}
+                {data.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="text-sm">{e.voucher_date}</TableCell>
                   <TableCell className="font-medium text-sm">{e.account_name}</TableCell>
@@ -141,7 +158,7 @@ const GeneralLedgerReport = () => {
                     {fc(e.running_balance)}
                   </TableCell>
                 </TableRow>
-              ))}
+              ))}</>)}
             </TableBody>
           </Table>
         </CardContent></Card>

@@ -11,6 +11,7 @@ import { signedOpeningBalance } from "@/lib/balance-format";
 const BankBookReport = () => {
   const { accounts, branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
   const [data, setData] = useState<any[]>([]);
+  const [openingBalance, setOpeningBalance] = useState<number>(0);
 
   const fetchData = async () => {
     setLoading(true);
@@ -31,7 +32,9 @@ const BankBookReport = () => {
     query = query.order("acc_vouchers(voucher_date)");
 
     const { data: entries } = await query;
-    let runBal = bankAccounts.reduce((s, a) => s + signedOpeningBalance(a.opening_balance, a.opening_balance_type), 0);
+    const opening = bankAccounts.reduce((s, a) => s + signedOpeningBalance(a.opening_balance, a.opening_balance_type), 0);
+    setOpeningBalance(opening);
+    let runBal = opening;
 
     const result = (entries || []).map((e: any) => {
       runBal += Number(e.debit) - Number(e.credit);
@@ -84,7 +87,17 @@ const BankBookReport = () => {
             <TableBody>
               {data.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Click "Generate" to load bank transactions</TableCell></TableRow>
-              ) : data.map((e) => (
+              ) : (<>
+                <TableRow className="bg-muted/40">
+                  <TableCell>{dateFrom}</TableCell>
+                  <TableCell className="font-medium text-sm">All Bank Accounts</TableCell>
+                  <TableCell className="font-mono text-xs">—</TableCell>
+                  <TableCell className="font-medium">Opening Balance</TableCell>
+                  <TableCell className="text-right tabular-nums" />
+                  <TableCell className="text-right tabular-nums" />
+                  <TableCell className={`text-right tabular-nums font-medium ${openingBalance < 0 ? "text-destructive" : ""}`}>{fc(openingBalance)}</TableCell>
+                </TableRow>
+                {data.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell>{e.voucher_date}</TableCell>
                   <TableCell className="font-medium text-sm">{e.account_name}</TableCell>
@@ -96,7 +109,7 @@ const BankBookReport = () => {
                     {fc(e.running_balance)}
                   </TableCell>
                 </TableRow>
-              ))}
+              ))}</>)}
             </TableBody>
           </Table>
         </CardContent></Card>
