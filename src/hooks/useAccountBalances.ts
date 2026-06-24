@@ -158,7 +158,7 @@ export function useAccountBalances(filters: Filters = {}) {
       // 5. Compute leaf balances
       const result: AccountWithBalance[] = accs.map((a) => {
         const txn = balMap.get(a.id) || { debit: 0, credit: 0 };
-        const openSigned = a.opening_balance_type === "debit" ? a.opening_balance : -a.opening_balance;
+        const openSigned = signedOpeningBalance(a.opening_balance, a.opening_balance_type);
         const closing = openSigned + txn.debit - txn.credit;
         return {
           ...a,
