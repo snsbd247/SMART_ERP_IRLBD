@@ -29,7 +29,7 @@ const AccountLedgerReport = () => {
       dateFrom, dateTo, branchId: branch, accountId: selectedAccount, statuses,
     });
     const acc = accounts.find((a) => a.id === selectedAccount);
-    let runBal = acc ? (acc.opening_balance_type === "debit" ? num(acc.opening_balance) : -num(acc.opening_balance)) : 0;
+    let runBal = acc ? signedOpeningBalance(acc.opening_balance, acc.opening_balance_type) : 0;
 
     // Fetch counter-accounts (other ledger names in the same vouchers), chunked
     const voucherIds = Array.from(new Set(entries.map((e: any) => e.acc_vouchers?.id).filter(Boolean)));
