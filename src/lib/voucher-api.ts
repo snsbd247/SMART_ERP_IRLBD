@@ -25,7 +25,17 @@ async function laravelFetch<T = any>(path: string, init?: RequestInit): Promise<
   const json = text ? JSON.parse(text) : null;
   if (!res.ok) {
     const msg = json?.message || json?.error || `HTTP ${res.status}`;
-    throw new Error(msg);
+    const err = new Error(msg) as Error & {
+      status?: number;
+      correlationId?: string;
+      requiredAnyOf?: string[];
+      payload?: any;
+    };
+    err.status = res.status;
+    err.correlationId = json?.correlation_id ?? json?.data?.correlation_id;
+    err.requiredAnyOf = json?.required_any_of ?? json?.data?.required_any_of;
+    err.payload = json;
+    throw err;
   }
   return json as T;
 }
