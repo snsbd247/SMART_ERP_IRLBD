@@ -170,13 +170,13 @@ const AccountingVouchers = () => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const { accounts: accountsWithBal } = useAccountBalances();
-  const balanceMap = new Map(accountsWithBal.map((a) => [a.id, { amt: a.closing_balance, type: a.closing_balance_type, signed: (a.closing_balance_type === "credit" ? -1 : 1) * a.closing_balance }]));
+  const balanceMap = new Map(accountsWithBal.map((a) => [a.id, { signed: a.signed_balance }]));
   // Dev debug — Opening / Debit / Credit / Closing per account for the form.
   const debugMap = new Map(accountsWithBal.map((a) => [a.id, {
     opening: signedOpeningBalance(a.opening_balance, a.opening_balance_type),
     debit: a.total_debit,
     credit: a.total_credit,
-    closing: (a.closing_balance_type === "credit" ? -1 : 1) * a.closing_balance,
+    closing: a.signed_balance,
     account_type: a.account_type,
   }]));
 

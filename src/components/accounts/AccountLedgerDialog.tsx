@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { signedOpeningBalance } from "@/lib/balance-format";
+import { signedOpeningBalance, formatSignedBalance } from "@/lib/balance-format";
 
 interface Props {
   accountId: string | null;
@@ -81,10 +81,10 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
 
         <div className="flex gap-4 mb-4">
           <Badge variant="outline" className="text-sm px-3 py-1">
-            Opening: {fc(openingBalance)} {openingBalanceType === "debit" ? "Dr" : "Cr"}
+            Opening: {formatSignedBalance(signedOpeningBalance(openingBalance, openingBalanceType), fc)}
           </Badge>
           <Badge variant="outline" className="text-sm px-3 py-1">
-            Closing: <span className={closingBalance < 0 ? "text-destructive" : ""}>{fc(closingBalance)}</span>
+            Closing: <span className={closingBalance < 0 ? "text-destructive" : ""}>{formatSignedBalance(closingBalance, fc)}</span>
           </Badge>
         </div>
 
@@ -110,7 +110,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
                 {openingBalanceType === "credit" && openingBalance > 0 ? fc(openingBalance) : ""}
               </TableCell>
               <TableCell className="text-right tabular-nums font-medium">
-                {openingBalance > 0 ? `${fc(openingBalance)} ${openingBalanceType === "debit" ? "Dr" : "Cr"}` : "—"}
+                {openingBalance > 0 ? formatSignedBalance(signedOpeningBalance(openingBalance, openingBalanceType), fc) : "—"}
               </TableCell>
             </TableRow>
 
@@ -126,7 +126,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
                 <TableCell className="text-right tabular-nums">{e.debit > 0 ? fc(e.debit) : ""}</TableCell>
                 <TableCell className="text-right tabular-nums">{e.credit > 0 ? fc(e.credit) : ""}</TableCell>
                 <TableCell className={`text-right tabular-nums font-medium ${e.running_balance < 0 ? "text-destructive" : ""}`}>
-                  {fc(e.running_balance)}
+                  {formatSignedBalance(e.running_balance, fc)}
                 </TableCell>
               </TableRow>
             ))}
@@ -137,7 +137,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
               <TableCell className="text-right tabular-nums">{fc(totalDebit)}</TableCell>
               <TableCell className="text-right tabular-nums">{fc(totalCredit)}</TableCell>
               <TableCell className={`text-right tabular-nums ${closingBalance < 0 ? "text-destructive" : ""}`}>
-                {fc(closingBalance)}
+                {formatSignedBalance(closingBalance, fc)}
               </TableCell>
             </TableRow>
           </TableBody>

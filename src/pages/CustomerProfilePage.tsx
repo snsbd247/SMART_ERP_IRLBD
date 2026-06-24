@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatSignedBalance } from "@/lib/balance-format";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -349,7 +350,7 @@ const CustomerProfilePage = () => {
         <td class="mono">${r.reference}</td>
         <td class="right">${r.debit > 0 ? fc(r.debit) : "—"}</td>
         <td class="right">${r.credit > 0 ? fc(r.credit) : "—"}</td>
-        <td class="right" style="font-weight:600;">${fc(Math.abs(r.balance))} ${r.balance < 0 ? "Cr" : "Dr"}</td>
+        <td class="right" style="font-weight:600;">${formatSignedBalance(r.balance, fc)}</td>
       </tr>
     `).join("");
     const totalDr = ledger.reduce((s, r) => s + r.debit, 0);
@@ -378,7 +379,7 @@ const CustomerProfilePage = () => {
             <td colspan="3" class="right">Closing Balance</td>
             <td class="right">${fc(totalDr)}</td>
             <td class="right">${fc(totalCr)}</td>
-            <td class="right" style="font-size:13px;color:${closingBal >= 0 ? "#991b1b" : "#166534"};">${fc(Math.abs(closingBal))} ${closingBal < 0 ? "Cr" : "Dr"}</td>
+            <td class="right" style="font-size:13px;color:${closingBal >= 0 ? "#991b1b" : "#166534"};">${formatSignedBalance(closingBal, fc)}</td>
           </tr>
         </tbody>
       </table>
@@ -605,7 +606,7 @@ const CustomerProfilePage = () => {
                             <TableCell className="text-right tabular-nums">{row.debit > 0 ? fc(row.debit) : ""}</TableCell>
                             <TableCell className="text-right tabular-nums text-emerald-600">{row.credit > 0 ? fc(row.credit) : ""}</TableCell>
                             <TableCell className={`text-right tabular-nums font-medium ${row.balance < 0 ? "text-emerald-600" : ""}`}>
-                              {fc(Math.abs(row.balance))} {row.balance < 0 ? "Cr" : "Dr"}
+                              {formatSignedBalance(row.balance, fc)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -614,7 +615,7 @@ const CustomerProfilePage = () => {
                           <TableCell className="text-right tabular-nums">{fc(ledger.reduce((s, r) => s + r.debit, 0))}</TableCell>
                           <TableCell className="text-right tabular-nums text-emerald-600">{fc(ledger.reduce((s, r) => s + r.credit, 0))}</TableCell>
                           <TableCell className="text-right tabular-nums font-bold">
-                            {ledger.length > 0 ? `${fc(Math.abs(ledger[ledger.length - 1].balance))} ${ledger[ledger.length - 1].balance < 0 ? "Cr" : "Dr"}` : ""}
+                            {ledger.length > 0 ? formatSignedBalance(ledger[ledger.length - 1].balance, fc) : ""}
                           </TableCell>
                         </TableRow>
                       </>
