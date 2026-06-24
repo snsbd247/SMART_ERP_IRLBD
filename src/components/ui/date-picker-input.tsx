@@ -93,8 +93,8 @@ export const DatePickerInput = React.forwardRef<HTMLInputElement, DatePickerInpu
     };
 
     const selected = isoToLocalDate(iso);
-    const minDate = isoToLocalDate(min);
-    const maxDate = isoToLocalDate(max);
+    const minDate = isoToLocalDate(min == null ? "" : String(min));
+    const maxDate = isoToLocalDate(max == null ? "" : String(max));
 
     return (
       <div className={cn("relative", className)}>
