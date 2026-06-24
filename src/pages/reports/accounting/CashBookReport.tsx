@@ -43,7 +43,8 @@ const CashBookReport = () => {
     let runBal = opening;
 
     const result = (entries || []).map((e: any) => {
-      runBal += Number(e.credit) - Number(e.debit);
+    const result = (entries || []).map((e: any) => {
+      runBal = applyEntry(runBal, { debit: e.debit, credit: e.credit });
       return {
         ...e,
         voucher_number: e.acc_vouchers?.voucher_number,
@@ -52,6 +53,9 @@ const CashBookReport = () => {
         running_balance: runBal,
       };
     });
+    if (!verifyClosingBalance(opening, (entries || []) as any, runBal)) {
+      console.error("[CashBookReport] closing balance mismatch", { opening, runBal });
+    }
     setData(result);
     setLoading(false);
   };
