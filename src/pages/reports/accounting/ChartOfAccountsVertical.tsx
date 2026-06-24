@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
+import { signedOpeningBalance } from "@/lib/balance-format";
 import { supabase } from "@/integrations/supabase/client";
 import { ListTree } from "lucide-react";
 
