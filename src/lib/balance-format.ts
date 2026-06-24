@@ -9,6 +9,23 @@
  */
 export type CurrencyFormatter = (amount: number) => string;
 
+/** Canonical opening-balance direction. */
+export type OpeningBalanceType = "debit" | "credit";
+
+/**
+ * Minimal shape of a chart-of-accounts row needed to compute a signed
+ * opening balance. Wider rows (with id/name/code) are accepted via
+ * structural typing.
+ */
+export interface OpeningBalanceSource {
+  id?: string | null;
+  account_id?: string | null;
+  account_code?: string | null;
+  account_name?: string | null;
+  opening_balance: number | string | null | undefined;
+  opening_balance_type: OpeningBalanceType | string | null | undefined;
+}
+
 /**
  * Format a signed balance. Negatives keep their leading "-".
  * Uses the provided `fc` so currency symbol/position is respected.
@@ -24,6 +41,28 @@ export const formatBalance = (value: number, fc: CurrencyFormatter): string => {
 export const balanceToneClass = (value: number): string =>
   (Number(value) || 0) < 0 ? "text-destructive" : "";
 
+const isDev = (): boolean => {
+  try {
+    return (
+      typeof process !== "undefined" &&
+      (process as any).env?.NODE_ENV !== "production"
+    );
+  } catch {
+    return false;
+  }
+};
+
+const failFastEnabled = (): boolean => {
+  try {
+    return (
+      typeof process !== "undefined" &&
+      (process as any).env?.VITE_BALANCE_FAIL_FAST === "true"
+    );
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Compute the signed opening balance from a chart-of-accounts row.
  *
@@ -36,28 +75,78 @@ export const balanceToneClass = (value: number): string =>
  *
  * Rule: if the stored value is already negative, treat it as signed and
  * return it as-is. Otherwise apply the type to derive the sign.
+ *
+ * Pass `context` (account id/code/name and optional voucher id) to enrich
+ * the dev-mode warning when a stored negative value is paired with
+ * `type='credit'`. Set `VITE_BALANCE_FAIL_FAST=true` to throw instead of
+ * warn — useful in test environments to catch new bad data.
  */
+export interface SignedOpeningContext {
+  accountId?: string | null;
+  accountCode?: string | null;
+  accountName?: string | null;
+  voucherId?: string | null;
+  voucherType?: string | null;
+}
+
 export const signedOpeningBalance = (
   openingBalance: number | string | null | undefined,
-  openingBalanceType: string | null | undefined
+  openingBalanceType: OpeningBalanceType | string | null | undefined,
+  context: SignedOpeningContext = {}
 ): number => {
   const n = Number(openingBalance) || 0;
   if (n < 0) {
-    // Stored value is already signed — never double-negate even if the type
-    // says "credit". Surface a one-time dev warning so the data anomaly is
-    // visible without breaking production users.
-    if (
-      openingBalanceType === "credit" &&
-      typeof console !== "undefined" &&
-      typeof process !== "undefined" &&
-      (process as any).env?.NODE_ENV !== "production"
-    ) {
-      console.warn(
-        "[signedOpeningBalance] stored opening_balance is negative AND type='credit'; treating stored value as signed to avoid double-negation",
-        { openingBalance: n, openingBalanceType }
-      );
+    if (openingBalanceType === "credit") {
+      const payload = {
+        openingBalance: n,
+        openingBalanceType,
+        ...context,
+      };
+      const msg =
+        "[signedOpeningBalance] stored opening_balance is negative AND type='credit'; " +
+        "treating stored value as signed to avoid double-negation";
+      if (failFastEnabled()) {
+        throw new Error(`${msg} ${JSON.stringify(payload)}`);
+      }
+      if (isDev() && typeof console !== "undefined") {
+        console.warn(msg, payload);
+      }
     }
     return n;
   }
   return openingBalanceType === "credit" ? -n : n;
 };
+
+/**
+ * Convenience overload that takes a chart-of-accounts row directly and
+ * forwards its identifiers into the warning context. Use this from
+ * report code so a misconfigured account is immediately identifiable
+ * in the console.
+ */
+export const signedOpeningBalanceFromRow = (
+  row: OpeningBalanceSource,
+  extra: Pick<SignedOpeningContext, "voucherId" | "voucherType"> = {}
+): number =>
+  signedOpeningBalance(row.opening_balance, row.opening_balance_type, {
+    accountId: row.id ?? row.account_id ?? null,
+    accountCode: row.account_code ?? null,
+    accountName: row.account_name ?? null,
+    ...extra,
+  });
+
+/**
+ * Normalize a row into a single source of truth: returns the row with its
+ * computed signed opening balance attached. Downstream code should use
+ * `signed_opening_balance` instead of recomputing from raw fields, which
+ * eliminates the double-negation risk entirely.
+ */
+export type NormalizedOpeningBalance<T extends OpeningBalanceSource> = T & {
+  signed_opening_balance: number;
+};
+
+export const normalizeOpeningBalance = <T extends OpeningBalanceSource>(
+  row: T
+): NormalizedOpeningBalance<T> => ({
+  ...row,
+  signed_opening_balance: signedOpeningBalanceFromRow(row),
+});
