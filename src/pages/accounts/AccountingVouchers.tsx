@@ -417,6 +417,41 @@ const AccountingVouchers = () => {
         });
         toast({ title: "Voucher created successfully" });
       }
+      // Audit log: capture per-account computed balance fields (Opening,
+      // Debit, Credit, Closing) used by the form at save time. This makes
+      // future Current/Closing mismatches traceable to the exact figures
+      // shown to the user when they saved.
+      try {
+        const affected = validEntries.map((e) => {
+          const dbg = debugMap.get(e.account_id);
+          return {
+            account_id: e.account_id,
+            dr_cr: e.dr_cr,
+            entry_debit: e.debit,
+            entry_credit: e.credit,
+            displayed_opening: dbg?.opening ?? null,
+            displayed_total_debit: dbg?.debit ?? null,
+            displayed_total_credit: dbg?.credit ?? null,
+            displayed_closing: dbg?.closing ?? null,
+          };
+        });
+        await logAudit({
+          userId: user?.id,
+          module: "accounting",
+          action: editingVoucher ? "voucher_edit_balance_impact" : "voucher_create_balance_impact",
+          recordId: editingVoucher?.id,
+          newData: {
+            voucher_type: activeTab,
+            voucher_date: formDate,
+            total_debit: totalDebit,
+            total_credit: totalCredit,
+            affected_accounts: affected,
+          },
+        });
+      } catch {
+        // Audit-log failures must never block voucher save.
+      }
+
       if (resetForNew) {
         resetNewVoucherEntries();
       } else {
