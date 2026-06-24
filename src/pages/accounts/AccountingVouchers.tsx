@@ -735,7 +735,7 @@ const AccountingVouchers = () => {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Date</Label>
-                <Input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} />
+                <DateInput value={formDate} onChange={(v) => setFormDate(v)} />
               </div>
               <div className="space-y-2">
                 <Label>Branch</Label>
