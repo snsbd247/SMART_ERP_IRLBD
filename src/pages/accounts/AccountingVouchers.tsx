@@ -846,6 +846,7 @@ const AccountingVouchers = () => {
                   <TableBody>
                     {entries.map((entry, idx) => {
                       const bal = entry.account_id ? balanceMap.get(entry.account_id) : undefined;
+                      const dbg = entry.account_id ? debugMap.get(entry.account_id) : undefined;
                       const isLast = idx === entries.length - 1;
                       return (
                         <TableRow key={entry.id} className="align-top">
@@ -867,7 +868,17 @@ const AccountingVouchers = () => {
                             <div className="mt-1 text-xs text-muted-foreground">
                               Curr Bal : {bal ? `${fc(bal.amt)} ${bal.type === "debit" ? "Dr" : "Cr"}` : ""}
                             </div>
+                            {import.meta.env.DEV && dbg && (
+                              <div className="mt-1 rounded border border-dashed border-amber-400/60 bg-amber-50/60 dark:bg-amber-950/20 px-2 py-1 text-[10px] font-mono leading-tight text-amber-900 dark:text-amber-200">
+                                <div>DEBUG · type={dbg.account_type ?? "—"}</div>
+                                <div>Opening: {dbg.opening.toFixed(2)}</div>
+                                <div>+ Credit: {dbg.credit.toFixed(2)}</div>
+                                <div>− Debit:  {dbg.debit.toFixed(2)}</div>
+                                <div>= Closing: {dbg.closing.toFixed(2)}</div>
+                              </div>
+                            )}
                           </TableCell>
+
                           <TableCell className="pt-3">
                             <Input
                               type="text" inputMode="decimal"
