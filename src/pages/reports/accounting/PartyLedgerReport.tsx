@@ -116,7 +116,7 @@ const PartyLedgerReport = () => {
                   <TableCell className="text-muted-foreground">{e.description}</TableCell>
                   <TableCell className="text-right tabular-nums">{e.debit > 0 ? fc(e.debit) : ""}</TableCell>
                   <TableCell className="text-right tabular-nums">{e.credit > 0 ? fc(e.credit) : ""}</TableCell>
-                  <TableCell className={`text-right tabular-nums font-medium ${e.balance < 0 ? "text-destructive" : ""}`}>{fc(Math.abs(e.balance))}</TableCell>
+                  <TableCell className={`text-right tabular-nums font-medium ${e.balance < 0 ? "text-destructive" : ""}`}>{fc(e.balance)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
