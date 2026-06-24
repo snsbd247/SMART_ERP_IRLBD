@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronDown, Pencil, ChevronsDownUp, ChevronsUpDown, Trash2 } from "lucide-react";
 import { AccountWithBalance } from "@/hooks/useAccountBalances";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatSignedBalance } from "@/lib/balance-format";
 
 interface Props {
   accounts: AccountWithBalance[];
@@ -41,7 +42,7 @@ export function AccountTreeTable({ accounts, onEdit, onDrillDown, onDelete, auto
       if (!acc) { computing.delete(id); return { debit: 0, credit: 0, closing: 0 }; }
 
       const children = childMap.get(id) || [];
-      const selfClosingSigned = acc.closing_balance_type === "debit" ? acc.closing_balance : -acc.closing_balance;
+      const selfClosingSigned = acc.signed_balance;
       let totalDebit = acc.total_debit;
       let totalCredit = acc.total_credit;
       let totalClosing = selfClosingSigned;
@@ -88,8 +89,8 @@ export function AccountTreeTable({ accounts, onEdit, onDrillDown, onDelete, auto
       const ru = rollup.get(a.id) || { debit: 0, credit: 0, closing: 0 };
       const displayDebit = hasChildren ? ru.debit : a.total_debit;
       const displayCredit = hasChildren ? ru.credit : a.total_credit;
-      const displayClosing = hasChildren ? Math.abs(ru.closing) : a.closing_balance;
-      const closingType = hasChildren ? (ru.closing >= 0 ? "Dr" : "Cr") : (a.closing_balance_type === "debit" ? "Dr" : "Cr");
+      const displaySignedClosing = hasChildren ? ru.closing : a.signed_balance;
+      const openingSigned = a.opening_balance_type === "debit" ? a.opening_balance : -a.opening_balance;
 
       rows.push(
         <TableRow key={a.id} className={hasChildren ? "bg-muted/20" : ""}>
@@ -116,9 +117,7 @@ export function AccountTreeTable({ accounts, onEdit, onDrillDown, onDelete, auto
             </span>
           </TableCell>
           <TableCell className="text-right tabular-nums text-sm">
-            {a.opening_balance > 0
-              ? `${fc(a.opening_balance)} ${a.opening_balance_type === "debit" ? "Dr" : "Cr"}`
-              : "—"}
+            {a.opening_balance > 0 ? formatSignedBalance(openingSigned, fc) : "—"}
           </TableCell>
           <TableCell className="text-right tabular-nums text-sm">
             {displayDebit > 0 ? fc(displayDebit) : "—"}
@@ -126,8 +125,8 @@ export function AccountTreeTable({ accounts, onEdit, onDrillDown, onDelete, auto
           <TableCell className="text-right tabular-nums text-sm">
             {displayCredit > 0 ? fc(displayCredit) : "—"}
           </TableCell>
-          <TableCell className="text-right tabular-nums text-sm font-semibold">
-            {displayClosing > 0 ? `${fc(displayClosing)} ${closingType}` : "—"}
+          <TableCell className={`text-right tabular-nums text-sm font-semibold ${displaySignedClosing < 0 ? "text-destructive" : ""}`}>
+            {displaySignedClosing !== 0 ? formatSignedBalance(displaySignedClosing, fc) : "—"}
           </TableCell>
           <TableCell>
             <div className="flex items-center gap-1">
