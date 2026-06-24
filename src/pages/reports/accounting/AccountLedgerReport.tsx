@@ -150,7 +150,22 @@ const AccountLedgerReport = () => {
                       ? `No ${statusFilter === "both" ? "approved or posted" : statusFilter} voucher entries found for the selected account, date range and branch.`
                       : 'Click "Generate" to load entries'}
                 </TableCell></TableRow>
-              ) : data.map((e) => (
+              ) : (<>
+                {selectedAcc && (() => {
+                  const op = signedOpeningBalance(selectedAcc.opening_balance, selectedAcc.opening_balance_type);
+                  return (
+                    <TableRow className="bg-muted/40">
+                      <TableCell>{dateFrom}</TableCell>
+                      <TableCell className="font-mono text-xs">—</TableCell>
+                      <TableCell className="text-sm font-medium">Opening Balance</TableCell>
+                      <TableCell className="text-muted-foreground">Brought forward</TableCell>
+                      <TableCell className="text-right tabular-nums" />
+                      <TableCell className="text-right tabular-nums" />
+                      <TableCell className={`text-right tabular-nums font-medium ${op < 0 ? "text-destructive" : ""}`}>{fc(op)}</TableCell>
+                    </TableRow>
+                  );
+                })()}
+                {data.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell>{e.voucher_date}</TableCell>
                   <TableCell className="font-mono text-xs">{e.voucher_number}</TableCell>
@@ -159,11 +174,10 @@ const AccountLedgerReport = () => {
                   <TableCell className="text-right tabular-nums">{Number(e.debit) > 0 ? fc(Number(e.debit)) : ""}</TableCell>
                   <TableCell className="text-right tabular-nums">{Number(e.credit) > 0 ? fc(Number(e.credit)) : ""}</TableCell>
                   <TableCell className={`text-right tabular-nums font-medium ${e.running_balance < 0 ? "text-destructive" : ""}`}>
-
                     {fc(e.running_balance)}
                   </TableCell>
                 </TableRow>
-              ))}
+              ))}</>)}
             </TableBody>
           </Table>
         </CardContent></Card>

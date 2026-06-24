@@ -11,6 +11,7 @@ import { signedOpeningBalance } from "@/lib/balance-format";
 const CashBookReport = () => {
   const { accounts, branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
   const [data, setData] = useState<any[]>([]);
+  const [openingBalance, setOpeningBalance] = useState<number>(0);
 
   const fetchData = async () => {
     setLoading(true);
@@ -36,7 +37,9 @@ const CashBookReport = () => {
     query = query.order("acc_vouchers(voucher_date)");
 
     const { data: entries } = await query;
-    let runBal = cashAccounts.reduce((s, a) => s + signedOpeningBalance(a.opening_balance, a.opening_balance_type), 0);
+    const opening = cashAccounts.reduce((s, a) => s + signedOpeningBalance(a.opening_balance, a.opening_balance_type), 0);
+    setOpeningBalance(opening);
+    let runBal = opening;
 
     const result = (entries || []).map((e: any) => {
       runBal += Number(e.debit) - Number(e.credit);
@@ -86,7 +89,16 @@ const CashBookReport = () => {
             <TableBody>
               {data.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Click "Generate" to load cash transactions</TableCell></TableRow>
-              ) : data.map((e) => (
+              ) : (<>
+                <TableRow className="bg-muted/40">
+                  <TableCell>{dateFrom}</TableCell>
+                  <TableCell className="font-mono text-xs">—</TableCell>
+                  <TableCell className="font-medium">Opening Balance</TableCell>
+                  <TableCell className="text-right tabular-nums" />
+                  <TableCell className="text-right tabular-nums" />
+                  <TableCell className={`text-right tabular-nums font-medium ${openingBalance < 0 ? "text-destructive" : ""}`}>{fc(openingBalance)}</TableCell>
+                </TableRow>
+                {data.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell>{e.voucher_date}</TableCell>
                   <TableCell className="font-mono text-xs">{e.voucher_number}</TableCell>
@@ -97,7 +109,7 @@ const CashBookReport = () => {
                     {fc(e.running_balance)}
                   </TableCell>
                 </TableRow>
-              ))}
+              ))}</>)}
             </TableBody>
           </Table>
         </CardContent></Card>
