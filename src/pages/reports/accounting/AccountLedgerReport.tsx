@@ -54,8 +54,9 @@ const AccountLedgerReport = () => {
       }
     }
 
+    const opening = runBal;
     const result = entries.map((e: any) => {
-      runBal += num(e.credit) - num(e.debit);
+      runBal = applyEntry(runBal, { debit: e.debit, credit: e.credit });
       const vid = e.acc_vouchers?.id;
       const particulars = vid && counterMap[vid]?.length ? counterMap[vid].join(", ") : "—";
       return {
@@ -67,6 +68,9 @@ const AccountLedgerReport = () => {
         running_balance: runBal,
       };
     });
+    if (!verifyClosingBalance(opening, entries as any, runBal)) {
+      console.error("[AccountLedgerReport] closing balance mismatch", { opening, runBal });
+    }
     setData(result);
     setLoading(false);
   };
