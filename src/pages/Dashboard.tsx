@@ -139,8 +139,7 @@ const Dashboard = () => {
       const openingFor = (ids: string[]) => coa
         .filter((a: any) => ids.includes(a.id))
         .reduce((s: number, a: any) => {
-          const ob = Number(a.opening_balance || 0);
-          return s + (a.opening_balance_type === 'credit' ? -ob : ob);
+          return s + signedOpeningBalance(a.opening_balance, a.opening_balance_type);
         }, 0);
 
       cashBalance = openingFor(cashAccountIds) + sumFor(cashAccountIds);
