@@ -397,7 +397,34 @@ const AccountingVouchers = () => {
       }
       fetchData();
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      // Surface backend permission denials (403) with the exact missing
+      // permissions and correlation id returned by VoucherPermissions::authorize.
+      if (err?.status === 403) {
+        const missing: string[] = err?.requiredAnyOf ?? [];
+        const cid: string | undefined = err?.correlationId;
+        const description = [
+          err?.message || "You do not have permission to edit this voucher.",
+          missing.length ? `Need ANY of: ${missing.join(", ")}` : null,
+          cid ? `ref: ${cid}` : null,
+        ].filter(Boolean).join("\n");
+        toast({ title: "Edit not allowed", description, variant: "destructive" });
+        if (editingVoucher) {
+          logVoucherPermissionDenial({
+            userId: user?.id,
+            voucherType: editingVoucher.voucher_type as VoucherType,
+            voucherId: editingVoucher.id,
+            action: "edit",
+            evaluation: {
+              allowed: false,
+              reason: err?.message || "Denied by server",
+              candidates: missing,
+              correlationId: cid || "server",
+            },
+          });
+        }
+      } else {
+        toast({ title: "Error", description: err?.message, variant: "destructive" });
+      }
     } finally {
       setSaving(false);
     }
