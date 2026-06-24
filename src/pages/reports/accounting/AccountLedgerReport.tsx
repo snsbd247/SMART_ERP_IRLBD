@@ -159,7 +159,7 @@ const AccountLedgerReport = () => {
                   <TableCell className="text-right tabular-nums">{Number(e.credit) > 0 ? fc(Number(e.credit)) : ""}</TableCell>
                   <TableCell className={`text-right tabular-nums font-medium ${e.running_balance < 0 ? "text-destructive" : ""}`}>
 
-                    {fc(Math.abs(e.running_balance))} {e.running_balance >= 0 ? "Dr" : "Cr"}
+                    {fc(e.running_balance)}
                   </TableCell>
                 </TableRow>
               ))}
