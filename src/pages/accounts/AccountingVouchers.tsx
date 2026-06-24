@@ -170,7 +170,7 @@ const AccountingVouchers = () => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const { accounts: accountsWithBal } = useAccountBalances();
-  const balanceMap = new Map(accountsWithBal.map((a) => [a.id, { amt: a.closing_balance, type: a.closing_balance_type }]));
+  const balanceMap = new Map(accountsWithBal.map((a) => [a.id, { amt: a.closing_balance, type: a.closing_balance_type, signed: (a.closing_balance_type === "credit" ? -1 : 1) * a.closing_balance }]));
   // Dev debug — Opening / Debit / Credit / Closing per account for the form.
   const debugMap = new Map(accountsWithBal.map((a) => [a.id, {
     opening: signedOpeningBalance(a.opening_balance, a.opening_balance_type),
@@ -866,7 +866,7 @@ const AccountingVouchers = () => {
                               onChange={(v) => updateEntry(entry.id, "account_id", v)}
                             />
                             <div className="mt-1 text-xs text-muted-foreground">
-                              Curr Bal : {bal ? `${fc(bal.amt)} ${bal.type === "debit" ? "Dr" : "Cr"}` : ""}
+                              Curr Bal : {bal ? `${bal.signed < 0 ? "-" : ""}${fc(Math.abs(bal.signed))}` : ""}
                             </div>
                             {import.meta.env.DEV && dbg && (
                               <div className="mt-1 rounded border border-dashed border-amber-400/60 bg-amber-50/60 dark:bg-amber-950/20 px-2 py-1 text-[10px] font-mono leading-tight text-amber-900 dark:text-amber-200">
