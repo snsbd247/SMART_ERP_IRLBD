@@ -7,6 +7,7 @@ import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { Landmark } from "lucide-react";
 import { signedOpeningBalance } from "@/lib/balance-format";
+import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
 
 const BankBookReport = () => {
   const { accounts, branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
@@ -37,7 +38,7 @@ const BankBookReport = () => {
     let runBal = opening;
 
     const result = (entries || []).map((e: any) => {
-      runBal += Number(e.credit) - Number(e.debit);
+      runBal = applyEntry(runBal, { debit: e.debit, credit: e.credit });
       const acc = bankAccounts.find((a) => a.id === e.account_id);
       return {
         ...e,
@@ -48,6 +49,9 @@ const BankBookReport = () => {
         running_balance: runBal,
       };
     });
+    if (!verifyClosingBalance(opening, (entries || []) as any, runBal)) {
+      console.error("[BankBookReport] closing balance mismatch", { opening, runBal });
+    }
     setData(result);
     setLoading(false);
   };
