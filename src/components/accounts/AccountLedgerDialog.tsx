@@ -66,7 +66,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
     fetchLedger();
   }, [accountId, open, openingBalance, openingBalanceType]);
 
-  const closingBalance = entries.length > 0 ? entries[entries.length - 1].running_balance : (openingBalanceType === "debit" ? openingBalance : -openingBalance);
+  const closingBalance = entries.length > 0 ? entries[entries.length - 1].running_balance : signedOpeningBalance(openingBalance, openingBalanceType);
   const totalDebit = entries.reduce((s, e) => s + e.debit, 0);
   const totalCredit = entries.reduce((s, e) => s + e.credit, 0);
 
