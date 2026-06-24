@@ -54,7 +54,7 @@ const AccountLedgerReport = () => {
     }
 
     const result = entries.map((e: any) => {
-      runBal += num(e.debit) - num(e.credit);
+      runBal += num(e.credit) - num(e.debit);
       const vid = e.acc_vouchers?.id;
       const particulars = vid && counterMap[vid]?.length ? counterMap[vid].join(", ") : "—";
       return {
