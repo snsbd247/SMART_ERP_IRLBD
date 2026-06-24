@@ -10,6 +10,7 @@ import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
 import { signedOpeningBalance } from "@/lib/balance-format";
+import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
 import { downloadCSV } from "@/lib/csv-export";
 import { BookOpen, FileDown } from "lucide-react";
 
@@ -43,8 +44,9 @@ const GeneralLedgerReport = () => {
       const acc = accounts.find((a) => a.id === accountId);
       if (!acc) return;
       let runBal = signedOpeningBalance(acc.opening_balance, acc.opening_balance_type);
+      const opening = runBal;
       rows.forEach((e) => {
-        runBal += num(e.credit) - num(e.debit);
+        runBal = applyEntry(runBal, { debit: e.debit, credit: e.credit });
         result.push({
           ...e,
           account_name: acc.account_name,
@@ -55,6 +57,9 @@ const GeneralLedgerReport = () => {
           running_balance: runBal,
         });
       });
+      if (!verifyClosingBalance(opening, rows as any, runBal)) {
+        console.error("[GeneralLedgerReport] closing balance mismatch", { accountId, opening, runBal });
+      }
     });
 
     setData(result);
