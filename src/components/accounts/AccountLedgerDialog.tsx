@@ -44,7 +44,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
 
       if (error) console.error("Ledger fetch error:", error);
 
-      let runBal = openingBalanceType === "debit" ? openingBalance : -openingBalance;
+      let runBal = signedOpeningBalance(openingBalance, openingBalanceType);
 
       const mapped = (data || []).map((e: any) => {
         runBal += Number(e.debit) - Number(e.credit);
