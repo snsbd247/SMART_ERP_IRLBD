@@ -9,6 +9,7 @@ import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
+import { signedOpeningBalance } from "@/lib/balance-format";
 import { downloadCSV } from "@/lib/csv-export";
 import { BookOpen, FileDown } from "lucide-react";
 
@@ -41,7 +42,7 @@ const GeneralLedgerReport = () => {
     grouped.forEach((rows, accountId) => {
       const acc = accounts.find((a) => a.id === accountId);
       if (!acc) return;
-      let runBal = acc.opening_balance_type === "debit" ? num(acc.opening_balance) : -num(acc.opening_balance);
+      let runBal = signedOpeningBalance(acc.opening_balance, acc.opening_balance_type);
       rows.forEach((e) => {
         runBal += num(e.debit) - num(e.credit);
         result.push({

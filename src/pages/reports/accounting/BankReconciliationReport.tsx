@@ -9,6 +9,7 @@ import { ReportHeader } from "@/components/ReportHeader";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { GitCompare, Printer, Download, FileSpreadsheet } from "lucide-react";
+import { signedOpeningBalance } from "@/lib/balance-format";
 
 const BankReconciliationReport = () => {
   const { accounts, fc, printRef, handlePrint, handleExportExcel } = useReportData();
@@ -27,7 +28,7 @@ const BankReconciliationReport = () => {
       .eq("acc_vouchers.status", "approved");
 
     const acc = accounts.find((a) => a.id === selectedBank);
-    let bal = acc ? (acc.opening_balance_type === "debit" ? acc.opening_balance : -acc.opening_balance) : 0;
+    let bal = acc ? signedOpeningBalance(acc.opening_balance, acc.opening_balance_type) : 0;
     (entries || []).forEach((e: any) => { bal += Number(e.debit) - Number(e.credit); });
     setErpBalance(bal);
     setLoaded(true);

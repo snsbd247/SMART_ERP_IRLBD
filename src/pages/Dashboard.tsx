@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { signedOpeningBalance } from "@/lib/balance-format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -138,8 +139,7 @@ const Dashboard = () => {
       const openingFor = (ids: string[]) => coa
         .filter((a: any) => ids.includes(a.id))
         .reduce((s: number, a: any) => {
-          const ob = Number(a.opening_balance || 0);
-          return s + (a.opening_balance_type === 'credit' ? -ob : ob);
+          return s + signedOpeningBalance(a.opening_balance, a.opening_balance_type);
         }, 0);
 
       cashBalance = openingFor(cashAccountIds) + sumFor(cashAccountIds);
