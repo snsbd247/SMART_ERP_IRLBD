@@ -21,16 +21,38 @@ const AccountLedgerReport = () => {
   const [data, setData] = useState<any[]>([]);
   const hasFetched = useRef(false);
 
+  const [periodOpening, setPeriodOpening] = useState<number>(0);
+
   const fetchData = async () => {
     if (!selectedAccount || selectedAccount === "all") return;
     setLoading(true);
     hasFetched.current = true;
     const statuses = statusFilter === "both" ? ["approved", "posted"] : [statusFilter];
+    const acc = accounts.find((a) => a.id === selectedAccount);
+    const baseOpening = acc ? signedOpeningBalance(acc.opening_balance, acc.opening_balance_type) : 0;
+
+    // Carry-forward: apply ALL entries dated BEFORE dateFrom (across branches scoped to filter)
+    // so the period's opening balance equals the prior period's closing.
+    let carriedOpening = baseOpening;
+    // Compute the day before dateFrom for the prior range upper bound.
+    const priorTo = (() => {
+      const d = new Date(dateFrom + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate() - 1);
+      return d.toISOString().slice(0, 10);
+    })();
+    if (priorTo >= "1900-01-01") {
+      const priorEntries = await fetchAllVoucherEntries({
+        dateFrom: "1900-01-01", dateTo: priorTo, branchId: branch, accountId: selectedAccount, statuses,
+      });
+      for (const e of priorEntries) {
+        carriedOpening = applyEntry(carriedOpening, { debit: e.debit, credit: e.credit });
+      }
+    }
+
     const entries = await fetchAllVoucherEntries({
       dateFrom, dateTo, branchId: branch, accountId: selectedAccount, statuses,
     });
-    const acc = accounts.find((a) => a.id === selectedAccount);
-    let runBal = acc ? signedOpeningBalance(acc.opening_balance, acc.opening_balance_type) : 0;
+    let runBal = carriedOpening;
 
     // Fetch counter-accounts (other ledger names in the same vouchers), chunked
     const voucherIds = Array.from(new Set(entries.map((e: any) => e.acc_vouchers?.id).filter(Boolean)));
@@ -71,6 +93,7 @@ const AccountLedgerReport = () => {
     if (!verifyClosingBalance(opening, entries as any, runBal)) {
       console.error("[AccountLedgerReport] closing balance mismatch", { opening, runBal });
     }
+    setPeriodOpening(opening);
     setData(result);
     setLoading(false);
   };
@@ -134,7 +157,7 @@ const AccountLedgerReport = () => {
         {selectedAcc && (
           <div className="mb-3 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">{selectedAcc.account_code}</span> — {selectedAcc.account_name} ({selectedAcc.account_type})
-            {" | Opening: "}{fc(signedOpeningBalance(selectedAcc.opening_balance, selectedAcc.opening_balance_type))}
+            {" | Opening: "}{fc(periodOpening)}
           </div>
         )}
         <Card><CardContent className="p-0">
@@ -157,7 +180,7 @@ const AccountLedgerReport = () => {
                 </TableCell></TableRow>
               ) : (<>
                 {selectedAcc && (() => {
-                  const op = signedOpeningBalance(selectedAcc.opening_balance, selectedAcc.opening_balance_type);
+                  const op = periodOpening;
                   return (
                     <TableRow className="bg-muted/40">
                       <TableCell>{dateFrom}</TableCell>
