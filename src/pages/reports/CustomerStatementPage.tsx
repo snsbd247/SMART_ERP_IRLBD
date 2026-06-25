@@ -116,8 +116,8 @@ const CustomerStatementPage = () => {
 
     all.sort((a, b) => a.date.localeCompare(b.date));
 
-    // Calculate running balance
-    let balance = 0;
+    // Running balance seeded from period opening
+    let balance = open.opening;
     const ledger: LedgerEntry[] = all.map(e => {
       balance += e.debit - e.credit;
       return { id: e.id, date: e.date, type: e.type, reference: e.ref, description: e.desc, debit: e.debit, credit: e.credit, balance };
