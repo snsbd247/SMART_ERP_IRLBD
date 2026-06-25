@@ -110,26 +110,41 @@ const CustomersPage = () => {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
+      const openingAmt = Number(form.opening_balance) || 0;
+      const openingDate = form.opening_balance_date || null;
       if (editingCustomer) {
         const isApprovedEdit = editingCustomer.status === "approved";
-        const baseFields = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null };
+        const baseFields = {
+          name: form.name, email: form.email || null, phone: form.phone || null,
+          address: form.address || null, bin_number: form.bin_number || null,
+          opening_balance: openingAmt, opening_balance_date: openingDate,
+        };
         const newValues: any = { ...baseFields, receivable_account_id: receivableLedgerId || null };
         if (isApprovedEdit && isSuperAdmin) {
           await documentApi.editApproved("customer", editingCustomer.id, newValues);
         } else {
           const oldValues = { ...baseFields, receivable_account_id: editingCustomer.receivable_account_id ?? null,
-            name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address, bin_number: editingCustomer.bin_number };
+            name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address, bin_number: editingCustomer.bin_number,
+            opening_balance: editingCustomer.opening_balance ?? 0, opening_balance_date: editingCustomer.opening_balance_date ?? null };
           const { error } = await supabase.from("customers").update(newValues).eq("id", editingCustomer.id);
           if (error) throw error;
           await logEditAudit({ userId: user?.id, userName: profile?.name, module: "Sales", action: "Edit Customer", recordId: editingCustomer.id, oldValues, newValues });
         }
+        // Customer = asset (receivable). Mirror opening to linked ledger so reports pick it up.
+        await syncPartyOpeningToLedger(receivableLedgerId || editingCustomer.receivable_account_id || null, openingAmt, "debit");
         toast({ title: "Customer updated" });
       } else {
-        const { data: inserted, error } = await supabase.from("customers").insert({ ...form, status: "active" }).select("id").single();
+        const { data: inserted, error } = await supabase.from("customers").insert({
+          ...form,
+          opening_balance: openingAmt,
+          opening_balance_date: openingDate,
+          status: "active",
+        } as any).select("id").single();
         if (error) throw error;
         const ledgerId = await createCustomerLedger(form.name.trim(), parentAccountId || undefined);
         if (ledgerId && inserted?.id) {
           await supabase.from("customers").update({ receivable_account_id: ledgerId } as any).eq("id", inserted.id);
+          await syncPartyOpeningToLedger(ledgerId, openingAmt, "debit");
         }
         const parentName = parentAccountId ? assetAccounts.find((a) => a.id === parentAccountId)?.account_name : "Accounts Receivable";
         toast({ title: "Customer added", description: `Ledger created under ${parentName}` });
