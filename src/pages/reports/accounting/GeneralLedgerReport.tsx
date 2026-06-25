@@ -40,10 +40,21 @@ const GeneralLedgerReport = () => {
     });
 
     const result: any[] = [];
+    const openingMap = new Map<string, number>();
+    const statuses2 = statusFilter === "both" ? ["approved", "posted"] : [statusFilter];
+    await Promise.all(Array.from(grouped.keys()).map(async (accountId) => {
+      const acc = accounts.find((a) => a.id === accountId);
+      if (!acc) return;
+      const o = await computeAccountPeriodOpening({
+        accountId, dateFrom, branchId: branch, statuses: statuses2, account: acc as any,
+      });
+      openingMap.set(accountId, o.opening);
+    }));
+
     grouped.forEach((rows, accountId) => {
       const acc = accounts.find((a) => a.id === accountId);
       if (!acc) return;
-      let runBal = signedOpeningBalance(acc.opening_balance, acc.opening_balance_type);
+      let runBal = openingMap.get(accountId) ?? 0;
       const opening = runBal;
       rows.forEach((e) => {
         runBal = applyEntry(runBal, { debit: e.debit, credit: e.credit });
