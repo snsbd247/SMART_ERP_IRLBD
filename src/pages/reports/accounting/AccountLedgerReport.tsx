@@ -181,7 +181,17 @@ const AccountLedgerReport = () => {
                     <TableRow className="bg-muted/40">
                       <TableCell>{dateFrom}</TableCell>
                       <TableCell className="font-mono text-xs">—</TableCell>
-                      <TableCell className="text-sm font-medium">Opening Balance</TableCell>
+                      <TableCell className="text-sm font-medium">
+                        <button
+                          type="button"
+                          onClick={() => setDrilldownOpen(true)}
+                          className="inline-flex items-center gap-1 hover:underline print:no-underline"
+                          title="See prior-period transactions"
+                        >
+                          Opening Balance
+                          <Info className="w-3 h-3 text-muted-foreground print:hidden" />
+                        </button>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">Brought forward</TableCell>
                       <TableCell className="text-right tabular-nums" />
                       <TableCell className="text-right tabular-nums" />
