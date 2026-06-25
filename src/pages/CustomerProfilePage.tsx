@@ -118,7 +118,7 @@ const CustomerProfilePage = () => {
     if (receivableAccountId) {
       const { data: vEntries } = await supabase
         .from("voucher_entries")
-        .select("id, debit, credit, narration, acc_vouchers!inner(id, voucher_number, voucher_date, description, status)")
+        .select("id, debit, credit, narration, acc_vouchers!inner(id, voucher_number, voucher_date, voucher_type, description, status)")
         .eq("account_id", receivableAccountId)
         .in("acc_vouchers.status", ["approved", "posted"])
         .order("voucher_date", { foreignTable: "acc_vouchers", ascending: true });
@@ -130,9 +130,16 @@ const CustomerProfilePage = () => {
           priorVoucherNet += dr - cr;
           return;
         }
+        const vt = String(e.acc_vouchers?.voucher_type || "").toLowerCase();
+        const typeLabel =
+          vt === "journal" ? "Journal Voucher" :
+          vt === "payment" ? "Payment Voucher" :
+          vt === "receipt" ? "Receipt Voucher" :
+          vt === "contra" ? "Contra Voucher" :
+          vt ? `${vt.charAt(0).toUpperCase()}${vt.slice(1)} Voucher` : "Voucher";
         voucherTxns.push({
           date: vDate,
-          type: "Voucher",
+          type: typeLabel,
           ref: e.acc_vouchers?.voucher_number || "",
           dr,
           cr,
