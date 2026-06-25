@@ -187,7 +187,7 @@ const CustomerStatementPage = () => {
         </CardContent>
       </Card>
 
-      {customer && entries.length > 0 && (
+      {customer && (entries.length > 0 || periodOpening !== 0) && (
         <div ref={printRef}>
           {/* Customer Info */}
           <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4 p-4 bg-muted/30 rounded-lg">
