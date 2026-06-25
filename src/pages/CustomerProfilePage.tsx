@@ -110,6 +110,37 @@ const CustomerProfilePage = () => {
     }
     setAllocations(allocs);
 
+    // Fetch accounting voucher entries posted against this customer's
+    // receivable ledger so they appear inline in the profile ledger.
+    const receivableAccountId = (custRes.data as any)?.receivable_account_id || null;
+    const voucherTxns: Array<{ date: string; type: string; ref: string; dr: number; cr: number; id: string }> = [];
+    let priorVoucherNet = 0; // sum of (debit - credit) strictly before dateFrom
+    if (receivableAccountId) {
+      const { data: vEntries } = await supabase
+        .from("voucher_entries")
+        .select("id, debit, credit, narration, acc_vouchers!inner(id, voucher_number, voucher_date, description, status)")
+        .eq("account_id", receivableAccountId)
+        .in("acc_vouchers.status", ["approved", "posted"])
+        .order("voucher_date", { foreignTable: "acc_vouchers", ascending: true });
+      (vEntries || []).forEach((e: any) => {
+        const vDate = e.acc_vouchers?.voucher_date || "";
+        const dr = Number(e.debit) || 0;
+        const cr = Number(e.credit) || 0;
+        if (dateFrom && vDate < dateFrom) {
+          priorVoucherNet += dr - cr;
+          return;
+        }
+        voucherTxns.push({
+          date: vDate,
+          type: "Voucher",
+          ref: e.acc_vouchers?.voucher_number || "",
+          dr,
+          cr,
+          id: String(e.id),
+        });
+      });
+    }
+
     // Build invoice dues
     const dueList: InvoiceDue[] = invs.map((inv: any) => {
       const invAmount = Number(inv.net_amount || inv.total_amount || 0);
@@ -139,6 +170,7 @@ const CustomerProfilePage = () => {
     pays.forEach((p: any) => {
       allTxns.push({ date: p.payment_date, type: "Payment", ref: p.reference || p.payment_method, dr: 0, cr: Number(p.amount || 0), id: p.id });
     });
+    voucherTxns.forEach((v) => allTxns.push(v));
     allTxns.sort((a, b) => a.date.localeCompare(b.date));
 
     // Seed running balance with carry-forward opening so the profile ledger
@@ -146,7 +178,7 @@ const CustomerProfilePage = () => {
     let runBal = 0;
     if (id && dateFrom) {
       const open = await computeCustomerPeriodOpening({ customerId: id, dateFrom });
-      runBal = open.opening;
+      runBal = open.opening + priorVoucherNet;
     }
     const ledgerRows: LedgerRow[] = allTxns
       .filter(t => {
