@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Users, Search } from "lucide-react";
-import { createSupplierLedger } from "@/lib/party-ledger-utils";
+import { createSupplierLedger, syncPartyOpeningToLedger } from "@/lib/party-ledger-utils";
 
 interface Supplier {
   id: string; code: string; name: string; supplier_type: string;
@@ -18,6 +18,8 @@ interface Supplier {
   credit_limit?: number; credit_days?: number; currency?: string;
   is_active: boolean; payable_account_id?: string | null; branch_id?: string | null;
   vat_reg_no?: string; bin_no?: string; address?: string;
+  opening_balance?: number | null;
+  opening_balance_date?: string | null;
 }
 
 const SUPPLIER_TYPES = [
