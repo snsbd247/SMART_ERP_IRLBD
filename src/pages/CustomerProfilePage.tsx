@@ -61,6 +61,10 @@ const CustomerProfilePage = () => {
   const [deliveryChallans, setDeliveryChallans] = useState<any[]>([]);
   const [newNote, setNewNote] = useState("");
   const [loading, setLoading] = useState(true);
+  const [ledgerError, setLedgerError] = useState<string | null>(null);
+  const [ledgerSearch, setLedgerSearch] = useState("");
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const LEDGER_PAGE_SIZE = 25;
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [payDateFrom, setPayDateFrom] = useState("");
