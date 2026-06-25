@@ -228,7 +228,15 @@ const SuppliersPage = () => {
             <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Hostend>
+      <AccountLedgerDialog
+        accountId={ledgerFor?.payable_account_id || null}
+        accountName={ledgerFor ? `${ledgerFor.name} (Payable)` : ""}
+        openingBalance={Number(ledgerFor?.opening_balance) || 0}
+        openingBalanceType="credit"
+        open={!!ledgerFor}
+        onOpenChange={(o) => { if (!o) setLedgerFor(null); }}
+      />
     </div>
   );
 };
