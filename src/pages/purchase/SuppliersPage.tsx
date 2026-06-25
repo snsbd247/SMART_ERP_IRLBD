@@ -199,7 +199,21 @@ const SuppliersPage = () => {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Edit Supplier" : "New Supplier"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><Label>Code *</Label><Input placeholder="Auto-generated (editable)" value={form.code || ""} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
+            <div className="space-y-1">
+              <Label>Code *</Label>
+              <Input
+                placeholder="Auto-generated (editable)"
+                value={form.code || ""}
+                aria-invalid={!!codeError}
+                onChange={(e) => {
+                  const code = e.target.value;
+                  setForm({ ...form, code });
+                  const dup = findDuplicateSupplierCode(items, code, editing?.id);
+                  setCodeError(dup ? `Code "${code}" is already used by another supplier.` : null);
+                }}
+              />
+              {codeError && <p className="text-[11px] text-destructive">{codeError}</p>}
+            </div>
             <div className="space-y-1"><Label>Name *</Label><Input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
             <div className="space-y-1"><Label>Supplier Type</Label>
               <Select value={form.supplier_type} onValueChange={(v) => setForm({ ...form, supplier_type: v })}>
