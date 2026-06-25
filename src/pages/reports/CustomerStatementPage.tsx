@@ -129,7 +129,7 @@ const CustomerStatementPage = () => {
 
   const totalDebit = entries.reduce((s, e) => s + e.debit, 0);
   const totalCredit = entries.reduce((s, e) => s + e.credit, 0);
-  const closingBalance = entries.length > 0 ? entries[entries.length - 1].balance : 0;
+  const closingBalance = entries.length > 0 ? entries[entries.length - 1].balance : periodOpening;
 
   const handlePrint = () => {
     printReport(printRef, `Customer Statement — ${customer?.name || ""}`, settings?.company_name, {
