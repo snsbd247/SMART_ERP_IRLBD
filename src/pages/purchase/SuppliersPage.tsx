@@ -45,6 +45,8 @@ const SuppliersPage = () => {
   const [branches, setBranches] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const [ledgerFor, setLedgerFor] = useState<Supplier | null>(null);
+
 
   const load = async () => {
     setLoading(true);
