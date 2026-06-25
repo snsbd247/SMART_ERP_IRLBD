@@ -13,6 +13,7 @@ import { Plus, Pencil, Trash2, Users, Search, BookOpen } from "lucide-react";
 import { createSupplierLedger, syncPartyOpeningToLedger } from "@/lib/party-ledger-utils";
 import { validatePartyOpening } from "@/lib/party-opening-validation";
 import { AccountLedgerDialog } from "@/components/accounts/AccountLedgerDialog";
+import { AccountCombobox } from "@/components/accounts/AccountCombobox";
 
 interface Supplier {
   id: string; code: string; name: string; supplier_type: string;
