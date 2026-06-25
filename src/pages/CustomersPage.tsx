@@ -179,6 +179,9 @@ const CustomersPage = () => {
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally { setSaving(false); }
+  };
+
+
 
   const handleDocAction = async () => {
     if (!actionTarget || !actionType) return;
