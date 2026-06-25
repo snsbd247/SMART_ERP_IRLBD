@@ -74,6 +74,7 @@ const GeneralLedgerReport = () => {
       }
     });
 
+    setPeriodOpenings(Object.fromEntries(openingMap));
     setData(result);
     setLoading(false);
   };
