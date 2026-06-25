@@ -65,6 +65,12 @@ const CustomerStatementPage = () => {
     const cust = customers.find(c => c.id === selectedCustomer) || null;
     setCustomer(cust);
 
+    // Carry-forward opening from all prior-period transactions.
+    const open = await computeCustomerPeriodOpening({ customerId: selectedCustomer, dateFrom });
+    setPeriodOpening(open.opening);
+    setPriorRows(open.priorRows);
+
+
     // Fetch invoices
     const { data: invoices } = await supabase
       .from("sales_invoices")
