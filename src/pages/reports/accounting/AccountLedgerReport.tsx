@@ -27,36 +27,30 @@ const AccountLedgerReport = () => {
 
   const [periodOpening, setPeriodOpening] = useState<number>(0);
 
+  const [periodOpening, setPeriodOpening] = useState<number>(0);
+
   const fetchData = async () => {
     if (!selectedAccount || selectedAccount === "all") return;
     setLoading(true);
     hasFetched.current = true;
     const statuses = statusFilter === "both" ? ["approved", "posted"] : [statusFilter];
     const acc = accounts.find((a) => a.id === selectedAccount);
-    const baseOpening = acc ? signedOpeningBalance(acc.opening_balance, acc.opening_balance_type) : 0;
 
-    // Carry-forward: apply ALL entries dated BEFORE dateFrom (across branches scoped to filter)
-    // so the period's opening balance equals the prior period's closing.
-    let carriedOpening = baseOpening;
-    // Compute the day before dateFrom for the prior range upper bound.
-    const priorTo = (() => {
-      const d = new Date(dateFrom + "T00:00:00Z");
-      d.setUTCDate(d.getUTCDate() - 1);
-      return d.toISOString().slice(0, 10);
-    })();
-    if (priorTo >= "1900-01-01") {
-      const priorEntries = await fetchAllVoucherEntries({
-        dateFrom: "1900-01-01", dateTo: priorTo, branchId: branch, accountId: selectedAccount, statuses,
-      });
-      for (const e of priorEntries) {
-        carriedOpening = applyEntry(carriedOpening, { debit: e.debit, credit: e.credit });
-      }
-    }
+    // Single source of truth: opening = base opening + every prior-period entry.
+    const open = await computeAccountPeriodOpening({
+      accountId: selectedAccount,
+      dateFrom,
+      branchId: branch,
+      statuses,
+      account: acc as any,
+    });
+    setBaseOpening(open.baseOpening);
+    setPriorEntries(open.priorEntries);
 
     const entries = await fetchAllVoucherEntries({
       dateFrom, dateTo, branchId: branch, accountId: selectedAccount, statuses,
     });
-    let runBal = carriedOpening;
+    let runBal = open.opening;
 
     // Fetch counter-accounts (other ledger names in the same vouchers), chunked
     const voucherIds = Array.from(new Set(entries.map((e: any) => e.acc_vouchers?.id).filter(Boolean)));
