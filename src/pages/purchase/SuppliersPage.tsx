@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Users, Search } from "lucide-react";
 import { createSupplierLedger, syncPartyOpeningToLedger } from "@/lib/party-ledger-utils";
+import { validatePartyOpening } from "@/lib/party-opening-validation";
 
 interface Supplier {
   id: string; code: string; name: string; supplier_type: string;
@@ -71,12 +72,14 @@ const SuppliersPage = () => {
 
   const save = async () => {
     if (!form.code || !form.name) { toast({ title: "Code & Name required", variant: "destructive" }); return; }
+    const v = validatePartyOpening({ opening_balance: form.opening_balance ?? 0, opening_balance_date: form.opening_balance_date ?? null });
+    if (!v.ok) { toast({ title: "Invalid opening balance", description: v.errors.join("; "), variant: "destructive" }); return; }
     setSaving(true);
     try {
       const payload: any = { ...form };
-      // Normalize: empty date string -> null (Postgres date column doesn't accept "")
-      if (!payload.opening_balance_date) payload.opening_balance_date = null;
-      payload.opening_balance = Number(payload.opening_balance) || 0;
+      // Consistent null handling for date column + normalized amount.
+      payload.opening_balance_date = v.value.opening_balance_date;
+      payload.opening_balance = v.value.opening_balance;
       if (editing) {
         const { error } = await supabase.from("suppliers" as any).update(payload).eq("id", editing.id);
         if (error) throw error;
