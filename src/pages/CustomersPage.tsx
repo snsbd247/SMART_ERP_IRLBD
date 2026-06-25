@@ -21,9 +21,13 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Pencil, Check, X, Lock, ShieldAlert, Eye } from "lucide-react";
 import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
+import { AccountCombobox } from "@/components/accounts/AccountCombobox";
+import { nextSupplierCode, findDuplicateSupplierCode } from "@/lib/supplier-utils";
+import { useAccountBalances } from "@/hooks/useAccountBalances";
 
 interface Customer {
   id: string;
+  code?: string | null;
   name: string;
   email: string | null;
   phone: string | null;
