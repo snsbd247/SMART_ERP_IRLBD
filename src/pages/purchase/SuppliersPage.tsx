@@ -236,15 +236,21 @@ const SuppliersPage = () => {
             </div>
             <div className="col-span-2 space-y-1"><Label>Address</Label><Input value={form.address || ""} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
             <div className="col-span-2 space-y-1"><Label>Payable Ledger (under Accounts & Other Payable)</Label>
-              <Select value={form.payable_account_id || "_auto"} onValueChange={(v) => setForm({ ...form, payable_account_id: v === "_auto" ? null : v })}>
-                <SelectTrigger><SelectValue placeholder="Auto — create new ledger" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_auto">{editing ? "— Not linked —" : "Auto (create new ledger)"}</SelectItem>
-                  {accounts.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.account_code} — {a.account_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {!editing && <p className="text-xs text-muted-foreground">A dedicated ledger will be auto-created under "Accounts & Other Payable" if none chosen.</p>}
+              <div className="flex items-center gap-2">
+                <AccountCombobox
+                  accounts={accounts as any}
+                  value={form.payable_account_id || ""}
+                  onChange={(id) => setForm({ ...form, payable_account_id: id || null })}
+                  placeholder={editing ? "— Not linked —" : "Auto — create new ledger"}
+                  className="flex-1"
+                />
+                {form.payable_account_id && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setForm({ ...form, payable_account_id: null })}>Clear</Button>
+                )}
+              </div>
+              {!editing && <p className="text-xs text-muted-foreground">Search by code or name. Leave empty to auto-create a dedicated ledger under "Accounts & Other Payable".</p>}
             </div>
+
             <div className="col-span-2 flex items-center gap-2">
               <input id="active" type="checkbox" checked={!!form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
               <Label htmlFor="active">Active</Label>
