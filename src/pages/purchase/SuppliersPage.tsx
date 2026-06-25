@@ -148,6 +148,16 @@ const SuppliersPage = () => {
                 <TableCell>{s.is_active ? <Badge>Active</Badge> : <Badge variant="secondary">Inactive</Badge>}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      title={s.payable_account_id ? "View accounting ledger" : "No linked ledger"}
+                      disabled={!s.payable_account_id}
+                      onClick={() => setLedgerFor(s)}
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(s)}><Pencil className="w-3.5 h-3.5" /></Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => remove(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                   </div>
