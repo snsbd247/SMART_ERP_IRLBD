@@ -119,4 +119,31 @@ export const createSupplierLedger = (name: string, parentId?: string) =>
 export const createCustomerLedger = (name: string, parentId?: string) =>
   createPartyLedger(name, CUSTOMER_PARENT_NAMES, "asset", "1240", parentId);
 
+/**
+ * Mirror a party's opening balance onto its linked chart_of_accounts ledger so
+ * that all ledger / period-opening calculations pick it up automatically.
+ *
+ * @param accountId - linked chart_of_accounts.id (receivable_account_id for
+ *                    customers, payable_account_id for suppliers)
+ * @param amount    - signed opening balance entered by the user. Positive =
+ *                    normal side of the ledger (Dr for customers, Cr for
+ *                    suppliers). Negative = contra (advance / overpayment).
+ * @param side      - "debit" for customer (asset) ledgers, "credit" for
+ *                    supplier (liability) ledgers.
+ */
+export async function syncPartyOpeningToLedger(
+  accountId: string | null | undefined,
+  amount: number,
+  side: "debit" | "credit",
+): Promise<void> {
+  if (!accountId) return;
+  const safe = Number.isFinite(amount) ? amount : 0;
+  const { error } = await supabase
+    .from("chart_of_accounts")
+    .update({ opening_balance: safe, opening_balance_type: side } as any)
+    .eq("id", accountId);
+  if (error) console.error("[party-ledger] failed to sync opening", error);
+}
+
+
 

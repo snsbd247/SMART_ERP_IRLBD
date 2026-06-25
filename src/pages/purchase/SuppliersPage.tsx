@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Users, Search } from "lucide-react";
-import { createSupplierLedger } from "@/lib/party-ledger-utils";
+import { createSupplierLedger, syncPartyOpeningToLedger } from "@/lib/party-ledger-utils";
 
 interface Supplier {
   id: string; code: string; name: string; supplier_type: string;
@@ -18,6 +18,8 @@ interface Supplier {
   credit_limit?: number; credit_days?: number; currency?: string;
   is_active: boolean; payable_account_id?: string | null; branch_id?: string | null;
   vat_reg_no?: string; bin_no?: string; address?: string;
+  opening_balance?: number | null;
+  opening_balance_date?: string | null;
 }
 
 const SUPPLIER_TYPES = [
@@ -28,7 +30,7 @@ const SUPPLIER_TYPES = [
   { v: "utility", l: "Utility" },
 ];
 
-const empty: Partial<Supplier> = { supplier_type: "local", currency: "BDT", is_active: true, credit_limit: 0, credit_days: 0 };
+const empty: Partial<Supplier> = { supplier_type: "local", currency: "BDT", is_active: true, credit_limit: 0, credit_days: 0, opening_balance: 0, opening_balance_date: null };
 
 const SuppliersPage = () => {
   const [items, setItems] = useState<Supplier[]>([]);
@@ -72,6 +74,9 @@ const SuppliersPage = () => {
     setSaving(true);
     try {
       const payload: any = { ...form };
+      // Normalize: empty date string -> null (Postgres date column doesn't accept "")
+      if (!payload.opening_balance_date) payload.opening_balance_date = null;
+      payload.opening_balance = Number(payload.opening_balance) || 0;
       if (editing) {
         const { error } = await supabase.from("suppliers" as any).update(payload).eq("id", editing.id);
         if (error) throw error;
@@ -84,6 +89,8 @@ const SuppliersPage = () => {
         const { error } = await supabase.from("suppliers" as any).insert(payload);
         if (error) throw error;
       }
+      // Supplier = liability (payable). Mirror opening to linked ledger.
+      await syncPartyOpeningToLedger(payload.payable_account_id, payload.opening_balance, "credit");
       toast({ title: editing ? "Supplier updated" : "Supplier created", description: !editing && payload.payable_account_id ? "Linked ledger under Accounts & Other Payable" : undefined });
       setOpen(false); load();
     } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
@@ -174,6 +181,16 @@ const SuppliersPage = () => {
             <div className="space-y-1"><Label>BIN No</Label><Input value={form.bin_no || ""} onChange={(e) => setForm({ ...form, bin_no: e.target.value })} /></div>
             <div className="space-y-1"><Label>Credit Limit</Label><Input type="number" value={form.credit_limit ?? 0} onChange={(e) => setForm({ ...form, credit_limit: parseFloat(e.target.value) || 0 })} /></div>
             <div className="space-y-1"><Label>Credit Days</Label><Input type="number" value={form.credit_days ?? 0} onChange={(e) => setForm({ ...form, credit_days: parseInt(e.target.value) || 0 })} /></div>
+            <div className="space-y-1">
+              <Label>Opening Balance</Label>
+              <Input type="number" step="0.01" value={form.opening_balance ?? 0} onChange={(e) => setForm({ ...form, opening_balance: parseFloat(e.target.value) || 0 })} />
+              <p className="text-[11px] text-muted-foreground">Positive = payable (Cr). Negative = advance paid to supplier.</p>
+            </div>
+            <div className="space-y-1">
+              <Label>Opening Balance Date</Label>
+              <Input type="date" value={form.opening_balance_date || ""} onChange={(e) => setForm({ ...form, opening_balance_date: e.target.value || null })} />
+              <p className="text-[11px] text-muted-foreground">As-of date for the brought-forward balance.</p>
+            </div>
             <div className="col-span-2 space-y-1"><Label>Address</Label><Input value={form.address || ""} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
             <div className="col-span-2 space-y-1"><Label>Payable Ledger (under Accounts & Other Payable)</Label>
               <Select value={form.payable_account_id || "_auto"} onValueChange={(v) => setForm({ ...form, payable_account_id: v === "_auto" ? null : v })}>
