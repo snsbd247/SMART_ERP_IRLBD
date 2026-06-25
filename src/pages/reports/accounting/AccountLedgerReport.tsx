@@ -180,7 +180,7 @@ const AccountLedgerReport = () => {
                 </TableCell></TableRow>
               ) : (<>
                 {selectedAcc && (() => {
-                  const op = signedOpeningBalance(selectedAcc.opening_balance, selectedAcc.opening_balance_type);
+                  const op = periodOpening;
                   return (
                     <TableRow className="bg-muted/40">
                       <TableCell>{dateFrom}</TableCell>
