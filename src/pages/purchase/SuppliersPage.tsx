@@ -14,6 +14,8 @@ import { createSupplierLedger, syncPartyOpeningToLedger } from "@/lib/party-ledg
 import { validatePartyOpening } from "@/lib/party-opening-validation";
 import { AccountLedgerDialog } from "@/components/accounts/AccountLedgerDialog";
 import { AccountCombobox } from "@/components/accounts/AccountCombobox";
+import { nextSupplierCode, findDuplicateSupplierCode, buildSupplierPayload } from "@/lib/supplier-utils";
+import { useAccountBalances } from "@/hooks/useAccountBalances";
 
 interface Supplier {
   id: string; code: string; name: string; supplier_type: string;
