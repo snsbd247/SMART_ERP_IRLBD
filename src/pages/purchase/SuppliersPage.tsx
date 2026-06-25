@@ -9,9 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Users, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Search, BookOpen } from "lucide-react";
 import { createSupplierLedger, syncPartyOpeningToLedger } from "@/lib/party-ledger-utils";
 import { validatePartyOpening } from "@/lib/party-opening-validation";
+import { AccountLedgerDialog } from "@/components/accounts/AccountLedgerDialog";
 
 interface Supplier {
   id: string; code: string; name: string; supplier_type: string;
@@ -44,6 +45,8 @@ const SuppliersPage = () => {
   const [branches, setBranches] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const [ledgerFor, setLedgerFor] = useState<Supplier | null>(null);
+
 
   const load = async () => {
     setLoading(true);
@@ -145,6 +148,16 @@ const SuppliersPage = () => {
                 <TableCell>{s.is_active ? <Badge>Active</Badge> : <Badge variant="secondary">Inactive</Badge>}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      title={s.payable_account_id ? "View accounting ledger" : "No linked ledger"}
+                      disabled={!s.payable_account_id}
+                      onClick={() => setLedgerFor(s)}
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(s)}><Pencil className="w-3.5 h-3.5" /></Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => remove(s.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
                   </div>
@@ -216,6 +229,14 @@ const SuppliersPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AccountLedgerDialog
+        accountId={ledgerFor?.payable_account_id || null}
+        accountName={ledgerFor ? `${ledgerFor.name} (Payable)` : ""}
+        openingBalance={Number(ledgerFor?.opening_balance) || 0}
+        openingBalanceType="credit"
+        open={!!ledgerFor}
+        onOpenChange={(o) => { if (!o) setLedgerFor(null); }}
+      />
     </div>
   );
 };
