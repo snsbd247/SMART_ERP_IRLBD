@@ -614,68 +614,106 @@ const CustomerProfilePage = () => {
         <TabsContent value="ledger" className="space-y-3">
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
+              <Label className="text-xs">Search</Label>
+              <Input value={ledgerSearch} onChange={e => { setLedgerSearch(e.target.value); setLedgerPage(1); }} placeholder="Type or reference…" className="h-9 w-56" />
+            </div>
+            <div className="space-y-1">
               <Label className="text-xs">From</Label>
-              <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="h-9 w-36" />
+              <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setLedgerPage(1); }} className="h-9 w-36" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">To</Label>
-              <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-9 w-36" />
+              <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setLedgerPage(1); }} className="h-9 w-36" />
             </div>
-            {(dateFrom || dateTo) && (
-              <Button size="sm" variant="ghost" onClick={() => { setDateFrom(""); setDateTo(""); }}>Clear</Button>
+            {(dateFrom || dateTo || ledgerSearch) && (
+              <Button size="sm" variant="ghost" onClick={() => { setDateFrom(""); setDateTo(""); setLedgerSearch(""); setLedgerPage(1); }}>Clear</Button>
             )}
             <Button size="sm" variant="outline" onClick={handlePrintLedger}>
               <Printer className="w-3.5 h-3.5 mr-1" />Print
             </Button>
           </div>
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto" id="customer-ledger-print">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead className="text-right">Debit</TableHead>
-                      <TableHead className="text-right">Credit</TableHead>
-                      <TableHead className="text-right">Balance</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {ledger.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No transactions found</TableCell></TableRow>
-                    ) : (
-                      <>
-                        {ledger.map((row, idx) => (
-                          <TableRow key={row.id + row.type + idx}>
-                            <TableCell className="text-sm">{row.date}</TableCell>
-                            <TableCell className="text-sm">
-                              <span className={row.type === "Sales Return" ? "text-amber-600" : row.type === "Payment" ? "text-emerald-600" : ""}>{row.type}</span>
-                            </TableCell>
-                            <TableCell className="font-mono text-xs">{row.reference}</TableCell>
-                            <TableCell className="text-right tabular-nums">{row.debit > 0 ? fc(row.debit) : ""}</TableCell>
-                            <TableCell className="text-right tabular-nums text-emerald-600">{row.credit > 0 ? fc(row.credit) : ""}</TableCell>
-                            <TableCell className={`text-right tabular-nums font-medium ${row.balance < 0 ? "text-emerald-600" : ""}`}>
-                              {formatSignedBalance(row.balance, fc)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow className="bg-muted/50 font-medium">
-                          <TableCell colSpan={3} className="text-right text-sm">Totals</TableCell>
-                          <TableCell className="text-right tabular-nums">{fc(ledger.reduce((s, r) => s + r.debit, 0))}</TableCell>
-                          <TableCell className="text-right tabular-nums text-emerald-600">{fc(ledger.reduce((s, r) => s + r.credit, 0))}</TableCell>
-                          <TableCell className="text-right tabular-nums font-bold">
-                            {ledger.length > 0 ? formatSignedBalance(ledger[ledger.length - 1].balance, fc) : ""}
-                          </TableCell>
+          {(() => {
+            const q = ledgerSearch.trim().toLowerCase();
+            const filteredLedger = q
+              ? ledger.filter(r => r.type.toLowerCase().includes(q) || (r.reference || "").toLowerCase().includes(q) || r.date.includes(q))
+              : ledger;
+            const pageCount = Math.max(1, Math.ceil(filteredLedger.length / LEDGER_PAGE_SIZE));
+            const currentPage = Math.min(ledgerPage, pageCount);
+            const pageRows = filteredLedger.slice((currentPage - 1) * LEDGER_PAGE_SIZE, currentPage * LEDGER_PAGE_SIZE);
+            const totalDr = filteredLedger.reduce((s, r) => s + r.debit, 0);
+            const totalCr = filteredLedger.reduce((s, r) => s + r.credit, 0);
+            const closing = filteredLedger.length > 0 ? filteredLedger[filteredLedger.length - 1].balance : 0;
+            return (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto" id="customer-ledger-print">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Reference</TableHead>
+                          <TableHead className="text-right">Debit</TableHead>
+                          <TableHead className="text-right">Credit</TableHead>
+                          <TableHead className="text-right">Balance</TableHead>
                         </TableRow>
-                      </>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+                      </TableHeader>
+                      <TableBody>
+                        {ledgerError ? (
+                          <TableRow><TableCell colSpan={6} className="text-center py-8">
+                            <div className="flex flex-col items-center gap-2 text-destructive">
+                              <span className="text-sm font-medium">Failed to load ledger</span>
+                              <span className="text-xs text-muted-foreground">{ledgerError}</span>
+                              <Button size="sm" variant="outline" onClick={() => fetchData()}>Retry</Button>
+                            </div>
+                          </TableCell></TableRow>
+                        ) : filteredLedger.length === 0 ? (
+                          <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            {ledger.length === 0 ? "No transactions found" : "No entries match your filters"}
+                          </TableCell></TableRow>
+                        ) : (
+                          <>
+                            {pageRows.map((row, idx) => (
+                              <TableRow key={row.id + row.type + idx}>
+                                <TableCell className="text-sm">{row.date}</TableCell>
+                                <TableCell className="text-sm">
+                                  <span className={row.type === "Sales Return" ? "text-amber-600" : row.type === "Payment" ? "text-emerald-600" : ""}>{row.type}</span>
+                                </TableCell>
+                                <TableCell className="font-mono text-xs">{row.reference}</TableCell>
+                                <TableCell className="text-right tabular-nums">{row.debit > 0 ? fc(row.debit) : ""}</TableCell>
+                                <TableCell className="text-right tabular-nums text-emerald-600">{row.credit > 0 ? fc(row.credit) : ""}</TableCell>
+                                <TableCell className={`text-right tabular-nums font-medium ${row.balance < 0 ? "text-emerald-600" : ""}`}>
+                                  {formatSignedBalance(row.balance, fc)}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            <TableRow className="bg-muted/50 font-medium">
+                              <TableCell colSpan={3} className="text-right text-sm">Totals</TableCell>
+                              <TableCell className="text-right tabular-nums">{fc(totalDr)}</TableCell>
+                              <TableCell className="text-right tabular-nums text-emerald-600">{fc(totalCr)}</TableCell>
+                              <TableCell className="text-right tabular-nums font-bold">{formatSignedBalance(closing, fc)}</TableCell>
+                            </TableRow>
+                          </>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {filteredLedger.length > LEDGER_PAGE_SIZE && (
+                    <div className="flex items-center justify-between p-3 text-sm border-t">
+                      <div className="text-muted-foreground">
+                        Showing {(currentPage - 1) * LEDGER_PAGE_SIZE + 1}–{Math.min(currentPage * LEDGER_PAGE_SIZE, filteredLedger.length)} of {filteredLedger.length}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setLedgerPage(p => Math.max(1, p - 1))}>Prev</Button>
+                        <span className="text-xs text-muted-foreground">Page {currentPage} / {pageCount}</span>
+                        <Button size="sm" variant="outline" disabled={currentPage === pageCount} onClick={() => setLedgerPage(p => Math.min(pageCount, p + 1))}>Next</Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
         </TabsContent>
 
         {/* Invoices Tab */}
