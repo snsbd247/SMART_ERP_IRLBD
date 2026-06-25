@@ -286,7 +286,24 @@ const CustomersPage = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>{editingCustomer ? "Edit Customer" : "New Customer"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Code</Label>
+                <Input
+                  value={form.code}
+                  placeholder="Auto-generated (editable)"
+                  aria-invalid={!!codeError}
+                  onChange={(e) => {
+                    const code = e.target.value;
+                    setForm({ ...form, code });
+                    const dup = code ? findDuplicateSupplierCode(customers as any, code, editingCustomer?.id) : null;
+                    setCodeError(dup ? `Code "${code}" is already used by another customer.` : null);
+                  }}
+                />
+                {codeError && <p className="text-[11px] text-destructive mt-1">{codeError}</p>}
+              </div>
+              <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+            </div>
             <div><Label>Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
             <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
@@ -313,35 +330,50 @@ const CustomersPage = () => {
                 <p className="text-[11px] text-muted-foreground mt-1">As-of date for the brought-forward balance.</p>
               </div>
             </div>
-            {!editingCustomer ? (
-              <div>
-                <Label>Parent Ledger (Chart of Accounts)</Label>
-                <SearchableAccountSelect
-                  accounts={assetAccounts}
-                  value={parentAccountId || "__auto__"}
-                  onChange={(v) => setParentAccountId(v === "__auto__" ? "" : v)}
-                  allowAll
-                  allLabel="Auto (Accounts Receivable)"
-                  allValue="__auto__"
-                  placeholder="Auto (Accounts Receivable)"
-                />
-                <p className="text-xs text-muted-foreground mt-1">A dedicated sub-ledger will be created under Accounts Receivable and linked to this customer.</p>
-              </div>
-            ) : (
-              <div>
-                <Label>Receivable Ledger</Label>
-                <SearchableAccountSelect
-                  accounts={receivableLedgers.length > 0 ? receivableLedgers : assetAccounts}
-                  value={receivableLedgerId || "__none__"}
-                  onChange={(v) => setReceivableLedgerId(v === "__none__" ? "" : v)}
-                  allowAll
-                  allLabel="— Not linked —"
-                  allValue="__none__"
-                  placeholder="Select receivable ledger"
-                />
-                <p className="text-xs text-muted-foreground mt-1">Change the ledger linked to this customer (under Accounts Receivable).</p>
-              </div>
-            )}
+            {(() => {
+              // Build searchable receivable-ledger options. On edit, ALWAYS include the
+              // currently linked account so the picker is never blank even if the
+              // ledger isn't a direct child of "Accounts Receivable" (1240).
+              const balMap = new Map(accountsWithBal.map((a) => [a.id, a]));
+              const pool = receivableLedgers.length > 0 ? receivableLedgers : assetAccounts;
+              const linked = editingCustomer?.receivable_account_id;
+              const linkedAcc = linked && !pool.some((a) => a.id === linked)
+                ? assetAccounts.find((a) => a.id === linked)
+                : null;
+              const options = (linkedAcc ? [linkedAcc, ...pool] : pool).map((a: any) => {
+                const bal = balMap.get(a.id);
+                return { ...a, signed_balance: bal?.signed_balance, account_type: a.account_type || bal?.account_type };
+              });
+              return (
+                <>
+                  {!editingCustomer && (
+                    <div>
+                      <Label>Parent Ledger (Chart of Accounts)</Label>
+                      <SearchableAccountSelect
+                        accounts={assetAccounts}
+                        value={parentAccountId || "__auto__"}
+                        onChange={(v) => setParentAccountId(v === "__auto__" ? "" : v)}
+                        allowAll
+                        allLabel="Auto (Accounts Receivable)"
+                        allValue="__auto__"
+                        placeholder="Auto (Accounts Receivable)"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">A dedicated sub-ledger will be created under Accounts Receivable and linked to this customer.</p>
+                    </div>
+                  )}
+                  <div>
+                    <Label>Receivable Ledger</Label>
+                    <AccountCombobox
+                      accounts={options}
+                      value={receivableLedgerId}
+                      onChange={(id) => setReceivableLedgerId(id)}
+                      placeholder={editingCustomer ? "— Not linked —" : "Auto — will be created"}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Search by code or name. {editingCustomer ? "Change the ledger linked to this customer." : "Optional on create — auto-created if blank."}</p>
+                  </div>
+                </>
+              );
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
