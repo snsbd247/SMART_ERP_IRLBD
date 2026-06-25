@@ -22,9 +22,19 @@ interface LedgerEntry {
   narration: string | null;
   voucher_number: string;
   voucher_date: string;
+  voucher_type: string;
   description: string | null;
   running_balance: number;
 }
+
+const VOUCHER_TYPE_LABEL: Record<string, string> = {
+  journal: "Journal Voucher",
+  payment: "Payment Voucher",
+  receipt: "Receipt Voucher",
+  contra: "Contra Voucher",
+};
+const labelVoucherType = (t: string) =>
+  VOUCHER_TYPE_LABEL[(t || "").toLowerCase()] || (t ? `${t.charAt(0).toUpperCase()}${t.slice(1)} Voucher` : "Voucher");
 
 export function AccountLedgerDialog({ accountId, accountName, openingBalance, openingBalanceType, open, onOpenChange }: Props) {
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
@@ -37,9 +47,9 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
       setLoading(true);
       const { data, error } = await supabase
         .from("voucher_entries")
-        .select("id, debit, credit, narration, acc_vouchers!inner(voucher_number, voucher_date, description, status)")
+        .select("id, debit, credit, narration, acc_vouchers!inner(voucher_number, voucher_date, voucher_type, description, status)")
         .eq("account_id", accountId)
-        .eq("acc_vouchers.status", "approved")
+        .in("acc_vouchers.status", ["approved", "posted"])
         .order("voucher_date", { foreignTable: "acc_vouchers", ascending: true });
 
       if (error) console.error("Ledger fetch error:", error);
@@ -55,6 +65,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
           narration: e.narration,
           voucher_number: e.acc_vouchers?.voucher_number || "",
           voucher_date: e.acc_vouchers?.voucher_date || "",
+          voucher_type: e.acc_vouchers?.voucher_type || "",
           description: e.acc_vouchers?.description || "",
           running_balance: runBal,
         };
@@ -92,6 +103,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
           <TableHeader>
             <TableRow>
               <TableHead>Date</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Voucher #</TableHead>
               <TableHead>Description</TableHead>
               <TableHead className="text-right">Debit</TableHead>
@@ -102,7 +114,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
           <TableBody>
             {/* Opening Balance Row */}
             <TableRow className="bg-muted/30">
-              <TableCell colSpan={3} className="font-medium">Opening Balance</TableCell>
+              <TableCell colSpan={4} className="font-medium">Opening Balance</TableCell>
               <TableCell className="text-right tabular-nums">
                 {openingBalanceType === "debit" && openingBalance > 0 ? fc(openingBalance) : ""}
               </TableCell>
@@ -115,12 +127,13 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
             </TableRow>
 
             {loading ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
             ) : entries.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No transactions</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No transactions</TableCell></TableRow>
             ) : entries.map((e) => (
               <TableRow key={e.id}>
                 <TableCell>{e.voucher_date}</TableCell>
+                <TableCell><Badge variant="secondary" className="text-xs">{labelVoucherType(e.voucher_type)}</Badge></TableCell>
                 <TableCell className="font-mono text-xs">{e.voucher_number}</TableCell>
                 <TableCell className="text-muted-foreground">{e.description || e.narration || "—"}</TableCell>
                 <TableCell className="text-right tabular-nums">{e.debit > 0 ? fc(e.debit) : ""}</TableCell>
@@ -133,7 +146,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
 
             {/* Totals Row */}
             <TableRow className="bg-muted/50 font-bold">
-              <TableCell colSpan={3} className="text-right">Total</TableCell>
+              <TableCell colSpan={4} className="text-right">Total</TableCell>
               <TableCell className="text-right tabular-nums">{fc(totalDebit)}</TableCell>
               <TableCell className="text-right tabular-nums">{fc(totalCredit)}</TableCell>
               <TableCell className={`text-right tabular-nums ${closingBalance < 0 ? "text-destructive" : ""}`}>
