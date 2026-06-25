@@ -101,7 +101,7 @@ const CustomersPage = () => {
       return;
     }
     setEditingCustomer(c);
-    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "" });
+    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "", opening_balance: Number(c.opening_balance ?? 0), opening_balance_date: c.opening_balance_date || "" });
     setReceivableLedgerId(c.receivable_account_id || "");
     setOpen(true);
   };
