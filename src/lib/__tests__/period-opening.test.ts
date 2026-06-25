@@ -102,7 +102,7 @@ describe("computeAccountPeriodOpening — IFIC Bank July→August regression", (
       { id: "ific", opening_balance: 0, opening_balance_type: "debit" },
     ];
     mockData.voucher_entries = [
-      { id: "v1", account_id: "ific", debit: 0, credit: 16512262.86, voucher_id: "vch1" },
+      { id: "v1", account_id: "ific", debit: 16512262.86, credit: 0, voucher_id: "vch1" },
     ];
     // Stitch parent vouchers via embedded join — bridge expects `acc_vouchers` on the row.
     // Our mock returns rows directly; computeAccountPeriodOpening reads `e.acc_vouchers?` safely.
