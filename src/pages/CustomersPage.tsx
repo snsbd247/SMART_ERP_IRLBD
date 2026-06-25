@@ -30,6 +30,8 @@ interface Customer {
   bin_number: string | null;
   status: string;
   receivable_account_id?: string | null;
+  opening_balance?: number | null;
+  opening_balance_date?: string | null;
 }
 
 const CustomersPage = () => {
