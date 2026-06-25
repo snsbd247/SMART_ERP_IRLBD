@@ -84,7 +84,7 @@ const CustomersPage = () => {
 
   const openCreate = () => {
     setEditingCustomer(null);
-    setForm({ name: "", email: "", phone: "", address: "", bin_number: "" });
+    setForm({ name: "", email: "", phone: "", address: "", bin_number: "", opening_balance: 0, opening_balance_date: "" });
     setParentAccountId("");
     setReceivableLedgerId("");
     setOpen(true);
