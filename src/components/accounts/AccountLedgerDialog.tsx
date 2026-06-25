@@ -103,6 +103,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
           <TableHeader>
             <TableRow>
               <TableHead>Date</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Voucher #</TableHead>
               <TableHead>Description</TableHead>
               <TableHead className="text-right">Debit</TableHead>
