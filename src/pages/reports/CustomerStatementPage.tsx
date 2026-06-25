@@ -2,6 +2,8 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatSignedBalance } from "@/lib/balance-format";
+import { computeCustomerPeriodOpening, type CustomerPriorRow } from "@/lib/period-opening";
+import { OpeningDrilldownDialog } from "@/components/accounts/OpeningDrilldownDialog";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { printReport } from "@/lib/report-utils";
 import { ReportHeader } from "@/components/ReportHeader";
@@ -11,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { FileText, User } from "lucide-react";
+import { FileText, User, Info } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface Customer {
