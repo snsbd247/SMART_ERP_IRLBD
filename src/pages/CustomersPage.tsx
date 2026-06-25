@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { logEditAudit } from "@/lib/audit-utils";
 import { documentApi } from "@/lib/document-api";
 import { createCustomerLedger, syncPartyOpeningToLedger } from "@/lib/party-ledger-utils";
+import { validatePartyOpening } from "@/lib/party-opening-validation";
 import { getDocumentStatusConfig } from "@/hooks/useDocumentRules";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -108,10 +109,12 @@ const CustomersPage = () => {
 
   const save = async () => {
     if (!form.name.trim()) return;
+    const v = validatePartyOpening({ opening_balance: form.opening_balance, opening_balance_date: form.opening_balance_date });
+    if (!v.ok) { toast({ title: "Invalid opening balance", description: v.errors.join("; "), variant: "destructive" }); return; }
     setSaving(true);
     try {
-      const openingAmt = Number(form.opening_balance) || 0;
-      const openingDate = form.opening_balance_date || null;
+      const openingAmt = v.value.opening_balance;
+      const openingDate = v.value.opening_balance_date;
       if (editingCustomer) {
         const isApprovedEdit = editingCustomer.status === "approved";
         const baseFields = {
