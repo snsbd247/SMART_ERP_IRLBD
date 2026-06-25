@@ -89,9 +89,12 @@ const CustomersPage = () => {
     }
   };
 
+  const nextCustomerCode = () => nextSupplierCode(customers as any, "CUS-", 4);
+
   const openCreate = () => {
     setEditingCustomer(null);
-    setForm({ name: "", email: "", phone: "", address: "", bin_number: "", opening_balance: 0, opening_balance_date: "" });
+    setCodeError(null);
+    setForm({ code: nextCustomerCode(), name: "", email: "", phone: "", address: "", bin_number: "", opening_balance: 0, opening_balance_date: "" });
     setParentAccountId("");
     setReceivableLedgerId("");
     setOpen(true);
@@ -108,22 +111,34 @@ const CustomersPage = () => {
       return;
     }
     setEditingCustomer(c);
-    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "", opening_balance: Number(c.opening_balance ?? 0), opening_balance_date: c.opening_balance_date || "" });
+    setCodeError(null);
+    setForm({ code: c.code || "", name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "", opening_balance: Number(c.opening_balance ?? 0), opening_balance_date: c.opening_balance_date || "" });
     setReceivableLedgerId(c.receivable_account_id || "");
     setOpen(true);
   };
 
   const save = async () => {
     if (!form.name.trim()) return;
+    if (form.code) {
+      const dup = findDuplicateSupplierCode(customers as any, form.code, editingCustomer?.id);
+      if (dup) {
+        setCodeError(`Code "${form.code}" is already used by another customer.`);
+        toast({ title: "Duplicate code", description: "Choose a unique customer code.", variant: "destructive" });
+        return;
+      }
+    }
+    setCodeError(null);
     const v = validatePartyOpening({ opening_balance: form.opening_balance, opening_balance_date: form.opening_balance_date });
     if (!v.ok) { toast({ title: "Invalid opening balance", description: v.errors.join("; "), variant: "destructive" }); return; }
     setSaving(true);
     try {
       const openingAmt = v.value.opening_balance;
       const openingDate = v.value.opening_balance_date;
+      const codeVal = form.code?.trim() || null;
       if (editingCustomer) {
         const isApprovedEdit = editingCustomer.status === "approved";
         const baseFields = {
+          code: codeVal,
           name: form.name, email: form.email || null, phone: form.phone || null,
           address: form.address || null, bin_number: form.bin_number || null,
           opening_balance: openingAmt, opening_balance_date: openingDate,
@@ -133,18 +148,19 @@ const CustomersPage = () => {
           await documentApi.editApproved("customer", editingCustomer.id, newValues);
         } else {
           const oldValues = { ...baseFields, receivable_account_id: editingCustomer.receivable_account_id ?? null,
+            code: editingCustomer.code ?? null,
             name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address, bin_number: editingCustomer.bin_number,
             opening_balance: editingCustomer.opening_balance ?? 0, opening_balance_date: editingCustomer.opening_balance_date ?? null };
           const { error } = await supabase.from("customers").update(newValues).eq("id", editingCustomer.id);
           if (error) throw error;
           await logEditAudit({ userId: user?.id, userName: profile?.name, module: "Sales", action: "Edit Customer", recordId: editingCustomer.id, oldValues, newValues });
         }
-        // Customer = asset (receivable). Mirror opening to linked ledger so reports pick it up.
         await syncPartyOpeningToLedger(receivableLedgerId || editingCustomer.receivable_account_id || null, openingAmt, "debit");
         toast({ title: "Customer updated" });
       } else {
         const { data: inserted, error } = await supabase.from("customers").insert({
           ...form,
+          code: codeVal,
           opening_balance: openingAmt,
           opening_balance_date: openingDate,
           status: "active",
@@ -163,7 +179,6 @@ const CustomersPage = () => {
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally { setSaving(false); }
-  };
 
   const handleDocAction = async () => {
     if (!actionTarget || !actionType) return;
