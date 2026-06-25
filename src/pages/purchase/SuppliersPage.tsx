@@ -252,7 +252,7 @@ const SuppliersPage = () => {
             <div className="col-span-2 space-y-1"><Label>Payable Ledger (under Accounts & Other Payable)</Label>
               <div className="flex items-center gap-2">
                 <AccountCombobox
-                  accounts={accounts as any}
+                  accounts={accountsForPicker as any}
                   value={form.payable_account_id || ""}
                   onChange={(id) => setForm({ ...form, payable_account_id: id || null })}
                   placeholder={editing ? "— Not linked —" : "Auto — create new ledger"}
