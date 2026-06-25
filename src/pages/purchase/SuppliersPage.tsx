@@ -14,6 +14,8 @@ import { createSupplierLedger, syncPartyOpeningToLedger } from "@/lib/party-ledg
 import { validatePartyOpening } from "@/lib/party-opening-validation";
 import { AccountLedgerDialog } from "@/components/accounts/AccountLedgerDialog";
 import { AccountCombobox } from "@/components/accounts/AccountCombobox";
+import { nextSupplierCode, findDuplicateSupplierCode, buildSupplierPayload } from "@/lib/supplier-utils";
+import { useAccountBalances } from "@/hooks/useAccountBalances";
 
 interface Supplier {
   id: string; code: string; name: string; supplier_type: string;
@@ -47,6 +49,8 @@ const SuppliersPage = () => {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const [ledgerFor, setLedgerFor] = useState<Supplier | null>(null);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const { accounts: accountsWithBal } = useAccountBalances();
 
 
   const load = async () => {
@@ -71,46 +75,36 @@ const SuppliersPage = () => {
   };
   useEffect(() => { load(); }, []);
 
-  const nextSupplierCode = (): string => {
-    let max = 0;
-    for (const s of items) {
-      const m = String(s.code || "").match(/(\d+)\s*$/);
-      if (m) { const n = parseInt(m[1], 10); if (!isNaN(n) && n > max) max = n; }
-    }
-    return `SUP-${String(max + 1).padStart(4, "0")}`;
-  };
+  // Merge live signed balances into the payable-ledger picker options.
+  const balanceMap = new Map(accountsWithBal.map((a) => [a.id, a]));
+  const accountsForPicker = accounts.map((a) => {
+    const bal = balanceMap.get(a.id);
+    return { ...a, signed_balance: bal?.signed_balance, account_type: a.account_type || bal?.account_type };
+  });
 
-  const openCreate = () => { setEditing(null); setForm({ ...empty, code: nextSupplierCode() }); setOpen(true); };
-  const openEdit = (s: Supplier) => { setEditing(s); setForm(s); setOpen(true); };
+  const openCreate = () => { setEditing(null); setCodeError(null); setForm({ ...empty, code: nextSupplierCode(items) }); setOpen(true); };
+  const openEdit = (s: Supplier) => { setEditing(s); setCodeError(null); setForm(s); setOpen(true); };
 
 
   const save = async () => {
     if (!form.code || !form.name) { toast({ title: "Code & Name required", variant: "destructive" }); return; }
+    const dupId = findDuplicateSupplierCode(items, String(form.code), editing?.id);
+    if (dupId) {
+      setCodeError(`Code "${form.code}" is already used by another supplier.`);
+      toast({ title: "Duplicate code", description: "Choose a unique supplier code.", variant: "destructive" });
+      return;
+    }
+    setCodeError(null);
     const v = validatePartyOpening({ opening_balance: form.opening_balance ?? 0, opening_balance_date: form.opening_balance_date ?? null });
     if (!v.ok) { toast({ title: "Invalid opening balance", description: v.errors.join("; "), variant: "destructive" }); return; }
     setSaving(true);
     try {
-      // Whitelist writable fields only — prevents id/created_at/updated_at from
-      // breaking the Laravel update endpoint and ensures is_active is always sent.
-      const payload: any = {
-        code: String(form.code).trim(),
-        name: String(form.name).trim(),
-        supplier_type: form.supplier_type || "local",
-        contact_person: form.contact_person ?? null,
-        phone: form.phone ?? null,
-        email: form.email ?? null,
-        address: form.address ?? null,
-        currency: form.currency || "BDT",
-        vat_reg_no: form.vat_reg_no ?? null,
-        bin_no: form.bin_no ?? null,
-        credit_limit: Number(form.credit_limit) || 0,
-        credit_days: Number(form.credit_days) || 0,
-        branch_id: form.branch_id || null,
-        payable_account_id: form.payable_account_id || null,
-        is_active: form.is_active === false ? false : true,
+      const payload: any = buildSupplierPayload({
+        ...form,
         opening_balance: v.value.opening_balance,
         opening_balance_date: v.value.opening_balance_date,
-      };
+      });
+      const prevActive = editing?.is_active;
       if (editing) {
         const { error } = await supabase.from("suppliers" as any).update(payload).eq("id", editing.id);
         if (error) throw error;
@@ -123,7 +117,13 @@ const SuppliersPage = () => {
         if (error) throw error;
       }
       await syncPartyOpeningToLedger(payload.payable_account_id, payload.opening_balance, "credit");
-      toast({ title: editing ? "Supplier updated" : "Supplier created", description: !editing && payload.payable_account_id ? "Linked ledger under Accounts & Other Payable" : undefined });
+      // Status-aware confirmation toast so the user sees the saved active state.
+      const statusChanged = editing && prevActive !== payload.is_active;
+      const statusNote = statusChanged
+        ? (payload.is_active ? "Supplier activated." : "Supplier deactivated.")
+        : `Status: ${payload.is_active ? "Active" : "Inactive"}.`;
+      const linkNote = !editing && payload.payable_account_id ? " Linked ledger under Accounts & Other Payable." : "";
+      toast({ title: editing ? "Supplier updated" : "Supplier created", description: statusNote + linkNote });
       setOpen(false); load();
     } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
     finally { setSaving(false); }
@@ -199,7 +199,21 @@ const SuppliersPage = () => {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Edit Supplier" : "New Supplier"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><Label>Code *</Label><Input placeholder="Auto-generated (editable)" value={form.code || ""} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
+            <div className="space-y-1">
+              <Label>Code *</Label>
+              <Input
+                placeholder="Auto-generated (editable)"
+                value={form.code || ""}
+                aria-invalid={!!codeError}
+                onChange={(e) => {
+                  const code = e.target.value;
+                  setForm({ ...form, code });
+                  const dup = findDuplicateSupplierCode(items, code, editing?.id);
+                  setCodeError(dup ? `Code "${code}" is already used by another supplier.` : null);
+                }}
+              />
+              {codeError && <p className="text-[11px] text-destructive">{codeError}</p>}
+            </div>
             <div className="space-y-1"><Label>Name *</Label><Input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
             <div className="space-y-1"><Label>Supplier Type</Label>
               <Select value={form.supplier_type} onValueChange={(v) => setForm({ ...form, supplier_type: v })}>
@@ -238,7 +252,7 @@ const SuppliersPage = () => {
             <div className="col-span-2 space-y-1"><Label>Payable Ledger (under Accounts & Other Payable)</Label>
               <div className="flex items-center gap-2">
                 <AccountCombobox
-                  accounts={accounts as any}
+                  accounts={accountsForPicker as any}
                   value={form.payable_account_id || ""}
                   onChange={(id) => setForm({ ...form, payable_account_id: id || null })}
                   placeholder={editing ? "— Not linked —" : "Auto — create new ledger"}
