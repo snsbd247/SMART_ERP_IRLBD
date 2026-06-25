@@ -141,7 +141,9 @@ const CustomerStatementPage = () => {
 
   const handleExcel = () => {
     const headers = ["Date", "Type", "Reference", "Description", "Debit", "Credit", "Balance"];
-    const rows = entries.map(e => [e.date, e.type, e.reference, e.description, e.debit, e.credit, e.balance]);
+    const rows: any[][] = [];
+    rows.push([dateFrom, "Opening", "—", "Opening Balance (brought forward)", "", "", periodOpening]);
+    entries.forEach(e => rows.push([e.date, e.type, e.reference, e.description, e.debit, e.credit, e.balance]));
     rows.push(["", "", "", "Total", totalDebit, totalCredit, closingBalance]);
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const wb = XLSX.utils.book_new();
