@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logEditAudit } from "@/lib/audit-utils";
 import { documentApi } from "@/lib/document-api";
-import { createCustomerLedger } from "@/lib/party-ledger-utils";
+import { createCustomerLedger, syncPartyOpeningToLedger } from "@/lib/party-ledger-utils";
 import { getDocumentStatusConfig } from "@/hooks/useDocumentRules";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
