@@ -1,67 +1,51 @@
-## পুরো ERP সফটওয়্যার অডিট — ৫ ফেজ প্ল্যান
+# Period-Opening Unification Plan
 
-প্রতিটি ফেজ আলাদা মেসেজে execute হবে। এক ফেজ শেষ → রিপোর্ট + fixes → পরের ফেজ। একসাথে সব করলে token limit এ আটকাবে এবং fixes মিস হবে।
+## Goal
+One single source of truth (`computePeriodOpening`) used by every ledger view, the Customer Statement (screen + print + Excel), and the Customer Profile. Add a drilldown that explains the opening number, plus a regression test covering the IFIC Bank July→August carry-forward case.
 
----
+## 1. New data-layer helper — `src/lib/period-opening.ts`
+- `computeAccountPeriodOpening({ accountId, dateFrom, branchId?, statuses? })`
+  - Returns `{ opening: number, priorEntries: PriorEntry[], baseOpening: number }`.
+  - Loads the account's base `opening_balance` + `opening_balance_type` from `chart_of_accounts`.
+  - Calls `fetchAllVoucherEntries` for `[1900-01-01 .. dateFrom-1]` and applies `applyEntry` (Closing = Opening + Credit − Debit).
+- `computeCustomerPeriodOpening({ customerId, dateFrom })`
+  - Sums invoices (debit) − payments (credit) − returns (credit) strictly before `dateFrom`.
+  - Returns `{ opening, priorRows }`.
+- Both helpers respect existing ledger formula; no Dr/Cr suffix.
 
-### Phase 1 — Schema Integrity (Database Layer)
-**লক্ষ্য:** কোন টেবিল/কলাম missing আছে কিনা যাচাই।
+## 2. Consumer refactors
+- `AccountLedgerReport.tsx` → already uses inline logic; replace with helper, pass `priorEntries` to drilldown.
+- `GeneralLedgerReport.tsx`, `CashBookReport.tsx`, `BankBookReport.tsx` → swap `signedOpeningBalance(acc.opening_balance,…)` for `computeAccountPeriodOpening`. For Cash/Bank these aggregate over multiple accounts — loop the helper and sum.
+- `CustomerStatementPage.tsx`:
+  - Compute `periodOpening` via `computeCustomerPeriodOpening`.
+  - Render an "Opening Balance" row at the top of the table.
+  - Running balance starts from `periodOpening`.
+  - Excel + print (`printRef`) include the same opening row → automatic parity.
+- `CustomerProfilePage.tsx`: same helper for the ledger card so the on-screen number matches the statement.
 
-- Laravel migrations (`erp-backend/database/migrations/`) থেকে expected schema বের করা
-- Frontend code (`src/`) এ যত `from('table_name')` এবং `.select('col')` call আছে সব scan করা
-- Backend Controllers/Services এ যত table reference আছে সব scan করা
-- দুটো list cross-check → missing tables/columns রিপোর্ট
-- Migration লিখে missing গুলো add করা (Safe Extension Only)
+## 3. Opening-line drilldown
+- `src/components/accounts/OpeningDrilldownDialog.tsx`
+  - Props: `open`, `onOpenChange`, `title`, `baseOpening`, `priorEntries[]` (date, ref, debit, credit, running).
+  - Renders a compact table showing how the base opening + each prior transaction roll into the period opening.
+- Wire as a button/icon on the Opening Balance row in `AccountLedgerReport` and `CustomerStatementPage` (other ledgers reuse if trivial).
 
----
+## 4. Regression test
+- `src/pages/reports/__tests__/customer-statement-opening.test.ts`
+  - Mocks Supabase responses for IFIC Bank (`account_code` "1025178216121") with July transactions yielding a negative closing.
+  - Asserts `computeAccountPeriodOpening({ dateFrom: "2025-08-01" })` returns the July closing.
+  - Asserts negative carry through (no sign flip).
+- `src/lib/__tests__/period-opening.test.ts` — unit tests for both helpers (positive, negative, no prior entries, branch filter).
 
-### Phase 2 — Runtime Errors (Console + Network)
-**লক্ষ্য:** Live preview এ login করে main pages ঘুরে console + network errors collect।
+## 5. Verification
+- Run `vitest` for new tests.
+- Manual: open Account Ledger for IFIC Bank with August date range; confirm opening = July closing and drilldown lists July entries.
 
-Route গুলো visit: Dashboard, Accounting (Vouchers, CoA, Ledger), Sales (Invoice, Customer), Purchase (PO, GRN, Bill), Inventory (Item, Stock), HRM (Employee, Attendance, Payroll), Settings, Reports.
+## Technical notes
+- Reuses `fetchAllVoucherEntries` so Supabase/Laravel parity is preserved.
+- Day-before calculation uses UTC arithmetic to avoid TZ off-by-one (existing pattern in `AccountLedgerReport`).
+- Branch filter is passed through so multi-branch reports stay consistent.
+- No DB migrations.
 
-প্রতি route এ:
-- Console errors/warnings capture
-- 4xx/5xx network requests capture
-- Failed asset loads capture
-- রিপোর্ট তৈরি → critical fixes apply
-
----
-
-### Phase 3 — CRUD Operations
-**লক্ষ্য:** Add/Edit/Delete/View প্রতি module এ কাজ করছে কিনা।
-
-- প্রতিটা core entity তে dummy create → edit → delete cycle
-- Form validation errors যাচাই
-- 500 errors যা Phase 2 তে miss হয়েছে সেগুলো ধরা
-- Backend `GenericTableController` + module-specific controllers এ error handling
-
----
-
-### Phase 4 — Business Logic Integrity
-**লক্ষ্য:** Cross-module flows ভাঙা আছে কিনা।
-
-- Sales Invoice → auto Journal Voucher → CoA balance
-- Purchase Bill → Stock Ledger update → Payable
-- Payment → FIFO allocation → Party Ledger
-- Payroll → Attendance deduction → Salary calculation
-- Stock movements → warehouse_stock sync
-- Financial period locks
-- Branch isolation middleware
-
----
-
-### Phase 5 — UI/UX Polish & Permissions
-**লক্ষ্য:** Final cleanup।
-
-- Broken layouts, overflow, responsive issues
-- Permission middleware mismatches (`settings.view` ধরনের 401 cases)
-- Empty states, loading states, toast messages
-- Sidebar nav broken links
-- Document numbering sequences সব module এ সঠিক কিনা
-
----
-
-### Approval
-
-"Phase 1 শুরু করো" বললে আমি Phase 1 execute করব এবং findings + fixes দিয়ে রিপোর্ট দেব। তারপর "Phase 2" বললে পরেরটা। চাইলে একাধিক phase একসাথে চালাতে বললেও পারি (তবে token budget এ অর্ধেক phase এ আটকে যেতে পারে)।
+## Files touched
+- Added: `src/lib/period-opening.ts`, `src/lib/__tests__/period-opening.test.ts`, `src/components/accounts/OpeningDrilldownDialog.tsx`, `src/pages/reports/__tests__/customer-statement-opening.test.ts`.
+- Edited: `AccountLedgerReport.tsx`, `GeneralLedgerReport.tsx`, `CashBookReport.tsx`, `BankBookReport.tsx`, `CustomerStatementPage.tsx`, `CustomerProfilePage.tsx`.
