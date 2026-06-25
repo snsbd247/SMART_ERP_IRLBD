@@ -114,7 +114,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
           <TableBody>
             {/* Opening Balance Row */}
             <TableRow className="bg-muted/30">
-              <TableCell colSpan={3} className="font-medium">Opening Balance</TableCell>
+              <TableCell colSpan={4} className="font-medium">Opening Balance</TableCell>
               <TableCell className="text-right tabular-nums">
                 {openingBalanceType === "debit" && openingBalance > 0 ? fc(openingBalance) : ""}
               </TableCell>
@@ -127,12 +127,13 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
             </TableRow>
 
             {loading ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
             ) : entries.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No transactions</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No transactions</TableCell></TableRow>
             ) : entries.map((e) => (
               <TableRow key={e.id}>
                 <TableCell>{e.voucher_date}</TableCell>
+                <TableCell><Badge variant="secondary" className="text-xs">{labelVoucherType(e.voucher_type)}</Badge></TableCell>
                 <TableCell className="font-mono text-xs">{e.voucher_number}</TableCell>
                 <TableCell className="text-muted-foreground">{e.description || e.narration || "—"}</TableCell>
                 <TableCell className="text-right tabular-nums">{e.debit > 0 ? fc(e.debit) : ""}</TableCell>
