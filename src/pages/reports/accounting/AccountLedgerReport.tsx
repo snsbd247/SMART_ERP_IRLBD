@@ -24,10 +24,8 @@ const AccountLedgerReport = () => {
   const [drilldownOpen, setDrilldownOpen] = useState(false);
   const [baseOpening, setBaseOpening] = useState<number>(0);
   const [priorEntries, setPriorEntries] = useState<PriorEntry[]>([]);
-
   const [periodOpening, setPeriodOpening] = useState<number>(0);
 
-  const [periodOpening, setPeriodOpening] = useState<number>(0);
 
   const fetchData = async () => {
     if (!selectedAccount || selectedAccount === "all") return;
