@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatSignedBalance } from "@/lib/balance-format";
+import { computeCustomerPeriodOpening } from "@/lib/period-opening";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -140,7 +141,13 @@ const CustomerProfilePage = () => {
     });
     allTxns.sort((a, b) => a.date.localeCompare(b.date));
 
+    // Seed running balance with carry-forward opening so the profile ledger
+    // matches the Customer Statement when a dateFrom is supplied.
     let runBal = 0;
+    if (id && dateFrom) {
+      const open = await computeCustomerPeriodOpening({ customerId: id, dateFrom });
+      runBal = open.opening;
+    }
     const ledgerRows: LedgerRow[] = allTxns
       .filter(t => {
         if (dateFrom && t.date < dateFrom) return false;

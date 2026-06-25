@@ -6,8 +6,8 @@ import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { Landmark } from "lucide-react";
-import { signedOpeningBalance } from "@/lib/balance-format";
 import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
+import { computeAggregateAccountPeriodOpening } from "@/lib/period-opening";
 
 const BankBookReport = () => {
   const { accounts, branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
@@ -33,7 +33,7 @@ const BankBookReport = () => {
     query = query.order("acc_vouchers(voucher_date)");
 
     const { data: entries } = await query;
-    const opening = bankAccounts.reduce((s, a) => s + signedOpeningBalance(a.opening_balance, a.opening_balance_type), 0);
+    const opening = await computeAggregateAccountPeriodOpening({ accounts: bankAccounts as any, dateFrom, branchId: branch });
     setOpeningBalance(opening);
     let runBal = opening;
 

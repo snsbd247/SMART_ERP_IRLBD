@@ -2,6 +2,8 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatSignedBalance } from "@/lib/balance-format";
+import { computeCustomerPeriodOpening, type CustomerPriorRow } from "@/lib/period-opening";
+import { OpeningDrilldownDialog } from "@/components/accounts/OpeningDrilldownDialog";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { printReport } from "@/lib/report-utils";
 import { ReportHeader } from "@/components/ReportHeader";
@@ -11,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { FileText, User } from "lucide-react";
+import { FileText, User, Info } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface Customer {
@@ -46,6 +48,9 @@ const CustomerStatementPage = () => {
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [periodOpening, setPeriodOpening] = useState<number>(0);
+  const [priorRows, setPriorRows] = useState<CustomerPriorRow[]>([]);
+  const [drilldownOpen, setDrilldownOpen] = useState(false);
 
   useEffect(() => {
     supabase.from("customers").select("id, name, phone, email, address").order("name").then(({ data }) => {
@@ -59,6 +64,12 @@ const CustomerStatementPage = () => {
 
     const cust = customers.find(c => c.id === selectedCustomer) || null;
     setCustomer(cust);
+
+    // Carry-forward opening from all prior-period transactions.
+    const open = await computeCustomerPeriodOpening({ customerId: selectedCustomer, dateFrom });
+    setPeriodOpening(open.opening);
+    setPriorRows(open.priorRows);
+
 
     // Fetch invoices
     const { data: invoices } = await supabase
@@ -105,8 +116,8 @@ const CustomerStatementPage = () => {
 
     all.sort((a, b) => a.date.localeCompare(b.date));
 
-    // Calculate running balance
-    let balance = 0;
+    // Running balance seeded from period opening
+    let balance = open.opening;
     const ledger: LedgerEntry[] = all.map(e => {
       balance += e.debit - e.credit;
       return { id: e.id, date: e.date, type: e.type, reference: e.ref, description: e.desc, debit: e.debit, credit: e.credit, balance };
@@ -118,7 +129,7 @@ const CustomerStatementPage = () => {
 
   const totalDebit = entries.reduce((s, e) => s + e.debit, 0);
   const totalCredit = entries.reduce((s, e) => s + e.credit, 0);
-  const closingBalance = entries.length > 0 ? entries[entries.length - 1].balance : 0;
+  const closingBalance = entries.length > 0 ? entries[entries.length - 1].balance : periodOpening;
 
   const handlePrint = () => {
     printReport(printRef, `Customer Statement — ${customer?.name || ""}`, settings?.company_name, {
@@ -130,7 +141,9 @@ const CustomerStatementPage = () => {
 
   const handleExcel = () => {
     const headers = ["Date", "Type", "Reference", "Description", "Debit", "Credit", "Balance"];
-    const rows = entries.map(e => [e.date, e.type, e.reference, e.description, e.debit, e.credit, e.balance]);
+    const rows: any[][] = [];
+    rows.push([dateFrom, "Opening", "—", "Opening Balance (brought forward)", "", "", periodOpening]);
+    entries.forEach(e => rows.push([e.date, e.type, e.reference, e.description, e.debit, e.credit, e.balance]));
     rows.push(["", "", "", "Total", totalDebit, totalCredit, closingBalance]);
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const wb = XLSX.utils.book_new();
@@ -174,7 +187,7 @@ const CustomerStatementPage = () => {
         </CardContent>
       </Card>
 
-      {customer && entries.length > 0 && (
+      {customer && (entries.length > 0 || periodOpening !== 0) && (
         <div ref={printRef}>
           {/* Customer Info */}
           <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4 p-4 bg-muted/30 rounded-lg">
@@ -208,6 +221,28 @@ const CustomerStatementPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {/* Opening Balance row — always first, mirrors Excel/print export */}
+                <TableRow className="bg-muted/40">
+                  <TableCell className="text-xs tabular-nums">{dateFrom}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-[10px]">Opening</Badge>
+                  </TableCell>
+                  <TableCell className="text-xs font-medium">—</TableCell>
+                  <TableCell className="text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setDrilldownOpen(true)}
+                      className="inline-flex items-center gap-1 hover:underline print:no-underline"
+                      title="See prior-period transactions"
+                    >
+                      Opening Balance (brought forward)
+                      <Info className="w-3 h-3 text-muted-foreground print:hidden" />
+                    </button>
+                  </TableCell>
+                  <TableCell className="text-xs text-right tabular-nums">—</TableCell>
+                  <TableCell className="text-xs text-right tabular-nums">—</TableCell>
+                  <TableCell className="text-xs text-right tabular-nums font-medium">{formatSignedBalance(periodOpening, fc)}</TableCell>
+                </TableRow>
                 {entries.map(e => (
                   <TableRow key={e.id}>
                     <TableCell className="text-xs tabular-nums">{e.date}</TableCell>
@@ -254,6 +289,24 @@ const CustomerStatementPage = () => {
           </CardContent>
         </Card>
       )}
+
+      <OpeningDrilldownDialog
+        open={drilldownOpen}
+        onOpenChange={setDrilldownOpen}
+        title={`Opening Balance — ${customer?.name ?? ""} (as of ${dateFrom})`}
+        baseOpening={0}
+        baseLabel="Customer base (no prior records)"
+        rows={priorRows.map(r => ({
+          id: r.id,
+          date: r.date,
+          reference: r.reference,
+          description: r.type,
+          debit: r.debit,
+          credit: r.credit,
+          running_balance: r.running_balance,
+        }))}
+        periodOpening={periodOpening}
+      />
     </div>
   );
 };

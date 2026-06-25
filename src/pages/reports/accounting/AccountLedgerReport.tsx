@@ -8,11 +8,12 @@ import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
-import { signedOpeningBalance } from "@/lib/balance-format";
+import { fetchAllVoucherEntries } from "@/lib/report-fetch";
 import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
+import { computeAccountPeriodOpening, type PriorEntry } from "@/lib/period-opening";
+import { OpeningDrilldownDialog } from "@/components/accounts/OpeningDrilldownDialog";
 import { downloadCSV } from "@/lib/csv-export";
-import { ScrollText, FileDown } from "lucide-react";
+import { ScrollText, FileDown, Info } from "lucide-react";
 
 const AccountLedgerReport = () => {
   const { accounts, branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
@@ -20,8 +21,11 @@ const AccountLedgerReport = () => {
   const [statusFilter, setStatusFilter] = useState<"both" | "approved" | "posted">("both");
   const [data, setData] = useState<any[]>([]);
   const hasFetched = useRef(false);
-
+  const [drilldownOpen, setDrilldownOpen] = useState(false);
+  const [baseOpening, setBaseOpening] = useState<number>(0);
+  const [priorEntries, setPriorEntries] = useState<PriorEntry[]>([]);
   const [periodOpening, setPeriodOpening] = useState<number>(0);
+
 
   const fetchData = async () => {
     if (!selectedAccount || selectedAccount === "all") return;
@@ -29,30 +33,22 @@ const AccountLedgerReport = () => {
     hasFetched.current = true;
     const statuses = statusFilter === "both" ? ["approved", "posted"] : [statusFilter];
     const acc = accounts.find((a) => a.id === selectedAccount);
-    const baseOpening = acc ? signedOpeningBalance(acc.opening_balance, acc.opening_balance_type) : 0;
 
-    // Carry-forward: apply ALL entries dated BEFORE dateFrom (across branches scoped to filter)
-    // so the period's opening balance equals the prior period's closing.
-    let carriedOpening = baseOpening;
-    // Compute the day before dateFrom for the prior range upper bound.
-    const priorTo = (() => {
-      const d = new Date(dateFrom + "T00:00:00Z");
-      d.setUTCDate(d.getUTCDate() - 1);
-      return d.toISOString().slice(0, 10);
-    })();
-    if (priorTo >= "1900-01-01") {
-      const priorEntries = await fetchAllVoucherEntries({
-        dateFrom: "1900-01-01", dateTo: priorTo, branchId: branch, accountId: selectedAccount, statuses,
-      });
-      for (const e of priorEntries) {
-        carriedOpening = applyEntry(carriedOpening, { debit: e.debit, credit: e.credit });
-      }
-    }
+    // Single source of truth: opening = base opening + every prior-period entry.
+    const open = await computeAccountPeriodOpening({
+      accountId: selectedAccount,
+      dateFrom,
+      branchId: branch,
+      statuses,
+      account: acc as any,
+    });
+    setBaseOpening(open.baseOpening);
+    setPriorEntries(open.priorEntries);
 
     const entries = await fetchAllVoucherEntries({
       dateFrom, dateTo, branchId: branch, accountId: selectedAccount, statuses,
     });
-    let runBal = carriedOpening;
+    let runBal = open.opening;
 
     // Fetch counter-accounts (other ledger names in the same vouchers), chunked
     const voucherIds = Array.from(new Set(entries.map((e: any) => e.acc_vouchers?.id).filter(Boolean)));
@@ -185,7 +181,17 @@ const AccountLedgerReport = () => {
                     <TableRow className="bg-muted/40">
                       <TableCell>{dateFrom}</TableCell>
                       <TableCell className="font-mono text-xs">—</TableCell>
-                      <TableCell className="text-sm font-medium">Opening Balance</TableCell>
+                      <TableCell className="text-sm font-medium">
+                        <button
+                          type="button"
+                          onClick={() => setDrilldownOpen(true)}
+                          className="inline-flex items-center gap-1 hover:underline print:no-underline"
+                          title="See prior-period transactions"
+                        >
+                          Opening Balance
+                          <Info className="w-3 h-3 text-muted-foreground print:hidden" />
+                        </button>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">Brought forward</TableCell>
                       <TableCell className="text-right tabular-nums" />
                       <TableCell className="text-right tabular-nums" />
@@ -210,6 +216,22 @@ const AccountLedgerReport = () => {
           </Table>
         </CardContent></Card>
       </div>
+      <OpeningDrilldownDialog
+        open={drilldownOpen}
+        onOpenChange={setDrilldownOpen}
+        title={`Opening Balance — ${selectedAcc?.account_name ?? ""} (as of ${dateFrom})`}
+        baseOpening={baseOpening}
+        rows={priorEntries.map((p) => ({
+          id: p.id,
+          date: p.voucher_date,
+          reference: p.voucher_number,
+          description: p.description,
+          debit: p.debit,
+          credit: p.credit,
+          running_balance: p.running_balance,
+        }))}
+        periodOpening={periodOpening}
+      />
     </div>
   );
 };

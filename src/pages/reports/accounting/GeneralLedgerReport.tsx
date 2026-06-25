@@ -9,8 +9,8 @@ import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
-import { signedOpeningBalance } from "@/lib/balance-format";
 import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
+import { computeAccountPeriodOpening } from "@/lib/period-opening";
 import { downloadCSV } from "@/lib/csv-export";
 import { BookOpen, FileDown } from "lucide-react";
 
@@ -20,6 +20,7 @@ const GeneralLedgerReport = () => {
   const [statusFilter, setStatusFilter] = useState<"both" | "approved" | "posted">("both");
   const [data, setData] = useState<any[]>([]);
   const hasFetched = useRef(false);
+  const [periodOpenings, setPeriodOpenings] = useState<Record<string, number>>({});
 
   const fetchData = async () => {
     setLoading(true);
@@ -40,10 +41,21 @@ const GeneralLedgerReport = () => {
     });
 
     const result: any[] = [];
+    const openingMap = new Map<string, number>();
+    const statuses2 = statusFilter === "both" ? ["approved", "posted"] : [statusFilter];
+    await Promise.all(Array.from(grouped.keys()).map(async (accountId) => {
+      const acc = accounts.find((a) => a.id === accountId);
+      if (!acc) return;
+      const o = await computeAccountPeriodOpening({
+        accountId, dateFrom, branchId: branch, statuses: statuses2, account: acc as any,
+      });
+      openingMap.set(accountId, o.opening);
+    }));
+
     grouped.forEach((rows, accountId) => {
       const acc = accounts.find((a) => a.id === accountId);
       if (!acc) return;
-      let runBal = signedOpeningBalance(acc.opening_balance, acc.opening_balance_type);
+      let runBal = openingMap.get(accountId) ?? 0;
       const opening = runBal;
       rows.forEach((e) => {
         runBal = applyEntry(runBal, { debit: e.debit, credit: e.credit });
@@ -62,6 +74,7 @@ const GeneralLedgerReport = () => {
       }
     });
 
+    setPeriodOpenings(Object.fromEntries(openingMap));
     setData(result);
     setLoading(false);
   };
@@ -138,7 +151,7 @@ const GeneralLedgerReport = () => {
                 {selectedAccount !== "all" && (() => {
                   const acc = accounts.find((a) => a.id === selectedAccount);
                   if (!acc) return null;
-                  const op = signedOpeningBalance(acc.opening_balance, acc.opening_balance_type);
+                  const op = periodOpenings[selectedAccount] ?? 0;
                   return (
                     <TableRow className="bg-muted/40">
                       <TableCell className="text-sm">{dateFrom}</TableCell>
