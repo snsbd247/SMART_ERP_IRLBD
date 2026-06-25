@@ -49,6 +49,8 @@ const SuppliersPage = () => {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const [ledgerFor, setLedgerFor] = useState<Supplier | null>(null);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const { accounts: accountsWithBal } = useAccountBalances();
 
 
   const load = async () => {
@@ -73,17 +75,15 @@ const SuppliersPage = () => {
   };
   useEffect(() => { load(); }, []);
 
-  const nextSupplierCode = (): string => {
-    let max = 0;
-    for (const s of items) {
-      const m = String(s.code || "").match(/(\d+)\s*$/);
-      if (m) { const n = parseInt(m[1], 10); if (!isNaN(n) && n > max) max = n; }
-    }
-    return `SUP-${String(max + 1).padStart(4, "0")}`;
-  };
+  // Merge live signed balances into the payable-ledger picker options.
+  const balanceMap = new Map(accountsWithBal.map((a) => [a.id, a]));
+  const accountsForPicker = accounts.map((a) => {
+    const bal = balanceMap.get(a.id);
+    return { ...a, signed_balance: bal?.signed_balance, account_type: a.account_type || bal?.account_type };
+  });
 
-  const openCreate = () => { setEditing(null); setForm({ ...empty, code: nextSupplierCode() }); setOpen(true); };
-  const openEdit = (s: Supplier) => { setEditing(s); setForm(s); setOpen(true); };
+  const openCreate = () => { setEditing(null); setCodeError(null); setForm({ ...empty, code: nextSupplierCode(items) }); setOpen(true); };
+  const openEdit = (s: Supplier) => { setEditing(s); setCodeError(null); setForm(s); setOpen(true); };
 
 
   const save = async () => {
