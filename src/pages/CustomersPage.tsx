@@ -166,13 +166,18 @@ const CustomersPage = () => {
           status: "active",
         } as any).select("id").single();
         if (error) throw error;
-        const ledgerId = await createCustomerLedger(form.name.trim(), parentAccountId || undefined);
-        if (ledgerId && inserted?.id) {
-          await supabase.from("customers").update({ receivable_account_id: ledgerId } as any).eq("id", inserted.id);
-          await syncPartyOpeningToLedger(ledgerId, openingAmt, "debit");
+        // If user explicitly picked an existing receivable ledger, link to it.
+        // Otherwise auto-create a dedicated sub-ledger under the chosen parent.
+        let linkId = receivableLedgerId || null;
+        if (!linkId) {
+          linkId = await createCustomerLedger(form.name.trim(), parentAccountId || undefined);
+        }
+        if (linkId && inserted?.id) {
+          await supabase.from("customers").update({ receivable_account_id: linkId } as any).eq("id", inserted.id);
+          await syncPartyOpeningToLedger(linkId, openingAmt, "debit");
         }
         const parentName = parentAccountId ? assetAccounts.find((a) => a.id === parentAccountId)?.account_name : "Accounts Receivable";
-        toast({ title: "Customer added", description: `Ledger created under ${parentName}` });
+        toast({ title: "Customer added", description: receivableLedgerId ? "Linked to selected ledger" : `Ledger created under ${parentName}` });
       }
       setOpen(false);
       load();
