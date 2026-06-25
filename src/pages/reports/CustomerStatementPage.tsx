@@ -289,6 +289,24 @@ const CustomerStatementPage = () => {
           </CardContent>
         </Card>
       )}
+
+      <OpeningDrilldownDialog
+        open={drilldownOpen}
+        onOpenChange={setDrilldownOpen}
+        title={`Opening Balance — ${customer?.name ?? ""} (as of ${dateFrom})`}
+        baseOpening={0}
+        baseLabel="Customer base (no prior records)"
+        rows={priorRows.map(r => ({
+          id: r.id,
+          date: r.date,
+          reference: r.reference,
+          description: r.type,
+          debit: r.debit,
+          credit: r.credit,
+          running_balance: r.running_balance,
+        }))}
+        periodOpening={periodOpening}
+      />
     </div>
   );
 };
