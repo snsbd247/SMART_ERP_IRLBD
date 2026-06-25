@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatSignedBalance } from "@/lib/balance-format";
+import { computeCustomerPeriodOpening } from "@/lib/period-opening";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
