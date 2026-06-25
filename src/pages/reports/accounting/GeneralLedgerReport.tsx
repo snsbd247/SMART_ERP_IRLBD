@@ -151,7 +151,7 @@ const GeneralLedgerReport = () => {
                 {selectedAccount !== "all" && (() => {
                   const acc = accounts.find((a) => a.id === selectedAccount);
                   if (!acc) return null;
-                  const op = signedOpeningBalance(acc.opening_balance, acc.opening_balance_type);
+                  const op = periodOpenings[selectedAccount] ?? 0;
                   return (
                     <TableRow className="bg-muted/40">
                       <TableCell className="text-sm">{dateFrom}</TableCell>
