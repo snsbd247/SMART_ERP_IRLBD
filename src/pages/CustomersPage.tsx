@@ -47,13 +47,15 @@ const CustomersPage = () => {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", bin_number: "", opening_balance: 0, opening_balance_date: "" });
+  const [form, setForm] = useState({ code: "", name: "", email: "", phone: "", address: "", bin_number: "", opening_balance: 0, opening_balance_date: "" });
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [parentAccountId, setParentAccountId] = useState<string>("");
   const [receivableLedgerId, setReceivableLedgerId] = useState<string>("");
   const [assetAccounts, setAssetAccounts] = useState<any[]>([]);
   const [receivableLedgers, setReceivableLedgers] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const { accounts: accountsWithBal } = useAccountBalances();
 
   const canEdit = hasPermission("sales", "can_edit") || isSuperAdmin;
   const canAdd = hasPermission("sales", "can_add") || isSuperAdmin;
