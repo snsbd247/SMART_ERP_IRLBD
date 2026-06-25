@@ -6,8 +6,8 @@ import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { PiggyBank } from "lucide-react";
-import { signedOpeningBalance } from "@/lib/balance-format";
 import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
+import { computeAggregateAccountPeriodOpening } from "@/lib/period-opening";
 
 const CashBookReport = () => {
   const { accounts, branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
