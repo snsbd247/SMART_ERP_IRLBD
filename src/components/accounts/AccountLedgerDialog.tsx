@@ -22,9 +22,19 @@ interface LedgerEntry {
   narration: string | null;
   voucher_number: string;
   voucher_date: string;
+  voucher_type: string;
   description: string | null;
   running_balance: number;
 }
+
+const VOUCHER_TYPE_LABEL: Record<string, string> = {
+  journal: "Journal Voucher",
+  payment: "Payment Voucher",
+  receipt: "Receipt Voucher",
+  contra: "Contra Voucher",
+};
+const labelVoucherType = (t: string) =>
+  VOUCHER_TYPE_LABEL[(t || "").toLowerCase()] || (t ? `${t.charAt(0).toUpperCase()}${t.slice(1)} Voucher` : "Voucher");
 
 export function AccountLedgerDialog({ accountId, accountName, openingBalance, openingBalanceType, open, onOpenChange }: Props) {
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
