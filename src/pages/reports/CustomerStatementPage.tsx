@@ -221,6 +221,28 @@ const CustomerStatementPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {/* Opening Balance row — always first, mirrors Excel/print export */}
+                <TableRow className="bg-muted/40">
+                  <TableCell className="text-xs tabular-nums">{dateFrom}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-[10px]">Opening</Badge>
+                  </TableCell>
+                  <TableCell className="text-xs font-medium">—</TableCell>
+                  <TableCell className="text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setDrilldownOpen(true)}
+                      className="inline-flex items-center gap-1 hover:underline print:no-underline"
+                      title="See prior-period transactions"
+                    >
+                      Opening Balance (brought forward)
+                      <Info className="w-3 h-3 text-muted-foreground print:hidden" />
+                    </button>
+                  </TableCell>
+                  <TableCell className="text-xs text-right tabular-nums">—</TableCell>
+                  <TableCell className="text-xs text-right tabular-nums">—</TableCell>
+                  <TableCell className="text-xs text-right tabular-nums font-medium">{formatSignedBalance(periodOpening, fc)}</TableCell>
+                </TableRow>
                 {entries.map(e => (
                   <TableRow key={e.id}>
                     <TableCell className="text-xs tabular-nums">{e.date}</TableCell>
