@@ -20,6 +20,7 @@ const GeneralLedgerReport = () => {
   const [statusFilter, setStatusFilter] = useState<"both" | "approved" | "posted">("both");
   const [data, setData] = useState<any[]>([]);
   const hasFetched = useRef(false);
+  const [periodOpenings, setPeriodOpenings] = useState<Record<string, number>>({});
 
   const fetchData = async () => {
     setLoading(true);
