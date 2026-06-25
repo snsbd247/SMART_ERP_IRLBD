@@ -48,6 +48,9 @@ const CustomerStatementPage = () => {
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [periodOpening, setPeriodOpening] = useState<number>(0);
+  const [priorRows, setPriorRows] = useState<CustomerPriorRow[]>([]);
+  const [drilldownOpen, setDrilldownOpen] = useState(false);
 
   useEffect(() => {
     supabase.from("customers").select("id, name, phone, email, address").order("name").then(({ data }) => {
