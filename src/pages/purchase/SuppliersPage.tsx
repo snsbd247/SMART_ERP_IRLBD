@@ -181,6 +181,16 @@ const SuppliersPage = () => {
             <div className="space-y-1"><Label>BIN No</Label><Input value={form.bin_no || ""} onChange={(e) => setForm({ ...form, bin_no: e.target.value })} /></div>
             <div className="space-y-1"><Label>Credit Limit</Label><Input type="number" value={form.credit_limit ?? 0} onChange={(e) => setForm({ ...form, credit_limit: parseFloat(e.target.value) || 0 })} /></div>
             <div className="space-y-1"><Label>Credit Days</Label><Input type="number" value={form.credit_days ?? 0} onChange={(e) => setForm({ ...form, credit_days: parseInt(e.target.value) || 0 })} /></div>
+            <div className="space-y-1">
+              <Label>Opening Balance</Label>
+              <Input type="number" step="0.01" value={form.opening_balance ?? 0} onChange={(e) => setForm({ ...form, opening_balance: parseFloat(e.target.value) || 0 })} />
+              <p className="text-[11px] text-muted-foreground">Positive = payable (Cr). Negative = advance paid to supplier.</p>
+            </div>
+            <div className="space-y-1">
+              <Label>Opening Balance Date</Label>
+              <Input type="date" value={form.opening_balance_date || ""} onChange={(e) => setForm({ ...form, opening_balance_date: e.target.value || null })} />
+              <p className="text-[11px] text-muted-foreground">As-of date for the brought-forward balance.</p>
+            </div>
             <div className="col-span-2 space-y-1"><Label>Address</Label><Input value={form.address || ""} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
             <div className="col-span-2 space-y-1"><Label>Payable Ledger (under Accounts & Other Payable)</Label>
               <Select value={form.payable_account_id || "_auto"} onValueChange={(v) => setForm({ ...form, payable_account_id: v === "_auto" ? null : v })}>
