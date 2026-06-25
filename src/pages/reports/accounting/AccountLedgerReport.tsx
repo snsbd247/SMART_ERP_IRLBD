@@ -216,6 +216,22 @@ const AccountLedgerReport = () => {
           </Table>
         </CardContent></Card>
       </div>
+      <OpeningDrilldownDialog
+        open={drilldownOpen}
+        onOpenChange={setDrilldownOpen}
+        title={`Opening Balance — ${selectedAcc?.account_name ?? ""} (as of ${dateFrom})`}
+        baseOpening={baseOpening}
+        rows={priorEntries.map((p) => ({
+          id: p.id,
+          date: p.voucher_date,
+          reference: p.voucher_number,
+          description: p.description,
+          debit: p.debit,
+          credit: p.credit,
+          running_balance: p.running_balance,
+        }))}
+        periodOpening={periodOpening}
+      />
     </div>
   );
 };
