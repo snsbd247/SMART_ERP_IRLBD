@@ -88,31 +88,23 @@ const SuppliersPage = () => {
 
   const save = async () => {
     if (!form.code || !form.name) { toast({ title: "Code & Name required", variant: "destructive" }); return; }
+    const dupId = findDuplicateSupplierCode(items, String(form.code), editing?.id);
+    if (dupId) {
+      setCodeError(`Code "${form.code}" is already used by another supplier.`);
+      toast({ title: "Duplicate code", description: "Choose a unique supplier code.", variant: "destructive" });
+      return;
+    }
+    setCodeError(null);
     const v = validatePartyOpening({ opening_balance: form.opening_balance ?? 0, opening_balance_date: form.opening_balance_date ?? null });
     if (!v.ok) { toast({ title: "Invalid opening balance", description: v.errors.join("; "), variant: "destructive" }); return; }
     setSaving(true);
     try {
-      // Whitelist writable fields only — prevents id/created_at/updated_at from
-      // breaking the Laravel update endpoint and ensures is_active is always sent.
-      const payload: any = {
-        code: String(form.code).trim(),
-        name: String(form.name).trim(),
-        supplier_type: form.supplier_type || "local",
-        contact_person: form.contact_person ?? null,
-        phone: form.phone ?? null,
-        email: form.email ?? null,
-        address: form.address ?? null,
-        currency: form.currency || "BDT",
-        vat_reg_no: form.vat_reg_no ?? null,
-        bin_no: form.bin_no ?? null,
-        credit_limit: Number(form.credit_limit) || 0,
-        credit_days: Number(form.credit_days) || 0,
-        branch_id: form.branch_id || null,
-        payable_account_id: form.payable_account_id || null,
-        is_active: form.is_active === false ? false : true,
+      const payload: any = buildSupplierPayload({
+        ...form,
         opening_balance: v.value.opening_balance,
         opening_balance_date: v.value.opening_balance_date,
-      };
+      });
+      const prevActive = editing?.is_active;
       if (editing) {
         const { error } = await supabase.from("suppliers" as any).update(payload).eq("id", editing.id);
         if (error) throw error;
@@ -125,7 +117,13 @@ const SuppliersPage = () => {
         if (error) throw error;
       }
       await syncPartyOpeningToLedger(payload.payable_account_id, payload.opening_balance, "credit");
-      toast({ title: editing ? "Supplier updated" : "Supplier created", description: !editing && payload.payable_account_id ? "Linked ledger under Accounts & Other Payable" : undefined });
+      // Status-aware confirmation toast so the user sees the saved active state.
+      const statusChanged = editing && prevActive !== payload.is_active;
+      const statusNote = statusChanged
+        ? (payload.is_active ? "Supplier activated." : "Supplier deactivated.")
+        : `Status: ${payload.is_active ? "Active" : "Inactive"}.`;
+      const linkNote = !editing && payload.payable_account_id ? " Linked ledger under Accounts & Other Payable." : "";
+      toast({ title: editing ? "Supplier updated" : "Supplier created", description: statusNote + linkNote });
       setOpen(false); load();
     } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
     finally { setSaving(false); }
