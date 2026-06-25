@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logEditAudit } from "@/lib/audit-utils";
 import { documentApi } from "@/lib/document-api";
-import { createCustomerLedger } from "@/lib/party-ledger-utils";
+import { createCustomerLedger, syncPartyOpeningToLedger } from "@/lib/party-ledger-utils";
 import { getDocumentStatusConfig } from "@/hooks/useDocumentRules";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,8 @@ interface Customer {
   bin_number: string | null;
   status: string;
   receivable_account_id?: string | null;
+  opening_balance?: number | null;
+  opening_balance_date?: string | null;
 }
 
 const CustomersPage = () => {
@@ -40,7 +42,7 @@ const CustomersPage = () => {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", bin_number: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", bin_number: "", opening_balance: 0, opening_balance_date: "" });
   const [parentAccountId, setParentAccountId] = useState<string>("");
   const [receivableLedgerId, setReceivableLedgerId] = useState<string>("");
   const [assetAccounts, setAssetAccounts] = useState<any[]>([]);
@@ -82,7 +84,7 @@ const CustomersPage = () => {
 
   const openCreate = () => {
     setEditingCustomer(null);
-    setForm({ name: "", email: "", phone: "", address: "", bin_number: "" });
+    setForm({ name: "", email: "", phone: "", address: "", bin_number: "", opening_balance: 0, opening_balance_date: "" });
     setParentAccountId("");
     setReceivableLedgerId("");
     setOpen(true);
@@ -99,7 +101,7 @@ const CustomersPage = () => {
       return;
     }
     setEditingCustomer(c);
-    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "" });
+    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "", opening_balance: Number(c.opening_balance ?? 0), opening_balance_date: c.opening_balance_date || "" });
     setReceivableLedgerId(c.receivable_account_id || "");
     setOpen(true);
   };
@@ -108,26 +110,41 @@ const CustomersPage = () => {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
+      const openingAmt = Number(form.opening_balance) || 0;
+      const openingDate = form.opening_balance_date || null;
       if (editingCustomer) {
         const isApprovedEdit = editingCustomer.status === "approved";
-        const baseFields = { name: form.name, email: form.email || null, phone: form.phone || null, address: form.address || null, bin_number: form.bin_number || null };
+        const baseFields = {
+          name: form.name, email: form.email || null, phone: form.phone || null,
+          address: form.address || null, bin_number: form.bin_number || null,
+          opening_balance: openingAmt, opening_balance_date: openingDate,
+        };
         const newValues: any = { ...baseFields, receivable_account_id: receivableLedgerId || null };
         if (isApprovedEdit && isSuperAdmin) {
           await documentApi.editApproved("customer", editingCustomer.id, newValues);
         } else {
           const oldValues = { ...baseFields, receivable_account_id: editingCustomer.receivable_account_id ?? null,
-            name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address, bin_number: editingCustomer.bin_number };
+            name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address, bin_number: editingCustomer.bin_number,
+            opening_balance: editingCustomer.opening_balance ?? 0, opening_balance_date: editingCustomer.opening_balance_date ?? null };
           const { error } = await supabase.from("customers").update(newValues).eq("id", editingCustomer.id);
           if (error) throw error;
           await logEditAudit({ userId: user?.id, userName: profile?.name, module: "Sales", action: "Edit Customer", recordId: editingCustomer.id, oldValues, newValues });
         }
+        // Customer = asset (receivable). Mirror opening to linked ledger so reports pick it up.
+        await syncPartyOpeningToLedger(receivableLedgerId || editingCustomer.receivable_account_id || null, openingAmt, "debit");
         toast({ title: "Customer updated" });
       } else {
-        const { data: inserted, error } = await supabase.from("customers").insert({ ...form, status: "active" }).select("id").single();
+        const { data: inserted, error } = await supabase.from("customers").insert({
+          ...form,
+          opening_balance: openingAmt,
+          opening_balance_date: openingDate,
+          status: "active",
+        } as any).select("id").single();
         if (error) throw error;
         const ledgerId = await createCustomerLedger(form.name.trim(), parentAccountId || undefined);
         if (ledgerId && inserted?.id) {
           await supabase.from("customers").update({ receivable_account_id: ledgerId } as any).eq("id", inserted.id);
+          await syncPartyOpeningToLedger(ledgerId, openingAmt, "debit");
         }
         const parentName = parentAccountId ? assetAccounts.find((a) => a.id === parentAccountId)?.account_name : "Accounts Receivable";
         toast({ title: "Customer added", description: `Ledger created under ${parentName}` });
@@ -247,6 +264,28 @@ const CustomersPage = () => {
             <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
             <div><Label>BIN Number</Label><Input value={form.bin_number} onChange={(e) => setForm({ ...form, bin_number: e.target.value })} placeholder="e.g. 123456789-0101" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Opening Balance</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.opening_balance}
+                  onChange={(e) => setForm({ ...form, opening_balance: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Positive = receivable (Dr). Negative = advance from customer.</p>
+              </div>
+              <div>
+                <Label>Opening Balance Date</Label>
+                <Input
+                  type="date"
+                  value={form.opening_balance_date}
+                  onChange={(e) => setForm({ ...form, opening_balance_date: e.target.value })}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">As-of date for the brought-forward balance.</p>
+              </div>
+            </div>
             {!editingCustomer ? (
               <div>
                 <Label>Parent Ledger (Chart of Accounts)</Label>
