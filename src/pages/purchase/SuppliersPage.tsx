@@ -90,15 +90,31 @@ const SuppliersPage = () => {
     if (!v.ok) { toast({ title: "Invalid opening balance", description: v.errors.join("; "), variant: "destructive" }); return; }
     setSaving(true);
     try {
-      const payload: any = { ...form };
-      // Consistent null handling for date column + normalized amount.
-      payload.opening_balance_date = v.value.opening_balance_date;
-      payload.opening_balance = v.value.opening_balance;
+      // Whitelist writable fields only — prevents id/created_at/updated_at from
+      // breaking the Laravel update endpoint and ensures is_active is always sent.
+      const payload: any = {
+        code: String(form.code).trim(),
+        name: String(form.name).trim(),
+        supplier_type: form.supplier_type || "local",
+        contact_person: form.contact_person ?? null,
+        phone: form.phone ?? null,
+        email: form.email ?? null,
+        address: form.address ?? null,
+        currency: form.currency || "BDT",
+        vat_reg_no: form.vat_reg_no ?? null,
+        bin_no: form.bin_no ?? null,
+        credit_limit: Number(form.credit_limit) || 0,
+        credit_days: Number(form.credit_days) || 0,
+        branch_id: form.branch_id || null,
+        payable_account_id: form.payable_account_id || null,
+        is_active: form.is_active === false ? false : true,
+        opening_balance: v.value.opening_balance,
+        opening_balance_date: v.value.opening_balance_date,
+      };
       if (editing) {
         const { error } = await supabase.from("suppliers" as any).update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        // Auto-create a ledger under "Accounts & Other Payable" if none chosen
         if (!payload.payable_account_id) {
           const ledgerId = await createSupplierLedger(String(form.name).trim());
           if (ledgerId) payload.payable_account_id = ledgerId;
@@ -106,13 +122,13 @@ const SuppliersPage = () => {
         const { error } = await supabase.from("suppliers" as any).insert(payload);
         if (error) throw error;
       }
-      // Supplier = liability (payable). Mirror opening to linked ledger.
       await syncPartyOpeningToLedger(payload.payable_account_id, payload.opening_balance, "credit");
       toast({ title: editing ? "Supplier updated" : "Supplier created", description: !editing && payload.payable_account_id ? "Linked ledger under Accounts & Other Payable" : undefined });
       setOpen(false); load();
     } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
     finally { setSaving(false); }
   };
+
 
   const remove = async (id: string) => {
     if (!confirm("Delete this supplier?")) return;
