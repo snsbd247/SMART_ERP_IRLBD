@@ -120,8 +120,13 @@ const CustomerProfilePage = () => {
     const voucherTxns: Array<{ date: string; type: string; ref: string; dr: number; cr: number; id: string }> = [];
     let priorVoucherNet = 0; // sum of (debit - credit) strictly before dateFrom
     if (receivableAccountId) {
-      const { data: vEntries } = await supabase
+      const { data: vEntries, error: vErr } = await supabase
         .from("voucher_entries")
+        .select("id, debit, credit, narration, acc_vouchers!inner(id, voucher_number, voucher_date, voucher_type, description, status)")
+        .eq("account_id", receivableAccountId)
+        .in("acc_vouchers.status", ["approved", "posted"])
+        .order("voucher_date", { foreignTable: "acc_vouchers", ascending: true });
+      if (vErr) setLedgerError(vErr.message || "Failed to load voucher entries"); else setLedgerError(null);
         .select("id, debit, credit, narration, acc_vouchers!inner(id, voucher_number, voucher_date, voucher_type, description, status)")
         .eq("account_id", receivableAccountId)
         .in("acc_vouchers.status", ["approved", "posted"])
