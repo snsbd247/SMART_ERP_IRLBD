@@ -199,7 +199,7 @@ const SuppliersPage = () => {
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Edit Supplier" : "New Supplier"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><Label>Code *</Label><Input value={form.code || ""} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Code *</Label><Input placeholder="Auto-generated (editable)" value={form.code || ""} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
             <div className="space-y-1"><Label>Name *</Label><Input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
             <div className="space-y-1"><Label>Supplier Type</Label>
               <Select value={form.supplier_type} onValueChange={(v) => setForm({ ...form, supplier_type: v })}>
