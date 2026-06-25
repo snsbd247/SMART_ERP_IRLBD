@@ -809,6 +809,8 @@ export type Database = {
           email: string | null
           id: string
           name: string
+          opening_balance: number
+          opening_balance_date: string | null
           phone: string | null
           receivable_account_id: string | null
           status: string
@@ -820,6 +822,8 @@ export type Database = {
           email?: string | null
           id?: string
           name: string
+          opening_balance?: number
+          opening_balance_date?: string | null
           phone?: string | null
           receivable_account_id?: string | null
           status?: string
@@ -831,6 +835,8 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string
+          opening_balance?: number
+          opening_balance_date?: string | null
           phone?: string | null
           receivable_account_id?: string | null
           status?: string
@@ -5425,6 +5431,7 @@ export type Database = {
           name: string
           notes: string | null
           opening_balance: number | null
+          opening_balance_date: string | null
           payable_account_id: string | null
           payment_terms: string | null
           phone: string | null
@@ -5457,6 +5464,7 @@ export type Database = {
           name: string
           notes?: string | null
           opening_balance?: number | null
+          opening_balance_date?: string | null
           payable_account_id?: string | null
           payment_terms?: string | null
           phone?: string | null
@@ -5489,6 +5497,7 @@ export type Database = {
           name?: string
           notes?: string | null
           opening_balance?: number | null
+          opening_balance_date?: string | null
           payable_account_id?: string | null
           payment_terms?: string | null
           phone?: string | null
