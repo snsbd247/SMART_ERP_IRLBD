@@ -74,6 +74,9 @@ const SuppliersPage = () => {
     setSaving(true);
     try {
       const payload: any = { ...form };
+      // Normalize: empty date string -> null (Postgres date column doesn't accept "")
+      if (!payload.opening_balance_date) payload.opening_balance_date = null;
+      payload.opening_balance = Number(payload.opening_balance) || 0;
       if (editing) {
         const { error } = await supabase.from("suppliers" as any).update(payload).eq("id", editing.id);
         if (error) throw error;
@@ -86,6 +89,8 @@ const SuppliersPage = () => {
         const { error } = await supabase.from("suppliers" as any).insert(payload);
         if (error) throw error;
       }
+      // Supplier = liability (payable). Mirror opening to linked ledger.
+      await syncPartyOpeningToLedger(payload.payable_account_id, payload.opening_balance, "credit");
       toast({ title: editing ? "Supplier updated" : "Supplier created", description: !editing && payload.payable_account_id ? "Linked ledger under Accounts & Other Payable" : undefined });
       setOpen(false); load();
     } catch (e: any) { toast({ title: "Error", description: e.message, variant: "destructive" }); }
