@@ -8,11 +8,12 @@ import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
-import { signedOpeningBalance } from "@/lib/balance-format";
+import { fetchAllVoucherEntries } from "@/lib/report-fetch";
 import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
+import { computeAccountPeriodOpening, type PriorEntry } from "@/lib/period-opening";
+import { OpeningDrilldownDialog } from "@/components/accounts/OpeningDrilldownDialog";
 import { downloadCSV } from "@/lib/csv-export";
-import { ScrollText, FileDown } from "lucide-react";
+import { ScrollText, FileDown, Info } from "lucide-react";
 
 const AccountLedgerReport = () => {
   const { accounts, branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
@@ -20,6 +21,9 @@ const AccountLedgerReport = () => {
   const [statusFilter, setStatusFilter] = useState<"both" | "approved" | "posted">("both");
   const [data, setData] = useState<any[]>([]);
   const hasFetched = useRef(false);
+  const [drilldownOpen, setDrilldownOpen] = useState(false);
+  const [baseOpening, setBaseOpening] = useState<number>(0);
+  const [priorEntries, setPriorEntries] = useState<PriorEntry[]>([]);
 
   const [periodOpening, setPeriodOpening] = useState<number>(0);
 
