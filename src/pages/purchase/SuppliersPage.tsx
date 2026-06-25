@@ -228,7 +228,7 @@ const SuppliersPage = () => {
             <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
           </DialogFooter>
         </DialogContent>
-      </Hostend>
+      </Dialog>
       <AccountLedgerDialog
         accountId={ledgerFor?.payable_account_id || null}
         accountName={ledgerFor ? `${ledgerFor.name} (Payable)` : ""}
