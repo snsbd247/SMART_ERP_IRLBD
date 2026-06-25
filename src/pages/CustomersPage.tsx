@@ -21,9 +21,13 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Pencil, Check, X, Lock, ShieldAlert, Eye } from "lucide-react";
 import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
+import { AccountCombobox } from "@/components/accounts/AccountCombobox";
+import { nextSupplierCode, findDuplicateSupplierCode } from "@/lib/supplier-utils";
+import { useAccountBalances } from "@/hooks/useAccountBalances";
 
 interface Customer {
   id: string;
+  code?: string | null;
   name: string;
   email: string | null;
   phone: string | null;
@@ -43,13 +47,15 @@ const CustomersPage = () => {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", bin_number: "", opening_balance: 0, opening_balance_date: "" });
+  const [form, setForm] = useState({ code: "", name: "", email: "", phone: "", address: "", bin_number: "", opening_balance: 0, opening_balance_date: "" });
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [parentAccountId, setParentAccountId] = useState<string>("");
   const [receivableLedgerId, setReceivableLedgerId] = useState<string>("");
   const [assetAccounts, setAssetAccounts] = useState<any[]>([]);
   const [receivableLedgers, setReceivableLedgers] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const { accounts: accountsWithBal } = useAccountBalances();
 
   const canEdit = hasPermission("sales", "can_edit") || isSuperAdmin;
   const canAdd = hasPermission("sales", "can_add") || isSuperAdmin;
@@ -83,9 +89,12 @@ const CustomersPage = () => {
     }
   };
 
+  const nextCustomerCode = () => nextSupplierCode(customers as any, "CUS-", 4);
+
   const openCreate = () => {
     setEditingCustomer(null);
-    setForm({ name: "", email: "", phone: "", address: "", bin_number: "", opening_balance: 0, opening_balance_date: "" });
+    setCodeError(null);
+    setForm({ code: nextCustomerCode(), name: "", email: "", phone: "", address: "", bin_number: "", opening_balance: 0, opening_balance_date: "" });
     setParentAccountId("");
     setReceivableLedgerId("");
     setOpen(true);
@@ -102,22 +111,34 @@ const CustomersPage = () => {
       return;
     }
     setEditingCustomer(c);
-    setForm({ name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "", opening_balance: Number(c.opening_balance ?? 0), opening_balance_date: c.opening_balance_date || "" });
+    setCodeError(null);
+    setForm({ code: c.code || "", name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "", opening_balance: Number(c.opening_balance ?? 0), opening_balance_date: c.opening_balance_date || "" });
     setReceivableLedgerId(c.receivable_account_id || "");
     setOpen(true);
   };
 
   const save = async () => {
     if (!form.name.trim()) return;
+    if (form.code) {
+      const dup = findDuplicateSupplierCode(customers as any, form.code, editingCustomer?.id);
+      if (dup) {
+        setCodeError(`Code "${form.code}" is already used by another customer.`);
+        toast({ title: "Duplicate code", description: "Choose a unique customer code.", variant: "destructive" });
+        return;
+      }
+    }
+    setCodeError(null);
     const v = validatePartyOpening({ opening_balance: form.opening_balance, opening_balance_date: form.opening_balance_date });
     if (!v.ok) { toast({ title: "Invalid opening balance", description: v.errors.join("; "), variant: "destructive" }); return; }
     setSaving(true);
     try {
       const openingAmt = v.value.opening_balance;
       const openingDate = v.value.opening_balance_date;
+      const codeVal = form.code?.trim() || null;
       if (editingCustomer) {
         const isApprovedEdit = editingCustomer.status === "approved";
         const baseFields = {
+          code: codeVal,
           name: form.name, email: form.email || null, phone: form.phone || null,
           address: form.address || null, bin_number: form.bin_number || null,
           opening_balance: openingAmt, opening_balance_date: openingDate,
@@ -127,30 +148,36 @@ const CustomersPage = () => {
           await documentApi.editApproved("customer", editingCustomer.id, newValues);
         } else {
           const oldValues = { ...baseFields, receivable_account_id: editingCustomer.receivable_account_id ?? null,
+            code: editingCustomer.code ?? null,
             name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address, bin_number: editingCustomer.bin_number,
             opening_balance: editingCustomer.opening_balance ?? 0, opening_balance_date: editingCustomer.opening_balance_date ?? null };
           const { error } = await supabase.from("customers").update(newValues).eq("id", editingCustomer.id);
           if (error) throw error;
           await logEditAudit({ userId: user?.id, userName: profile?.name, module: "Sales", action: "Edit Customer", recordId: editingCustomer.id, oldValues, newValues });
         }
-        // Customer = asset (receivable). Mirror opening to linked ledger so reports pick it up.
         await syncPartyOpeningToLedger(receivableLedgerId || editingCustomer.receivable_account_id || null, openingAmt, "debit");
         toast({ title: "Customer updated" });
       } else {
         const { data: inserted, error } = await supabase.from("customers").insert({
           ...form,
+          code: codeVal,
           opening_balance: openingAmt,
           opening_balance_date: openingDate,
           status: "active",
         } as any).select("id").single();
         if (error) throw error;
-        const ledgerId = await createCustomerLedger(form.name.trim(), parentAccountId || undefined);
-        if (ledgerId && inserted?.id) {
-          await supabase.from("customers").update({ receivable_account_id: ledgerId } as any).eq("id", inserted.id);
-          await syncPartyOpeningToLedger(ledgerId, openingAmt, "debit");
+        // If user explicitly picked an existing receivable ledger, link to it.
+        // Otherwise auto-create a dedicated sub-ledger under the chosen parent.
+        let linkId = receivableLedgerId || null;
+        if (!linkId) {
+          linkId = await createCustomerLedger(form.name.trim(), parentAccountId || undefined);
+        }
+        if (linkId && inserted?.id) {
+          await supabase.from("customers").update({ receivable_account_id: linkId } as any).eq("id", inserted.id);
+          await syncPartyOpeningToLedger(linkId, openingAmt, "debit");
         }
         const parentName = parentAccountId ? assetAccounts.find((a) => a.id === parentAccountId)?.account_name : "Accounts Receivable";
-        toast({ title: "Customer added", description: `Ledger created under ${parentName}` });
+        toast({ title: "Customer added", description: receivableLedgerId ? "Linked to selected ledger" : `Ledger created under ${parentName}` });
       }
       setOpen(false);
       load();
@@ -158,6 +185,8 @@ const CustomersPage = () => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally { setSaving(false); }
   };
+
+
 
   const handleDocAction = async () => {
     if (!actionTarget || !actionType) return;
@@ -262,7 +291,24 @@ const CustomersPage = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>{editingCustomer ? "Edit Customer" : "New Customer"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Code</Label>
+                <Input
+                  value={form.code}
+                  placeholder="Auto-generated (editable)"
+                  aria-invalid={!!codeError}
+                  onChange={(e) => {
+                    const code = e.target.value;
+                    setForm({ ...form, code });
+                    const dup = code ? findDuplicateSupplierCode(customers as any, code, editingCustomer?.id) : null;
+                    setCodeError(dup ? `Code "${code}" is already used by another customer.` : null);
+                  }}
+                />
+                {codeError && <p className="text-[11px] text-destructive mt-1">{codeError}</p>}
+              </div>
+              <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+            </div>
             <div><Label>Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
             <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
@@ -289,35 +335,50 @@ const CustomersPage = () => {
                 <p className="text-[11px] text-muted-foreground mt-1">As-of date for the brought-forward balance.</p>
               </div>
             </div>
-            {!editingCustomer ? (
-              <div>
-                <Label>Parent Ledger (Chart of Accounts)</Label>
-                <SearchableAccountSelect
-                  accounts={assetAccounts}
-                  value={parentAccountId || "__auto__"}
-                  onChange={(v) => setParentAccountId(v === "__auto__" ? "" : v)}
-                  allowAll
-                  allLabel="Auto (Accounts Receivable)"
-                  allValue="__auto__"
-                  placeholder="Auto (Accounts Receivable)"
-                />
-                <p className="text-xs text-muted-foreground mt-1">A dedicated sub-ledger will be created under Accounts Receivable and linked to this customer.</p>
-              </div>
-            ) : (
-              <div>
-                <Label>Receivable Ledger</Label>
-                <SearchableAccountSelect
-                  accounts={receivableLedgers.length > 0 ? receivableLedgers : assetAccounts}
-                  value={receivableLedgerId || "__none__"}
-                  onChange={(v) => setReceivableLedgerId(v === "__none__" ? "" : v)}
-                  allowAll
-                  allLabel="— Not linked —"
-                  allValue="__none__"
-                  placeholder="Select receivable ledger"
-                />
-                <p className="text-xs text-muted-foreground mt-1">Change the ledger linked to this customer (under Accounts Receivable).</p>
-              </div>
-            )}
+            {(() => {
+              // Build searchable receivable-ledger options. On edit, ALWAYS include the
+              // currently linked account so the picker is never blank even if the
+              // ledger isn't a direct child of "Accounts Receivable" (1240).
+              const balMap = new Map(accountsWithBal.map((a) => [a.id, a]));
+              const pool = receivableLedgers.length > 0 ? receivableLedgers : assetAccounts;
+              const linked = editingCustomer?.receivable_account_id;
+              const linkedAcc = linked && !pool.some((a) => a.id === linked)
+                ? assetAccounts.find((a) => a.id === linked)
+                : null;
+              const options = (linkedAcc ? [linkedAcc, ...pool] : pool).map((a: any) => {
+                const bal = balMap.get(a.id);
+                return { ...a, signed_balance: bal?.signed_balance, account_type: a.account_type || bal?.account_type };
+              });
+              return (
+                <>
+                  {!editingCustomer && (
+                    <div>
+                      <Label>Parent Ledger (Chart of Accounts)</Label>
+                      <SearchableAccountSelect
+                        accounts={assetAccounts}
+                        value={parentAccountId || "__auto__"}
+                        onChange={(v) => setParentAccountId(v === "__auto__" ? "" : v)}
+                        allowAll
+                        allLabel="Auto (Accounts Receivable)"
+                        allValue="__auto__"
+                        placeholder="Auto (Accounts Receivable)"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">A dedicated sub-ledger will be created under Accounts Receivable and linked to this customer.</p>
+                    </div>
+                  )}
+                  <div>
+                    <Label>Receivable Ledger</Label>
+                    <AccountCombobox
+                      accounts={options}
+                      value={receivableLedgerId}
+                      onChange={(id) => setReceivableLedgerId(id)}
+                      placeholder={editingCustomer ? "— Not linked —" : "Auto — will be created"}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Search by code or name. {editingCustomer ? "Change the ledger linked to this customer." : "Optional on create — auto-created if blank."}</p>
+                  </div>
+                </>
+              );
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
