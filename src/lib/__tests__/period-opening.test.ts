@@ -9,16 +9,22 @@ const mockData: Record<string, any[]> = {
   chart_of_accounts: [],
 };
 
+function getPath(row: any, col: string): any {
+  if (!col.includes(".")) return row[col];
+  return col.split(".").reduce((o, k) => (o == null ? undefined : o[k]), row);
+}
+
 function makeBuilder(table: string) {
-  let rows = mockData[table] || [];
+  const rows = mockData[table] || [];
   const filters: Array<(r: any) => boolean> = [];
   const builder: any = {
     select: () => builder,
-    eq: (col: string, val: any) => { filters.push(r => r[col] === val); return builder; },
-    in: (col: string, vals: any[]) => { filters.push(r => vals.includes(r[col])); return builder; },
-    gte: (col: string, val: any) => { filters.push(r => r[col] >= val); return builder; },
-    lte: (col: string, val: any) => { filters.push(r => r[col] <= val); return builder; },
+    eq: (col: string, val: any) => { filters.push(r => getPath(r, col) === val); return builder; },
+    in: (col: string, vals: any[]) => { filters.push(r => vals.includes(getPath(r, col))); return builder; },
+    gte: (col: string, val: any) => { filters.push(r => getPath(r, col) >= val); return builder; },
+    lte: (col: string, val: any) => { filters.push(r => getPath(r, col) <= val); return builder; },
     order: () => builder,
+    range: () => builder,
     maybeSingle: async () => {
       const r = rows.filter(row => filters.every(f => f(row)));
       return { data: r[0] ?? null, error: null };
