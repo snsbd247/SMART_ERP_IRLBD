@@ -264,6 +264,28 @@ const CustomersPage = () => {
             <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
             <div><Label>BIN Number</Label><Input value={form.bin_number} onChange={(e) => setForm({ ...form, bin_number: e.target.value })} placeholder="e.g. 123456789-0101" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Opening Balance</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.opening_balance}
+                  onChange={(e) => setForm({ ...form, opening_balance: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Positive = receivable (Dr). Negative = advance from customer.</p>
+              </div>
+              <div>
+                <Label>Opening Balance Date</Label>
+                <Input
+                  type="date"
+                  value={form.opening_balance_date}
+                  onChange={(e) => setForm({ ...form, opening_balance_date: e.target.value })}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">As-of date for the brought-forward balance.</p>
+              </div>
+            </div>
             {!editingCustomer ? (
               <div>
                 <Label>Parent Ledger (Chart of Accounts)</Label>
