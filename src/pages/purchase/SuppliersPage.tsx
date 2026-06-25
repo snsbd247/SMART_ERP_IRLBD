@@ -30,7 +30,7 @@ const SUPPLIER_TYPES = [
   { v: "utility", l: "Utility" },
 ];
 
-const empty: Partial<Supplier> = { supplier_type: "local", currency: "BDT", is_active: true, credit_limit: 0, credit_days: 0 };
+const empty: Partial<Supplier> = { supplier_type: "local", currency: "BDT", is_active: true, credit_limit: 0, credit_days: 0, opening_balance: 0, opening_balance_date: null };
 
 const SuppliersPage = () => {
   const [items, setItems] = useState<Supplier[]>([]);
