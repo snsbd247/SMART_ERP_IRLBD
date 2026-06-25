@@ -33,7 +33,7 @@ const BankBookReport = () => {
     query = query.order("acc_vouchers(voucher_date)");
 
     const { data: entries } = await query;
-    const opening = bankAccounts.reduce((s, a) => s + signedOpeningBalance(a.opening_balance, a.opening_balance_type), 0);
+    const opening = await computeAggregateAccountPeriodOpening({ accounts: bankAccounts as any, dateFrom, branchId: branch });
     setOpeningBalance(opening);
     let runBal = opening;
 
