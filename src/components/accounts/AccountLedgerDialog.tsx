@@ -65,6 +65,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
           narration: e.narration,
           voucher_number: e.acc_vouchers?.voucher_number || "",
           voucher_date: e.acc_vouchers?.voucher_date || "",
+          voucher_type: e.acc_vouchers?.voucher_type || "",
           description: e.acc_vouchers?.description || "",
           running_balance: runBal,
         };
