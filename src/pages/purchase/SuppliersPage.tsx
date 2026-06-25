@@ -71,8 +71,18 @@ const SuppliersPage = () => {
   };
   useEffect(() => { load(); }, []);
 
-  const openCreate = () => { setEditing(null); setForm(empty); setOpen(true); };
+  const nextSupplierCode = (): string => {
+    let max = 0;
+    for (const s of items) {
+      const m = String(s.code || "").match(/(\d+)\s*$/);
+      if (m) { const n = parseInt(m[1], 10); if (!isNaN(n) && n > max) max = n; }
+    }
+    return `SUP-${String(max + 1).padStart(4, "0")}`;
+  };
+
+  const openCreate = () => { setEditing(null); setForm({ ...empty, code: nextSupplierCode() }); setOpen(true); };
   const openEdit = (s: Supplier) => { setEditing(s); setForm(s); setOpen(true); };
+
 
   const save = async () => {
     if (!form.code || !form.name) { toast({ title: "Code & Name required", variant: "destructive" }); return; }
