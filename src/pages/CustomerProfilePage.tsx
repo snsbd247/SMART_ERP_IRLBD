@@ -127,10 +127,6 @@ const CustomerProfilePage = () => {
         .in("acc_vouchers.status", ["approved", "posted"])
         .order("voucher_date", { foreignTable: "acc_vouchers", ascending: true });
       if (vErr) setLedgerError(vErr.message || "Failed to load voucher entries"); else setLedgerError(null);
-        .select("id, debit, credit, narration, acc_vouchers!inner(id, voucher_number, voucher_date, voucher_type, description, status)")
-        .eq("account_id", receivableAccountId)
-        .in("acc_vouchers.status", ["approved", "posted"])
-        .order("voucher_date", { foreignTable: "acc_vouchers", ascending: true });
       (vEntries || []).forEach((e: any) => {
         const vDate = e.acc_vouchers?.voucher_date || "";
         const dr = Number(e.debit) || 0;
