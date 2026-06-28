@@ -33,12 +33,25 @@ class User extends Authenticatable
     }
 
     /**
-     * Super Admin = user with NO linked employee (employee_id IS NULL).
+     * Super Admin = user with NO linked employee (employee_id IS NULL),
+     * OR a user explicitly granted the legacy `super_admin` role in the
+     * `user_roles` table (kept for backwards compatibility with users that
+     * were promoted via the Admin > Users UI but still have an employee link).
      * These users bypass ALL permission checks.
      */
     public function isSuperAdmin(): bool
     {
-        return is_null($this->employee_id);
+        if (is_null($this->employee_id)) return true;
+
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('user_roles')) return false;
+            return \Illuminate\Support\Facades\DB::table('user_roles')
+                ->where('user_id', $this->id)
+                ->where('role', 'super_admin')
+                ->exists();
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**
