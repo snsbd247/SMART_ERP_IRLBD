@@ -31,9 +31,7 @@ export function isValidChallanNo(v: string | null | undefined): v is string {
   return validateChallanNo(v).valid;
 }
 
-export function challanValidationMessage(
-  r: ChallanValidation,
-): string {
+export function challanValidationMessage(r: ChallanValidation): string {
   if (r.valid) return "";
   switch (r.reason) {
     case "empty":
@@ -44,6 +42,8 @@ export function challanValidationMessage(
       return `Challan number is too long. It must be at most ${CHALLAN_MAX_LEN} characters.`;
     case "bad_chars":
       return "Challan number contains invalid characters. Only letters, digits, '-' and '/' are allowed.";
+    default:
+      return "Invalid challan number.";
   }
 }
 
