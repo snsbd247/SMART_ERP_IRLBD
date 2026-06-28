@@ -69,7 +69,7 @@ const UserDeleteDialog = ({ user, allUsers, isSuperAdmin, onDeleted }: Props) =>
       let hasRelated = false;
       let related: RelatedTable[] = [];
       if (USE_LARAVEL()) {
-        const data = await laravelUserApi(`/users/${user.id}/check-related`);
+        const data = await laravelUserApi(`/v1/users/${user.id}/check-related`);
         hasRelated = !!data?.has_related_data;
         related = data?.related_tables || [];
       } else {
@@ -98,7 +98,7 @@ const UserDeleteDialog = ({ user, allUsers, isSuperAdmin, onDeleted }: Props) =>
     setLoading(true);
     try {
       if (USE_LARAVEL()) {
-        await laravelUserApi(`/users/${user.id}`, { method: "DELETE" });
+        await laravelUserApi(`/v1/users/${user.id}`, { method: "DELETE" });
       } else {
         const res = await supabase.functions.invoke("admin-delete-user", {
           body: { action: "delete", user_id: user.id },
@@ -130,7 +130,7 @@ const UserDeleteDialog = ({ user, allUsers, isSuperAdmin, onDeleted }: Props) =>
     try {
       let transfers: any[] = [];
       if (USE_LARAVEL()) {
-        const data = await laravelUserApi(`/users/${user.id}/transfer-delete`, {
+        const data = await laravelUserApi(`/v1/users/${user.id}/transfer-delete`, {
           method: "POST",
           body: JSON.stringify({ transfer_to_user_id: transferToUserId }),
         });
