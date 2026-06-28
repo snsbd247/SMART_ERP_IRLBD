@@ -33,7 +33,7 @@ export async function softDelete(
     patch.prev_status = opts.prevStatus ?? null;
     patch.status = "deleted";
   }
-  const { error } = await supabase.from(table).update(patch).eq("id", id);
+  const { error } = await supabase.from(table).update(patch as any).eq("id", id);
   if (error) throw error;
   await audit(
     opts.module || table,
