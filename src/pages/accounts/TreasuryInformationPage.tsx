@@ -33,7 +33,9 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert, ExternalLink, Loader2, Copy, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert, ExternalLink, Loader2, Copy, Check, FileText } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { downloadCSV } from "@/lib/csv-export";
 import { logCreate, logUpdate, logDelete } from "@/lib/audit-utils";
 import {
   buildChallanUrl,
@@ -52,10 +54,14 @@ interface TreasuryRow {
   party_kind: PartyKind | null;
   party_id: string | null;
   party_name_snapshot: string | null;
+  tin_snapshot: string | null;
+  designation_snapshot: string | null;
+  branch_name_snapshot: string | null;
   challan_no: string | null;
   challan_date: string | null;
   bank_name: string | null;
   amount: number;
+  challan_base_amount: number | null;
   period_month: string | null;
   mushak_ref: string | null;
   reference_no: string | null;
@@ -64,7 +70,13 @@ interface TreasuryRow {
   created_at: string;
 }
 
-interface PartyOpt { id: string; label: string; }
+interface PartyOpt {
+  id: string;
+  label: string;
+  tin?: string | null;
+  designation?: string | null;
+  branch?: string | null;
+}
 
 const TYPE_LABEL: Record<TreasuryType, string> = {
   salary_tds: "Salary TDS",
@@ -79,10 +91,14 @@ const emptyForm = () => ({
   party_kind: "employee" as PartyKind,
   party_id: "" as string,
   party_name_snapshot: "",
+  tin_snapshot: "",
+  designation_snapshot: "",
+  branch_name_snapshot: "",
   challan_no: "",
   challan_date: "",
   bank_name: "",
   amount: 0,
+  challan_base_amount: 0,
   period_month: "",
   mushak_ref: "",
   reference_no: "",
@@ -122,6 +138,8 @@ export default function TreasuryInformationPage() {
   const [historyTarget, setHistoryTarget] = useState<TreasuryRow | null>(null);
   const [historyRows, setHistoryRows] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(false);
+  const [reportTab, setReportTab] = useState<"salary" | "party">("salary");
   const [printTarget, setPrintTarget] = useState<TreasuryRow | null>(null);
   const [printPendingId, setPrintPendingId] = useState<string | null>(null);
   const [printOpening, setPrintOpening] = useState(false);
@@ -255,19 +273,24 @@ export default function TreasuryInformationPage() {
 
   async function loadParties() {
     const [emp, cus, sup] = await Promise.all([
-      supabase.from("employees").select("id, first_name, last_name, employee_code").order("first_name"),
-      supabase.from("customers").select("id, name, code").order("name"),
-      supabase.from("suppliers").select("id, name, code").order("name"),
+      supabase.from("employees")
+        .select("id, first_name, last_name, employee_code, tin_no, designation:designations(name), branch:branches(name)")
+        .order("first_name"),
+      supabase.from("customers").select("id, name, code, tin_no").order("name"),
+      supabase.from("suppliers").select("id, name, code, tin_no").order("name"),
     ]);
     setEmployees(((emp.data as any[]) || []).map((e) => ({
       id: e.id,
       label: `${e.first_name ?? ""} ${e.last_name ?? ""}`.trim() + (e.employee_code ? ` (${e.employee_code})` : ""),
+      tin: e.tin_no ?? null,
+      designation: e.designation?.name ?? null,
+      branch: e.branch?.name ?? null,
     })));
     setCustomers(((cus.data as any[]) || []).map((c) => ({
-      id: c.id, label: c.code ? `${c.code} — ${c.name}` : c.name,
+      id: c.id, label: c.code ? `${c.code} — ${c.name}` : c.name, tin: c.tin_no ?? null,
     })));
     setSuppliers(((sup.data as any[]) || []).map((s) => ({
-      id: s.id, label: s.code ? `${s.code} — ${s.name}` : s.name,
+      id: s.id, label: s.code ? `${s.code} — ${s.name}` : s.name, tin: s.tin_no ?? null,
     })));
   }
 
@@ -318,10 +341,14 @@ export default function TreasuryInformationPage() {
       party_kind: (r.party_kind as PartyKind) ?? (r.treasury_type === "vat" ? "none" : "employee"),
       party_id: r.party_id ?? "",
       party_name_snapshot: r.party_name_snapshot ?? "",
+      tin_snapshot: r.tin_snapshot ?? "",
+      designation_snapshot: r.designation_snapshot ?? "",
+      branch_name_snapshot: r.branch_name_snapshot ?? "",
       challan_no: r.challan_no ?? "",
       challan_date: r.challan_date ? toDateInputValue(r.challan_date) : "",
       bank_name: r.bank_name ?? "",
       amount: Number(r.amount || 0),
+      challan_base_amount: Number(r.challan_base_amount ?? 0),
       period_month: r.period_month ?? "",
       mushak_ref: r.mushak_ref ?? "",
       reference_no: r.reference_no ?? "",
@@ -332,7 +359,22 @@ export default function TreasuryInformationPage() {
 
   function onTypeChange(t: TreasuryType) {
     const kind: PartyKind = t === "salary_tds" ? "employee" : t === "party_tds" ? "supplier" : "none";
-    setForm((f) => ({ ...f, treasury_type: t, party_kind: kind, party_id: "" }));
+    setForm((f) => ({
+      ...f, treasury_type: t, party_kind: kind, party_id: "",
+      tin_snapshot: "", designation_snapshot: "", branch_name_snapshot: "",
+    }));
+  }
+
+  function onPartySelect(kind: PartyKind, id: string) {
+    const opt = partyOptions(kind).find((o) => o.id === id);
+    setForm((f) => ({
+      ...f,
+      party_id: id,
+      party_name_snapshot: opt?.label ?? "",
+      tin_snapshot: opt?.tin ?? "",
+      designation_snapshot: opt?.designation ?? "",
+      branch_name_snapshot: opt?.branch ?? "",
+    }));
   }
 
   async function save() {
@@ -347,9 +389,8 @@ export default function TreasuryInformationPage() {
     }
 
     const partyKind: PartyKind = form.treasury_type === "vat" ? "none" : form.party_kind;
-    const snapshot = form.party_id
-      ? partyOptions(partyKind).find((o) => o.id === form.party_id)?.label ?? form.party_name_snapshot
-      : null;
+    const opt = form.party_id ? partyOptions(partyKind).find((o) => o.id === form.party_id) : null;
+    const snapshot = opt?.label ?? form.party_name_snapshot ?? null;
 
     const payload: any = {
       treasury_date: form.treasury_date,
@@ -357,10 +398,14 @@ export default function TreasuryInformationPage() {
       party_kind: partyKind,
       party_id: form.party_id || null,
       party_name_snapshot: snapshot,
+      tin_snapshot: (form.tin_snapshot || opt?.tin) || null,
+      designation_snapshot: (form.designation_snapshot || opt?.designation) || null,
+      branch_name_snapshot: (form.branch_name_snapshot || opt?.branch) || null,
       challan_no: form.challan_no || null,
       challan_date: form.challan_date || null,
       bank_name: form.bank_name || null,
       amount: Number(form.amount),
+      challan_base_amount: form.challan_base_amount ? Number(form.challan_base_amount) : null,
       period_month: form.period_month || null,
       mushak_ref: form.mushak_ref || null,
       reference_no: form.reference_no || null,
@@ -497,6 +542,9 @@ export default function TreasuryInformationPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => { setReportTab("salary"); setReportsOpen(true); }}>
+            <FileText className="w-4 h-4 mr-1" /> TDS Reports
+          </Button>
           <Button variant="outline" size="sm" onClick={exportCsv}><Download className="w-4 h-4 mr-1" /> CSV</Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" /> Print</Button>
           {canAdd && (
@@ -544,6 +592,7 @@ export default function TreasuryInformationPage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Party</TableHead>
+                  <TableHead>TIN</TableHead>
                   <TableHead>Challan</TableHead>
                   <TableHead>Bank</TableHead>
                   <TableHead>Period</TableHead>
@@ -553,14 +602,15 @@ export default function TreasuryInformationPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
                 ) : pageRows.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No treasury entries found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No treasury entries found.</TableCell></TableRow>
                 ) : pageRows.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell>{formatDateDMY(r.treasury_date)}</TableCell>
                     <TableCell><Badge variant="secondary">{TYPE_LABEL[r.treasury_type]}</Badge></TableCell>
                     <TableCell>{r.party_name_snapshot ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                    <TableCell className="font-mono text-xs">{r.tin_snapshot || "—"}</TableCell>
                     <TableCell>
                       {r.challan_no || "—"}
                       {r.challan_date && <div className="text-xs text-muted-foreground">{formatDateDMY(r.challan_date)}</div>}
@@ -644,7 +694,7 @@ export default function TreasuryInformationPage() {
             {form.treasury_type === "salary_tds" && (
               <div className="md:col-span-2">
                 <Label>Employee *</Label>
-                <Select value={form.party_id} onValueChange={(v) => setForm({ ...form, party_id: v })}>
+                <Select value={form.party_id} onValueChange={(v) => onPartySelect("employee", v)}>
                   <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
                   <SelectContent>
                     {employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.label}</SelectItem>)}
@@ -657,7 +707,7 @@ export default function TreasuryInformationPage() {
               <>
                 <div>
                   <Label>Party Type *</Label>
-                  <Select value={form.party_kind} onValueChange={(v) => setForm({ ...form, party_kind: v as PartyKind, party_id: "" })}>
+                  <Select value={form.party_kind} onValueChange={(v) => setForm({ ...form, party_kind: v as PartyKind, party_id: "", tin_snapshot: "", branch_name_snapshot: "" })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="supplier">Supplier</SelectItem>
@@ -667,12 +717,31 @@ export default function TreasuryInformationPage() {
                 </div>
                 <div>
                   <Label>Party *</Label>
-                  <Select value={form.party_id} onValueChange={(v) => setForm({ ...form, party_id: v })}>
+                  <Select value={form.party_id} onValueChange={(v) => onPartySelect(form.party_kind, v)}>
                     <SelectTrigger><SelectValue placeholder={`Select ${form.party_kind}`} /></SelectTrigger>
                     <SelectContent>
                       {partyOptions(form.party_kind).map((p) => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                </div>
+              </>
+            )}
+
+            {form.treasury_type !== "vat" && form.party_id && (
+              <>
+                <div>
+                  <Label>TIN (auto)</Label>
+                  <Input value={form.tin_snapshot} onChange={(e) => setForm({ ...form, tin_snapshot: e.target.value })} placeholder="Auto-filled from party profile" />
+                </div>
+                {form.treasury_type === "salary_tds" && (
+                  <div>
+                    <Label>Designation (auto)</Label>
+                    <Input value={form.designation_snapshot} onChange={(e) => setForm({ ...form, designation_snapshot: e.target.value })} />
+                  </div>
+                )}
+                <div className={form.treasury_type === "party_tds" ? "" : "md:col-span-2"}>
+                  <Label>Branch (auto)</Label>
+                  <Input value={form.branch_name_snapshot} onChange={(e) => setForm({ ...form, branch_name_snapshot: e.target.value })} />
                 </div>
               </>
             )}
@@ -685,8 +754,12 @@ export default function TreasuryInformationPage() {
             )}
 
             <div>
-              <Label>Amount *</Label>
+              <Label>TDS / Treasury Amount *</Label>
               <Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} />
+            </div>
+            <div>
+              <Label>Challan Base Amount</Label>
+              <Input type="number" step="0.01" value={form.challan_base_amount} onChange={(e) => setForm({ ...form, challan_base_amount: Number(e.target.value) })} placeholder="Bill / gross amount the TDS was deducted from" />
             </div>
             <div>
               <Label>Period (Month)</Label>
@@ -722,6 +795,135 @@ export default function TreasuryInformationPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Salary TDS / Party TDS Reports */}
+      <Dialog open={reportsOpen} onOpenChange={setReportsOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader><DialogTitle>TDS Reports</DialogTitle></DialogHeader>
+          <Tabs value={reportTab} onValueChange={(v) => setReportTab(v as any)}>
+            <TabsList>
+              <TabsTrigger value="salary">Salary TDS</TabsTrigger>
+              <TabsTrigger value="party">Party TDS</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="salary" className="space-y-3">
+              {(() => {
+                const data = filtered
+                  .filter((r) => r.treasury_type === "salary_tds")
+                  .map((r) => ({
+                    month: r.period_month || (r.treasury_date ? r.treasury_date.slice(0, 7) : ""),
+                    challan_no: r.challan_no ?? "",
+                    challan_date: r.challan_date ? formatDateDMY(r.challan_date) : "",
+                    bank: r.bank_name ?? "",
+                    branch: r.branch_name_snapshot ?? "",
+                    tin: r.tin_snapshot ?? "",
+                    employee: r.party_name_snapshot ?? "",
+                    designation: r.designation_snapshot ?? "",
+                    challan_amount: Number(r.challan_base_amount ?? 0).toFixed(2),
+                    tds_amount: Number(r.amount ?? 0).toFixed(2),
+                  }));
+                const cols = [
+                  { key: "month", label: "MONTH" },
+                  { key: "challan_no", label: "CHALLAN NO" },
+                  { key: "challan_date", label: "CHALLAN DATE" },
+                  { key: "bank", label: "BANK NAME" },
+                  { key: "branch", label: "BRANCH" },
+                  { key: "tin", label: "TIN" },
+                  { key: "employee", label: "EMPLOYEE" },
+                  { key: "designation", label: "DESIGNATION" },
+                  { key: "challan_amount", label: "CHALLAN AMOUNT" },
+                  { key: "tds_amount", label: "TDS AMOUNT" },
+                ];
+                return (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm text-muted-foreground">{data.length} entries (uses current page filters)</div>
+                      <Button size="sm" variant="outline" onClick={() => downloadCSV(`salary-tds-${new Date().toISOString().slice(0,10)}`, cols, data)}>
+                        <Download className="w-4 h-4 mr-1" /> CSV
+                      </Button>
+                    </div>
+                    <div className="overflow-x-auto max-h-[55vh]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>{cols.map((c) => <TableHead key={c.key}>{c.label}</TableHead>)}</TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {data.length === 0 ? (
+                            <TableRow><TableCell colSpan={cols.length} className="text-center py-6 text-muted-foreground">No Salary TDS entries.</TableCell></TableRow>
+                          ) : data.map((d, i) => (
+                            <TableRow key={i}>
+                              {cols.map((c) => <TableCell key={c.key} className={c.key.includes("amount") ? "text-right font-mono" : ""}>{(d as any)[c.key] || "—"}</TableCell>)}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                );
+              })()}
+            </TabsContent>
+
+            <TabsContent value="party" className="space-y-3">
+              {(() => {
+                const data = filtered
+                  .filter((r) => r.treasury_type === "party_tds")
+                  .map((r) => ({
+                    month: r.period_month || (r.treasury_date ? r.treasury_date.slice(0, 7) : ""),
+                    challan_no: r.challan_no ?? "",
+                    challan_date: r.challan_date ? formatDateDMY(r.challan_date) : "",
+                    bank: r.bank_name ?? "",
+                    branch: r.branch_name_snapshot ?? "",
+                    tin: r.tin_snapshot ?? "",
+                    party: r.party_name_snapshot ?? "",
+                    challan_amount: Number(r.challan_base_amount ?? 0).toFixed(2),
+                    tds_amount: Number(r.amount ?? 0).toFixed(2),
+                  }));
+                const cols = [
+                  { key: "month", label: "MONTH" },
+                  { key: "challan_no", label: "CHALLAN NO" },
+                  { key: "challan_date", label: "CHALLAN DATE" },
+                  { key: "bank", label: "BANK NAME" },
+                  { key: "branch", label: "BRANCH" },
+                  { key: "tin", label: "TIN" },
+                  { key: "party", label: "PARTY NAME" },
+                  { key: "challan_amount", label: "CHALLAN AMOUNT" },
+                  { key: "tds_amount", label: "TDS AMOUNT" },
+                ];
+                return (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm text-muted-foreground">{data.length} entries (uses current page filters)</div>
+                      <Button size="sm" variant="outline" onClick={() => downloadCSV(`party-tds-${new Date().toISOString().slice(0,10)}`, cols, data)}>
+                        <Download className="w-4 h-4 mr-1" /> CSV
+                      </Button>
+                    </div>
+                    <div className="overflow-x-auto max-h-[55vh]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>{cols.map((c) => <TableHead key={c.key}>{c.label}</TableHead>)}</TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {data.length === 0 ? (
+                            <TableRow><TableCell colSpan={cols.length} className="text-center py-6 text-muted-foreground">No Party TDS entries.</TableCell></TableRow>
+                          ) : data.map((d, i) => (
+                            <TableRow key={i}>
+                              {cols.map((c) => <TableCell key={c.key} className={c.key.includes("amount") ? "text-right font-mono" : ""}>{(d as any)[c.key] || "—"}</TableCell>)}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                );
+              })()}
+            </TabsContent>
+          </Tabs>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReportsOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>

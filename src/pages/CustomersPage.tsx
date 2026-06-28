@@ -33,6 +33,7 @@ interface Customer {
   phone: string | null;
   address: string | null;
   bin_number: string | null;
+  tin_no?: string | null;
   status: string;
   receivable_account_id?: string | null;
   opening_balance?: number | null;
@@ -47,7 +48,7 @@ const CustomersPage = () => {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [form, setForm] = useState({ code: "", name: "", email: "", phone: "", address: "", bin_number: "", opening_balance: 0, opening_balance_date: "" });
+  const [form, setForm] = useState({ code: "", name: "", email: "", phone: "", address: "", bin_number: "", tin_no: "", opening_balance: 0, opening_balance_date: "" });
   const [codeError, setCodeError] = useState<string | null>(null);
   const [parentAccountId, setParentAccountId] = useState<string>("");
   const [receivableLedgerId, setReceivableLedgerId] = useState<string>("");
@@ -94,7 +95,7 @@ const CustomersPage = () => {
   const openCreate = () => {
     setEditingCustomer(null);
     setCodeError(null);
-    setForm({ code: nextCustomerCode(), name: "", email: "", phone: "", address: "", bin_number: "", opening_balance: 0, opening_balance_date: "" });
+    setForm({ code: nextCustomerCode(), name: "", email: "", phone: "", address: "", bin_number: "", tin_no: "", opening_balance: 0, opening_balance_date: "" });
     setParentAccountId("");
     setReceivableLedgerId("");
     setOpen(true);
@@ -112,7 +113,7 @@ const CustomersPage = () => {
     }
     setEditingCustomer(c);
     setCodeError(null);
-    setForm({ code: c.code || "", name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "", opening_balance: Number(c.opening_balance ?? 0), opening_balance_date: c.opening_balance_date || "" });
+    setForm({ code: c.code || "", name: c.name, email: c.email || "", phone: c.phone || "", address: c.address || "", bin_number: c.bin_number || "", tin_no: c.tin_no || "", opening_balance: Number(c.opening_balance ?? 0), opening_balance_date: c.opening_balance_date || "" });
     setReceivableLedgerId(c.receivable_account_id || "");
     setOpen(true);
   };
@@ -140,7 +141,7 @@ const CustomersPage = () => {
         const baseFields = {
           code: codeVal,
           name: form.name, email: form.email || null, phone: form.phone || null,
-          address: form.address || null, bin_number: form.bin_number || null,
+          address: form.address || null, bin_number: form.bin_number || null, tin_no: form.tin_no || null,
           opening_balance: openingAmt, opening_balance_date: openingDate,
         };
         const newValues: any = { ...baseFields, receivable_account_id: receivableLedgerId || null };
@@ -313,6 +314,7 @@ const CustomersPage = () => {
             <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
             <div><Label>BIN Number</Label><Input value={form.bin_number} onChange={(e) => setForm({ ...form, bin_number: e.target.value })} placeholder="e.g. 123456789-0101" /></div>
+            <div><Label>TIN Number</Label><Input value={form.tin_no} onChange={(e) => setForm({ ...form, tin_no: e.target.value })} placeholder="e.g. 123456789012" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Opening Balance</Label>

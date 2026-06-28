@@ -24,6 +24,7 @@ interface Employee {
   email: string | null;
   address: string | null;
   national_id: string | null;
+  tin_no: string | null;
   department_id: string | null;
   designation_id: string | null;
   branch_id: string | null;
@@ -44,7 +45,7 @@ interface Section { id: string; name: string; branch_id: string | null; }
 
 const defaultForm = {
   employee_code: "", first_name: "", last_name: "", mobile: "", email: "",
-  address: "", national_id: "", department_id: "", designation_id: "",
+  address: "", national_id: "", tin_no: "", department_id: "", designation_id: "",
   branch_id: "", section_id: "", employee_category: "staff",
   joining_date: new Date().toISOString().split("T")[0],
   salary: 0, employment_type: "permanent", status: "active",
@@ -111,7 +112,7 @@ export default function EmployeesPage() {
     setForm({
       employee_code: emp.employee_code, first_name: emp.first_name, last_name: emp.last_name,
       mobile: emp.mobile || "", email: emp.email || "", address: emp.address || "",
-      national_id: emp.national_id || "", department_id: emp.department_id || "",
+      national_id: emp.national_id || "", tin_no: emp.tin_no || "", department_id: emp.department_id || "",
       designation_id: emp.designation_id || "", branch_id: emp.branch_id || "",
       section_id: emp.section_id || "", employee_category: emp.employee_category || "staff",
       joining_date: emp.joining_date, salary: emp.salary,
@@ -168,6 +169,7 @@ export default function EmployeesPage() {
       email: form.email || null,
       address: form.address || null,
       national_id: form.national_id || null,
+      tin_no: form.tin_no || null,
       department_id: form.department_id || null,
       designation_id: form.designation_id || null,
       branch_id: form.branch_id || null,
@@ -361,6 +363,7 @@ export default function EmployeesPage() {
             <div><Label>Mobile</Label><Input value={form.mobile} onChange={e => setForm({...form, mobile: e.target.value})} /></div>
             <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} /></div>
             <div><Label>National ID</Label><Input value={form.national_id} onChange={e => setForm({...form, national_id: e.target.value})} /></div>
+            <div><Label>TIN Number</Label><Input value={form.tin_no} onChange={e => setForm({...form, tin_no: e.target.value})} placeholder="e.g. 123456789012" /></div>
             <div className="col-span-2"><Label>Address</Label><Input value={form.address} onChange={e => setForm({...form, address: e.target.value})} /></div>
             <div>
               <Label>Department</Label>

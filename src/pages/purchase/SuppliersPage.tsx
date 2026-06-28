@@ -22,7 +22,7 @@ interface Supplier {
   contact_person?: string; phone?: string; email?: string;
   credit_limit?: number; credit_days?: number; currency?: string;
   is_active: boolean; payable_account_id?: string | null; branch_id?: string | null;
-  vat_reg_no?: string; bin_no?: string; address?: string;
+  vat_reg_no?: string; bin_no?: string; tin_no?: string; address?: string;
   opening_balance?: number | null;
   opening_balance_date?: string | null;
 }
@@ -236,6 +236,7 @@ const SuppliersPage = () => {
             <div className="space-y-1"><Label>Currency</Label><Input value={form.currency || ""} onChange={(e) => setForm({ ...form, currency: e.target.value })} /></div>
             <div className="space-y-1"><Label>VAT Reg No</Label><Input value={form.vat_reg_no || ""} onChange={(e) => setForm({ ...form, vat_reg_no: e.target.value })} /></div>
             <div className="space-y-1"><Label>BIN No</Label><Input value={form.bin_no || ""} onChange={(e) => setForm({ ...form, bin_no: e.target.value })} /></div>
+            <div className="space-y-1"><Label>TIN No</Label><Input value={form.tin_no || ""} onChange={(e) => setForm({ ...form, tin_no: e.target.value })} placeholder="e.g. 123456789012" /></div>
             <div className="space-y-1"><Label>Credit Limit</Label><Input type="number" value={form.credit_limit ?? 0} onChange={(e) => setForm({ ...form, credit_limit: parseFloat(e.target.value) || 0 })} /></div>
             <div className="space-y-1"><Label>Credit Days</Label><Input type="number" value={form.credit_days ?? 0} onChange={(e) => setForm({ ...form, credit_days: parseInt(e.target.value) || 0 })} /></div>
             <div className="space-y-1">
