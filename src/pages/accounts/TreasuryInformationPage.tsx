@@ -357,7 +357,22 @@ export default function TreasuryInformationPage() {
 
   function onTypeChange(t: TreasuryType) {
     const kind: PartyKind = t === "salary_tds" ? "employee" : t === "party_tds" ? "supplier" : "none";
-    setForm((f) => ({ ...f, treasury_type: t, party_kind: kind, party_id: "" }));
+    setForm((f) => ({
+      ...f, treasury_type: t, party_kind: kind, party_id: "",
+      tin_snapshot: "", designation_snapshot: "", branch_name_snapshot: "",
+    }));
+  }
+
+  function onPartySelect(kind: PartyKind, id: string) {
+    const opt = partyOptions(kind).find((o) => o.id === id);
+    setForm((f) => ({
+      ...f,
+      party_id: id,
+      party_name_snapshot: opt?.label ?? "",
+      tin_snapshot: opt?.tin ?? "",
+      designation_snapshot: opt?.designation ?? "",
+      branch_name_snapshot: opt?.branch ?? "",
+    }));
   }
 
   async function save() {
@@ -372,9 +387,8 @@ export default function TreasuryInformationPage() {
     }
 
     const partyKind: PartyKind = form.treasury_type === "vat" ? "none" : form.party_kind;
-    const snapshot = form.party_id
-      ? partyOptions(partyKind).find((o) => o.id === form.party_id)?.label ?? form.party_name_snapshot
-      : null;
+    const opt = form.party_id ? partyOptions(partyKind).find((o) => o.id === form.party_id) : null;
+    const snapshot = opt?.label ?? form.party_name_snapshot ?? null;
 
     const payload: any = {
       treasury_date: form.treasury_date,
@@ -382,10 +396,14 @@ export default function TreasuryInformationPage() {
       party_kind: partyKind,
       party_id: form.party_id || null,
       party_name_snapshot: snapshot,
+      tin_snapshot: (form.tin_snapshot || opt?.tin) || null,
+      designation_snapshot: (form.designation_snapshot || opt?.designation) || null,
+      branch_name_snapshot: (form.branch_name_snapshot || opt?.branch) || null,
       challan_no: form.challan_no || null,
       challan_date: form.challan_date || null,
       bank_name: form.bank_name || null,
       amount: Number(form.amount),
+      challan_base_amount: form.challan_base_amount ? Number(form.challan_base_amount) : null,
       period_month: form.period_month || null,
       mushak_ref: form.mushak_ref || null,
       reference_no: form.reference_no || null,
