@@ -37,6 +37,21 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::post('change-password', [\App\Http\Controllers\Auth\AuthController::class, 'changePassword']);
     });
 
+    // Legacy Admin > Users API aliases. Some VPS builds may still call
+    // /api/users/... (without /v1); keep these routes available so delete and
+    // transfer-delete do not fail with "route could not be found" after deploy.
+    Route::middleware('permission:users.view')->group(function () {
+        Route::get('users', [\App\Http\Controllers\Admin\UserController::class, 'index']);
+        Route::get('users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'show']);
+        Route::get('users/{id}/check-related', [\App\Http\Controllers\Admin\UserController::class, 'checkRelated']);
+    });
+    Route::middleware('permission:users.create')->post('users', [\App\Http\Controllers\Admin\UserController::class, 'store']);
+    Route::middleware('permission:users.edit')->put('users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'update']);
+    Route::middleware('permission:users.delete')->group(function () {
+        Route::delete('users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'destroy']);
+        Route::post('users/{id}/transfer-delete', [\App\Http\Controllers\Admin\UserController::class, 'transferAndDelete']);
+    });
+
     Route::prefix('v1')->group(function () {
 
         // ─── Dashboard summary ──────────────────────────────────
