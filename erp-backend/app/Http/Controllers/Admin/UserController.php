@@ -148,6 +148,37 @@ class UserController extends BaseController
             }
         }
 
+        // Sync legacy `user_roles` table when system_role is provided.
+        // Super Admin promotion/demotion is restricted to existing Super Admins.
+        if ($request->has('system_role')) {
+            $systemRole = $request->input('system_role') ?: 'user';
+            if (in_array($systemRole, ['super_admin', 'user'], true)) {
+                $actor = $request->user();
+                $isSuperAdminActor = $actor && $actor->isSuperAdmin();
+                if ($systemRole === 'super_admin' && !$isSuperAdminActor) {
+                    return $this->error('Only Super Admin can promote another user to Super Admin.', 403);
+                }
+                if ($systemRole !== 'super_admin' && $user->isSuperAdmin() && !$isSuperAdminActor) {
+                    return $this->error('Only Super Admin can demote a Super Admin user.', 403);
+                }
+                if (\Illuminate\Support\Facades\Schema::hasTable('user_roles')) {
+                    \Illuminate\Support\Facades\DB::table('user_roles')
+                        ->where('user_id', $user->id)
+                        ->where('role', 'super_admin')
+                        ->delete();
+                    if ($systemRole === 'super_admin') {
+                        \Illuminate\Support\Facades\DB::table('user_roles')->insert([
+                            'id' => (string) \Illuminate\Support\Str::uuid(),
+                            'user_id' => $user->id,
+                            'role' => 'super_admin',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
+        }
+
         $this->auditService->logUpdate('users', $user->id, $oldData, $user->fresh()->toArray(), $request);
 
         return $this->success($user->load('roles', 'branches'));
