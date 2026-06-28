@@ -587,6 +587,7 @@ export default function TreasuryInformationPage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Party</TableHead>
+                  <TableHead>TIN</TableHead>
                   <TableHead>Challan</TableHead>
                   <TableHead>Bank</TableHead>
                   <TableHead>Period</TableHead>
@@ -596,14 +597,15 @@ export default function TreasuryInformationPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
                 ) : pageRows.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No treasury entries found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No treasury entries found.</TableCell></TableRow>
                 ) : pageRows.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell>{formatDateDMY(r.treasury_date)}</TableCell>
                     <TableCell><Badge variant="secondary">{TYPE_LABEL[r.treasury_type]}</Badge></TableCell>
                     <TableCell>{r.party_name_snapshot ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                    <TableCell className="font-mono text-xs">{r.tin_snapshot || "—"}</TableCell>
                     <TableCell>
                       {r.challan_no || "—"}
                       {r.challan_date && <div className="text-xs text-muted-foreground">{formatDateDMY(r.challan_date)}</div>}
