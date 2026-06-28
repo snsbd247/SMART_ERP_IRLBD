@@ -33,8 +33,14 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert, ExternalLink, Loader2, Copy, Check } from "lucide-react";
 import { logCreate, logUpdate, logDelete } from "@/lib/audit-utils";
+import {
+  buildChallanUrl,
+  challanValidationMessage,
+  isValidChallanNo,
+  validateChallanNo,
+} from "@/lib/challan-utils";
 
 type TreasuryType = "salary_tds" | "party_tds" | "vat";
 type PartyKind = "employee" | "customer" | "supplier" | "none";
@@ -116,18 +122,12 @@ export default function TreasuryInformationPage() {
   const [historyRows, setHistoryRows] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [printTarget, setPrintTarget] = useState<TreasuryRow | null>(null);
-
-  // A-Challan numbers are alphanumeric (commonly digits, sometimes with '-' or '/').
-  const isValidChallanNo = (v: string | null | undefined): v is string => {
-    if (!v) return false;
-    const t = String(v).trim();
-    if (t.length < 3 || t.length > 64) return false;
-    return /^[A-Za-z0-9\-\/]+$/.test(t);
-  };
-  const buildChallanUrl = (challanNo: string) =>
-    `http://achallan.gov.bd/acs/General/PrintChallanSlipDetails?challanNo=${encodeURIComponent(challanNo.trim())}`;
+  const [printPendingId, setPrintPendingId] = useState<string | null>(null);
+  const [printOpening, setPrintOpening] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   function openChallanPrint(url: string) {
+    setPrintOpening(true);
     try {
       const w = window.open(url, "_blank", "noopener,noreferrer");
       if (!w) {
@@ -145,19 +145,51 @@ export default function TreasuryInformationPage() {
         description: err?.message ?? "Unknown error",
         variant: "destructive",
       });
+    } finally {
+      setPrintOpening(false);
     }
   }
 
   function requestChallanPrint(r: TreasuryRow) {
-    if (!isValidChallanNo(r.challan_no)) {
+    const v = validateChallanNo(r.challan_no);
+    if (!v.valid) {
       toast({
         title: "Invalid challan number",
-        description: "Add a valid A-Challan number to this entry before printing.",
+        description: challanValidationMessage(v),
         variant: "destructive",
       });
       return;
     }
-    setPrintTarget(r);
+    setPrintPendingId(r.id);
+    // Brief tick so the spinner is visible before the modal mounts.
+    setTimeout(() => {
+      setPrintTarget(r);
+      setPrintPendingId(null);
+    }, 50);
+  }
+
+  async function copyChallanUrl(url: string) {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      toast({ title: "URL copied", description: "Challan print URL copied to clipboard." });
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err: any) {
+      toast({
+        title: "Copy failed",
+        description: err?.message ?? "Clipboard not available",
+        variant: "destructive",
+      });
+    }
   }
 
   async function openHistory(r: TreasuryRow) {
@@ -488,15 +520,25 @@ export default function TreasuryInformationPage() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        disabled={!isValidChallanNo(r.challan_no)}
+                        disabled={!isValidChallanNo(r.challan_no) || printPendingId === r.id}
                         onClick={() => requestChallanPrint(r)}
+                        aria-label={
+                          isValidChallanNo(r.challan_no)
+                            ? `Print A-Challan ${r.challan_no}`
+                            : "Print disabled: add a valid challan number"
+                        }
                         title={
                           isValidChallanNo(r.challan_no)
                             ? `Print A-Challan ${r.challan_no}`
                             : "Add a valid challan number to print"
                         }
+                        data-testid={`print-challan-${r.id}`}
                       >
-                        <ExternalLink className="w-4 h-4" />
+                        {printPendingId === r.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                        )}
                       </Button>
                       <Button size="icon" variant="ghost" onClick={() => openHistory(r)} title="History"><History className="w-4 h-4" /></Button>
                       {canEdit && (
@@ -690,34 +732,63 @@ export default function TreasuryInformationPage() {
         </DialogContent>
       </Dialog>
 
-      {/* A-Challan print preview */}
+      {/*
+        A-Challan print preview.
+        Radix Dialog handles focus trap, Esc-to-close, and Tab cycling.
+        We only add an aria-label / aria-describedby + descriptive copy.
+      */}
       <Dialog open={!!printTarget} onOpenChange={(o) => { if (!o) setPrintTarget(null); }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl" aria-describedby="challan-print-desc" data-testid="challan-print-modal">
           <DialogHeader>
             <DialogTitle>Open A-Challan Print Slip</DialogTitle>
           </DialogHeader>
           {printTarget && isValidChallanNo(printTarget.challan_no) ? (
-            <div className="space-y-3 text-sm">
+            <div className="space-y-3 text-sm" id="challan-print-desc">
               <div>
                 <div className="text-muted-foreground text-xs">Challan No</div>
                 <div className="font-mono">{printTarget.challan_no}</div>
               </div>
               <div>
                 <div className="text-muted-foreground text-xs">URL</div>
-                <div className="font-mono text-xs break-all bg-muted rounded p-2 border">
-                  {buildChallanUrl(printTarget.challan_no!)}
+                <div className="flex items-stretch gap-2">
+                  <code
+                    data-testid="challan-print-url"
+                    className="flex-1 font-mono text-xs break-all bg-muted rounded p-2 border"
+                  >
+                    {buildChallanUrl(printTarget.challan_no!)}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-label="Copy challan print URL"
+                    onClick={() => copyChallanUrl(buildChallanUrl(printTarget.challan_no!))}
+                  >
+                    {copied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
+                    {copied ? "Copied" : "Copy URL"}
+                  </Button>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
                 The link opens on achallan.gov.bd in a new tab. Make sure popups are allowed.
+                Press Esc to close.
               </p>
             </div>
           ) : null}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPrintTarget(null)}>Cancel</Button>
             {printTarget && isValidChallanNo(printTarget.challan_no) ? (
-              <Button onClick={() => openChallanPrint(buildChallanUrl(printTarget.challan_no!))}>
-                <ExternalLink className="w-4 h-4 mr-1" /> Open Print Slip
+              <Button
+                data-testid="challan-print-open"
+                disabled={printOpening}
+                onClick={() => openChallanPrint(buildChallanUrl(printTarget.challan_no!))}
+              >
+                {printOpening ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <ExternalLink className="w-4 h-4 mr-1" />
+                )}
+                {printOpening ? "Opening…" : "Open Print Slip"}
               </Button>
             ) : null}
           </DialogFooter>
