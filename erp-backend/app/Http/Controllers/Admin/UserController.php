@@ -248,9 +248,11 @@ class UserController extends BaseController
     public function checkRelated(Request $request, string $id)
     {
         if (!$request->user()?->isSuperAdmin()) {
+            $this->auditPermissionDenied($request, 'check-related', $id);
             return $this->error('Only Super Admin can delete users', 403);
         }
         if ($id === $request->user()?->id) {
+            $this->auditPermissionDenied($request, 'check-related-self-delete', $id);
             return $this->error('Cannot delete your own account', 400);
         }
 
@@ -269,14 +271,17 @@ class UserController extends BaseController
     {
         $request->validate(['transfer_to_user_id' => 'required|exists:users,id']);
         if (!$request->user()?->isSuperAdmin()) {
+            $this->auditPermissionDenied($request, 'transfer-delete', $id);
             return $this->error('Only Super Admin can delete users', 403);
         }
         $transferTo = $request->transfer_to_user_id;
 
         if ($id === $transferTo) {
+            $this->auditPermissionDenied($request, 'transfer-delete-same-user', $id);
             return $this->error('Cannot transfer data to the same user', 400);
         }
         if ($id === $request->user()->id) {
+            $this->auditPermissionDenied($request, 'transfer-delete-self-delete', $id);
             return $this->error('Cannot delete your own account', 400);
         }
 
@@ -324,10 +329,12 @@ class UserController extends BaseController
     public function destroy(Request $request, string $id)
     {
         if (!$request->user()?->isSuperAdmin()) {
+            $this->auditPermissionDenied($request, 'delete', $id);
             return $this->error('Only Super Admin can delete users', 403);
         }
 
         if ($id === $request->user()->id) {
+            $this->auditPermissionDenied($request, 'delete-self-delete', $id);
             return $this->error('Cannot delete your own account', 400);
         }
 
@@ -351,5 +358,23 @@ class UserController extends BaseController
         ]), $request);
 
         return $this->success(null, 'User deleted successfully');
+    }
+
+    private function auditPermissionDenied(Request $request, string $action, string $targetUserId): void
+    {
+        try {
+            $this->auditService->log('users', 'permission_denied:' . $action, $targetUserId,
+                json_encode([
+                    'reason' => 'Only Super Admin can delete users',
+                    'actor_id' => $request->user()?->id,
+                    'actor_name' => $request->user()?->name,
+                    'actor_is_super_admin' => (bool) $request->user()?->isSuperAdmin(),
+                    'required' => ['super_admin'],
+                ]),
+                $request
+            );
+        } catch (\Throwable) {
+            // Permission-denial audit logging must never mask the real response.
+        }
     }
 }
