@@ -33,7 +33,7 @@ export function isValidChallanNo(v: string | null | undefined): v is string {
 
 export function challanValidationMessage(r: ChallanValidation): string {
   if (r.valid) return "";
-  const reason = r.reason;
+  const reason: "empty" | "too_short" | "too_long" | "bad_chars" = (r as { valid: false; reason: "empty" | "too_short" | "too_long" | "bad_chars" }).reason;
   if (reason === "empty")
     return "Challan number is empty. Add the A-Challan number to this entry before printing.";
   if (reason === "too_short")
