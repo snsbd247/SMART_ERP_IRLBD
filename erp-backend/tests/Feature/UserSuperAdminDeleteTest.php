@@ -97,6 +97,11 @@ class UserSuperAdminDeleteTest extends TestCase
             ->assertJsonPath('data.has_related_data', false);
 
         $this->actingAs($actor)
+            ->getJson("/api/users/{$target->id}/check-related")
+            ->assertOk()
+            ->assertJsonPath('data.has_related_data', false);
+
+        $this->actingAs($actor)
             ->deleteJson("/api/v1/users/{$target->id}")
             ->assertOk();
 
