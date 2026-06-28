@@ -732,34 +732,63 @@ export default function TreasuryInformationPage() {
         </DialogContent>
       </Dialog>
 
-      {/* A-Challan print preview */}
+      {/*
+        A-Challan print preview.
+        Radix Dialog handles focus trap, Esc-to-close, and Tab cycling.
+        We only add an aria-label / aria-describedby + descriptive copy.
+      */}
       <Dialog open={!!printTarget} onOpenChange={(o) => { if (!o) setPrintTarget(null); }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl" aria-describedby="challan-print-desc" data-testid="challan-print-modal">
           <DialogHeader>
             <DialogTitle>Open A-Challan Print Slip</DialogTitle>
           </DialogHeader>
           {printTarget && isValidChallanNo(printTarget.challan_no) ? (
-            <div className="space-y-3 text-sm">
+            <div className="space-y-3 text-sm" id="challan-print-desc">
               <div>
                 <div className="text-muted-foreground text-xs">Challan No</div>
                 <div className="font-mono">{printTarget.challan_no}</div>
               </div>
               <div>
                 <div className="text-muted-foreground text-xs">URL</div>
-                <div className="font-mono text-xs break-all bg-muted rounded p-2 border">
-                  {buildChallanUrl(printTarget.challan_no!)}
+                <div className="flex items-stretch gap-2">
+                  <code
+                    data-testid="challan-print-url"
+                    className="flex-1 font-mono text-xs break-all bg-muted rounded p-2 border"
+                  >
+                    {buildChallanUrl(printTarget.challan_no!)}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-label="Copy challan print URL"
+                    onClick={() => copyChallanUrl(buildChallanUrl(printTarget.challan_no!))}
+                  >
+                    {copied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
+                    {copied ? "Copied" : "Copy URL"}
+                  </Button>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
                 The link opens on achallan.gov.bd in a new tab. Make sure popups are allowed.
+                Press Esc to close.
               </p>
             </div>
           ) : null}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPrintTarget(null)}>Cancel</Button>
             {printTarget && isValidChallanNo(printTarget.challan_no) ? (
-              <Button onClick={() => openChallanPrint(buildChallanUrl(printTarget.challan_no!))}>
-                <ExternalLink className="w-4 h-4 mr-1" /> Open Print Slip
+              <Button
+                data-testid="challan-print-open"
+                disabled={printOpening}
+                onClick={() => openChallanPrint(buildChallanUrl(printTarget.challan_no!))}
+              >
+                {printOpening ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <ExternalLink className="w-4 h-4 mr-1" />
+                )}
+                {printOpening ? "Opening…" : "Open Print Slip"}
               </Button>
             ) : null}
           </DialogFooter>
