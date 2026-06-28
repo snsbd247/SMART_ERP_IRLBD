@@ -115,6 +115,50 @@ export default function TreasuryInformationPage() {
   const [historyTarget, setHistoryTarget] = useState<TreasuryRow | null>(null);
   const [historyRows, setHistoryRows] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [printTarget, setPrintTarget] = useState<TreasuryRow | null>(null);
+
+  // A-Challan numbers are alphanumeric (commonly digits, sometimes with '-' or '/').
+  const isValidChallanNo = (v: string | null | undefined): v is string => {
+    if (!v) return false;
+    const t = String(v).trim();
+    if (t.length < 3 || t.length > 64) return false;
+    return /^[A-Za-z0-9\-\/]+$/.test(t);
+  };
+  const buildChallanUrl = (challanNo: string) =>
+    `http://achallan.gov.bd/acs/General/PrintChallanSlipDetails?challanNo=${encodeURIComponent(challanNo.trim())}`;
+
+  function openChallanPrint(url: string) {
+    try {
+      const w = window.open(url, "_blank", "noopener,noreferrer");
+      if (!w) {
+        toast({
+          title: "Popup blocked",
+          description: "Allow popups for this site to open the A-Challan print page.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setPrintTarget(null);
+    } catch (err: any) {
+      toast({
+        title: "Failed to open print link",
+        description: err?.message ?? "Unknown error",
+        variant: "destructive",
+      });
+    }
+  }
+
+  function requestChallanPrint(r: TreasuryRow) {
+    if (!isValidChallanNo(r.challan_no)) {
+      toast({
+        title: "Invalid challan number",
+        description: "Add a valid A-Challan number to this entry before printing.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setPrintTarget(r);
+  }
 
   async function openHistory(r: TreasuryRow) {
     setHistoryTarget(r);
