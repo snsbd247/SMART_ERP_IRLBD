@@ -815,6 +815,7 @@ export type Database = {
           phone: string | null
           receivable_account_id: string | null
           status: string
+          tin_no: string | null
         }
         Insert: {
           address?: string | null
@@ -829,6 +830,7 @@ export type Database = {
           phone?: string | null
           receivable_account_id?: string | null
           status?: string
+          tin_no?: string | null
         }
         Update: {
           address?: string | null
@@ -843,6 +845,7 @@ export type Database = {
           phone?: string | null
           receivable_account_id?: string | null
           status?: string
+          tin_no?: string | null
         }
         Relationships: [
           {
@@ -1252,6 +1255,7 @@ export type Database = {
           section_id: string | null
           shift_id: string | null
           status: string
+          tin_no: string | null
           updated_at: string
           user_id: string | null
         }
@@ -1280,6 +1284,7 @@ export type Database = {
           section_id?: string | null
           shift_id?: string | null
           status?: string
+          tin_no?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1308,6 +1313,7 @@ export type Database = {
           section_id?: string | null
           shift_id?: string | null
           status?: string
+          tin_no?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -5441,6 +5447,7 @@ export type Database = {
           supplier_type: string
           swift_code: string | null
           tax_id: string | null
+          tin_no: string | null
           updated_at: string
           vat_reg_no: string | null
         }
@@ -5474,6 +5481,7 @@ export type Database = {
           supplier_type?: string
           swift_code?: string | null
           tax_id?: string | null
+          tin_no?: string | null
           updated_at?: string
           vat_reg_no?: string | null
         }
@@ -5507,6 +5515,7 @@ export type Database = {
           supplier_type?: string
           swift_code?: string | null
           tax_id?: string | null
+          tin_no?: string | null
           updated_at?: string
           vat_reg_no?: string | null
         }
@@ -5630,10 +5639,13 @@ export type Database = {
           amount: number
           bank_name: string | null
           branch_id: string | null
+          branch_name_snapshot: string | null
+          challan_base_amount: number | null
           challan_date: string | null
           challan_no: string | null
           created_at: string
           created_by: string | null
+          designation_snapshot: string | null
           id: string
           mushak_ref: string | null
           notes: string | null
@@ -5643,6 +5655,7 @@ export type Database = {
           period_month: string | null
           reference_no: string | null
           status: string
+          tin_snapshot: string | null
           treasury_date: string
           treasury_type: string
           updated_at: string
@@ -5651,10 +5664,13 @@ export type Database = {
           amount?: number
           bank_name?: string | null
           branch_id?: string | null
+          branch_name_snapshot?: string | null
+          challan_base_amount?: number | null
           challan_date?: string | null
           challan_no?: string | null
           created_at?: string
           created_by?: string | null
+          designation_snapshot?: string | null
           id?: string
           mushak_ref?: string | null
           notes?: string | null
@@ -5664,6 +5680,7 @@ export type Database = {
           period_month?: string | null
           reference_no?: string | null
           status?: string
+          tin_snapshot?: string | null
           treasury_date: string
           treasury_type: string
           updated_at?: string
@@ -5672,10 +5689,13 @@ export type Database = {
           amount?: number
           bank_name?: string | null
           branch_id?: string | null
+          branch_name_snapshot?: string | null
+          challan_base_amount?: number | null
           challan_date?: string | null
           challan_no?: string | null
           created_at?: string
           created_by?: string | null
+          designation_snapshot?: string | null
           id?: string
           mushak_ref?: string | null
           notes?: string | null
@@ -5685,6 +5705,7 @@ export type Database = {
           period_month?: string | null
           reference_no?: string | null
           status?: string
+          tin_snapshot?: string | null
           treasury_date?: string
           treasury_type?: string
           updated_at?: string

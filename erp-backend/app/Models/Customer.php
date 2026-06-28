@@ -7,6 +7,6 @@ class Customer extends Model
 {
     use HasUuids;
     public $timestamps = false;
-    protected $fillable = ['name', 'email', 'phone', 'address', 'status'];
+    protected $fillable = ['name', 'email', 'phone', 'address', 'status', 'tin_no'];
     public function invoices() { return $this->hasMany(SalesInvoice::class); }
 }
