@@ -22,10 +22,14 @@ class UserController extends BaseController
             ->whereNull('deleted_at')
             ->where('status', '!=', 'deleted');
 
-        // Hide Super Admin users (employee_id IS NULL) from non-Super Admin viewers
+        // Hide Super Admin users (employee_id IS NULL or legacy user_roles.super_admin)
+        // from non-Super Admin viewers.
         $currentUser = $request->user();
         if ($currentUser && !$currentUser->isSuperAdmin()) {
             $query->whereNotNull('employee_id');
+            if (Schema::hasTable('user_roles')) {
+                $query->whereNotIn('id', DB::table('user_roles')->select('user_id')->where('role', 'super_admin'));
+            }
         }
 
         return $this->paginated(
