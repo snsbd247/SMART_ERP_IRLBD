@@ -109,7 +109,7 @@ export default function TreasuryInformationPage() {
     if (error) {
       toast({ title: "Failed to load treasury entries", description: error.message, variant: "destructive" });
     } else {
-      setRows((data as TreasuryRow[]) || []);
+      setRows(((data as unknown) as TreasuryRow[]) || []);
     }
     setLoading(false);
   }
