@@ -466,6 +466,27 @@ export default function TreasuryInformationPage() {
     );
   }
 
+  if (tableMissing) {
+    return (
+      <div className="p-6">
+        <Card><CardContent className="py-12 text-center space-y-3">
+          <ShieldAlert className="w-10 h-10 mx-auto text-destructive" />
+          <div className="font-semibold text-lg">Database not migrated</div>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            The <code>treasury_entries</code> table is missing. An administrator must run the latest
+            database migrations on the server:
+          </p>
+          <pre className="text-xs bg-muted p-3 rounded inline-block text-left">cd erp-backend{"\n"}php artisan migrate</pre>
+          <div>
+            <Button variant="outline" size="sm" onClick={() => { setTableMissing(false); void load(); }}>
+              Retry
+            </Button>
+          </div>
+        </CardContent></Card>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
