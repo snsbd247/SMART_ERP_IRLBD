@@ -32,7 +32,7 @@ export function isValidChallanNo(v: string | null | undefined): v is string {
 }
 
 export function challanValidationMessage(r: ChallanValidation): string {
-  if (r.valid) return "";
+  if (r.valid === true) return "";
   switch (r.reason) {
     case "empty":
       return "Challan number is empty. Add the A-Challan number to this entry before printing.";
