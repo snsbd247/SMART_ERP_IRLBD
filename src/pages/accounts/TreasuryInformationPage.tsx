@@ -796,6 +796,135 @@ export default function TreasuryInformationPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Salary TDS / Party TDS Reports */}
+      <Dialog open={reportsOpen} onOpenChange={setReportsOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader><DialogTitle>TDS Reports</DialogTitle></DialogHeader>
+          <Tabs value={reportTab} onValueChange={(v) => setReportTab(v as any)}>
+            <TabsList>
+              <TabsTrigger value="salary">Salary TDS</TabsTrigger>
+              <TabsTrigger value="party">Party TDS</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="salary" className="space-y-3">
+              {(() => {
+                const data = filtered
+                  .filter((r) => r.treasury_type === "salary_tds")
+                  .map((r) => ({
+                    month: r.period_month || (r.treasury_date ? r.treasury_date.slice(0, 7) : ""),
+                    challan_no: r.challan_no ?? "",
+                    challan_date: r.challan_date ? formatDateDMY(r.challan_date) : "",
+                    bank: r.bank_name ?? "",
+                    branch: r.branch_name_snapshot ?? "",
+                    tin: r.tin_snapshot ?? "",
+                    employee: r.party_name_snapshot ?? "",
+                    designation: r.designation_snapshot ?? "",
+                    challan_amount: Number(r.challan_base_amount ?? 0).toFixed(2),
+                    tds_amount: Number(r.amount ?? 0).toFixed(2),
+                  }));
+                const cols = [
+                  { key: "month", label: "MONTH" },
+                  { key: "challan_no", label: "CHALLAN NO" },
+                  { key: "challan_date", label: "CHALLAN DATE" },
+                  { key: "bank", label: "BANK NAME" },
+                  { key: "branch", label: "BRANCH" },
+                  { key: "tin", label: "TIN" },
+                  { key: "employee", label: "EMPLOYEE" },
+                  { key: "designation", label: "DESIGNATION" },
+                  { key: "challan_amount", label: "CHALLAN AMOUNT" },
+                  { key: "tds_amount", label: "TDS AMOUNT" },
+                ];
+                return (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm text-muted-foreground">{data.length} entries (uses current page filters)</div>
+                      <Button size="sm" variant="outline" onClick={() => downloadCSV(`salary-tds-${new Date().toISOString().slice(0,10)}`, cols, data)}>
+                        <Download className="w-4 h-4 mr-1" /> CSV
+                      </Button>
+                    </div>
+                    <div className="overflow-x-auto max-h-[55vh]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>{cols.map((c) => <TableHead key={c.key}>{c.label}</TableHead>)}</TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {data.length === 0 ? (
+                            <TableRow><TableCell colSpan={cols.length} className="text-center py-6 text-muted-foreground">No Salary TDS entries.</TableCell></TableRow>
+                          ) : data.map((d, i) => (
+                            <TableRow key={i}>
+                              {cols.map((c) => <TableCell key={c.key} className={c.key.includes("amount") ? "text-right font-mono" : ""}>{(d as any)[c.key] || "—"}</TableCell>)}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                );
+              })()}
+            </TabsContent>
+
+            <TabsContent value="party" className="space-y-3">
+              {(() => {
+                const data = filtered
+                  .filter((r) => r.treasury_type === "party_tds")
+                  .map((r) => ({
+                    month: r.period_month || (r.treasury_date ? r.treasury_date.slice(0, 7) : ""),
+                    challan_no: r.challan_no ?? "",
+                    challan_date: r.challan_date ? formatDateDMY(r.challan_date) : "",
+                    bank: r.bank_name ?? "",
+                    branch: r.branch_name_snapshot ?? "",
+                    tin: r.tin_snapshot ?? "",
+                    party: r.party_name_snapshot ?? "",
+                    challan_amount: Number(r.challan_base_amount ?? 0).toFixed(2),
+                    tds_amount: Number(r.amount ?? 0).toFixed(2),
+                  }));
+                const cols = [
+                  { key: "month", label: "MONTH" },
+                  { key: "challan_no", label: "CHALLAN NO" },
+                  { key: "challan_date", label: "CHALLAN DATE" },
+                  { key: "bank", label: "BANK NAME" },
+                  { key: "branch", label: "BRANCH" },
+                  { key: "tin", label: "TIN" },
+                  { key: "party", label: "PARTY NAME" },
+                  { key: "challan_amount", label: "CHALLAN AMOUNT" },
+                  { key: "tds_amount", label: "TDS AMOUNT" },
+                ];
+                return (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm text-muted-foreground">{data.length} entries (uses current page filters)</div>
+                      <Button size="sm" variant="outline" onClick={() => downloadCSV(`party-tds-${new Date().toISOString().slice(0,10)}`, cols, data)}>
+                        <Download className="w-4 h-4 mr-1" /> CSV
+                      </Button>
+                    </div>
+                    <div className="overflow-x-auto max-h-[55vh]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>{cols.map((c) => <TableHead key={c.key}>{c.label}</TableHead>)}</TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {data.length === 0 ? (
+                            <TableRow><TableCell colSpan={cols.length} className="text-center py-6 text-muted-foreground">No Party TDS entries.</TableCell></TableRow>
+                          ) : data.map((d, i) => (
+                            <TableRow key={i}>
+                              {cols.map((c) => <TableCell key={c.key} className={c.key.includes("amount") ? "text-right font-mono" : ""}>{(d as any)[c.key] || "—"}</TableCell>)}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                );
+              })()}
+            </TabsContent>
+          </Tabs>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReportsOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
