@@ -103,6 +103,7 @@ export default function TreasuryInformationPage() {
 
   const [rows, setRows] = useState<TreasuryRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tableMissing, setTableMissing] = useState(false);
   const [employees, setEmployees] = useState<PartyOpt[]>([]);
   const [customers, setCustomers] = useState<PartyOpt[]>([]);
   const [suppliers, setSuppliers] = useState<PartyOpt[]>([]);
