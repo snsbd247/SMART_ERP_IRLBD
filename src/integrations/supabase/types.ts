@@ -5625,6 +5625,72 @@ export type Database = {
           },
         ]
       }
+      treasury_entries: {
+        Row: {
+          amount: number
+          bank_name: string | null
+          branch_id: string | null
+          challan_date: string | null
+          challan_no: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          mushak_ref: string | null
+          notes: string | null
+          party_id: string | null
+          party_kind: string | null
+          party_name_snapshot: string | null
+          period_month: string | null
+          reference_no: string | null
+          status: string
+          treasury_date: string
+          treasury_type: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          bank_name?: string | null
+          branch_id?: string | null
+          challan_date?: string | null
+          challan_no?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mushak_ref?: string | null
+          notes?: string | null
+          party_id?: string | null
+          party_kind?: string | null
+          party_name_snapshot?: string | null
+          period_month?: string | null
+          reference_no?: string | null
+          status?: string
+          treasury_date: string
+          treasury_type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank_name?: string | null
+          branch_id?: string | null
+          challan_date?: string | null
+          challan_no?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mushak_ref?: string | null
+          notes?: string | null
+          party_id?: string | null
+          party_kind?: string | null
+          party_name_snapshot?: string | null
+          period_month?: string | null
+          reference_no?: string | null
+          status?: string
+          treasury_date?: string
+          treasury_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       units: {
         Row: {
           abbreviation: string
