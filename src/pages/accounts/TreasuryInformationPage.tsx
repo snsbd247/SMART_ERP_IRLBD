@@ -229,8 +229,25 @@ export default function TreasuryInformationPage() {
       .select("*")
       .order("treasury_date", { ascending: false });
     if (error) {
-      toast({ title: "Failed to load treasury entries", description: error.message, variant: "destructive" });
+      const msg = String(error.message || "").toLowerCase();
+      const missing =
+        msg.includes("does not exist") ||
+        msg.includes("not found") ||
+        msg.includes("relation") ||
+        (error as any).code === "42P01" ||
+        (error as any).code === "PGRST205";
+      if (missing) {
+        setTableMissing(true);
+        toast({
+          title: "Treasury table not migrated",
+          description: "Run `php artisan migrate` on the server to create the treasury_entries table.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Failed to load treasury entries", description: error.message, variant: "destructive" });
+      }
     } else {
+      setTableMissing(false);
       setRows(((data as unknown) as TreasuryRow[]) || []);
     }
     setLoading(false);
