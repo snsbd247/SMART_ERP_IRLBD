@@ -116,18 +116,12 @@ export default function TreasuryInformationPage() {
   const [historyRows, setHistoryRows] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [printTarget, setPrintTarget] = useState<TreasuryRow | null>(null);
-
-  // A-Challan numbers are alphanumeric (commonly digits, sometimes with '-' or '/').
-  const isValidChallanNo = (v: string | null | undefined): v is string => {
-    if (!v) return false;
-    const t = String(v).trim();
-    if (t.length < 3 || t.length > 64) return false;
-    return /^[A-Za-z0-9\-\/]+$/.test(t);
-  };
-  const buildChallanUrl = (challanNo: string) =>
-    `http://achallan.gov.bd/acs/General/PrintChallanSlipDetails?challanNo=${encodeURIComponent(challanNo.trim())}`;
+  const [printPendingId, setPrintPendingId] = useState<string | null>(null);
+  const [printOpening, setPrintOpening] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   function openChallanPrint(url: string) {
+    setPrintOpening(true);
     try {
       const w = window.open(url, "_blank", "noopener,noreferrer");
       if (!w) {
@@ -145,19 +139,51 @@ export default function TreasuryInformationPage() {
         description: err?.message ?? "Unknown error",
         variant: "destructive",
       });
+    } finally {
+      setPrintOpening(false);
     }
   }
 
   function requestChallanPrint(r: TreasuryRow) {
-    if (!isValidChallanNo(r.challan_no)) {
+    const v = validateChallanNo(r.challan_no);
+    if (!v.valid) {
       toast({
         title: "Invalid challan number",
-        description: "Add a valid A-Challan number to this entry before printing.",
+        description: challanValidationMessage(v),
         variant: "destructive",
       });
       return;
     }
-    setPrintTarget(r);
+    setPrintPendingId(r.id);
+    // Brief tick so the spinner is visible before the modal mounts.
+    setTimeout(() => {
+      setPrintTarget(r);
+      setPrintPendingId(null);
+    }, 50);
+  }
+
+  async function copyChallanUrl(url: string) {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      toast({ title: "URL copied", description: "Challan print URL copied to clipboard." });
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err: any) {
+      toast({
+        title: "Copy failed",
+        description: err?.message ?? "Clipboard not available",
+        variant: "destructive",
+      });
+    }
   }
 
   async function openHistory(r: TreasuryRow) {
