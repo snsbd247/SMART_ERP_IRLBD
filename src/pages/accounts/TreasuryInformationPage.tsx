@@ -103,6 +103,7 @@ export default function TreasuryInformationPage() {
 
   const [rows, setRows] = useState<TreasuryRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tableMissing, setTableMissing] = useState(false);
   const [employees, setEmployees] = useState<PartyOpt[]>([]);
   const [customers, setCustomers] = useState<PartyOpt[]>([]);
   const [suppliers, setSuppliers] = useState<PartyOpt[]>([]);
@@ -228,8 +229,25 @@ export default function TreasuryInformationPage() {
       .select("*")
       .order("treasury_date", { ascending: false });
     if (error) {
-      toast({ title: "Failed to load treasury entries", description: error.message, variant: "destructive" });
+      const msg = String(error.message || "").toLowerCase();
+      const missing =
+        msg.includes("does not exist") ||
+        msg.includes("not found") ||
+        msg.includes("relation") ||
+        (error as any).code === "42P01" ||
+        (error as any).code === "PGRST205";
+      if (missing) {
+        setTableMissing(true);
+        toast({
+          title: "Treasury table not migrated",
+          description: "Run `php artisan migrate` on the server to create the treasury_entries table.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Failed to load treasury entries", description: error.message, variant: "destructive" });
+      }
     } else {
+      setTableMissing(false);
       setRows(((data as unknown) as TreasuryRow[]) || []);
     }
     setLoading(false);
@@ -443,6 +461,27 @@ export default function TreasuryInformationPage() {
           <ShieldAlert className="w-10 h-10 mx-auto text-muted-foreground" />
           <div className="font-semibold">Access denied</div>
           <p className="text-sm text-muted-foreground">You need <code>treasury.can_view</code> permission to view this page.</p>
+        </CardContent></Card>
+      </div>
+    );
+  }
+
+  if (tableMissing) {
+    return (
+      <div className="p-6">
+        <Card><CardContent className="py-12 text-center space-y-3">
+          <ShieldAlert className="w-10 h-10 mx-auto text-destructive" />
+          <div className="font-semibold text-lg">Database not migrated</div>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            The <code>treasury_entries</code> table is missing. An administrator must run the latest
+            database migrations on the server:
+          </p>
+          <pre className="text-xs bg-muted p-3 rounded inline-block text-left">cd erp-backend{"\n"}php artisan migrate</pre>
+          <div>
+            <Button variant="outline" size="sm" onClick={() => { setTableMissing(false); void load(); }}>
+              Retry
+            </Button>
+          </div>
         </CardContent></Card>
       </div>
     );
