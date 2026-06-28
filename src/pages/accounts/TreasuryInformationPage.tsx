@@ -726,23 +726,16 @@ export default function TreasuryInformationPage() {
                   <Label>TIN (auto)</Label>
                   <Input value={form.tin_snapshot} onChange={(e) => setForm({ ...form, tin_snapshot: e.target.value })} placeholder="Auto-filled from party profile" />
                 </div>
-                {form.treasury_type === "salary_tds" ? (
+                {form.treasury_type === "salary_tds" && (
                   <div>
                     <Label>Designation (auto)</Label>
                     <Input value={form.designation_snapshot} onChange={(e) => setForm({ ...form, designation_snapshot: e.target.value })} />
                   </div>
-                ) : (
-                  <div>
-                    <Label>Branch (auto)</Label>
-                    <Input value={form.branch_name_snapshot} onChange={(e) => setForm({ ...form, branch_name_snapshot: e.target.value })} />
-                  </div>
                 )}
-                {form.treasury_type === "salary_tds" && (
-                  <div className="md:col-span-2">
-                    <Label>Branch (auto)</Label>
-                    <Input value={form.branch_name_snapshot} onChange={(e) => setForm({ ...form, branch_name_snapshot: e.target.value })} />
-                  </div>
-                )}
+                <div className={form.treasury_type === "party_tds" ? "" : "md:col-span-2"}>
+                  <Label>Branch (auto)</Label>
+                  <Input value={form.branch_name_snapshot} onChange={(e) => setForm({ ...form, branch_name_snapshot: e.target.value })} />
+                </div>
               </>
             )}
 
