@@ -520,15 +520,25 @@ export default function TreasuryInformationPage() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        disabled={!isValidChallanNo(r.challan_no)}
+                        disabled={!isValidChallanNo(r.challan_no) || printPendingId === r.id}
                         onClick={() => requestChallanPrint(r)}
+                        aria-label={
+                          isValidChallanNo(r.challan_no)
+                            ? `Print A-Challan ${r.challan_no}`
+                            : "Print disabled: add a valid challan number"
+                        }
                         title={
                           isValidChallanNo(r.challan_no)
                             ? `Print A-Challan ${r.challan_no}`
                             : "Add a valid challan number to print"
                         }
+                        data-testid={`print-challan-${r.id}`}
                       >
-                        <ExternalLink className="w-4 h-4" />
+                        {printPendingId === r.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                        )}
                       </Button>
                       <Button size="icon" variant="ghost" onClick={() => openHistory(r)} title="History"><History className="w-4 h-4" /></Button>
                       {canEdit && (
