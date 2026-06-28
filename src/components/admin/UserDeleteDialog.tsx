@@ -66,17 +66,25 @@ const UserDeleteDialog = ({ user, allUsers, isSuperAdmin, onDeleted }: Props) =>
   const handleCheck = async () => {
     setLoading(true);
     try {
-      const res = await supabase.functions.invoke("admin-delete-user", {
-        body: { action: "check", user_id: user.id },
-      });
-      const errMsg = res.data?.error || res.error?.message;
-      if (errMsg) throw new Error(errMsg);
-
-      if (res.data.has_related_data) {
-        setRelatedTables(res.data.related_tables);
+      let hasRelated = false;
+      let related: RelatedTable[] = [];
+      if (USE_LARAVEL()) {
+        const data = await laravelUserApi(`/users/${user.id}/check-related`);
+        hasRelated = !!data?.has_related_data;
+        related = data?.related_tables || [];
+      } else {
+        const res = await supabase.functions.invoke("admin-delete-user", {
+          body: { action: "check", user_id: user.id },
+        });
+        const errMsg = res.data?.error || res.error?.message;
+        if (errMsg) throw new Error(errMsg);
+        hasRelated = res.data.has_related_data;
+        related = res.data.related_tables;
+      }
+      if (hasRelated) {
+        setRelatedTables(related);
         setStep("has_data");
       } else {
-        // Direct delete
         await handleDirectDelete();
       }
     } catch (err: any) {
@@ -89,11 +97,15 @@ const UserDeleteDialog = ({ user, allUsers, isSuperAdmin, onDeleted }: Props) =>
   const handleDirectDelete = async () => {
     setLoading(true);
     try {
-      const res = await supabase.functions.invoke("admin-delete-user", {
-        body: { action: "delete", user_id: user.id },
-      });
-      const errMsg = res.data?.error || res.error?.message;
-      if (errMsg) throw new Error(errMsg);
+      if (USE_LARAVEL()) {
+        await laravelUserApi(`/users/${user.id}`, { method: "DELETE" });
+      } else {
+        const res = await supabase.functions.invoke("admin-delete-user", {
+          body: { action: "delete", user_id: user.id },
+        });
+        const errMsg = res.data?.error || res.error?.message;
+        if (errMsg) throw new Error(errMsg);
+      }
 
       toast({ title: "User deleted successfully" });
       setOpen(false);
@@ -113,17 +125,27 @@ const UserDeleteDialog = ({ user, allUsers, isSuperAdmin, onDeleted }: Props) =>
     setStep("transferring");
     setLoading(true);
     try {
-      const res = await supabase.functions.invoke("admin-delete-user", {
-        body: {
-          action: "transfer_and_delete",
-          user_id: user.id,
-          transfer_to_user_id: transferToUserId,
-        },
-      });
-      const errMsg = res.data?.error || res.error?.message;
-      if (errMsg) throw new Error(errMsg);
+      let transfers: any[] = [];
+      if (USE_LARAVEL()) {
+        const data = await laravelUserApi(`/users/${user.id}/transfer-delete`, {
+          method: "POST",
+          body: JSON.stringify({ transfer_to_user_id: transferToUserId }),
+        });
+        transfers = data?.transfers || [];
+      } else {
+        const res = await supabase.functions.invoke("admin-delete-user", {
+          body: {
+            action: "transfer_and_delete",
+            user_id: user.id,
+            transfer_to_user_id: transferToUserId,
+          },
+        });
+        const errMsg = res.data?.error || res.error?.message;
+        if (errMsg) throw new Error(errMsg);
+        transfers = res.data.transfers || [];
+      }
 
-      const totalTransferred = (res.data.transfers || []).reduce(
+      const totalTransferred = transfers.reduce(
         (sum: number, t: any) => sum + (t.updated || 0), 0
       );
 
