@@ -244,13 +244,21 @@ export default function TreasuryInformationPage() {
     };
 
     setSaving(true);
-    let error;
+    let error: any;
+    let savedId = form.id;
+    let prevRow: TreasuryRow | undefined;
     if (form.id) {
+      if (!canEdit) { setSaving(false); toast({ title: "Permission denied", description: "treasury.can_edit required", variant: "destructive" }); return; }
+      prevRow = rows.find((r) => r.id === form.id);
       ({ error } = await supabase.from("treasury_entries" as any).update(payload).eq("id", form.id));
     } else {
+      if (!canAdd) { setSaving(false); toast({ title: "Permission denied", description: "treasury.can_add required", variant: "destructive" }); return; }
       payload.created_by = user?.id ?? null;
       payload.status = "active";
-      ({ error } = await supabase.from("treasury_entries" as any).insert(payload));
+      const { data: inserted, error: insErr } = await supabase
+        .from("treasury_entries" as any).insert(payload).select().single();
+      error = insErr;
+      savedId = (inserted as any)?.id ?? "";
     }
     setSaving(false);
 
@@ -258,6 +266,17 @@ export default function TreasuryInformationPage() {
       toast({ title: "Save failed", description: error.message, variant: "destructive" });
       return;
     }
+
+    // Audit trail (best-effort; failures must not block UX)
+    try {
+      const auditCtx = { userId: user?.id, userName: profile?.name || user?.email || undefined, module: "treasury" };
+      if (form.id && prevRow) {
+        await logUpdate({ ...auditCtx, recordId: form.id, oldData: prevRow as any, newData: payload });
+      } else if (savedId) {
+        await logCreate({ ...auditCtx, recordId: savedId, newData: payload });
+      }
+    } catch { /* ignore audit errors */ }
+
     toast({ title: form.id ? "Treasury entry updated" : "Treasury entry added" });
     setOpen(false);
     void load();
@@ -265,10 +284,19 @@ export default function TreasuryInformationPage() {
 
   async function confirmDelete() {
     if (!deleteTarget) return;
+    if (!canDelete) { toast({ title: "Permission denied", description: "treasury.can_delete required", variant: "destructive" }); return; }
+    const snapshot = deleteTarget;
     const { error } = await supabase.from("treasury_entries" as any).delete().eq("id", deleteTarget.id);
     if (error) {
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     } else {
+      try {
+        await logDelete({
+          userId: user?.id, userName: profile?.name || user?.email || undefined,
+          module: "treasury", recordId: snapshot.id, oldData: snapshot as any,
+          details: `Deleted ${TYPE_LABEL[snapshot.treasury_type]} entry of ${snapshot.amount}`,
+        });
+      } catch { /* ignore */ }
       toast({ title: "Treasury entry deleted" });
       setDeleteTarget(null);
       void load();
