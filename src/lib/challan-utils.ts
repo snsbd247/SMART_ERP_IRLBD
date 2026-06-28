@@ -32,19 +32,17 @@ export function isValidChallanNo(v: string | null | undefined): v is string {
 }
 
 export function challanValidationMessage(r: ChallanValidation): string {
-  if (r.valid === true) return "";
-  switch (r.reason) {
-    case "empty":
-      return "Challan number is empty. Add the A-Challan number to this entry before printing.";
-    case "too_short":
-      return `Challan number is too short. It must be at least ${CHALLAN_MIN_LEN} characters.`;
-    case "too_long":
-      return `Challan number is too long. It must be at most ${CHALLAN_MAX_LEN} characters.`;
-    case "bad_chars":
-      return "Challan number contains invalid characters. Only letters, digits, '-' and '/' are allowed.";
-    default:
-      return "Invalid challan number.";
-  }
+  if (r.valid) return "";
+  const reason = r.reason;
+  if (reason === "empty")
+    return "Challan number is empty. Add the A-Challan number to this entry before printing.";
+  if (reason === "too_short")
+    return `Challan number is too short. It must be at least ${CHALLAN_MIN_LEN} characters.`;
+  if (reason === "too_long")
+    return `Challan number is too long. It must be at most ${CHALLAN_MAX_LEN} characters.`;
+  if (reason === "bad_chars")
+    return "Challan number contains invalid characters. Only letters, digits, '-' and '/' are allowed.";
+  return "Invalid challan number.";
 }
 
 export function buildChallanUrl(challanNo: string): string {
