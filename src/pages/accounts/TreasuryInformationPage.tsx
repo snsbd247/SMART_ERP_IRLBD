@@ -112,6 +112,23 @@ export default function TreasuryInformationPage() {
   const [saving, setSaving] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<TreasuryRow | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<TreasuryRow | null>(null);
+  const [historyRows, setHistoryRows] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  async function openHistory(r: TreasuryRow) {
+    setHistoryTarget(r);
+    setHistoryLoading(true);
+    const { data, error } = await supabase
+      .from("audit_log")
+      .select("id, action, user_name, details, old_data, new_data, created_at")
+      .eq("module", "treasury")
+      .eq("record_id", r.id)
+      .order("created_at", { ascending: false });
+    if (error) toast({ title: "Failed to load history", description: error.message, variant: "destructive" });
+    setHistoryRows((data as any[]) || []);
+    setHistoryLoading(false);
+  }
 
   useEffect(() => { void load(); void loadParties(); }, []);
 
