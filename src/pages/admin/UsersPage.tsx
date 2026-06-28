@@ -198,6 +198,11 @@ const UsersPage = () => {
       }
       setDialogOpen(false);
       fetchData();
+      // If the actor edited their own account (e.g. system_role change), refresh
+      // permissions immediately so they apply without a manual logout/login.
+      if (editUser && currentUserId && editUser.id === currentUserId) {
+        try { await refreshProfile(); } catch { /* ignore */ }
+      }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
