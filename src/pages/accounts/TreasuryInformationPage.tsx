@@ -33,7 +33,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Search, Printer, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert } from "lucide-react";
+import { logCreate, logUpdate, logDelete } from "@/lib/audit-utils";
 
 type TreasuryType = "salary_tds" | "party_tds" | "vat";
 type PartyKind = "employee" | "customer" | "supplier" | "none";
@@ -85,11 +86,14 @@ const emptyForm = () => ({
 const PAGE_SIZE = 25;
 
 export default function TreasuryInformationPage() {
-  const { user, hasPermission, isSuperAdmin } = useAuth();
+  const { user, profile, hasPermission, isSuperAdmin } = useAuth();
   const { toast } = useToast();
-  const canEdit = isSuperAdmin || hasPermission("accounts", "can_edit");
-  const canAdd = isSuperAdmin || hasPermission("accounts", "can_add");
-  const canDelete = isSuperAdmin || hasPermission("accounts", "can_delete");
+  // Treasury-specific permission keys keep this module isolated — granting
+  // accounts.* does NOT grant treasury access (except for Super Admin).
+  const canView = isSuperAdmin || hasPermission("treasury", "can_view");
+  const canAdd = isSuperAdmin || hasPermission("treasury", "can_add");
+  const canEdit = isSuperAdmin || hasPermission("treasury", "can_edit");
+  const canDelete = isSuperAdmin || hasPermission("treasury", "can_delete");
 
   const [rows, setRows] = useState<TreasuryRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,6 +112,23 @@ export default function TreasuryInformationPage() {
   const [saving, setSaving] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<TreasuryRow | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<TreasuryRow | null>(null);
+  const [historyRows, setHistoryRows] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  async function openHistory(r: TreasuryRow) {
+    setHistoryTarget(r);
+    setHistoryLoading(true);
+    const { data, error } = await supabase
+      .from("audit_log")
+      .select("id, action, user_name, details, old_data, new_data, created_at")
+      .eq("module", "treasury")
+      .eq("record_id", r.id)
+      .order("created_at", { ascending: false });
+    if (error) toast({ title: "Failed to load history", description: error.message, variant: "destructive" });
+    setHistoryRows((data as any[]) || []);
+    setHistoryLoading(false);
+  }
 
   useEffect(() => { void load(); void loadParties(); }, []);
 
@@ -240,13 +261,21 @@ export default function TreasuryInformationPage() {
     };
 
     setSaving(true);
-    let error;
+    let error: any;
+    let savedId = form.id;
+    let prevRow: TreasuryRow | undefined;
     if (form.id) {
+      if (!canEdit) { setSaving(false); toast({ title: "Permission denied", description: "treasury.can_edit required", variant: "destructive" }); return; }
+      prevRow = rows.find((r) => r.id === form.id);
       ({ error } = await supabase.from("treasury_entries" as any).update(payload).eq("id", form.id));
     } else {
+      if (!canAdd) { setSaving(false); toast({ title: "Permission denied", description: "treasury.can_add required", variant: "destructive" }); return; }
       payload.created_by = user?.id ?? null;
       payload.status = "active";
-      ({ error } = await supabase.from("treasury_entries" as any).insert(payload));
+      const { data: inserted, error: insErr } = await supabase
+        .from("treasury_entries" as any).insert(payload).select().single();
+      error = insErr;
+      savedId = (inserted as any)?.id ?? "";
     }
     setSaving(false);
 
@@ -254,6 +283,17 @@ export default function TreasuryInformationPage() {
       toast({ title: "Save failed", description: error.message, variant: "destructive" });
       return;
     }
+
+    // Audit trail (best-effort; failures must not block UX)
+    try {
+      const auditCtx = { userId: user?.id, userName: profile?.name || user?.email || undefined, module: "treasury" };
+      if (form.id && prevRow) {
+        await logUpdate({ ...auditCtx, recordId: form.id, oldData: prevRow as any, newData: payload });
+      } else if (savedId) {
+        await logCreate({ ...auditCtx, recordId: savedId, newData: payload });
+      }
+    } catch { /* ignore audit errors */ }
+
     toast({ title: form.id ? "Treasury entry updated" : "Treasury entry added" });
     setOpen(false);
     void load();
@@ -261,10 +301,19 @@ export default function TreasuryInformationPage() {
 
   async function confirmDelete() {
     if (!deleteTarget) return;
+    if (!canDelete) { toast({ title: "Permission denied", description: "treasury.can_delete required", variant: "destructive" }); return; }
+    const snapshot = deleteTarget;
     const { error } = await supabase.from("treasury_entries" as any).delete().eq("id", deleteTarget.id);
     if (error) {
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     } else {
+      try {
+        await logDelete({
+          userId: user?.id, userName: profile?.name || user?.email || undefined,
+          module: "treasury", recordId: snapshot.id, oldData: snapshot as any,
+          details: `Deleted ${TYPE_LABEL[snapshot.treasury_type]} entry of ${snapshot.amount}`,
+        });
+      } catch { /* ignore */ }
       toast({ title: "Treasury entry deleted" });
       setDeleteTarget(null);
       void load();
@@ -296,6 +345,18 @@ export default function TreasuryInformationPage() {
     a.href = url; a.download = `treasury-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  if (!canView) {
+    return (
+      <div className="p-6">
+        <Card><CardContent className="py-12 text-center space-y-2">
+          <ShieldAlert className="w-10 h-10 mx-auto text-muted-foreground" />
+          <div className="font-semibold">Access denied</div>
+          <p className="text-sm text-muted-foreground">You need <code>treasury.can_view</code> permission to view this page.</p>
+        </CardContent></Card>
+      </div>
+    );
   }
 
   return (
@@ -380,6 +441,7 @@ export default function TreasuryInformationPage() {
                     <TableCell>{r.period_month ?? "—"}</TableCell>
                     <TableCell className="text-right font-mono">{Number(r.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                     <TableCell className="text-right">
+                      <Button size="icon" variant="ghost" onClick={() => openHistory(r)} title="History"><History className="w-4 h-4" /></Button>
                       {canEdit && (
                         <Button size="icon" variant="ghost" onClick={() => openEdit(r)} title="Edit"><Pencil className="w-4 h-4" /></Button>
                       )}
@@ -524,6 +586,52 @@ export default function TreasuryInformationPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!historyTarget} onOpenChange={(o) => { if (!o) { setHistoryTarget(null); setHistoryRows([]); } }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Audit Trail — {historyTarget?.party_name_snapshot || (historyTarget ? TYPE_LABEL[historyTarget.treasury_type] : "")}</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {historyLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading history…</div>
+            ) : historyRows.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">No history yet for this entry.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>User</TableHead>
+                    <TableHead>Changes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {historyRows.map((h) => (
+                    <TableRow key={h.id}>
+                      <TableCell className="whitespace-nowrap text-xs">{new Date(h.created_at).toLocaleString()}</TableCell>
+                      <TableCell><Badge variant={h.action === "delete" ? "destructive" : "secondary"}>{h.action}</Badge></TableCell>
+                      <TableCell className="text-xs">{h.user_name || "—"}</TableCell>
+                      <TableCell className="text-xs">
+                        {h.details ? <div className="truncate max-w-md" title={h.details}>{h.details}</div> : null}
+                        {h.new_data || h.old_data ? (
+                          <pre className="mt-1 text-[10px] bg-muted p-1 rounded overflow-x-auto max-w-md">
+{JSON.stringify(h.new_data ?? h.old_data, null, 2)}
+                          </pre>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setHistoryTarget(null); setHistoryRows([]); }}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
