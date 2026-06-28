@@ -786,6 +786,24 @@ export default function TreasuryInformationPage() {
                 The link opens on achallan.gov.bd in a new tab. Make sure popups are allowed.
                 Press Esc to close.
               </p>
+              {popupBlocked && (
+                <div
+                  data-testid="challan-popup-blocked"
+                  role="alert"
+                  className="text-xs text-destructive border border-destructive/30 rounded p-2 bg-destructive/5"
+                >
+                  Popup was blocked by the browser. Allow popups for this site, then press
+                  Retry below.
+                </div>
+              )}
+              <div
+                aria-live="polite"
+                role="status"
+                data-testid="challan-copy-live"
+                className="sr-only"
+              >
+                {liveMsg}
+              </div>
             </div>
           ) : null}
           <DialogFooter>
@@ -801,7 +819,11 @@ export default function TreasuryInformationPage() {
                 ) : (
                   <ExternalLink className="w-4 h-4 mr-1" />
                 )}
-                {printOpening ? "Opening…" : "Open Print Slip"}
+                {printOpening
+                  ? "Opening…"
+                  : popupBlocked
+                    ? "Retry Open"
+                    : "Open Print Slip"}
               </Button>
             ) : null}
           </DialogFooter>
