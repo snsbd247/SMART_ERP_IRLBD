@@ -3,6 +3,7 @@ import {
   buildChallanUrl,
   challanValidationMessage,
   isValidChallanNo,
+  sanitizeChallanNo,
   validateChallanNo,
   CHALLAN_MIN_LEN,
   CHALLAN_MAX_LEN,
@@ -81,5 +82,30 @@ describe("buildChallanUrl", () => {
     expect(url.host).toBe("achallan.gov.bd");
     expect(url.pathname).toBe("/acs/General/PrintChallanSlipDetails");
     expect(url.searchParams.get("challanNo")).toBe("12345");
+  });
+});
+
+describe("sanitizeChallanNo", () => {
+  it("trims, strips internal whitespace and uppercases", () => {
+    expect(sanitizeChallanNo("  acs-2026/123  ")).toBe("ACS-2026/123");
+    expect(sanitizeChallanNo("ac s\t12\n3")).toBe("ACS123");
+  });
+  it("collapses repeated slashes", () => {
+    expect(sanitizeChallanNo("ACS//2026///123")).toBe("ACS/2026/123");
+  });
+  it("handles null/undefined", () => {
+    expect(sanitizeChallanNo(null)).toBe("");
+    expect(sanitizeChallanNo(undefined)).toBe("");
+  });
+});
+
+describe("buildChallanUrl normalization", () => {
+  it("normalizes case and whitespace before encoding", () => {
+    expect(buildChallanUrl(" acs-2026/123 ")).toBe(
+      "http://achallan.gov.bd/acs/General/PrintChallanSlipDetails?challanNo=ACS-2026%2F123",
+    );
+  });
+  it("produces an identical URL for equivalent inputs", () => {
+    expect(buildChallanUrl("acs/2026/1")).toBe(buildChallanUrl("ACS//2026//1"));
   });
 });

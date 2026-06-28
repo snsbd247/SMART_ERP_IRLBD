@@ -125,21 +125,28 @@ export default function TreasuryInformationPage() {
   const [printPendingId, setPrintPendingId] = useState<string | null>(null);
   const [printOpening, setPrintOpening] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [popupBlocked, setPopupBlocked] = useState(false);
+  const [liveMsg, setLiveMsg] = useState("");
 
-  function openChallanPrint(url: string) {
+  function openChallanPrint(rawUrl: string) {
+    const url = rawUrl; // already normalized via buildChallanUrl
     setPrintOpening(true);
+    setPopupBlocked(false);
     try {
       const w = window.open(url, "_blank", "noopener,noreferrer");
-      if (!w) {
+      if (!w || w.closed || typeof w.closed === "undefined") {
+        setPopupBlocked(true);
         toast({
           title: "Popup blocked",
-          description: "Allow popups for this site to open the A-Challan print page.",
+          description: "Allow popups, then click Retry to open the A-Challan print page.",
           variant: "destructive",
         });
         return;
       }
       setPrintTarget(null);
+      setPopupBlocked(false);
     } catch (err: any) {
+      setPopupBlocked(true);
       toast({
         title: "Failed to open print link",
         description: err?.message ?? "Unknown error",
@@ -161,6 +168,9 @@ export default function TreasuryInformationPage() {
       return;
     }
     setPrintPendingId(r.id);
+    setPopupBlocked(false);
+    setCopied(false);
+    setLiveMsg("");
     // Brief tick so the spinner is visible before the modal mounts.
     setTimeout(() => {
       setPrintTarget(r);
@@ -181,9 +191,11 @@ export default function TreasuryInformationPage() {
         document.body.removeChild(ta);
       }
       setCopied(true);
+      setLiveMsg("Challan print URL copied to clipboard.");
       toast({ title: "URL copied", description: "Challan print URL copied to clipboard." });
       setTimeout(() => setCopied(false), 1500);
     } catch (err: any) {
+      setLiveMsg("Copy failed. Clipboard not available.");
       toast({
         title: "Copy failed",
         description: err?.message ?? "Clipboard not available",
@@ -191,6 +203,7 @@ export default function TreasuryInformationPage() {
       });
     }
   }
+
 
   async function openHistory(r: TreasuryRow) {
     setHistoryTarget(r);
@@ -773,6 +786,24 @@ export default function TreasuryInformationPage() {
                 The link opens on achallan.gov.bd in a new tab. Make sure popups are allowed.
                 Press Esc to close.
               </p>
+              {popupBlocked && (
+                <div
+                  data-testid="challan-popup-blocked"
+                  role="alert"
+                  className="text-xs text-destructive border border-destructive/30 rounded p-2 bg-destructive/5"
+                >
+                  Popup was blocked by the browser. Allow popups for this site, then press
+                  Retry below.
+                </div>
+              )}
+              <div
+                aria-live="polite"
+                role="status"
+                data-testid="challan-copy-live"
+                className="sr-only"
+              >
+                {liveMsg}
+              </div>
             </div>
           ) : null}
           <DialogFooter>
@@ -788,7 +819,11 @@ export default function TreasuryInformationPage() {
                 ) : (
                   <ExternalLink className="w-4 h-4 mr-1" />
                 )}
-                {printOpening ? "Opening…" : "Open Print Slip"}
+                {printOpening
+                  ? "Opening…"
+                  : popupBlocked
+                    ? "Retry Open"
+                    : "Open Print Slip"}
               </Button>
             ) : null}
           </DialogFooter>
