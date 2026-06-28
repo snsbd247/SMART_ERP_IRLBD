@@ -586,6 +586,52 @@ export default function TreasuryInformationPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!historyTarget} onOpenChange={(o) => { if (!o) { setHistoryTarget(null); setHistoryRows([]); } }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Audit Trail — {historyTarget?.party_name_snapshot || (historyTarget ? TYPE_LABEL[historyTarget.treasury_type] : "")}</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {historyLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading history…</div>
+            ) : historyRows.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">No history yet for this entry.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>User</TableHead>
+                    <TableHead>Changes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {historyRows.map((h) => (
+                    <TableRow key={h.id}>
+                      <TableCell className="whitespace-nowrap text-xs">{new Date(h.created_at).toLocaleString()}</TableCell>
+                      <TableCell><Badge variant={h.action === "delete" ? "destructive" : "secondary"}>{h.action}</Badge></TableCell>
+                      <TableCell className="text-xs">{h.user_name || "—"}</TableCell>
+                      <TableCell className="text-xs">
+                        {h.details ? <div className="truncate max-w-md" title={h.details}>{h.details}</div> : null}
+                        {h.new_data || h.old_data ? (
+                          <pre className="mt-1 text-[10px] bg-muted p-1 rounded overflow-x-auto max-w-md">
+{JSON.stringify(h.new_data ?? h.old_data, null, 2)}
+                          </pre>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setHistoryTarget(null); setHistoryRows([]); }}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
