@@ -33,7 +33,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Search, Printer, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert } from "lucide-react";
+import { logCreate, logUpdate, logDelete } from "@/lib/audit-utils";
 
 type TreasuryType = "salary_tds" | "party_tds" | "vat";
 type PartyKind = "employee" | "customer" | "supplier" | "none";
@@ -85,11 +86,14 @@ const emptyForm = () => ({
 const PAGE_SIZE = 25;
 
 export default function TreasuryInformationPage() {
-  const { user, hasPermission, isSuperAdmin } = useAuth();
+  const { user, profile, hasPermission, isSuperAdmin } = useAuth();
   const { toast } = useToast();
-  const canEdit = isSuperAdmin || hasPermission("accounts", "can_edit");
-  const canAdd = isSuperAdmin || hasPermission("accounts", "can_add");
-  const canDelete = isSuperAdmin || hasPermission("accounts", "can_delete");
+  // Treasury-specific permission keys keep this module isolated — granting
+  // accounts.* does NOT grant treasury access (except for Super Admin).
+  const canView = isSuperAdmin || hasPermission("treasury", "can_view");
+  const canAdd = isSuperAdmin || hasPermission("treasury", "can_add");
+  const canEdit = isSuperAdmin || hasPermission("treasury", "can_edit");
+  const canDelete = isSuperAdmin || hasPermission("treasury", "can_delete");
 
   const [rows, setRows] = useState<TreasuryRow[]>([]);
   const [loading, setLoading] = useState(true);
