@@ -687,7 +687,7 @@ export default function TreasuryInformationPage() {
             {form.treasury_type === "salary_tds" && (
               <div className="md:col-span-2">
                 <Label>Employee *</Label>
-                <Select value={form.party_id} onValueChange={(v) => setForm({ ...form, party_id: v })}>
+                <Select value={form.party_id} onValueChange={(v) => onPartySelect("employee", v)}>
                   <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
                   <SelectContent>
                     {employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.label}</SelectItem>)}
@@ -700,7 +700,7 @@ export default function TreasuryInformationPage() {
               <>
                 <div>
                   <Label>Party Type *</Label>
-                  <Select value={form.party_kind} onValueChange={(v) => setForm({ ...form, party_kind: v as PartyKind, party_id: "" })}>
+                  <Select value={form.party_kind} onValueChange={(v) => setForm({ ...form, party_kind: v as PartyKind, party_id: "", tin_snapshot: "", branch_name_snapshot: "" })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="supplier">Supplier</SelectItem>
@@ -710,13 +710,39 @@ export default function TreasuryInformationPage() {
                 </div>
                 <div>
                   <Label>Party *</Label>
-                  <Select value={form.party_id} onValueChange={(v) => setForm({ ...form, party_id: v })}>
+                  <Select value={form.party_id} onValueChange={(v) => onPartySelect(form.party_kind, v)}>
                     <SelectTrigger><SelectValue placeholder={`Select ${form.party_kind}`} /></SelectTrigger>
                     <SelectContent>
                       {partyOptions(form.party_kind).map((p) => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
+              </>
+            )}
+
+            {form.treasury_type !== "vat" && form.party_id && (
+              <>
+                <div>
+                  <Label>TIN (auto)</Label>
+                  <Input value={form.tin_snapshot} onChange={(e) => setForm({ ...form, tin_snapshot: e.target.value })} placeholder="Auto-filled from party profile" />
+                </div>
+                {form.treasury_type === "salary_tds" ? (
+                  <div>
+                    <Label>Designation (auto)</Label>
+                    <Input value={form.designation_snapshot} onChange={(e) => setForm({ ...form, designation_snapshot: e.target.value })} />
+                  </div>
+                ) : (
+                  <div>
+                    <Label>Branch (auto)</Label>
+                    <Input value={form.branch_name_snapshot} onChange={(e) => setForm({ ...form, branch_name_snapshot: e.target.value })} />
+                  </div>
+                )}
+                {form.treasury_type === "salary_tds" && (
+                  <div className="md:col-span-2">
+                    <Label>Branch (auto)</Label>
+                    <Input value={form.branch_name_snapshot} onChange={(e) => setForm({ ...form, branch_name_snapshot: e.target.value })} />
+                  </div>
+                )}
               </>
             )}
 
@@ -728,8 +754,12 @@ export default function TreasuryInformationPage() {
             )}
 
             <div>
-              <Label>Amount *</Label>
+              <Label>TDS / Treasury Amount *</Label>
               <Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} />
+            </div>
+            <div>
+              <Label>Challan Base Amount</Label>
+              <Input type="number" step="0.01" value={form.challan_base_amount} onChange={(e) => setForm({ ...form, challan_base_amount: Number(e.target.value) })} placeholder="Bill / gross amount the TDS was deducted from" />
             </div>
             <div>
               <Label>Period (Month)</Label>
