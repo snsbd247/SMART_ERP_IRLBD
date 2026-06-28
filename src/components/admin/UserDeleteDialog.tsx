@@ -1,11 +1,26 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, IS_LARAVEL_ONLY } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, Trash2, ArrowRightLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
+
+async function laravelUserApi<T = any>(path: string, init: RequestInit = {}): Promise<T> {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error("Laravel API URL not configured");
+  const res = await fetch(`${base}${path}`, {
+    ...init,
+    headers: { ...getLaravelAuthHeaders(true), ...((init.headers as Record<string, string>) || {}) },
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((json as any)?.message || (json as any)?.error || `HTTP ${res.status}`);
+  return (json as any)?.data ?? json;
+}
+
+const USE_LARAVEL = () => IS_LARAVEL_ONLY || isLaravelMode();
 
 interface UserRow {
   id: string;
