@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class UserController extends BaseController
 {
@@ -23,7 +24,7 @@ class UserController extends BaseController
 
         // Hide Super Admin users (employee_id IS NULL) from non-Super Admin viewers
         $currentUser = $request->user();
-        if ($currentUser && $currentUser->employee_id !== null) {
+        if ($currentUser && !$currentUser->isSuperAdmin()) {
             $query->whereNotNull('employee_id');
         }
 
@@ -81,6 +82,7 @@ class UserController extends BaseController
             if ($employeeId) {
                 Employee::where('id', $employeeId)->update(['user_id' => $user->id]);
             }
+            $this->syncSystemRole($user, $systemRole);
             $user->roles()->sync($data['role_ids'] ?? []);
             $user->branches()->sync($branchIds ?: (!empty($data['branch_id']) ? [$data['branch_id']] : []));
 
@@ -93,6 +95,52 @@ class UserController extends BaseController
     public function show(string $id)
     {
         return $this->success(User::with('roles.permissions', 'branch', 'branches')->findOrFail($id));
+    }
+
+    private function syncSystemRole(User $user, string $systemRole): void
+    {
+        if (!in_array($systemRole, ['super_admin', 'user', 'staff'], true)) return;
+        if (!Schema::hasTable('user_roles')) return;
+
+        DB::table('user_roles')
+            ->where('user_id', $user->id)
+            ->whereIn('role', ['super_admin', 'user', 'staff'])
+            ->delete();
+
+        DB::table('user_roles')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'role' => $systemRole === 'super_admin' ? 'super_admin' : 'user',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function relatedUserTables(): array
+    {
+        return array_values(array_filter([
+            ['table' => 'sales_invoices', 'column' => 'created_by'],
+            ['table' => 'purchases', 'column' => 'created_by'],
+            ['table' => 'acc_vouchers', 'column' => 'created_by'],
+            ['table' => 'acc_vouchers', 'column' => 'approved_by'],
+            ['table' => 'production_entries', 'column' => 'created_by'],
+            ['table' => 'purchase_returns', 'column' => 'created_by'],
+            ['table' => 'sales_returns', 'column' => 'created_by'],
+            ['table' => 'employee_documents', 'column' => 'generated_by'],
+            ['table' => 'employees', 'column' => 'user_id'],
+        ], fn ($t) => Schema::hasTable($t['table']) && Schema::hasColumn($t['table'], $t['column'])));
+    }
+
+    private function collectRelatedUserData(string $id, bool $onlyNonZero = true): array
+    {
+        $related = [];
+        foreach ($this->relatedUserTables() as $t) {
+            $count = DB::table($t['table'])->where($t['column'], $id)->count();
+            if (!$onlyNonZero || $count > 0) {
+                $related[] = ['table' => $t['table'], 'column' => $t['column'], 'count' => $count];
+            }
+        }
+        return $related;
     }
 
     private function createEmployeeForUser(array $data, Request $request): Employee
@@ -134,10 +182,42 @@ class UserController extends BaseController
     {
         $user = User::findOrFail($id);
         $oldData = $user->toArray();
+        $previousEmployeeId = $user->employee_id;
+
+        $systemRole = $request->input('system_role');
+        if ($request->has('system_role')) {
+            $requestedSystemRole = $systemRole ?: 'user';
+            $actor = $request->user();
+            $isSuperAdminActor = $actor && $actor->isSuperAdmin();
+            if ($requestedSystemRole === 'super_admin' && !$isSuperAdminActor) {
+                return $this->error('Only Super Admin can promote another user to Super Admin.', 403);
+            }
+            if ($requestedSystemRole !== 'super_admin' && $user->isSuperAdmin() && !$isSuperAdminActor) {
+                return $this->error('Only Super Admin can demote a Super Admin user.', 403);
+            }
+        }
 
         $data = $request->only('name', 'email', 'phone', 'branch_id', 'status');
+        if ($systemRole === 'super_admin') {
+            $data['employee_id'] = null;
+        } elseif ($request->has('system_role') && empty($previousEmployeeId)) {
+            $employee = $this->createEmployeeForUser([
+                'username' => $request->input('username', $user->username),
+                'name' => $request->input('name', $user->name),
+                'email' => $request->input('email', $user->email),
+                'phone' => $request->input('phone', $user->phone),
+                'branch_id' => $request->input('branch_id', $user->branch_id),
+                'status' => $request->input('status', $user->status),
+            ], $request);
+            $data['employee_id'] = $employee->id;
+        }
         if ($request->password) $data['password'] = Hash::make($request->password);
         $user->update($data);
+        if ($systemRole === 'super_admin' && $previousEmployeeId) {
+            Employee::where('id', $previousEmployeeId)->update(['user_id' => null]);
+        } elseif (!empty($data['employee_id'])) {
+            Employee::where('id', $data['employee_id'])->update(['user_id' => $user->id]);
+        }
         if ($request->has('role_ids')) $user->roles()->sync($request->role_ids ?? []);
         if ($request->has('branch_ids')) {
             $ids = $request->input('branch_ids') ?: [];
@@ -153,29 +233,7 @@ class UserController extends BaseController
         if ($request->has('system_role')) {
             $systemRole = $request->input('system_role') ?: 'user';
             if (in_array($systemRole, ['super_admin', 'user'], true)) {
-                $actor = $request->user();
-                $isSuperAdminActor = $actor && $actor->isSuperAdmin();
-                if ($systemRole === 'super_admin' && !$isSuperAdminActor) {
-                    return $this->error('Only Super Admin can promote another user to Super Admin.', 403);
-                }
-                if ($systemRole !== 'super_admin' && $user->isSuperAdmin() && !$isSuperAdminActor) {
-                    return $this->error('Only Super Admin can demote a Super Admin user.', 403);
-                }
-                if (\Illuminate\Support\Facades\Schema::hasTable('user_roles')) {
-                    \Illuminate\Support\Facades\DB::table('user_roles')
-                        ->where('user_id', $user->id)
-                        ->where('role', 'super_admin')
-                        ->delete();
-                    if ($systemRole === 'super_admin') {
-                        \Illuminate\Support\Facades\DB::table('user_roles')->insert([
-                            'id' => (string) \Illuminate\Support\Str::uuid(),
-                            'user_id' => $user->id,
-                            'role' => 'super_admin',
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                }
+                $this->syncSystemRole($user, $systemRole);
             }
         }
 
@@ -187,32 +245,16 @@ class UserController extends BaseController
     /**
      * Check if user has related data before deletion.
      */
-    public function checkRelated(string $id)
+    public function checkRelated(Request $request, string $id)
     {
-        $tables = [
-            ['table' => 'sales_invoices', 'column' => 'created_by'],
-            ['table' => 'purchases', 'column' => 'created_by'],
-            ['table' => 'acc_vouchers', 'column' => 'created_by'],
-            ['table' => 'acc_vouchers', 'column' => 'approved_by'],
-            ['table' => 'production_entries', 'column' => 'created_by'],
-            ['table' => 'purchase_returns', 'column' => 'created_by'],
-            ['table' => 'sales_returns', 'column' => 'created_by'],
-            ['table' => 'employee_documents', 'column' => 'generated_by'],
-        ];
-
-        $related = [];
-        foreach ($tables as $t) {
-            $count = DB::table($t['table'])->where($t['column'], $id)->count();
-            if ($count > 0) {
-                $related[] = ['table' => $t['table'], 'column' => $t['column'], 'count' => $count];
-            }
+        if (!$request->user()?->isSuperAdmin()) {
+            return $this->error('Only Super Admin can delete users', 403);
+        }
+        if ($id === $request->user()?->id) {
+            return $this->error('Cannot delete your own account', 400);
         }
 
-        // Check employees
-        $empCount = DB::table('employees')->where('user_id', $id)->count();
-        if ($empCount > 0) {
-            $related[] = ['table' => 'employees', 'column' => 'user_id', 'count' => $empCount];
-        }
+        $related = $this->collectRelatedUserData($id);
 
         return $this->success([
             'has_related_data' => count($related) > 0,
@@ -226,6 +268,9 @@ class UserController extends BaseController
     public function transferAndDelete(Request $request, string $id)
     {
         $request->validate(['transfer_to_user_id' => 'required|exists:users,id']);
+        if (!$request->user()?->isSuperAdmin()) {
+            return $this->error('Only Super Admin can delete users', 403);
+        }
         $transferTo = $request->transfer_to_user_id;
 
         if ($id === $transferTo) {
@@ -235,16 +280,7 @@ class UserController extends BaseController
             return $this->error('Cannot delete your own account', 400);
         }
 
-        $transferableTables = [
-            ['table' => 'sales_invoices', 'column' => 'created_by'],
-            ['table' => 'purchases', 'column' => 'created_by'],
-            ['table' => 'acc_vouchers', 'column' => 'created_by'],
-            ['table' => 'acc_vouchers', 'column' => 'approved_by'],
-            ['table' => 'production_entries', 'column' => 'created_by'],
-            ['table' => 'purchase_returns', 'column' => 'created_by'],
-            ['table' => 'sales_returns', 'column' => 'created_by'],
-            ['table' => 'employee_documents', 'column' => 'generated_by'],
-        ];
+        $transferableTables = array_values(array_filter($this->relatedUserTables(), fn ($t) => $t['table'] !== 'employees'));
 
         $transfers = [];
         $targetSnapshot = User::find($id)?->only(['id', 'name', 'email', 'username']);
@@ -265,6 +301,7 @@ class UserController extends BaseController
 
             // Remove roles
             DB::table('user_custom_roles')->where('user_id', $id)->delete();
+            if (Schema::hasTable('user_roles')) DB::table('user_roles')->where('user_id', $id)->delete();
         });
 
         $this->auditService->log('users', 'Data Transfer & Delete', $id,
@@ -286,26 +323,17 @@ class UserController extends BaseController
      */
     public function destroy(Request $request, string $id)
     {
+        if (!$request->user()?->isSuperAdmin()) {
+            return $this->error('Only Super Admin can delete users', 403);
+        }
+
         if ($id === $request->user()->id) {
             return $this->error('Cannot delete your own account', 400);
         }
 
-        // Check for related data
-        $tables = [
-            ['table' => 'sales_invoices', 'column' => 'created_by'],
-            ['table' => 'purchases', 'column' => 'created_by'],
-            ['table' => 'acc_vouchers', 'column' => 'created_by'],
-            ['table' => 'production_entries', 'column' => 'created_by'],
-            ['table' => 'employees', 'column' => 'user_id'],
-        ];
-
-        $relatedChecks = [];
-        foreach ($tables as $t) {
-            $count = DB::table($t['table'])->where($t['column'], $id)->count();
-            $relatedChecks[] = ['table' => $t['table'], 'column' => $t['column'], 'count' => $count];
-            if ($count > 0) {
-                return $this->error('User has existing data. Please transfer data before deletion.', 400);
-            }
+        $relatedChecks = $this->collectRelatedUserData($id, false);
+        foreach ($relatedChecks as $check) {
+            if (($check['count'] ?? 0) > 0) return $this->error('User has existing data. Please transfer data before deletion.', 400);
         }
 
         $user = User::findOrFail($id);
@@ -314,6 +342,7 @@ class UserController extends BaseController
 
         // Remove roles
         DB::table('user_custom_roles')->where('user_id', $id)->delete();
+        if (Schema::hasTable('user_roles')) DB::table('user_roles')->where('user_id', $id)->delete();
 
         $this->auditService->logDelete('users', $id, array_merge($oldData, [
             'actor_id' => $request->user()?->id,

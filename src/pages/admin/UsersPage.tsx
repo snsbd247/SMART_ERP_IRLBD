@@ -54,7 +54,7 @@ const UsersPage = () => {
   const [formCustomRole, setFormCustomRole] = useState<string>("");
 
   const { toast } = useToast();
-  const { isSuperAdmin, refreshProfile } = useAuth();
+  const { user: authUser, isSuperAdmin, refreshProfile } = useAuth();
 
   const fetchData = async () => {
     setLoading(true);
@@ -79,20 +79,26 @@ const UsersPage = () => {
       ? profiles
       : profiles.filter((p: any) => p.employee_id !== null && p.employee_id !== undefined);
 
-    const mapped: UserRow[] = visibleProfiles.map((p: any) => ({
-      ...p,
-      roles: rolesList.filter((r: any) => r.user_id === p.id).map((r: any) => r.role),
-      branch_name: branchList.find((b) => b.id === p.branch_id)?.name,
-      custom_role_ids: userCustomRolesList.filter((ucr: any) => ucr.user_id === p.id).map((ucr: any) => ucr.custom_role_id),
-    }));
+    const mapped: UserRow[] = visibleProfiles.map((p: any) => {
+      const systemRoles = rolesList.filter((r: any) => r.user_id === p.id).map((r: any) => r.role);
+      const normalizedRoles = p.employee_id === null || p.employee_id === undefined
+        ? ["super_admin", ...systemRoles.filter((r: string) => r !== "super_admin" && r !== "user" && r !== "staff" && r !== "admin")]
+        : (systemRoles.includes("super_admin") ? ["super_admin"] : ["user"]);
+      return {
+        ...p,
+        roles: normalizedRoles,
+        branch_name: branchList.find((b) => b.id === p.branch_id)?.name,
+        custom_role_ids: userCustomRolesList.filter((ucr: any) => ucr.user_id === p.id).map((ucr: any) => ucr.custom_role_id),
+      };
+    });
     setUsers(mapped);
     setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
-    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || null));
-  }, []);
+    setCurrentUserId(authUser?.id || null);
+  }, [authUser?.id]);
 
   const openCreate = () => {
     setEditUser(null);
@@ -105,7 +111,7 @@ const UsersPage = () => {
   const openEdit = (u: UserRow) => {
     setEditUser(u);
     setFormName(u.name); setFormUsername(u.username || ""); setFormEmail(u.email || "");
-    setFormPhone(u.phone || ""); setFormPassword(""); setFormRole(u.roles[0] || "staff");
+    setFormPhone(u.phone || ""); setFormPassword(""); setFormRole(u.roles.includes("super_admin") ? "super_admin" : "user");
     setFormBranch(u.branch_id || ""); setFormStatus(u.status);
     setFormCustomRole(u.custom_role_ids[0] || "");
     setDialogOpen(true);

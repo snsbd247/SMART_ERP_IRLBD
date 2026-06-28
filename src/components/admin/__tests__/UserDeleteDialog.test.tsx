@@ -54,8 +54,8 @@ describe("UserDeleteDialog Laravel mode", () => {
     await openAndContinue();
 
     await waitFor(() => expect((global.fetch as any).mock.calls.length).toBe(2));
-    expect((global.fetch as any).mock.calls[0][0]).toBe("http://api.test/api/users/u1/check-related");
-    expect((global.fetch as any).mock.calls[1][0]).toBe("http://api.test/api/users/u1");
+    expect((global.fetch as any).mock.calls[0][0]).toBe("http://api.test/api/v1/users/u1/check-related");
+    expect((global.fetch as any).mock.calls[1][0]).toBe("http://api.test/api/v1/users/u1");
     expect((global.fetch as any).mock.calls[1][1].method).toBe("DELETE");
     expect(invokeMock).not.toHaveBeenCalled();
   });
