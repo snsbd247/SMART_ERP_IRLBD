@@ -45,8 +45,26 @@ export function challanValidationMessage(r: ChallanValidation): string {
   return "Invalid challan number.";
 }
 
+/**
+ * Sanitize a challan number for URL use:
+ *  - trim outer whitespace
+ *  - drop any internal whitespace / control chars
+ *  - uppercase letters (portal is case-insensitive; normalizes for copy/paste)
+ *  - collapse repeated slashes
+ */
+export function sanitizeChallanNo(v: string | null | undefined): string {
+  if (v === null || v === undefined) return "";
+  return String(v)
+    .trim()
+    .replace(/[\s\u0000-\u001F\u007F]+/g, "")
+    .replace(/\/{2,}/g, "/")
+    .toUpperCase();
+}
+
+export const CHALLAN_PRINT_BASE =
+  "http://achallan.gov.bd/acs/General/PrintChallanSlipDetails";
+
 export function buildChallanUrl(challanNo: string): string {
-  return `http://achallan.gov.bd/acs/General/PrintChallanSlipDetails?challanNo=${encodeURIComponent(
-    challanNo.trim(),
-  )}`;
+  const clean = sanitizeChallanNo(challanNo);
+  return `${CHALLAN_PRINT_BASE}?challanNo=${encodeURIComponent(clean)}`;
 }
