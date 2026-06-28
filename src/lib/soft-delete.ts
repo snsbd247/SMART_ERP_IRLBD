@@ -60,7 +60,7 @@ export async function softRestore(table: SoftDeletableTable, id: string, ctx: Ct
     patch.status = restoreStatus;
     patch.prev_status = null;
   }
-  const { error } = await supabase.from(table).update(patch).eq("id", id);
+  const { error } = await supabase.from(table).update(patch as any).eq("id", id);
   if (error) throw error;
   await audit(opts.module || table, `${table}_restored`, id, "Restored", ctx);
 }
