@@ -247,6 +247,7 @@ class UserController extends BaseController
         ];
 
         $transfers = [];
+        $targetSnapshot = User::find($id)?->only(['id', 'name', 'email', 'username']);
         DB::transaction(function () use ($id, $transferTo, $transferableTables, &$transfers) {
             foreach ($transferableTables as $t) {
                 $updated = DB::table($t['table'])
@@ -267,7 +268,13 @@ class UserController extends BaseController
         });
 
         $this->auditService->log('users', 'Data Transfer & Delete', $id,
-            json_encode(['transfer_to' => $transferTo, 'transfers' => $transfers]),
+            json_encode([
+                'actor_id' => $request->user()?->id,
+                'actor_name' => $request->user()?->name,
+                'target_user' => $targetSnapshot,
+                'transfer_to' => $transferTo,
+                'transfers' => $transfers,
+            ]),
             $request
         );
 
@@ -292,8 +299,11 @@ class UserController extends BaseController
             ['table' => 'employees', 'column' => 'user_id'],
         ];
 
+        $relatedChecks = [];
         foreach ($tables as $t) {
-            if (DB::table($t['table'])->where($t['column'], $id)->exists()) {
+            $count = DB::table($t['table'])->where($t['column'], $id)->count();
+            $relatedChecks[] = ['table' => $t['table'], 'column' => $t['column'], 'count' => $count];
+            if ($count > 0) {
                 return $this->error('User has existing data. Please transfer data before deletion.', 400);
             }
         }
@@ -305,7 +315,11 @@ class UserController extends BaseController
         // Remove roles
         DB::table('user_custom_roles')->where('user_id', $id)->delete();
 
-        $this->auditService->logDelete('users', $id, $oldData, $request);
+        $this->auditService->logDelete('users', $id, array_merge($oldData, [
+            'actor_id' => $request->user()?->id,
+            'actor_name' => $request->user()?->name,
+            'related_checks' => $relatedChecks,
+        ]), $request);
 
         return $this->success(null, 'User deleted successfully');
     }
