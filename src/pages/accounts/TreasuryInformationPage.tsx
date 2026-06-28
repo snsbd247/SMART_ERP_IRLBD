@@ -33,7 +33,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert, ExternalLink, Loader2, Copy, Check } from "lucide-react";
 import { logCreate, logUpdate, logDelete } from "@/lib/audit-utils";
 import {
   buildChallanUrl,
