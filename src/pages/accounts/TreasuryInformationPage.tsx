@@ -347,6 +347,18 @@ export default function TreasuryInformationPage() {
     URL.revokeObjectURL(url);
   }
 
+  if (!canView) {
+    return (
+      <div className="p-6">
+        <Card><CardContent className="py-12 text-center space-y-2">
+          <ShieldAlert className="w-10 h-10 mx-auto text-muted-foreground" />
+          <div className="font-semibold">Access denied</div>
+          <p className="text-sm text-muted-foreground">You need <code>treasury.can_view</code> permission to view this page.</p>
+        </CardContent></Card>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -429,6 +441,7 @@ export default function TreasuryInformationPage() {
                     <TableCell>{r.period_month ?? "—"}</TableCell>
                     <TableCell className="text-right font-mono">{Number(r.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                     <TableCell className="text-right">
+                      <Button size="icon" variant="ghost" onClick={() => openHistory(r)} title="History"><History className="w-4 h-4" /></Button>
                       {canEdit && (
                         <Button size="icon" variant="ghost" onClick={() => openEdit(r)} title="Edit"><Pencil className="w-4 h-4" /></Button>
                       )}
