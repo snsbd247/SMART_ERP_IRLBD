@@ -271,19 +271,24 @@ export default function TreasuryInformationPage() {
 
   async function loadParties() {
     const [emp, cus, sup] = await Promise.all([
-      supabase.from("employees").select("id, first_name, last_name, employee_code").order("first_name"),
-      supabase.from("customers").select("id, name, code").order("name"),
-      supabase.from("suppliers").select("id, name, code").order("name"),
+      supabase.from("employees")
+        .select("id, first_name, last_name, employee_code, tin_no, designation:designations(name), branch:branches(name)")
+        .order("first_name"),
+      supabase.from("customers").select("id, name, code, tin_no").order("name"),
+      supabase.from("suppliers").select("id, name, code, tin_no").order("name"),
     ]);
     setEmployees(((emp.data as any[]) || []).map((e) => ({
       id: e.id,
       label: `${e.first_name ?? ""} ${e.last_name ?? ""}`.trim() + (e.employee_code ? ` (${e.employee_code})` : ""),
+      tin: e.tin_no ?? null,
+      designation: e.designation?.name ?? null,
+      branch: e.branch?.name ?? null,
     })));
     setCustomers(((cus.data as any[]) || []).map((c) => ({
-      id: c.id, label: c.code ? `${c.code} — ${c.name}` : c.name,
+      id: c.id, label: c.code ? `${c.code} — ${c.name}` : c.name, tin: c.tin_no ?? null,
     })));
     setSuppliers(((sup.data as any[]) || []).map((s) => ({
-      id: s.id, label: s.code ? `${s.code} — ${s.name}` : s.name,
+      id: s.id, label: s.code ? `${s.code} — ${s.name}` : s.name, tin: s.tin_no ?? null,
     })));
   }
 
@@ -334,10 +339,14 @@ export default function TreasuryInformationPage() {
       party_kind: (r.party_kind as PartyKind) ?? (r.treasury_type === "vat" ? "none" : "employee"),
       party_id: r.party_id ?? "",
       party_name_snapshot: r.party_name_snapshot ?? "",
+      tin_snapshot: r.tin_snapshot ?? "",
+      designation_snapshot: r.designation_snapshot ?? "",
+      branch_name_snapshot: r.branch_name_snapshot ?? "",
       challan_no: r.challan_no ?? "",
       challan_date: r.challan_date ? toDateInputValue(r.challan_date) : "",
       bank_name: r.bank_name ?? "",
       amount: Number(r.amount || 0),
+      challan_base_amount: Number(r.challan_base_amount ?? 0),
       period_month: r.period_month ?? "",
       mushak_ref: r.mushak_ref ?? "",
       reference_no: r.reference_no ?? "",
