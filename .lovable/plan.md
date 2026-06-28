@@ -1,51 +1,79 @@
-# Period-Opening Unification Plan
+## Treasury Information Page (Accounts Menu)
 
-## Goal
-One single source of truth (`computePeriodOpening`) used by every ledger view, the Customer Statement (screen + print + Excel), and the Customer Profile. Add a drilldown that explains the opening number, plus a regression test covering the IFIC Bank July→August carry-forward case.
+একটা নতুন **standalone** পেজ যেটা শুধু treasury deposit records-এর list মেইনটেন করবে। এটা accounting (CoA, vouchers, ledgers) এর কোন জায়গায় হিট/পোস্ট করবে না — pure record-keeping।
 
-## 1. New data-layer helper — `src/lib/period-opening.ts`
-- `computeAccountPeriodOpening({ accountId, dateFrom, branchId?, statuses? })`
-  - Returns `{ opening: number, priorEntries: PriorEntry[], baseOpening: number }`.
-  - Loads the account's base `opening_balance` + `opening_balance_type` from `chart_of_accounts`.
-  - Calls `fetchAllVoucherEntries` for `[1900-01-01 .. dateFrom-1]` and applies `applyEntry` (Closing = Opening + Credit − Debit).
-- `computeCustomerPeriodOpening({ customerId, dateFrom })`
-  - Sums invoices (debit) − payments (credit) − returns (credit) strictly before `dateFrom`.
-  - Returns `{ opening, priorRows }`.
-- Both helpers respect existing ledger formula; no Dr/Cr suffix.
+### Scope
+- Menu: **Accounts → Treasury Information**
+- Route: `/accounts/treasury`
+- Permission: `treasury.view/create/edit/delete` (new module, default Super Admin only)
+- কোন journal voucher auto-post হবে না, কোন CoA balance change হবে না।
 
-## 2. Consumer refactors
-- `AccountLedgerReport.tsx` → already uses inline logic; replace with helper, pass `priorEntries` to drilldown.
-- `GeneralLedgerReport.tsx`, `CashBookReport.tsx`, `BankBookReport.tsx` → swap `signedOpeningBalance(acc.opening_balance,…)` for `computeAccountPeriodOpening`. For Cash/Bank these aggregate over multiple accounts — loop the helper and sum.
-- `CustomerStatementPage.tsx`:
-  - Compute `periodOpening` via `computeCustomerPeriodOpening`.
-  - Render an "Opening Balance" row at the top of the table.
-  - Running balance starts from `periodOpening`.
-  - Excel + print (`printRef`) include the same opening row → automatic parity.
-- `CustomerProfilePage.tsx`: same helper for the ledger card so the on-screen number matches the statement.
+### Entry Types (একই table, `treasury_type` column দিয়ে আলাদা)
+1. **Salary TDS** — Employee select (employees dropdown)
+2. **Party Bill TDS** — Party select (customer অথবা supplier dropdown)
+3. **VAT Treasury** — কোন party reference লাগবে না, শুধু amount + reference
 
-## 3. Opening-line drilldown
-- `src/components/accounts/OpeningDrilldownDialog.tsx`
-  - Props: `open`, `onOpenChange`, `title`, `baseOpening`, `priorEntries[]` (date, ref, debit, credit, running).
-  - Renders a compact table showing how the base opening + each prior transaction roll into the period opening.
-- Wire as a button/icon on the Opening Balance row in `AccountLedgerReport` and `CustomerStatementPage` (other ledgers reuse if trivial).
+### Fields
+```
+- treasury_date (DD-MM-YYYY, DatePickerInput)
+- treasury_type (enum: salary_tds | party_tds | vat)
+- party_kind (employee | customer | supplier | none)
+- party_id (nullable UUID — employee/customer/supplier-এর id)
+- party_name_snapshot (display fallback)
+- challan_no (text, treasury challan/receipt no)
+- challan_date (date)
+- bank_name (text, কোন bank-এ deposit)
+- amount (numeric)
+- period_month (text, e.g. "2025-07" — optional, salary/vat-এর জন্য)
+- reference_no (text, optional — bill/voucher ref)
+- notes (text)
+- status (active | cancelled)
+- created_by / created_at / updated_at
+```
 
-## 4. Regression test
-- `src/pages/reports/__tests__/customer-statement-opening.test.ts`
-  - Mocks Supabase responses for IFIC Bank (`account_code` "1025178216121") with July transactions yielding a negative closing.
-  - Asserts `computeAccountPeriodOpening({ dateFrom: "2025-08-01" })` returns the July closing.
-  - Asserts negative carry through (no sign flip).
-- `src/lib/__tests__/period-opening.test.ts` — unit tests for both helpers (positive, negative, no prior entries, branch filter).
+### UI
+- Standard ERP list page: search + filter (type, date range, party) + pagination (25/page)
+- Add/Edit dialog with conditional fields based on `treasury_type`:
+  - Salary TDS → Employee combobox (searchable)
+  - Party Bill TDS → Party-kind toggle + Customer/Supplier combobox
+  - VAT → no party field
+- Actions: View / Edit / Delete (soft, with permission guard)
+- Export: CSV + Print (DD-MM-YYYY format using existing `formatDateDMY`)
+- Totals footer: count + sum(amount) of current filtered view
 
-## 5. Verification
-- Run `vitest` for new tests.
-- Manual: open Account Ledger for IFIC Bank with August date range; confirm opening = July closing and drilldown lists July entries.
+### Backend (Laravel + Supabase parallel — same pattern as customers/suppliers)
+- New table `treasury_entries` (Supabase migration + matching Laravel migration with `hasColumn` guards)
+- New Laravel `TreasuryController` (index/store/show/update/destroy) under `routes/api.php`
+- New Eloquent model `TreasuryEntry`
+- Supabase RLS: authenticated read/write; service_role full
 
-## Technical notes
-- Reuses `fetchAllVoucherEntries` so Supabase/Laravel parity is preserved.
-- Day-before calculation uses UTC arithmetic to avoid TZ off-by-one (existing pattern in `AccountLedgerReport`).
-- Branch filter is passed through so multi-branch reports stay consistent.
-- No DB migrations.
+### Frontend files
+- `src/pages/accounts/TreasuryInformationPage.tsx` (new)
+- `src/lib/treasury-api.ts` (CRUD wrapper — Supabase + Laravel bridge aware)
+- Register route in `src/App.tsx`
+- Add sidebar item in `src/components/AppSidebar.tsx` under Accounts group, guarded by `treasury.view`
+- Permission seed: add `treasury` module in `NewModulesRbacSeeder.php` + Supabase permissions migration
 
-## Files touched
-- Added: `src/lib/period-opening.ts`, `src/lib/__tests__/period-opening.test.ts`, `src/components/accounts/OpeningDrilldownDialog.tsx`, `src/pages/reports/__tests__/customer-statement-opening.test.ts`.
-- Edited: `AccountLedgerReport.tsx`, `GeneralLedgerReport.tsx`, `CashBookReport.tsx`, `BankBookReport.tsx`, `CustomerStatementPage.tsx`, `CustomerProfilePage.tsx`.
+### Safety / Non-impact guarantees
+- **Pure data table** — no triggers, no auto-posting, no CoA dependency, no voucher creation.
+- কোন existing module-এর code touch হবে না except:
+  - `App.tsx` (one route add)
+  - `AppSidebar.tsx` (one menu item add)
+  - RBAC seeder (one new module entry)
+- Existing accounting/ledger/voucher logic অপরিবর্তিত — treasury records শুধু এই পেজেই দেখা যাবে।
+- Reports (Trial Balance, P&L, Balance Sheet, ledgers) কোন ভাবেই treasury data pull করবে না।
+
+### Migration order
+1. Supabase migration: `treasury_entries` table + GRANTs + RLS
+2. Laravel migration mirror (for VPS mode)
+3. RBAC permissions seed
+4. Frontend page + route + sidebar
+5. Tests: unit (treasury-api), one Playwright smoke (`e2e/treasury.spec.ts`)
+
+---
+
+কাজ শুরু করার আগে confirm করেন:
+- **Q1:** Party Bill TDS-এ party হিসেবে কি **Customer + Supplier দুটোই** allow করব, নাকি শুধু Supplier?
+- **Q2:** Treasury entries কি **branch-isolated** হবে (branch_id সহ), নাকি company-wide single list?
+- **Q3:** VAT entry-এ কি **monthly Mushak reference** (যেমন Mushak-9.1 challan no) আলাদা field হিসেবে রাখব?
+- **Q4:** Permission module name `treasury` ঠিক আছে তো? (Super Admin auto-allowed; অন্যদের জন্য Roles page থেকে assign করতে হবে)
