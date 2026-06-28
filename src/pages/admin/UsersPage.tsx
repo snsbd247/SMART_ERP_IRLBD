@@ -303,7 +303,7 @@ const UsersPage = () => {
                       <UserDeleteDialog
                         user={u}
                         allUsers={users}
-                        isSuperAdmin={users.some(usr => usr.roles.includes("super_admin") && usr.id === currentUserId)}
+                        isSuperAdmin={isSuperAdmin}
                         onDeleted={fetchData}
                       />
                     </div>
