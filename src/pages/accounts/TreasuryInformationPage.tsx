@@ -33,7 +33,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert, ExternalLink } from "lucide-react";
 import { logCreate, logUpdate, logDelete } from "@/lib/audit-utils";
 
 type TreasuryType = "salary_tds" | "party_tds" | "vat";
@@ -441,6 +441,19 @@ export default function TreasuryInformationPage() {
                     <TableCell>{r.period_month ?? "—"}</TableCell>
                     <TableCell className="text-right font-mono">{Number(r.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                     <TableCell className="text-right">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        disabled={!r.challan_no}
+                        onClick={() => window.open(
+                          `http://achallan.gov.bd/acs/General/PrintChallanSlipDetails?challanNo=${encodeURIComponent(r.challan_no || "")}`,
+                          "_blank",
+                          "noopener,noreferrer",
+                        )}
+                        title={r.challan_no ? `Print A-Challan ${r.challan_no}` : "No challan number"}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
                       <Button size="icon" variant="ghost" onClick={() => openHistory(r)} title="History"><History className="w-4 h-4" /></Button>
                       {canEdit && (
                         <Button size="icon" variant="ghost" onClick={() => openEdit(r)} title="Edit"><Pencil className="w-4 h-4" /></Button>
