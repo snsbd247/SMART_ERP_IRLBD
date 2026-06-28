@@ -138,6 +138,8 @@ export default function TreasuryInformationPage() {
   const [historyTarget, setHistoryTarget] = useState<TreasuryRow | null>(null);
   const [historyRows, setHistoryRows] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(false);
+  const [reportTab, setReportTab] = useState<"salary" | "party">("salary");
   const [printTarget, setPrintTarget] = useState<TreasuryRow | null>(null);
   const [printPendingId, setPrintPendingId] = useState<string | null>(null);
   const [printOpening, setPrintOpening] = useState(false);
