@@ -133,4 +133,23 @@ class UserSuperAdminDeleteTest extends TestCase
 
         $this->assertSame('active', DB::table('users')->where('id', $target->id)->value('status'));
     }
+
+    public function test_legacy_non_v1_delete_alias_soft_deletes_user(): void
+    {
+        $actor = $this->makeUser(['name' => 'Legacy Super Admin']);
+        DB::table('user_roles')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $actor->id,
+            'role' => 'super_admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $target = $this->makeUser(['name' => 'Target User']);
+
+        $this->actingAs($actor)
+            ->deleteJson("/api/users/{$target->id}")
+            ->assertOk();
+
+        $this->assertSame('deleted', DB::table('users')->where('id', $target->id)->value('status'));
+    }
 }
