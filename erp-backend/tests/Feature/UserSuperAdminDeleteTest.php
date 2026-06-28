@@ -33,7 +33,6 @@ class UserSuperAdminDeleteTest extends TestCase
         $user->employee_id = $employeeId;
         $user->status = $overrides['status'] ?? 'active';
         $user->save();
-        if ($employeeId) DB::table('employees')->where('id', $employeeId)->update(['user_id' => $user->id]);
         return $user;
     }
 
