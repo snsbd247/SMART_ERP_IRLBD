@@ -488,13 +488,13 @@ export default function TreasuryInformationPage() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        disabled={!r.challan_no}
-                        onClick={() => window.open(
-                          `http://achallan.gov.bd/acs/General/PrintChallanSlipDetails?challanNo=${encodeURIComponent(r.challan_no || "")}`,
-                          "_blank",
-                          "noopener,noreferrer",
-                        )}
-                        title={r.challan_no ? `Print A-Challan ${r.challan_no}` : "No challan number"}
+                        disabled={!isValidChallanNo(r.challan_no)}
+                        onClick={() => requestChallanPrint(r)}
+                        title={
+                          isValidChallanNo(r.challan_no)
+                            ? `Print A-Challan ${r.challan_no}`
+                            : "Add a valid challan number to print"
+                        }
                       >
                         <ExternalLink className="w-4 h-4" />
                       </Button>
