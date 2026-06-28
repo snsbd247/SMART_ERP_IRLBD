@@ -33,7 +33,9 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert, ExternalLink, Loader2, Copy, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert, ExternalLink, Loader2, Copy, Check, FileText } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { downloadCSV } from "@/lib/csv-export";
 import { logCreate, logUpdate, logDelete } from "@/lib/audit-utils";
 import {
   buildChallanUrl,
@@ -52,10 +54,14 @@ interface TreasuryRow {
   party_kind: PartyKind | null;
   party_id: string | null;
   party_name_snapshot: string | null;
+  tin_snapshot: string | null;
+  designation_snapshot: string | null;
+  branch_name_snapshot: string | null;
   challan_no: string | null;
   challan_date: string | null;
   bank_name: string | null;
   amount: number;
+  challan_base_amount: number | null;
   period_month: string | null;
   mushak_ref: string | null;
   reference_no: string | null;
@@ -64,7 +70,13 @@ interface TreasuryRow {
   created_at: string;
 }
 
-interface PartyOpt { id: string; label: string; }
+interface PartyOpt {
+  id: string;
+  label: string;
+  tin?: string | null;
+  designation?: string | null;
+  branch?: string | null;
+}
 
 const TYPE_LABEL: Record<TreasuryType, string> = {
   salary_tds: "Salary TDS",
@@ -79,10 +91,14 @@ const emptyForm = () => ({
   party_kind: "employee" as PartyKind,
   party_id: "" as string,
   party_name_snapshot: "",
+  tin_snapshot: "",
+  designation_snapshot: "",
+  branch_name_snapshot: "",
   challan_no: "",
   challan_date: "",
   bank_name: "",
   amount: 0,
+  challan_base_amount: 0,
   period_month: "",
   mushak_ref: "",
   reference_no: "",
