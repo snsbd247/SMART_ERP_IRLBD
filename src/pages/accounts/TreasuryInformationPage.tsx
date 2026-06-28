@@ -689,6 +689,40 @@ export default function TreasuryInformationPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* A-Challan print preview */}
+      <Dialog open={!!printTarget} onOpenChange={(o) => { if (!o) setPrintTarget(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Open A-Challan Print Slip</DialogTitle>
+          </DialogHeader>
+          {printTarget && isValidChallanNo(printTarget.challan_no) ? (
+            <div className="space-y-3 text-sm">
+              <div>
+                <div className="text-muted-foreground text-xs">Challan No</div>
+                <div className="font-mono">{printTarget.challan_no}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-xs">URL</div>
+                <div className="font-mono text-xs break-all bg-muted rounded p-2 border">
+                  {buildChallanUrl(printTarget.challan_no!)}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The link opens on achallan.gov.bd in a new tab. Make sure popups are allowed.
+              </p>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrintTarget(null)}>Cancel</Button>
+            {printTarget && isValidChallanNo(printTarget.challan_no) ? (
+              <Button onClick={() => openChallanPrint(buildChallanUrl(printTarget.challan_no!))}>
+                <ExternalLink className="w-4 h-4 mr-1" /> Open Print Slip
+              </Button>
+            ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
