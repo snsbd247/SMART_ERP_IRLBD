@@ -1380,18 +1380,29 @@ export default function TreasuryInformationPage() {
               </label>
               {bulkFileName && <span className="text-muted-foreground text-xs">{bulkFileName}</span>}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Required columns: <code>Date, Type, Amount</code>. Type accepts <code>salary_tds</code>, <code>party_tds</code>, <code>vat</code>.
-              PartyName is matched (case-insensitive) against existing Employees / Customers / Suppliers; unmatched rows still import with the name as a snapshot only.
-              Dates: <code>DD-MM-YYYY</code> or <code>YYYY-MM-DD</code>.
-            </p>
+            <div className="rounded-md border bg-muted/40 p-2 text-xs space-y-1">
+              <div><b>Required columns:</b> <code>Date</code>, <code>Type</code>, <code>Amount</code></div>
+              <div><b>Optional:</b> PartyKind, PartyName, TIN, Designation, Branch, ChallanNo, ChallanDate, Bank, Period (YYYY-MM), MushakRef, Reference, ChallanBaseAmount, Notes</div>
+              <div><b>Type values:</b> <code>salary_tds</code> · <code>party_tds</code> · <code>vat</code> &nbsp; · &nbsp; <b>Dates:</b> <code>DD-MM-YYYY</code> or <code>YYYY-MM-DD</code></div>
+              <div className="text-muted-foreground">Max 5,000 rows per file. Imports run in batches of 50; failed batches retry per-row so good rows still save.</div>
+            </div>
 
             {bulkRows.length > 0 && (
               <>
-                <div className="text-xs text-muted-foreground">
-                  {bulkRows.length} rows · {bulkRows.filter((r) => !r.error).length} valid · {bulkRows.filter((r) => r.error).length} with errors
-                  {bulkImporting && <> · Importing {bulkProgress.done}/{bulkProgress.total}…</>}
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="text-muted-foreground">
+                    {bulkRows.length} rows · <span className="text-emerald-600">{bulkRows.filter((r) => !r.error).length} valid</span> · <span className="text-destructive">{bulkRows.filter((r) => r.error).length} errors</span>
+                    {bulkImporting && <> · Importing {bulkProgress.done}/{bulkProgress.total} (ok {bulkProgress.ok}, fail {bulkProgress.fail})</>}
+                  </div>
+                  {bulkRows.some((r) => r.error) && (
+                    <Button variant="outline" size="sm" onClick={downloadErrorReport}>
+                      <Download className="w-4 h-4 mr-1" /> Download Error Report
+                    </Button>
+                  )}
                 </div>
+                {bulkImporting && (
+                  <Progress value={bulkProgress.total ? (bulkProgress.done / bulkProgress.total) * 100 : 0} className="h-2" />
+                )}
                 <div className="overflow-auto max-h-[45vh] border rounded">
                   <Table>
                     <TableHeader>
@@ -1427,7 +1438,7 @@ export default function TreasuryInformationPage() {
                         </TableRow>
                       ))}
                       {bulkRows.length > 200 && (
-                        <TableRow><TableCell colSpan={7} className="text-center text-xs text-muted-foreground">…showing first 200 rows.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} className="text-center text-xs text-muted-foreground">…showing first 200 rows. Errors for all rows are included in the Error Report.</TableCell></TableRow>
                       )}
                     </TableBody>
                   </Table>
@@ -1437,12 +1448,18 @@ export default function TreasuryInformationPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkImporting}>Close</Button>
-            <Button
-              onClick={runBulkImport}
-              disabled={bulkImporting || bulkRows.filter((r) => !r.error).length === 0}
-            >
-              {bulkImporting ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Importing…</> : <>Import {bulkRows.filter((r) => !r.error).length} rows</>}
-            </Button>
+            {bulkImporting ? (
+              <Button variant="destructive" onClick={() => { bulkCancelRef.current = true; }}>
+                Cancel Import
+              </Button>
+            ) : (
+              <Button
+                onClick={runBulkImport}
+                disabled={bulkRows.filter((r) => !r.error).length === 0}
+              >
+                Import {bulkRows.filter((r) => !r.error).length} rows
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
