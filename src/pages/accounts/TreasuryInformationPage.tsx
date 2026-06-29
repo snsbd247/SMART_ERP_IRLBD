@@ -9,7 +9,7 @@
  * this file. CI guard: see grep below should always return empty.
  *   rg "acc_vouchers|voucher_entries|chart_of_accounts" this file
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
