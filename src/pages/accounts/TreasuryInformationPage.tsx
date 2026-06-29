@@ -755,7 +755,12 @@ export default function TreasuryInformationPage() {
           <Button variant="outline" size="sm" onClick={exportCsv}><Download className="w-4 h-4 mr-1" /> CSV</Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" /> Print</Button>
           {canAdd && (
-            <Button size="sm" onClick={openAdd}><Plus className="w-4 h-4 mr-1" /> Add Entry</Button>
+            <>
+              <Button variant="outline" size="sm" onClick={() => { setBulkRows([]); setBulkFileName(""); setBulkProgress({ done: 0, total: 0, ok: 0, fail: 0 }); setBulkOpen(true); }}>
+                <Upload className="w-4 h-4 mr-1" /> Bulk Import
+              </Button>
+              <Button size="sm" onClick={openAdd}><Plus className="w-4 h-4 mr-1" /> Add Entry</Button>
+            </>
           )}
         </div>
       </div>
