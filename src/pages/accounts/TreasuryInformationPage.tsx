@@ -33,7 +33,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert, ExternalLink, Loader2, Copy, Check, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert, ExternalLink, Loader2, Copy, Check, FileText, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { downloadCSV } from "@/lib/csv-export";
 import { logCreate, logUpdate, logDelete } from "@/lib/audit-utils";
@@ -146,6 +146,19 @@ export default function TreasuryInformationPage() {
   const [copied, setCopied] = useState(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [liveMsg, setLiveMsg] = useState("");
+
+  // ── Bulk Import state ────────────────────────────────────────────────
+  type ImportRow = {
+    rowNo: number;
+    payload: any;
+    error?: string;
+    partyMatched?: boolean;
+  };
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkRows, setBulkRows] = useState<ImportRow[]>([]);
+  const [bulkFileName, setBulkFileName] = useState("");
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0, ok: 0, fail: 0 });
 
   function openChallanPrint(rawUrl: string) {
     const url = rawUrl; // already normalized via buildChallanUrl
@@ -472,6 +485,200 @@ export default function TreasuryInformationPage() {
     }
   }
 
+  // ── Bulk Import helpers ──────────────────────────────────────────────
+  const BULK_HEADERS = [
+    "Date", "Type", "PartyKind", "PartyName", "TIN", "Designation", "Branch",
+    "ChallanNo", "ChallanDate", "Bank", "Period", "MushakRef", "Reference",
+    "ChallanBaseAmount", "Amount", "Notes",
+  ];
+
+  function downloadImportTemplate() {
+    const sample = [
+      "01-07-2026,salary_tds,employee,John Doe,123456789012,Manager,HQ,CHN-001,02-07-2026,Sonali Bank,2026-07,,REF-1,50000,2500,Sample salary TDS",
+      "05-07-2026,party_tds,supplier,ACME Ltd,987654321098,,HQ,CHN-002,06-07-2026,DBBL,2026-07,,REF-2,80000,4000,Sample party TDS",
+      "10-07-2026,vat,none,,,,,CHN-003,11-07-2026,City Bank,2026-07,Mushak-9.1/2026-07,REF-3,100000,15000,Sample VAT",
+    ].join("\n");
+    const blob = new Blob([BULK_HEADERS.join(",") + "\n" + sample], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "treasury-import-template.csv"; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Minimal RFC4180-ish CSV parser (handles quotes, commas, CRLF).
+  function parseCsv(text: string): string[][] {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let cell = "";
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { cell += '"'; i++; } else inQuotes = false;
+        } else cell += c;
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ",") { row.push(cell); cell = ""; }
+        else if (c === "\n" || c === "\r") {
+          if (c === "\r" && text[i + 1] === "\n") i++;
+          row.push(cell); rows.push(row); row = []; cell = "";
+        } else cell += c;
+      }
+    }
+    if (cell.length || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter((r) => r.some((v) => String(v).trim() !== ""));
+  }
+
+  function normalizeDateForDb(raw: string): string | null {
+    const s = String(raw || "").trim();
+    if (!s) return null;
+    const dmy = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+    if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+    const ymd = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (ymd) return `${ymd[1]}-${ymd[2].padStart(2, "0")}-${ymd[3].padStart(2, "0")}`;
+    return null;
+  }
+
+  function resolveType(v: string): TreasuryType | null {
+    const x = String(v || "").trim().toLowerCase().replace(/\s+/g, "_");
+    if (["salary_tds", "salary"].includes(x)) return "salary_tds";
+    if (["party_tds", "party_bill_tds", "party"].includes(x)) return "party_tds";
+    if (["vat", "vat_treasury"].includes(x)) return "vat";
+    return null;
+  }
+
+  function findPartyId(kind: PartyKind, name: string): string | null {
+    if (!name || kind === "none") return null;
+    const n = name.trim().toLowerCase();
+    const list = partyOptions(kind);
+    const hit = list.find((o) => o.label.toLowerCase() === n)
+      || list.find((o) => o.label.toLowerCase().includes(n))
+      || list.find((o) => n.includes(o.label.toLowerCase()));
+    return hit?.id ?? null;
+  }
+
+  async function onBulkFileChosen(file: File) {
+    setBulkFileName(file.name);
+    setBulkRows([]);
+    setBulkProgress({ done: 0, total: 0, ok: 0, fail: 0 });
+    const text = await file.text();
+    const parsed = parseCsv(text);
+    if (parsed.length === 0) { toast({ title: "Empty file", variant: "destructive" }); return; }
+
+    const header = parsed[0].map((h) => h.trim().toLowerCase());
+    const idx = (name: string) => header.indexOf(name.toLowerCase());
+    const required = ["date", "type", "amount"];
+    const missing = required.filter((r) => idx(r) === -1);
+    if (missing.length) {
+      toast({ title: "Missing columns", description: `Required: ${missing.join(", ")}`, variant: "destructive" });
+      return;
+    }
+
+    const out: ImportRow[] = [];
+    for (let i = 1; i < parsed.length; i++) {
+      const r = parsed[i];
+      const get = (k: string) => (idx(k) >= 0 ? (r[idx(k)] ?? "").trim() : "");
+      const dateRaw = get("date");
+      const date = normalizeDateForDb(dateRaw);
+      const type = resolveType(get("type"));
+      const amount = Number(get("amount"));
+      const kindRaw = String(get("partykind") || "").toLowerCase();
+      const partyKind: PartyKind =
+        (["employee", "customer", "supplier", "none"].includes(kindRaw) ? (kindRaw as PartyKind) : null)
+        ?? (type === "salary_tds" ? "employee" : type === "party_tds" ? "supplier" : "none");
+      const partyName = get("partyname");
+      const partyId = type !== "vat" ? findPartyId(partyKind, partyName) : null;
+
+      let error: string | undefined;
+      if (!date) error = `Invalid date "${dateRaw}" (use DD-MM-YYYY)`;
+      else if (!type) error = `Invalid type "${get("type")}"`;
+      else if (!amount || amount <= 0) error = `Invalid amount "${get("amount")}"`;
+      else if (type !== "vat" && !partyName) error = "PartyName required";
+
+      const challanDate = normalizeDateForDb(get("challandate"));
+      const challanBase = Number(get("challanbaseamount") || 0);
+
+      out.push({
+        rowNo: i + 1,
+        error,
+        partyMatched: !!partyId,
+        payload: {
+          treasury_date: date,
+          treasury_type: type,
+          party_kind: partyKind,
+          party_id: partyId,
+          party_name_snapshot: partyName || null,
+          tin_snapshot: get("tin") || null,
+          designation_snapshot: get("designation") || null,
+          branch_name_snapshot: get("branch") || null,
+          challan_no: get("challanno") || null,
+          challan_date: challanDate,
+          bank_name: get("bank") || null,
+          amount: isFinite(amount) ? amount : 0,
+          challan_base_amount: isFinite(challanBase) && challanBase > 0 ? challanBase : null,
+          period_month: get("period") || null,
+          mushak_ref: get("mushakref") || null,
+          reference_no: get("reference") || null,
+          notes: get("notes") || null,
+          status: "active",
+          created_by: user?.id ?? null,
+        },
+      });
+    }
+    setBulkRows(out);
+  }
+
+  async function runBulkImport() {
+    if (!canAdd) {
+      toast({ title: "Permission denied", description: "treasury.can_add required", variant: "destructive" });
+      return;
+    }
+    const valid = bulkRows.filter((r) => !r.error);
+    if (!valid.length) { toast({ title: "No valid rows to import", variant: "destructive" }); return; }
+    setBulkImporting(true);
+    setBulkProgress({ done: 0, total: valid.length, ok: 0, fail: 0 });
+
+    const CHUNK = 50;
+    let ok = 0, fail = 0;
+    const updated = [...bulkRows];
+    for (let i = 0; i < valid.length; i += CHUNK) {
+      const slice = valid.slice(i, i + CHUNK);
+      const { data, error } = await supabase
+        .from("treasury_entries" as any)
+        .insert(slice.map((r) => r.payload))
+        .select("id");
+      if (error) {
+        fail += slice.length;
+        slice.forEach((s) => {
+          const ix = updated.findIndex((u) => u.rowNo === s.rowNo);
+          if (ix >= 0) updated[ix] = { ...updated[ix], error: error.message };
+        });
+      } else {
+        ok += slice.length;
+        try {
+          const ids = ((data as any[]) || []).map((d) => d.id);
+          for (let k = 0; k < ids.length; k++) {
+            await logCreate({
+              userId: user?.id, userName: profile?.name || user?.email || undefined,
+              module: "treasury", recordId: ids[k], newData: slice[k].payload,
+              details: "Bulk import",
+            });
+          }
+        } catch { /* ignore audit errors */ }
+      }
+      setBulkProgress({ done: Math.min(i + CHUNK, valid.length), total: valid.length, ok, fail });
+    }
+    setBulkRows(updated);
+    setBulkImporting(false);
+    toast({
+      title: "Bulk import finished",
+      description: `${ok} added, ${fail} failed, ${bulkRows.length - valid.length} skipped (validation).`,
+      variant: fail > 0 ? "destructive" : "default",
+    });
+    void load();
+  }
+
   function exportCsv() {
     const headers = ["Date", "Type", "Party", "Challan No", "Challan Date", "Bank", "Period", "Mushak Ref", "Reference", "Amount", "Notes"];
     const lines = [headers.join(",")];
@@ -548,7 +755,12 @@ export default function TreasuryInformationPage() {
           <Button variant="outline" size="sm" onClick={exportCsv}><Download className="w-4 h-4 mr-1" /> CSV</Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" /> Print</Button>
           {canAdd && (
-            <Button size="sm" onClick={openAdd}><Plus className="w-4 h-4 mr-1" /> Add Entry</Button>
+            <>
+              <Button variant="outline" size="sm" onClick={() => { setBulkRows([]); setBulkFileName(""); setBulkProgress({ done: 0, total: 0, ok: 0, fail: 0 }); setBulkOpen(true); }}>
+                <Upload className="w-4 h-4 mr-1" /> Bulk Import
+              </Button>
+              <Button size="sm" onClick={openAdd}><Plus className="w-4 h-4 mr-1" /> Add Entry</Button>
+            </>
           )}
         </div>
       </div>
@@ -1067,6 +1279,95 @@ export default function TreasuryInformationPage() {
                     : "Open Print Slip"}
               </Button>
             ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Import Dialog */}
+      <Dialog open={bulkOpen} onOpenChange={(o) => { if (!bulkImporting) setBulkOpen(o); }}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Bulk Import Treasury Entries</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={downloadImportTemplate}>
+                <Download className="w-4 h-4 mr-1" /> Download Template
+              </Button>
+              <label className="inline-flex items-center gap-2 px-3 py-1.5 border rounded-md cursor-pointer hover:bg-muted text-sm">
+                <Upload className="w-4 h-4" /> Choose CSV
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void onBulkFileChosen(f); e.currentTarget.value = ""; }}
+                />
+              </label>
+              {bulkFileName && <span className="text-muted-foreground text-xs">{bulkFileName}</span>}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Required columns: <code>Date, Type, Amount</code>. Type accepts <code>salary_tds</code>, <code>party_tds</code>, <code>vat</code>.
+              PartyName is matched (case-insensitive) against existing Employees / Customers / Suppliers; unmatched rows still import with the name as a snapshot only.
+              Dates: <code>DD-MM-YYYY</code> or <code>YYYY-MM-DD</code>.
+            </p>
+
+            {bulkRows.length > 0 && (
+              <>
+                <div className="text-xs text-muted-foreground">
+                  {bulkRows.length} rows · {bulkRows.filter((r) => !r.error).length} valid · {bulkRows.filter((r) => r.error).length} with errors
+                  {bulkImporting && <> · Importing {bulkProgress.done}/{bulkProgress.total}…</>}
+                </div>
+                <div className="overflow-auto max-h-[45vh] border rounded">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">#</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Party</TableHead>
+                        <TableHead>Challan</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bulkRows.slice(0, 200).map((r) => (
+                        <TableRow key={r.rowNo} className={r.error ? "bg-destructive/5" : ""}>
+                          <TableCell>{r.rowNo}</TableCell>
+                          <TableCell>{r.payload.treasury_date ? formatDateDMY(r.payload.treasury_date) : "—"}</TableCell>
+                          <TableCell>{r.payload.treasury_type ?? "—"}</TableCell>
+                          <TableCell>
+                            {r.payload.party_name_snapshot ?? "—"}
+                            {r.payload.treasury_type !== "vat" && r.payload.party_name_snapshot && (
+                              <Badge variant={r.partyMatched ? "secondary" : "outline"} className="ml-2 text-[10px]">
+                                {r.partyMatched ? "matched" : "snapshot only"}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>{r.payload.challan_no ?? "—"}</TableCell>
+                          <TableCell className="text-right font-mono">{Number(r.payload.amount || 0).toFixed(2)}</TableCell>
+                          <TableCell className="text-xs">
+                            {r.error ? <span className="text-destructive">{r.error}</span> : <span className="text-emerald-600">OK</span>}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {bulkRows.length > 200 && (
+                        <TableRow><TableCell colSpan={7} className="text-center text-xs text-muted-foreground">…showing first 200 rows.</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkImporting}>Close</Button>
+            <Button
+              onClick={runBulkImport}
+              disabled={bulkImporting || bulkRows.filter((r) => !r.error).length === 0}
+            >
+              {bulkImporting ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Importing…</> : <>Import {bulkRows.filter((r) => !r.error).length} rows</>}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
