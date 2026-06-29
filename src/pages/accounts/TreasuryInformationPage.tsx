@@ -160,6 +160,7 @@ export default function TreasuryInformationPage() {
   const [bulkFileName, setBulkFileName] = useState("");
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0, ok: 0, fail: 0 });
+  const bulkCancelRef = (useMemo(() => ({ current: false }), []) as { current: boolean });
 
   function openChallanPrint(rawUrl: string) {
     const url = rawUrl; // already normalized via buildChallanUrl
