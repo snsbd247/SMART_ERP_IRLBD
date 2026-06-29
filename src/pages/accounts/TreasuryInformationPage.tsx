@@ -9,7 +9,7 @@
  * this file. CI guard: see grep below should always return empty.
  *   rg "acc_vouchers|voucher_entries|chart_of_accounts" this file
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Search, Printer, Download, History, ShieldAlert, ExternalLink, Loader2, Copy, Check, FileText, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { downloadCSV } from "@/lib/csv-export";
 import { logCreate, logUpdate, logDelete } from "@/lib/audit-utils";
 import {
@@ -159,6 +160,7 @@ export default function TreasuryInformationPage() {
   const [bulkFileName, setBulkFileName] = useState("");
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0, ok: 0, fail: 0 });
+  const bulkCancelRef = useRef(false);
 
   function openChallanPrint(rawUrl: string) {
     const url = rawUrl; // already normalized via buildChallanUrl
@@ -576,13 +578,20 @@ export default function TreasuryInformationPage() {
     }
 
     const out: ImportRow[] = [];
+    const MAX_ROWS = 5000;
+    if (parsed.length - 1 > MAX_ROWS) {
+      toast({ title: "File too large", description: `Max ${MAX_ROWS} rows per import.`, variant: "destructive" });
+      return;
+    }
+    const seenChallan = new Set<string>();
     for (let i = 1; i < parsed.length; i++) {
       const r = parsed[i];
       const get = (k: string) => (idx(k) >= 0 ? (r[idx(k)] ?? "").trim() : "");
       const dateRaw = get("date");
       const date = normalizeDateForDb(dateRaw);
       const type = resolveType(get("type"));
-      const amount = Number(get("amount"));
+      const amountRaw = get("amount");
+      const amount = Number(amountRaw);
       const kindRaw = String(get("partykind") || "").toLowerCase();
       const partyKind: PartyKind =
         (["employee", "customer", "supplier", "none"].includes(kindRaw) ? (kindRaw as PartyKind) : null)
@@ -590,18 +599,34 @@ export default function TreasuryInformationPage() {
       const partyName = get("partyname");
       const partyId = type !== "vat" ? findPartyId(partyKind, partyName) : null;
 
-      let error: string | undefined;
-      if (!date) error = `Invalid date "${dateRaw}" (use DD-MM-YYYY)`;
-      else if (!type) error = `Invalid type "${get("type")}"`;
-      else if (!amount || amount <= 0) error = `Invalid amount "${get("amount")}"`;
-      else if (type !== "vat" && !partyName) error = "PartyName required";
-
+      const errs: string[] = [];
+      if (!date) errs.push(`Invalid date "${dateRaw}" (use DD-MM-YYYY)`);
+      if (!type) errs.push(`Invalid type "${get("type")}" (salary_tds | party_tds | vat)`);
+      if (!amountRaw || !isFinite(amount) || amount <= 0) errs.push(`Invalid amount "${amountRaw}"`);
+      else if (amount > 1_000_000_000) errs.push(`Amount too large (${amount})`);
+      if (type && type !== "vat" && !partyName) errs.push("PartyName required");
+      if (type === "salary_tds" && partyKind !== "employee") errs.push("salary_tds requires PartyKind=employee");
+      if (type === "vat" && partyName) errs.push("VAT entries must not have PartyName");
+      const tin = get("tin");
+      if (tin && !/^\d{9,15}$/.test(tin.replace(/\s|-/g, ""))) errs.push(`Invalid TIN "${tin}"`);
+      const challanNo = get("challanno");
       const challanDate = normalizeDateForDb(get("challandate"));
+      if (get("challandate") && !challanDate) errs.push(`Invalid ChallanDate "${get("challandate")}"`);
+      if (challanNo) {
+        const k = `${challanNo.toLowerCase()}|${challanDate || ""}`;
+        if (seenChallan.has(k)) errs.push(`Duplicate ChallanNo+Date "${challanNo}" in file`);
+        else seenChallan.add(k);
+      }
       const challanBase = Number(get("challanbaseamount") || 0);
+      if (get("challanbaseamount") && (!isFinite(challanBase) || challanBase < 0)) {
+        errs.push(`Invalid ChallanBaseAmount "${get("challanbaseamount")}"`);
+      }
+      const period = get("period");
+      if (period && !/^\d{4}-\d{2}$/.test(period)) errs.push(`Invalid Period "${period}" (use YYYY-MM)`);
 
       out.push({
         rowNo: i + 1,
-        error,
+        error: errs.length ? errs.join("; ") : undefined,
         partyMatched: !!partyId,
         payload: {
           treasury_date: date,
@@ -609,15 +634,15 @@ export default function TreasuryInformationPage() {
           party_kind: partyKind,
           party_id: partyId,
           party_name_snapshot: partyName || null,
-          tin_snapshot: get("tin") || null,
+          tin_snapshot: tin || null,
           designation_snapshot: get("designation") || null,
           branch_name_snapshot: get("branch") || null,
-          challan_no: get("challanno") || null,
+          challan_no: challanNo || null,
           challan_date: challanDate,
           bank_name: get("bank") || null,
           amount: isFinite(amount) ? amount : 0,
           challan_base_amount: isFinite(challanBase) && challanBase > 0 ? challanBase : null,
-          period_month: get("period") || null,
+          period_month: period || null,
           mushak_ref: get("mushakref") || null,
           reference_no: get("reference") || null,
           notes: get("notes") || null,
@@ -629,6 +654,34 @@ export default function TreasuryInformationPage() {
     setBulkRows(out);
   }
 
+  function downloadErrorReport() {
+    const failed = bulkRows.filter((r) => r.error);
+    if (!failed.length) { toast({ title: "No errors to export" }); return; }
+    const headers = [...BULK_HEADERS, "RowNo", "Error"];
+    const esc = (v: any) => {
+      const s = v == null ? "" : String(v);
+      return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = [headers.join(",")];
+    failed.forEach((r) => {
+      const p = r.payload;
+      lines.push([
+        p.treasury_date ? formatDateDMY(p.treasury_date) : "",
+        p.treasury_type ?? "", p.party_kind ?? "", p.party_name_snapshot ?? "",
+        p.tin_snapshot ?? "", p.designation_snapshot ?? "", p.branch_name_snapshot ?? "",
+        p.challan_no ?? "", p.challan_date ? formatDateDMY(p.challan_date) : "",
+        p.bank_name ?? "", p.period_month ?? "", p.mushak_ref ?? "", p.reference_no ?? "",
+        p.challan_base_amount ?? "", p.amount ?? "", p.notes ?? "",
+        r.rowNo, r.error,
+      ].map(esc).join(","));
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "treasury-import-errors.csv"; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function runBulkImport() {
     if (!canAdd) {
       toast({ title: "Permission denied", description: "treasury.can_add required", variant: "destructive" });
@@ -636,6 +689,7 @@ export default function TreasuryInformationPage() {
     }
     const valid = bulkRows.filter((r) => !r.error);
     if (!valid.length) { toast({ title: "No valid rows to import", variant: "destructive" }); return; }
+    bulkCancelRef.current = false;
     setBulkImporting(true);
     setBulkProgress({ done: 0, total: valid.length, ok: 0, fail: 0 });
 
@@ -643,17 +697,37 @@ export default function TreasuryInformationPage() {
     let ok = 0, fail = 0;
     const updated = [...bulkRows];
     for (let i = 0; i < valid.length; i += CHUNK) {
+      if (bulkCancelRef.current) break;
       const slice = valid.slice(i, i + CHUNK);
       const { data, error } = await supabase
         .from("treasury_entries" as any)
         .insert(slice.map((r) => r.payload))
         .select("id");
       if (error) {
-        fail += slice.length;
-        slice.forEach((s) => {
+        // Per-row fallback so successful rows still import and errors are attributed.
+        for (const s of slice) {
+          if (bulkCancelRef.current) break;
+          const { data: d2, error: e2 } = await supabase
+            .from("treasury_entries" as any)
+            .insert(s.payload)
+            .select("id")
+            .single();
           const ix = updated.findIndex((u) => u.rowNo === s.rowNo);
-          if (ix >= 0) updated[ix] = { ...updated[ix], error: error.message };
-        });
+          if (e2) {
+            fail++;
+            if (ix >= 0) updated[ix] = { ...updated[ix], error: e2.message };
+          } else {
+            ok++;
+            try {
+              await logCreate({
+                userId: user?.id, userName: profile?.name || user?.email || undefined,
+                module: "treasury", recordId: (d2 as any)?.id, newData: s.payload,
+                details: "Bulk import (per-row fallback)",
+              });
+            } catch { /* ignore */ }
+          }
+          setBulkProgress({ done: Math.min(i + (slice.indexOf(s) + 1), valid.length), total: valid.length, ok, fail });
+        }
       } else {
         ok += slice.length;
         try {
@@ -671,8 +745,9 @@ export default function TreasuryInformationPage() {
     }
     setBulkRows(updated);
     setBulkImporting(false);
+    const cancelled = bulkCancelRef.current;
     toast({
-      title: "Bulk import finished",
+      title: cancelled ? "Bulk import cancelled" : "Bulk import finished",
       description: `${ok} added, ${fail} failed, ${bulkRows.length - valid.length} skipped (validation).`,
       variant: fail > 0 ? "destructive" : "default",
     });
@@ -1305,18 +1380,29 @@ export default function TreasuryInformationPage() {
               </label>
               {bulkFileName && <span className="text-muted-foreground text-xs">{bulkFileName}</span>}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Required columns: <code>Date, Type, Amount</code>. Type accepts <code>salary_tds</code>, <code>party_tds</code>, <code>vat</code>.
-              PartyName is matched (case-insensitive) against existing Employees / Customers / Suppliers; unmatched rows still import with the name as a snapshot only.
-              Dates: <code>DD-MM-YYYY</code> or <code>YYYY-MM-DD</code>.
-            </p>
+            <div className="rounded-md border bg-muted/40 p-2 text-xs space-y-1">
+              <div><b>Required columns:</b> <code>Date</code>, <code>Type</code>, <code>Amount</code></div>
+              <div><b>Optional:</b> PartyKind, PartyName, TIN, Designation, Branch, ChallanNo, ChallanDate, Bank, Period (YYYY-MM), MushakRef, Reference, ChallanBaseAmount, Notes</div>
+              <div><b>Type values:</b> <code>salary_tds</code> · <code>party_tds</code> · <code>vat</code> &nbsp; · &nbsp; <b>Dates:</b> <code>DD-MM-YYYY</code> or <code>YYYY-MM-DD</code></div>
+              <div className="text-muted-foreground">Max 5,000 rows per file. Imports run in batches of 50; failed batches retry per-row so good rows still save.</div>
+            </div>
 
             {bulkRows.length > 0 && (
               <>
-                <div className="text-xs text-muted-foreground">
-                  {bulkRows.length} rows · {bulkRows.filter((r) => !r.error).length} valid · {bulkRows.filter((r) => r.error).length} with errors
-                  {bulkImporting && <> · Importing {bulkProgress.done}/{bulkProgress.total}…</>}
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="text-muted-foreground">
+                    {bulkRows.length} rows · <span className="text-emerald-600">{bulkRows.filter((r) => !r.error).length} valid</span> · <span className="text-destructive">{bulkRows.filter((r) => r.error).length} errors</span>
+                    {bulkImporting && <> · Importing {bulkProgress.done}/{bulkProgress.total} (ok {bulkProgress.ok}, fail {bulkProgress.fail})</>}
+                  </div>
+                  {bulkRows.some((r) => r.error) && (
+                    <Button variant="outline" size="sm" onClick={downloadErrorReport}>
+                      <Download className="w-4 h-4 mr-1" /> Download Error Report
+                    </Button>
+                  )}
                 </div>
+                {bulkImporting && (
+                  <Progress value={bulkProgress.total ? (bulkProgress.done / bulkProgress.total) * 100 : 0} className="h-2" />
+                )}
                 <div className="overflow-auto max-h-[45vh] border rounded">
                   <Table>
                     <TableHeader>
@@ -1352,7 +1438,7 @@ export default function TreasuryInformationPage() {
                         </TableRow>
                       ))}
                       {bulkRows.length > 200 && (
-                        <TableRow><TableCell colSpan={7} className="text-center text-xs text-muted-foreground">…showing first 200 rows.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} className="text-center text-xs text-muted-foreground">…showing first 200 rows. Errors for all rows are included in the Error Report.</TableCell></TableRow>
                       )}
                     </TableBody>
                   </Table>
@@ -1362,12 +1448,18 @@ export default function TreasuryInformationPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkImporting}>Close</Button>
-            <Button
-              onClick={runBulkImport}
-              disabled={bulkImporting || bulkRows.filter((r) => !r.error).length === 0}
-            >
-              {bulkImporting ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Importing…</> : <>Import {bulkRows.filter((r) => !r.error).length} rows</>}
-            </Button>
+            {bulkImporting ? (
+              <Button variant="destructive" onClick={() => { bulkCancelRef.current = true; }}>
+                Cancel Import
+              </Button>
+            ) : (
+              <Button
+                onClick={runBulkImport}
+                disabled={bulkRows.filter((r) => !r.error).length === 0}
+              >
+                Import {bulkRows.filter((r) => !r.error).length} rows
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
