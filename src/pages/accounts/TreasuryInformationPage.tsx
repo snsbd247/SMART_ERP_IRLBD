@@ -1282,6 +1282,95 @@ export default function TreasuryInformationPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Import Dialog */}
+      <Dialog open={bulkOpen} onOpenChange={(o) => { if (!bulkImporting) setBulkOpen(o); }}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Bulk Import Treasury Entries</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={downloadImportTemplate}>
+                <Download className="w-4 h-4 mr-1" /> Download Template
+              </Button>
+              <label className="inline-flex items-center gap-2 px-3 py-1.5 border rounded-md cursor-pointer hover:bg-muted text-sm">
+                <Upload className="w-4 h-4" /> Choose CSV
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void onBulkFileChosen(f); e.currentTarget.value = ""; }}
+                />
+              </label>
+              {bulkFileName && <span className="text-muted-foreground text-xs">{bulkFileName}</span>}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Required columns: <code>Date, Type, Amount</code>. Type accepts <code>salary_tds</code>, <code>party_tds</code>, <code>vat</code>.
+              PartyName is matched (case-insensitive) against existing Employees / Customers / Suppliers; unmatched rows still import with the name as a snapshot only.
+              Dates: <code>DD-MM-YYYY</code> or <code>YYYY-MM-DD</code>.
+            </p>
+
+            {bulkRows.length > 0 && (
+              <>
+                <div className="text-xs text-muted-foreground">
+                  {bulkRows.length} rows · {bulkRows.filter((r) => !r.error).length} valid · {bulkRows.filter((r) => r.error).length} with errors
+                  {bulkImporting && <> · Importing {bulkProgress.done}/{bulkProgress.total}…</>}
+                </div>
+                <div className="overflow-auto max-h-[45vh] border rounded">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">#</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Party</TableHead>
+                        <TableHead>Challan</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bulkRows.slice(0, 200).map((r) => (
+                        <TableRow key={r.rowNo} className={r.error ? "bg-destructive/5" : ""}>
+                          <TableCell>{r.rowNo}</TableCell>
+                          <TableCell>{r.payload.treasury_date ? formatDateDMY(r.payload.treasury_date) : "—"}</TableCell>
+                          <TableCell>{r.payload.treasury_type ?? "—"}</TableCell>
+                          <TableCell>
+                            {r.payload.party_name_snapshot ?? "—"}
+                            {r.payload.treasury_type !== "vat" && r.payload.party_name_snapshot && (
+                              <Badge variant={r.partyMatched ? "secondary" : "outline"} className="ml-2 text-[10px]">
+                                {r.partyMatched ? "matched" : "snapshot only"}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>{r.payload.challan_no ?? "—"}</TableCell>
+                          <TableCell className="text-right font-mono">{Number(r.payload.amount || 0).toFixed(2)}</TableCell>
+                          <TableCell className="text-xs">
+                            {r.error ? <span className="text-destructive">{r.error}</span> : <span className="text-emerald-600">OK</span>}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {bulkRows.length > 200 && (
+                        <TableRow><TableCell colSpan={7} className="text-center text-xs text-muted-foreground">…showing first 200 rows.</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkImporting}>Close</Button>
+            <Button
+              onClick={runBulkImport}
+              disabled={bulkImporting || bulkRows.filter((r) => !r.error).length === 0}
+            >
+              {bulkImporting ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Importing…</> : <>Import {bulkRows.filter((r) => !r.error).length} rows</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
