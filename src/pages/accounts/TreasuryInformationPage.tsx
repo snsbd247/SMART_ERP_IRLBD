@@ -147,6 +147,19 @@ export default function TreasuryInformationPage() {
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [liveMsg, setLiveMsg] = useState("");
 
+  // ── Bulk Import state ────────────────────────────────────────────────
+  type ImportRow = {
+    rowNo: number;
+    payload: any;
+    error?: string;
+    partyMatched?: boolean;
+  };
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkRows, setBulkRows] = useState<ImportRow[]>([]);
+  const [bulkFileName, setBulkFileName] = useState("");
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0, ok: 0, fail: 0 });
+
   function openChallanPrint(rawUrl: string) {
     const url = rawUrl; // already normalized via buildChallanUrl
     setPrintOpening(true);
