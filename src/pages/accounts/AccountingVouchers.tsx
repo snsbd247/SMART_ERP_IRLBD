@@ -651,22 +651,45 @@ const AccountingVouchers = () => {
         </TabsList>
 
         {VOUCHER_TYPES.map((vt) => {
-          const q = searchQuery.trim().toLowerCase();
-          const filteredVouchers = q
-            ? vouchers.filter((v) =>
-                [v.voucher_number, v.voucher_date, formatDateDMY(v.voucher_date), v.description || "", v.status, String(v.total_amount), (voucherAccountsMap[v.id] || []).join(" ")]
-                  .some((f) => f.toLowerCase().includes(q))
-              )
-            : vouchers;
+          // Server already applied search/date/branch filters.
+          const filteredVouchers = vouchers;
+          const q = debouncedSearch.trim();
           return (
           <TabsContent key={vt.id} value={vt.id}>
-            <div className="mb-3">
-              <Input
-                placeholder="Search by voucher #, date, description, status, or amount..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="max-w-sm h-9"
-              />
+            <div className="mb-3 flex flex-wrap items-end gap-2">
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">Search</Label>
+                <Input
+                  placeholder="Voucher # or description"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-72 h-9"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">From</Label>
+                <DateInput value={filterFrom} onChange={(v) => setFilterFrom(v)} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">To</Label>
+                <DateInput value={filterTo} onChange={(v) => setFilterTo(v)} />
+              </div>
+              {(filterFrom || filterTo || q) && (
+                <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearchQuery(""); setFilterFrom(""); setFilterTo(""); }}>
+                  Clear
+                </Button>
+              )}
+              <div className="ml-auto flex items-end gap-2">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs text-muted-foreground">Page size</Label>
+                  <Select value={String(perPage)} onValueChange={(v) => setPerPage(Number(v))}>
+                    <SelectTrigger className="w-24 h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[25, 50, 100, 200].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
             <Card>
               <CardContent className="p-0">
@@ -686,7 +709,7 @@ const AccountingVouchers = () => {
                     {loading ? (
                       <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
                     ) : filteredVouchers.length === 0 ? (
-                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">{q ? "No vouchers match your search" : "No vouchers yet"}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">{q || filterFrom || filterTo ? "No vouchers match your filters" : "No vouchers yet"}</TableCell></TableRow>
                     ) : filteredVouchers.map((v) => (
                       <TableRow key={v.id}>
                         <TableCell className="font-geist-mono text-xs font-medium">{v.voucher_number}</TableCell>
