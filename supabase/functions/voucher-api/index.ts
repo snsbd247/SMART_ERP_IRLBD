@@ -30,7 +30,7 @@ async function getUserRoles(admin: any, userId: string): Promise<string[]> {
 async function getUserProfile(admin: any, userId: string) {
   const { data } = await admin
     .from("profiles")
-    .select("name, username, email")
+    .select("name, username, email, branch_id, employee_id")
     .eq("id", userId)
     .single();
   return data;
