@@ -30,7 +30,7 @@ async function getUserRoles(admin: any, userId: string): Promise<string[]> {
 async function getUserProfile(admin: any, userId: string) {
   const { data } = await admin
     .from("profiles")
-    .select("name, username, email")
+    .select("name, username, email, branch_id, employee_id")
     .eq("id", userId)
     .single();
   return data;
@@ -140,16 +140,34 @@ Deno.serve(async (req) => {
       // ============ LIST VOUCHERS ============
       case "list": {
         const { voucher_type, include_deleted } = body;
-        let q = admin
-          .from("acc_vouchers")
-          .select("*")
-          .eq("voucher_type", voucher_type || "journal");
-        if (!include_deleted) q = q.is("deleted_at", null);
-        const { data, error } = await q.order("created_at", { ascending: false });
-        if (error) return err(error.message, 500);
+        // Branch scoping: Super Admin sees all branches; everyone else is
+        // restricted to their assigned branch (profiles.branch_id). This
+        // matches the BranchScope middleware on the Laravel side.
+        const superAdmin = isSuperAdmin(roles) || profile?.employee_id === null;
+        const scopedBranchId = !superAdmin ? (profile?.branch_id || null) : null;
 
-        const voucherIds = (data || []).map((v: any) => v.id);
-        if (voucherIds.length === 0) return json({ data: data || [] });
+        // Paginate past Supabase's 1000-row cap so the list always shows
+        // every voucher of the active type — not just the first page.
+        const PAGE = 1000;
+        const data: any[] = [];
+        for (let from = 0; from < 100000; from += PAGE) {
+          let q = admin
+            .from("acc_vouchers")
+            .select("*")
+            .eq("voucher_type", voucher_type || "journal")
+            .order("created_at", { ascending: false })
+            .range(from, from + PAGE - 1);
+          if (!include_deleted) q = q.is("deleted_at", null);
+          if (scopedBranchId) q = q.eq("branch_id", scopedBranchId);
+          const { data: page, error } = await q;
+          if (error) return err(error.message, 500);
+          const rows = page || [];
+          data.push(...rows);
+          if (rows.length < PAGE) break;
+        }
+
+        const voucherIds = data.map((v: any) => v.id);
+        if (voucherIds.length === 0) return json({ data });
 
         // Chunk .in() calls to avoid PostgREST "Bad Request" from URL-too-long
         const chunk = <T,>(arr: T[], size: number): T[][] => {

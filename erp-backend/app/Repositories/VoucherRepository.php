@@ -29,6 +29,10 @@ class VoucherRepository extends BaseRepository
         if (!empty($filters['to'])) {
             $query->where('voucher_date', '<=', $filters['to']);
         }
+        // Branch scoping — restrict to user's allowed branches when present.
+        if (!empty($filters['allowed_branch_ids']) && is_array($filters['allowed_branch_ids'])) {
+            $query->whereIn('branch_id', $filters['allowed_branch_ids']);
+        }
         // Soft-deleted vouchers are hidden by default. Pass include_deleted=1
         // (or only_deleted=1 for the trash view) to retrieve them.
         if (!empty($filters['only_deleted'])) {
