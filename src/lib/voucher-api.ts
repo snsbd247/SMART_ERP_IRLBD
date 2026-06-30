@@ -59,14 +59,43 @@ function unwrapItem(json: any): any {
   return json?.data ?? json;
 }
 
+export interface VoucherListParams {
+  search?: string;
+  from?: string; // YYYY-MM-DD
+  to?: string;   // YYYY-MM-DD
+  page?: number; // 1-based
+  per_page?: number;
+}
+
 export const voucherApi = {
-  list: async (voucher_type: string, include_deleted = false) => {
+  list: async (
+    voucher_type: string,
+    include_deleted = false,
+    params: VoucherListParams = {}
+  ) => {
+    const { search, from, to, page = 1, per_page = 50 } = params;
     if (isLaravelMode()) {
-      const qs = include_deleted ? "?include_deleted=1" : "";
-      const json = await laravelFetch<any>(`vouchers/${voucher_type}${qs}`);
-      return { data: unwrapList(json) } as { data: any[] };
+      const qs = new URLSearchParams();
+      if (include_deleted) qs.set("include_deleted", "1");
+      if (search) qs.set("search", search);
+      if (from) qs.set("from", from);
+      if (to) qs.set("to", to);
+      qs.set("page", String(page));
+      qs.set("per_page", String(per_page));
+      const json = await laravelFetch<any>(`vouchers/${voucher_type}?${qs.toString()}`);
+      const total = Number(json?.meta?.total ?? json?.total ?? unwrapList(json).length) || 0;
+      return { data: unwrapList(json), total, page, per_page } as { data: any[]; total: number; page: number; per_page: number };
     }
-    return invokeEdge<{ data: any[] }>({ action: "list", voucher_type, include_deleted });
+    return invokeEdge<{ data: any[]; total?: number; page?: number; per_page?: number }>({
+      action: "list",
+      voucher_type,
+      include_deleted,
+      search,
+      from,
+      to,
+      page,
+      per_page,
+    });
   },
 
   get: async (id: string) => {
