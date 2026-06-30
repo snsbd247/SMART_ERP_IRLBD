@@ -43,6 +43,15 @@ class VoucherRepository extends BaseRepository
         return $query;
     }
 
+    protected function applySearch(Builder $query, string $search): Builder
+    {
+        $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], trim($search)) . '%';
+        return $query->where(function (Builder $q) use ($term) {
+            $q->where('voucher_number', 'like', $term)
+              ->orWhere('description', 'like', $term);
+        });
+    }
+
     public function findWithEntries(string $id)
     {
         return AccVoucher::with(['entries.account', 'branch', 'creator', 'approver'])->findOrFail($id);
