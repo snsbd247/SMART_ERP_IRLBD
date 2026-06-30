@@ -138,17 +138,41 @@ const AccountingVouchers = () => {
   const [auditOpen, setAuditOpen] = useState(false);
   const [auditRecordId, setAuditRecordId] = useState<string | undefined>(undefined);
 
+  // Server-side filters + pagination state
+  const [filterFrom, setFilterFrom] = useState<string>("");
+  const [filterTo, setFilterTo] = useState<string>("");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(50);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Debounce search → server (300ms)
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  // Reset to page 1 whenever filters change.
+  useEffect(() => { setPage(1); }, [debouncedSearch, filterFrom, filterTo, activeTab, showDeleted]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [vRes, aRes, bRes, fRes] = await Promise.all([
-        voucherApi.list(activeTab, showDeleted),
+        voucherApi.list(activeTab, showDeleted, {
+          search: debouncedSearch || undefined,
+          from: filterFrom || undefined,
+          to: filterTo || undefined,
+          page,
+          per_page: perPage,
+        }),
         voucherApi.listAccounts(),
         voucherApi.listBranches(),
         voucherApi.listFinancialYears(),
       ]);
       const vList = (vRes.data || []) as Voucher[];
       setVouchers(vList);
+      setTotalCount(Number((vRes as any).total ?? vList.length) || 0);
       setAccounts((aRes.data || []) as Account[]);
       setBranches((bRes.data || []) as Branch[]);
       setFinYears((fRes.data || []) as FinYear[]);
@@ -161,13 +185,16 @@ const AccountingVouchers = () => {
     } catch (err: any) {
       setVouchers([]);
       setVoucherAccountsMap({});
+      setTotalCount(0);
       toast({ title: "Error loading vouchers", description: err?.message || "Unable to load accounting vouchers", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [activeTab, showDeleted, toast]);
+  }, [activeTab, showDeleted, debouncedSearch, filterFrom, filterTo, page, perPage, toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / perPage));
 
   const { accounts: accountsWithBal } = useAccountBalances();
   const balanceMap = new Map(accountsWithBal.map((a) => [a.id, { signed: a.signed_balance }]));
