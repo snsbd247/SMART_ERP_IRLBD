@@ -33,10 +33,9 @@ class VoucherController extends BaseController
         if (is_array($allowed) && count($allowed) > 0) {
             $filters['allowed_branch_ids'] = $allowed;
         }
-        // Default to a large page size so the UI sees every voucher of the
-        // active type instead of just the first 25.
+        // Reasonable default page size; UI can override per_page for "all" view.
         if (empty($filters['per_page'])) {
-            $filters['per_page'] = 10000;
+            $filters['per_page'] = 50;
         }
         $paginator = $this->repo->all($filters);
         $paginator->getCollection()->transform(function ($voucher) {
