@@ -825,6 +825,18 @@ const AccountingVouchers = () => {
                 </Table>
               </CardContent>
             </Card>
+            <div className="flex items-center justify-between mt-3 text-sm text-muted-foreground">
+              <div>
+                {totalCount === 0
+                  ? "0 results"
+                  : `Showing ${(page - 1) * perPage + 1}–${Math.min(page * perPage, totalCount)} of ${totalCount}`}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-8" disabled={page <= 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
+                <span className="tabular-nums">Page {page} of {totalPages}</span>
+                <Button variant="outline" size="sm" className="h-8" disabled={page >= totalPages || loading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+              </div>
+            </div>
           </TabsContent>
           );
         })}
