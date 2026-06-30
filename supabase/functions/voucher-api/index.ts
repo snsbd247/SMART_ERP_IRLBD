@@ -139,35 +139,46 @@ Deno.serve(async (req) => {
     switch (action) {
       // ============ LIST VOUCHERS ============
       case "list": {
-        const { voucher_type, include_deleted } = body;
+        const { voucher_type, include_deleted, search, from, to } = body;
+        const page = Math.max(1, Number(body.page) || 1);
+        const perPage = Math.min(500, Math.max(1, Number(body.per_page) || 50));
+        const offset = (page - 1) * perPage;
+
         // Branch scoping: Super Admin sees all branches; everyone else is
-        // restricted to their assigned branch (profiles.branch_id). This
-        // matches the BranchScope middleware on the Laravel side.
+        // restricted to their assigned branch (profiles.branch_id). Mirrors
+        // the BranchScope middleware on the Laravel side.
         const superAdmin = isSuperAdmin(roles) || profile?.employee_id === null;
         const scopedBranchId = !superAdmin ? (profile?.branch_id || null) : null;
 
-        // Paginate past Supabase's 1000-row cap so the list always shows
-        // every voucher of the active type — not just the first page.
-        const PAGE = 1000;
-        const data: any[] = [];
-        for (let from = 0; from < 100000; from += PAGE) {
-          let q = admin
-            .from("acc_vouchers")
-            .select("*")
-            .eq("voucher_type", voucher_type || "journal")
-            .order("created_at", { ascending: false })
-            .range(from, from + PAGE - 1);
+        // Build base filter once, then run it twice — count + page slice —
+        // so server-side pagination + search + date range stay accurate.
+        const baseFilter = (q: any) => {
+          q = q.eq("voucher_type", voucher_type || "journal");
           if (!include_deleted) q = q.is("deleted_at", null);
           if (scopedBranchId) q = q.eq("branch_id", scopedBranchId);
-          const { data: page, error } = await q;
-          if (error) return err(error.message, 500);
-          const rows = page || [];
-          data.push(...rows);
-          if (rows.length < PAGE) break;
-        }
+          if (from) q = q.gte("voucher_date", String(from));
+          if (to) q = q.lte("voucher_date", String(to));
+          if (search && String(search).trim()) {
+            const t = String(search).trim().replace(/[%,]/g, " ");
+            q = q.or(`voucher_number.ilike.%${t}%,description.ilike.%${t}%`);
+          }
+          return q;
+        };
+
+        const headRes = await baseFilter(
+          admin.from("acc_vouchers").select("id", { count: "exact", head: true })
+        );
+        if (headRes.error) return err(headRes.error.message, 500);
+        const total = headRes.count ?? 0;
+
+        const pageRes = await baseFilter(
+          admin.from("acc_vouchers").select("*")
+        ).order("created_at", { ascending: false }).range(offset, offset + perPage - 1);
+        if (pageRes.error) return err(pageRes.error.message, 500);
+        const data = pageRes.data || [];
 
         const voucherIds = data.map((v: any) => v.id);
-        if (voucherIds.length === 0) return json({ data });
+        if (voucherIds.length === 0) return json({ data, total, page, per_page: perPage });
 
         // Chunk .in() calls to avoid PostgREST "Bad Request" from URL-too-long
         const chunk = <T,>(arr: T[], size: number): T[][] => {
@@ -208,10 +219,13 @@ Deno.serve(async (req) => {
         });
 
         return json({
-          data: (data || []).map((voucher: any) => ({
+          data: data.map((voucher: any) => ({
             ...voucher,
             ledger_accounts: ledgerMap[voucher.id] || [],
           })),
+          total,
+          page,
+          per_page: perPage,
         });
       }
 
