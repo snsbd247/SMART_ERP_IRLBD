@@ -55,9 +55,10 @@ const AccountLedgerReport = () => {
     const counterMap: Record<string, string[]> = {};
     if (voucherIds.length > 0) {
       const accNameMap = new Map(accounts.map((a: any) => [a.id, a.account_name]));
-      const CHUNK = 100; // keep GET URL under Apache LimitRequestLine (~8 KB) in Laravel mode
-      for (let i = 0; i < voucherIds.length; i += CHUNK) {
-        const slice = voucherIds.slice(i, i + CHUNK);
+      const { chunkIds, getInChunkSize, logChunkMetrics } = await import("@/lib/in-chunk");
+      const chunkSize = getInChunkSize();
+      const chunks = chunkIds(voucherIds as string[], chunkSize);
+      for (const slice of chunks) {
         const { data: allEntries } = await supabase
           .from("voucher_entries")
           .select("voucher_id, account_id")
@@ -70,6 +71,7 @@ const AccountLedgerReport = () => {
           if (!counterMap[r.voucher_id].includes(name)) counterMap[r.voucher_id].push(name);
         });
       }
+      logChunkMetrics("AccountLedgerReport/counter-accounts", { totalIds: voucherIds.length, chunkSize, chunkCount: chunks.length });
     }
 
     const opening = runBal;

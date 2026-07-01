@@ -13,6 +13,7 @@
  */
 
 import { getApiBaseUrl, getLaravelAuthHeaders, getLaravelToken } from "@/lib/laravel-auth";
+import { chunkIds, getInChunkSize, isUrlTooLargeError, logChunkMetrics } from "@/lib/in-chunk";
 
 type Result<T> = { data: T | null; error: { message: string; code?: string } | null };
 
@@ -387,15 +388,31 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
       }
 
       const relatedById = new Map<string, any>();
-      const CHUNK = 100; // keep GET URL under Apache LimitRequestLine (~8 KB); UUIDs are ~36 chars each
-      for (let i = 0; i < ids.length; i += CHUNK) {
-        const slice = ids.slice(i, i + CHUNK);
-        const cols = rel.columns.includes("*") ? undefined : Array.from(new Set(["id", ...rel.columns])).join(",");
-        const qs = buildQS({ select: cols, filters: [{ col: "id", op: "in", val: slice }], orders: [], limit: slice.length });
-        const relRes = await call<any>("GET", `/v1/db/${rel.table}${qs}`);
-        if (relRes.error) continue;
-        for (const related of unwrapLaravelRows(relRes.data)) relatedById.set(String(related.id), related);
+      let chunkSize = getInChunkSize();
+      const chunks = chunkIds(ids, chunkSize);
+      for (let ci = 0; ci < chunks.length; ci++) {
+        let slice = chunks[ci];
+        let attempts = 0;
+        while (attempts < 4) {
+          const cols = rel.columns.includes("*") ? undefined : Array.from(new Set(["id", ...rel.columns])).join(",");
+          const qs = buildQS({ select: cols, filters: [{ col: "id", op: "in", val: slice }], orders: [], limit: slice.length });
+          const relRes = await call<any>("GET", `/v1/db/${rel.table}${qs}`);
+          if (relRes.error) {
+            if (isUrlTooLargeError(relRes.error) && slice.length > 10) {
+              const half = Math.max(10, Math.floor(slice.length / 2));
+              chunks.splice(ci + 1, 0, slice.slice(half));
+              slice = slice.slice(0, half);
+              chunkSize = half;
+              attempts++;
+              continue;
+            }
+            break;
+          }
+          for (const related of unwrapLaravelRows(relRes.data)) relatedById.set(String(related.id), related);
+          break;
+        }
       }
+      logChunkMetrics(`laravel-bridge/${rel.table}`, { totalIds: ids.length, chunkSize, chunkCount: chunks.length });
 
       rows.forEach((r: any) => { r[rel.alias] = relatedById.get(String(r?.[fk])) ?? null; });
     }
