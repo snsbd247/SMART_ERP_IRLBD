@@ -55,7 +55,7 @@ const AccountLedgerReport = () => {
     const counterMap: Record<string, string[]> = {};
     if (voucherIds.length > 0) {
       const accNameMap = new Map(accounts.map((a: any) => [a.id, a.account_name]));
-      const CHUNK = 500;
+      const CHUNK = 100; // keep GET URL under Apache LimitRequestLine (~8 KB) in Laravel mode
       for (let i = 0; i < voucherIds.length; i += CHUNK) {
         const slice = voucherIds.slice(i, i + CHUNK);
         const { data: allEntries } = await supabase
