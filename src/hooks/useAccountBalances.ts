@@ -69,8 +69,11 @@ export function useAccountBalances(filters: Filters = {}) {
         const vouchers = await laravelGetList(`db/acc_vouchers?${voucherFilters.toString()}`);
         const voucherIds = vouchers.map((v: any) => v.id);
         const entries: VoucherEntryBalanceRow[] = [];
-        for (let i = 0; i < voucherIds.length; i += 500) {
-          const ids = voucherIds.slice(i, i + 500).join(",");
+        // UUIDs are ~36 chars; keep URL well under Apache's default 8 KB LimitRequestLine.
+        // 100 IDs ≈ 3.7 KB of ids + overhead → safe.
+        const CHUNK = 100;
+        for (let i = 0; i < voucherIds.length; i += CHUNK) {
+          const ids = voucherIds.slice(i, i + CHUNK).join(",");
           entries.push(...await laravelGetList(`db/voucher_entries?select=account_id,debit,credit&f[voucher_id][in]=${encodeURIComponent(ids)}`));
         }
         const balMap = new Map<string, { debit: number; credit: number }>();
