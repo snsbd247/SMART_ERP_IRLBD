@@ -387,7 +387,7 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
       }
 
       const relatedById = new Map<string, any>();
-      const CHUNK = 200;
+      const CHUNK = 100; // keep GET URL under Apache LimitRequestLine (~8 KB); UUIDs are ~36 chars each
       for (let i = 0; i < ids.length; i += CHUNK) {
         const slice = ids.slice(i, i + CHUNK);
         const cols = rel.columns.includes("*") ? undefined : Array.from(new Set(["id", ...rel.columns])).join(",");
