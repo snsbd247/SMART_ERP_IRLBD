@@ -152,11 +152,11 @@ export function useAccountBalances(filters: Filters = {}) {
       }));
       setLoading(false);
 
-      // 2. Fetch approved voucher IDs that match the filters first.
+      // 2. Fetch approved+posted voucher IDs (matches Account Ledger default).
       let vq = supabase
         .from("acc_vouchers")
         .select("id")
-        .eq("status", "approved");
+        .in("status", ["approved", "posted"]);
       if (filters.branchId) vq = vq.eq("branch_id", filters.branchId);
       if (filters.financialYearId) vq = vq.eq("financial_year_id", filters.financialYearId);
       if (filters.dateFrom) vq = vq.gte("voucher_date", filters.dateFrom);
