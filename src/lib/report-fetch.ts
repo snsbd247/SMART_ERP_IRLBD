@@ -1,5 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import { isLaravelMode, getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
+import {
+  chunkIds,
+  getInChunkSize,
+  isUrlTooLargeError,
+  logChunkMetrics,
+  estimateInClauseUrlLength,
+} from "@/lib/in-chunk";
+import { toast } from "sonner";
 
 /**
  * Fetch ALL voucher_entries for a date range with the parent voucher embedded
@@ -122,27 +130,68 @@ async function fetchAllVoucherEntriesLaravel(opts: {
   const voucherIds = vouchers.map((v) => String(v.id));
 
   // 2) Fetch voucher_entries in chunks of IDs. Optionally filter by account.
+  //    Chunk size is configurable via VITE_IN_CHUNK_SIZE (see lib/in-chunk.ts).
+  //    On a 414 response we halve the chunk size and retry until success or a
+  //    minimum, so a mis-tuned deployment degrades to more (smaller) requests
+  //    instead of returning an empty report.
   const entries: any[] = [];
-  const CHUNK = 100; // UUIDs ~36 chars; stay well below Apache LimitRequestLine (8 KB).
-  for (let i = 0; i < voucherIds.length; i += CHUNK) {
-    const slice = voucherIds.slice(i, i + CHUNK);
+  let chunkSize = getInChunkSize();
+  let maxUrl = 0;
+  let toastedFallback = false;
+  const buildPath = (slice: string[]): string => {
     const parts: string[] = [
       "select=id,account_id,debit,credit,narration,voucher_id",
       `f[voucher_id][in]=${encodeURIComponent(slice.join(","))}`,
       `limit=10000`,
     ];
     if (opts.accountId) parts.push(`f[account_id][eq]=${encodeURIComponent(opts.accountId)}`);
-    try {
-      const json = await laravelGet(`db/voucher_entries?${parts.join("&")}`);
-      for (const e of unwrapList(json)) {
-        const v = voucherById.get(String(e.voucher_id));
-        if (!v) continue;
-        entries.push({ ...e, acc_vouchers: v });
+    return `db/voucher_entries?${parts.join("&")}`;
+  };
+  const chunks = chunkIds(voucherIds, chunkSize);
+  for (let ci = 0; ci < chunks.length; ci++) {
+    let slice = chunks[ci];
+    let attempts = 0;
+    while (attempts < 4) {
+      const path = buildPath(slice);
+      maxUrl = Math.max(maxUrl, estimateInClauseUrlLength(path, []));
+      try {
+        const json = await laravelGet(path);
+        for (const e of unwrapList(json)) {
+          const v = voucherById.get(String(e.voucher_id));
+          if (!v) continue;
+          entries.push({ ...e, acc_vouchers: v });
+        }
+        break;
+      } catch (err) {
+        if (isUrlTooLargeError(err) && slice.length > 10) {
+          if (!toastedFallback) {
+            toastedFallback = true;
+            toast.warning(
+              "Report request exceeded server URL limit — falling back to smaller batches.",
+            );
+            console.warn("[report-fetch] 414 fallback engaged", { chunkSize, sliceLen: slice.length });
+          }
+          const half = Math.max(10, Math.floor(slice.length / 2));
+          // Re-insert the remainder as smaller chunks at the current position.
+          const first = slice.slice(0, half);
+          const rest = slice.slice(half);
+          chunks.splice(ci + 1, 0, rest);
+          slice = first;
+          chunkSize = half;
+          attempts++;
+          continue;
+        }
+        console.error("[report-fetch] laravel entries page error", err);
+        break;
       }
-    } catch (e) {
-      console.error("[report-fetch] laravel entries page error", e);
     }
   }
+  logChunkMetrics("report-fetch/voucher_entries", {
+    totalIds: voucherIds.length,
+    chunkSize,
+    chunkCount: chunks.length,
+    maxUrlBytes: maxUrl,
+  });
 
   // 3) Sort by voucher_date asc (parity with Supabase branch).
   entries.sort((a, b) => String(a.acc_vouchers?.voucher_date || "").localeCompare(String(b.acc_vouchers?.voucher_date || "")));

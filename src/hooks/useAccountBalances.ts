@@ -69,13 +69,37 @@ export function useAccountBalances(filters: Filters = {}) {
         const vouchers = await laravelGetList(`db/acc_vouchers?${voucherFilters.toString()}`);
         const voucherIds = vouchers.map((v: any) => v.id);
         const entries: VoucherEntryBalanceRow[] = [];
-        // UUIDs are ~36 chars; keep URL well under Apache's default 8 KB LimitRequestLine.
-        // 100 IDs ≈ 3.7 KB of ids + overhead → safe.
-        const CHUNK = 100;
-        for (let i = 0; i < voucherIds.length; i += CHUNK) {
-          const ids = voucherIds.slice(i, i + CHUNK).join(",");
-          entries.push(...await laravelGetList(`db/voucher_entries?select=account_id,debit,credit&f[voucher_id][in]=${encodeURIComponent(ids)}`));
+        // Chunked to stay below Apache LimitRequestLine; see lib/in-chunk.ts.
+        const { chunkIds, getInChunkSize, isUrlTooLargeError, logChunkMetrics } = await import("@/lib/in-chunk");
+        const { toast } = await import("sonner");
+        let chunkSize = getInChunkSize();
+        let toasted = false;
+        const chunks = chunkIds(voucherIds, chunkSize);
+        for (let ci = 0; ci < chunks.length; ci++) {
+          let slice = chunks[ci];
+          let attempts = 0;
+          while (attempts < 4) {
+            try {
+              entries.push(...await laravelGetList(`db/voucher_entries?select=account_id,debit,credit&f[voucher_id][in]=${encodeURIComponent(slice.join(","))}`));
+              break;
+            } catch (err) {
+              if (isUrlTooLargeError(err) && slice.length > 10) {
+                if (!toasted) {
+                  toasted = true;
+                  toast.warning("Balances request exceeded server URL limit — falling back to smaller batches.");
+                }
+                const half = Math.max(10, Math.floor(slice.length / 2));
+                chunks.splice(ci + 1, 0, slice.slice(half));
+                slice = slice.slice(0, half);
+                chunkSize = half;
+                attempts++;
+                continue;
+              }
+              throw err;
+            }
+          }
         }
+        logChunkMetrics("useAccountBalances/laravel", { totalIds: voucherIds.length, chunkSize, chunkCount: chunks.length });
         const balMap = new Map<string, { debit: number; credit: number }>();
         entries.forEach((e) => {
           const cur = balMap.get(e.account_id) || { debit: 0, credit: 0 };
@@ -140,10 +164,13 @@ export function useAccountBalances(filters: Filters = {}) {
       const voucherIds = (vouchers || []).map((v: any) => v.id);
 
       // 3. Fetch entries for those vouchers, batched in chunks.
+      //    Supabase's PostgREST accepts larger IN clauses than Apache, but we
+      //    still centralize the size so it can be tuned per deployment.
+      const { chunkIds: chunkIdsSb, getInChunkSize: getSizeSb, logChunkMetrics: logSb } = await import("@/lib/in-chunk");
       const entries: VoucherEntryBalanceRow[] = [];
-      const CHUNK = 500;
-      for (let i = 0; i < voucherIds.length; i += CHUNK) {
-        const chunk = voucherIds.slice(i, i + CHUNK);
+      const sbChunkSize = Math.max(getSizeSb(), 500); // Supabase can safely go higher
+      const sbChunks = chunkIdsSb(voucherIds, sbChunkSize);
+      for (const chunk of sbChunks) {
         for (let from = 0; ; from += PAGE_SIZE) {
           const { data, error } = await supabase
             .from("voucher_entries")
@@ -155,6 +182,7 @@ export function useAccountBalances(filters: Filters = {}) {
           if (!data || data.length < PAGE_SIZE) break;
         }
       }
+      logSb("useAccountBalances/supabase", { totalIds: voucherIds.length, chunkSize: sbChunkSize, chunkCount: sbChunks.length });
 
       // 4. Aggregate by account
       const balMap = new Map<string, { debit: number; credit: number }>();
