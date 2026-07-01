@@ -123,7 +123,7 @@ async function fetchAllVoucherEntriesLaravel(opts: {
 
   // 2) Fetch voucher_entries in chunks of IDs. Optionally filter by account.
   const entries: any[] = [];
-  const CHUNK = 200;
+  const CHUNK = 100; // UUIDs ~36 chars; stay well below Apache LimitRequestLine (8 KB).
   for (let i = 0; i < voucherIds.length; i += CHUNK) {
     const slice = voucherIds.slice(i, i + CHUNK);
     const parts: string[] = [
