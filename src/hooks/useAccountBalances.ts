@@ -61,7 +61,9 @@ export function useAccountBalances(filters: Filters = {}) {
         const accs = await laravelGetList("db/chart_of_accounts?order[account_code]=asc");
         const voucherFilters = new URLSearchParams();
         voucherFilters.set("select", "id");
-        voucherFilters.set("f[status][eq]", "approved");
+        // Match Account Ledger default (approved + posted) so the "Curr Bal"
+        // shown on the New Voucher screen equals the ledger closing balance.
+        voucherFilters.set("f[status][in]", "approved,posted");
         if (filters.branchId) voucherFilters.set("f[branch_id][eq]", filters.branchId);
         if (filters.financialYearId) voucherFilters.set("f[financial_year_id][eq]", filters.financialYearId);
         if (filters.dateFrom) voucherFilters.set("f[voucher_date][gte]", filters.dateFrom);
