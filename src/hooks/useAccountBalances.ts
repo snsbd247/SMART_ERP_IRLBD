@@ -61,7 +61,9 @@ export function useAccountBalances(filters: Filters = {}) {
         const accs = await laravelGetList("db/chart_of_accounts?order[account_code]=asc");
         const voucherFilters = new URLSearchParams();
         voucherFilters.set("select", "id");
-        voucherFilters.set("f[status][eq]", "approved");
+        // Match Account Ledger default (approved + posted) so the "Curr Bal"
+        // shown on the New Voucher screen equals the ledger closing balance.
+        voucherFilters.set("f[status][in]", "approved,posted");
         if (filters.branchId) voucherFilters.set("f[branch_id][eq]", filters.branchId);
         if (filters.financialYearId) voucherFilters.set("f[financial_year_id][eq]", filters.financialYearId);
         if (filters.dateFrom) voucherFilters.set("f[voucher_date][gte]", filters.dateFrom);
@@ -150,11 +152,11 @@ export function useAccountBalances(filters: Filters = {}) {
       }));
       setLoading(false);
 
-      // 2. Fetch approved voucher IDs that match the filters first.
+      // 2. Fetch approved+posted voucher IDs (matches Account Ledger default).
       let vq = supabase
         .from("acc_vouchers")
         .select("id")
-        .eq("status", "approved");
+        .in("status", ["approved", "posted"]);
       if (filters.branchId) vq = vq.eq("branch_id", filters.branchId);
       if (filters.financialYearId) vq = vq.eq("financial_year_id", filters.financialYearId);
       if (filters.dateFrom) vq = vq.gte("voucher_date", filters.dateFrom);
