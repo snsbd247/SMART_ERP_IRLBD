@@ -213,7 +213,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
               </TableRow>
             ) : pageEntries.map((e) => (
               <TableRow key={e.id}>
-                <TableCell>{e.voucher_date}</TableCell>
+                <TableCell>{isoToDmy(e.voucher_date)}</TableCell>
                 <TableCell><Badge variant="secondary" className="text-xs">{labelVoucherType(e.voucher_type)}</Badge></TableCell>
                 <TableCell className="font-mono text-xs">{e.voucher_number}</TableCell>
                 <TableCell className="text-muted-foreground">{e.description || e.narration || "—"}</TableCell>
