@@ -399,8 +399,7 @@ const AccountingVouchers = () => {
   };
 
   const canEditVoucher = (v: Voucher) => {
-    if (v.status === "draft" || v.status === "rejected") return canEditForType(activeTab);
-    if (v.status === "approved") return isSuperAdmin;
+    if (v.status === "draft" || v.status === "rejected" || v.status === "approved") return canEditForType(v.voucher_type || activeTab);
     return false;
   };
 
@@ -466,7 +465,7 @@ const AccountingVouchers = () => {
     try {
       if (editingVoucher) {
         // Editing existing voucher
-        if (editingVoucher.status === "approved" && isSuperAdmin) {
+        if (editingVoucher.status === "approved" && isSuperAdmin && !canEditForType(editingVoucher.voucher_type || activeTab)) {
           await voucherApi.editApproved({
             id: editingVoucher.id,
             voucher_date: formDate,
