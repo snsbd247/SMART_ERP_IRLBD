@@ -75,16 +75,19 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
       let runBal = signedOpeningBalance(openingBalance, openingBalanceType);
 
       const mapped = (data || []).map((e: any) => {
+        // acc_vouchers may come as object (Supabase FK embed) or array (PostgREST
+        // when relation isn't uniquely detected, or the Laravel bridge stitch).
+        const v = Array.isArray(e.acc_vouchers) ? e.acc_vouchers[0] : e.acc_vouchers;
         runBal += Number(e.debit) - Number(e.credit);
         return {
           id: e.id,
           debit: Number(e.debit),
           credit: Number(e.credit),
           narration: e.narration,
-          voucher_number: e.acc_vouchers?.voucher_number || "",
-          voucher_date: e.acc_vouchers?.voucher_date || "",
-          voucher_type: e.acc_vouchers?.voucher_type || "",
-          description: e.acc_vouchers?.description || "",
+          voucher_number: v?.voucher_number || "",
+          voucher_date: (v?.voucher_date || "").slice(0, 10),
+          voucher_type: v?.voucher_type || "",
+          description: v?.description || "",
           running_balance: runBal,
         };
       });
