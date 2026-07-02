@@ -63,9 +63,8 @@ export function useAccountBalances(filters: Filters = {}) {
         const accs = await laravelGetList("db/chart_of_accounts?order[account_code]=asc");
         const voucherFilters = new URLSearchParams();
         voucherFilters.set("select", "id");
-        // Match Account Ledger default (approved + posted) so the "Curr Bal"
-        // shown on the New Voucher screen equals the ledger closing balance.
-        voucherFilters.set("f[status][in]", "approved,posted");
+        // Shared with Account Ledger — see src/lib/shared-balance.ts.
+        voucherFilters.set("f[status][in]", BALANCE_VOUCHER_STATUSES.join(","));
         if (filters.branchId) voucherFilters.set("f[branch_id][eq]", filters.branchId);
         if (filters.financialYearId) voucherFilters.set("f[financial_year_id][eq]", filters.financialYearId);
         if (filters.dateFrom) voucherFilters.set("f[voucher_date][gte]", filters.dateFrom);
@@ -97,12 +96,15 @@ export function useAccountBalances(filters: Filters = {}) {
                 slice = slice.slice(0, half);
                 chunkSize = half;
                 attempts++;
+                emitChunkRetry({ context: "useAccountBalances", phase: "retrying", chunkSize: half, retryCount: attempts, message: String((err as any)?.message ?? "") });
                 continue;
               }
+              emitChunkRetry({ context: "useAccountBalances", phase: "failed", chunkSize, retryCount: attempts, message: String((err as any)?.message ?? "") });
               throw err;
             }
           }
         }
+        if (toasted) emitChunkRetry({ context: "useAccountBalances", phase: "success", chunkSize, retryCount: 0 });
         logChunkMetrics("useAccountBalances/laravel", { totalIds: voucherIds.length, chunkSize, chunkCount: chunks.length });
         const balMap = new Map<string, { debit: number; credit: number }>();
         entries.forEach((e) => {
@@ -158,7 +160,7 @@ export function useAccountBalances(filters: Filters = {}) {
       let vq = supabase
         .from("acc_vouchers")
         .select("id")
-        .in("status", ["approved", "posted"]);
+        .in("status", [...BALANCE_VOUCHER_STATUSES]);
       if (filters.branchId) vq = vq.eq("branch_id", filters.branchId);
       if (filters.financialYearId) vq = vq.eq("financial_year_id", filters.financialYearId);
       if (filters.dateFrom) vq = vq.gte("voucher_date", filters.dateFrom);
