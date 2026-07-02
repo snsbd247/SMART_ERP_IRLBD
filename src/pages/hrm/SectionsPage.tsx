@@ -177,6 +177,34 @@ export default function SectionsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkImportDialog open={importOpen} onOpenChange={setImportOpen} config={{
+        title: "Bulk Import Sections",
+        table: "sections",
+        templateFilename: "sections_template.csv",
+        helpText: "Branch and Department must match existing active names.",
+        columns: [
+          { key: "name", label: "Name", required: true, example: "Cutting" },
+          { key: "branch", label: "Branch", example: "Head Office" },
+          { key: "department", label: "Department", example: "Production" },
+          { key: "description", label: "Description", example: "" },
+          { key: "status", label: "Status", example: "active" },
+        ],
+        dedupeKey: (r) => r.name?.toLowerCase(),
+        transform: (r) => {
+          const branch_id = r.branch ? branches.find(b => b.name.toLowerCase() === r.branch.toLowerCase())?.id : null;
+          if (r.branch && !branch_id) throw new Error(`Branch not found: ${r.branch}`);
+          const department_id = r.department ? departments.find(d => d.name.toLowerCase() === r.department.toLowerCase())?.id : null;
+          if (r.department && !department_id) throw new Error(`Department not found: ${r.department}`);
+          return {
+            name: r.name,
+            branch_id: branch_id || null,
+            department_id: department_id || null,
+            description: r.description || null,
+            status: (r.status || "active").toLowerCase(),
+          };
+        },
+        onSuccess: fetchAll,
+      }} />
     </div>
   );
 }
