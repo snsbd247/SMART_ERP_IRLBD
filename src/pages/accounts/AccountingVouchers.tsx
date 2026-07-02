@@ -1236,7 +1236,56 @@ const AccountingVouchers = () => {
         recordId={auditRecordId}
         title={auditRecordId ? "Voucher History" : "Vouchers Audit Log"}
       />
+
+      {/* Change Type (Transfer) Dialog */}
+      <Dialog open={!!changeTypeVoucher} onOpenChange={(o) => !o && setChangeTypeVoucher(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Voucher Type (Transfer)</DialogTitle>
+          </DialogHeader>
+          {changeTypeVoucher && (
+            <div className="space-y-3">
+              <div className="text-sm text-muted-foreground">
+                <div><span className="font-medium text-foreground">{changeTypeVoucher.voucher_number}</span> — currently <span className="uppercase">{changeTypeVoucher.voucher_type}</span></div>
+                <div className="mt-1 text-xs">
+                  The old voucher will be marked as <b>transferred</b> (soft-deleted). Its serial <b>{changeTypeVoucher.voucher_number}</b> will be released and used by the next new <b>{changeTypeVoucher.voucher_type}</b> voucher.
+                </div>
+              </div>
+              <div>
+                <Label>New Type</Label>
+                <Select value={changeTypeTarget} onValueChange={setChangeTypeTarget}>
+                  <SelectTrigger><SelectValue placeholder="Select new type" /></SelectTrigger>
+                  <SelectContent>
+                    {VOUCHER_TYPES.filter((t) => t.id !== changeTypeVoucher.voucher_type && canCreateForType(t.id)).map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Reason <span className="text-destructive">*</span></Label>
+                <Textarea
+                  value={changeTypeReason}
+                  onChange={(e) => setChangeTypeReason(e.target.value)}
+                  placeholder="Why is this voucher being transferred to a different type?"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setChangeTypeVoucher(null)} disabled={changeTypeSaving}>Cancel</Button>
+            <Button
+              onClick={handleChangeType}
+              disabled={changeTypeSaving || !changeTypeTarget || !changeTypeReason.trim()}
+            >
+              {changeTypeSaving ? "Transferring..." : "Transfer Voucher"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 };
 
