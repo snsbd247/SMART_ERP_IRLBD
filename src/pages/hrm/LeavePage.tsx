@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Check, X } from "lucide-react";
+import { Plus, Check, X, Upload } from "lucide-react";
+import { BulkImportDialog } from "@/components/hrm/BulkImportDialog";
 
 interface LeaveType { id: string; name: string; days_per_year: number; }
 interface Employee { id: string; employee_code: string; first_name: string; last_name: string; }
