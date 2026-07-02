@@ -44,7 +44,10 @@ class AccountingService
                 'created_by' => $data['created_by'] ?? null,
                 'approved_by' => $autoApprove ? ($data['created_by'] ?? null) : null,
                 'approved_at' => $autoApprove ? now() : null,
+                'source_module' => $data['source_module'] ?? null,
+                'transferred_from_id' => $data['transferred_from_id'] ?? null,
             ]);
+
 
             foreach ($entries as $idx => $entry) {
                 VoucherEntry::create([
