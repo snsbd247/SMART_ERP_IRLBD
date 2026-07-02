@@ -135,10 +135,15 @@ php_ext_package_name() {
     *) echo "php${PHP_VERSION}-${ext}" ;;
   esac
 }
+php_ext_loaded() {
+  # Authoritative check: extension_loaded() works regardless of `php -m` formatting
+  # (some extensions like pdo_mysql appear under [PDO_Drivers], not as their own line).
+  php -r "exit(extension_loaded('$1') ? 0 : 1);" >/dev/null 2>&1
+}
 MISSING_EXT=()
 MISSING_BUILTIN_EXT=()
 for ext in "${REQUIRED_PHP_EXT[@]}"; do
-  if ! php -m 2>/dev/null | grep -qi "^${ext}$"; then
+  if ! php_ext_loaded "${ext}"; then
     if php_ext_is_builtin "${ext}"; then
       MISSING_BUILTIN_EXT+=("${ext}")
     else
