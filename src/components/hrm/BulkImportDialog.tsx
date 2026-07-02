@@ -142,29 +142,33 @@ export function BulkImportDialog({ open, onOpenChange, config }: Props) {
   const runImport = async () => {
     const valid = parsed.filter(r => r.payload && !r.error);
     if (!valid.length) { toast.error("No valid rows"); return; }
-    setImporting(true); setProgress(0); cancelRef.current = false;
+    setImporting(true); setProgress(0); setProcessed(0); setTotal(valid.length); cancelRef.current = false;
     const errors: ParsedRow[] = parsed.filter(r => r.error);
     let ok = 0;
+    let cancelled = false;
 
     for (let i = 0; i < valid.length; i += CHUNK) {
-      if (cancelRef.current) break;
+      if (cancelRef.current) { cancelled = true; break; }
       const chunk = valid.slice(i, i + CHUNK);
       const { error } = await supabase.from(config.table as any).insert(chunk.map(r => r.payload));
       if (error) {
-        // Retry per-row to isolate failures
         for (const r of chunk) {
+          if (cancelRef.current) { cancelled = true; break; }
           const { error: e2 } = await supabase.from(config.table as any).insert(r.payload as any);
           if (e2) errors.push({ ...r, error: e2.message }); else ok++;
         }
       } else {
         ok += chunk.length;
       }
-      setProgress(Math.round(((i + chunk.length) / valid.length) * 100));
+      const done = Math.min(i + chunk.length, valid.length);
+      setProcessed(done);
+      setProgress(Math.round((done / valid.length) * 100));
     }
 
-    setResult({ ok, fail: errors.length, errors });
+    setResult({ ok, fail: errors.length, errors, cancelled });
     setImporting(false);
-    if (ok) toast.success(`Imported ${ok} row${ok > 1 ? "s" : ""}`);
+    if (cancelled) toast.warning(`Import cancelled. ${ok} imported before stop.`);
+    else if (ok) toast.success(`Imported ${ok} row${ok > 1 ? "s" : ""}`);
     if (errors.length) toast.error(`${errors.length} row${errors.length > 1 ? "s" : ""} failed`);
     if (ok && config.onSuccess) config.onSuccess();
   };
