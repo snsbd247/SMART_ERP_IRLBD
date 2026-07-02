@@ -1388,7 +1388,59 @@ const AccountingVouchers = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk delete */}
+      <Dialog open={bulkDeleteOpen} onOpenChange={(o) => !bulkBusy && setBulkDeleteOpen(o)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete {selectedDeletable.length} voucher(s)?</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            Selected vouchers will be moved to the trash. Only vouchers you have permission to delete will be processed.
+          </div>
+          <div className="space-y-1">
+            <Label>Reason (optional)</Label>
+            <Textarea value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder="Bulk delete" rows={2} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDeleteOpen(false)} disabled={bulkBusy}>Cancel</Button>
+            <Button variant="destructive" onClick={runBulkDelete} disabled={bulkBusy || selectedDeletable.length === 0}>
+              {bulkBusy ? "Deleting..." : `Delete ${selectedDeletable.length}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk change type */}
+      <Dialog open={bulkChangeOpen} onOpenChange={(o) => !bulkBusy && setBulkChangeOpen(o)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Change type for {selectedTransferable.length} voucher(s)</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            Each selected voucher will be soft-deleted (marked <b>transferred</b>) and re-created under the target type. Original serials are released for reuse.
+          </div>
+          <div className="space-y-1">
+            <Label>Target voucher type</Label>
+            <Select value={bulkTargetType} onValueChange={setBulkTargetType}>
+              <SelectTrigger><SelectValue placeholder="Select target type" /></SelectTrigger>
+              <SelectContent>
+                {VOUCHER_TYPES.filter((t) => canCreateForType(t.id)).map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Reason (required)</Label>
+            <Textarea value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder="Reason for bulk transfer" rows={2} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkChangeOpen(false)} disabled={bulkBusy}>Cancel</Button>
+            <Button onClick={runBulkChangeType} disabled={bulkBusy || !bulkTargetType || !bulkReason.trim()}>
+              {bulkBusy ? "Transferring..." : "Transfer Selected"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
 
   );
 };
