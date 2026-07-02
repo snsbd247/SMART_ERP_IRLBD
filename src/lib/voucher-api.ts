@@ -22,9 +22,20 @@ async function laravelFetch<T = any>(path: string, init?: RequestInit): Promise<
     },
   });
   const text = await res.text();
-  const json = text ? JSON.parse(text) : null;
+  let json: any = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    json = { message: text || `HTTP ${res.status}` };
+  }
   if (!res.ok) {
-    const msg = json?.message || json?.error || `HTTP ${res.status}`;
+    const validationMessages = json?.errors && typeof json.errors === "object"
+      ? Object.entries(json.errors)
+          .flatMap(([field, value]) => Array.isArray(value) ? value.map((v) => `${field}: ${v}`) : [`${field}: ${String(value)}`])
+      : [];
+    const msg = [json?.message || json?.error || `HTTP ${res.status}`, ...validationMessages]
+      .filter(Boolean)
+      .join("\n");
     const err = new Error(msg) as Error & {
       status?: number;
       correlationId?: string;
@@ -32,8 +43,8 @@ async function laravelFetch<T = any>(path: string, init?: RequestInit): Promise<
       payload?: any;
     };
     err.status = res.status;
-    err.correlationId = json?.correlation_id ?? json?.data?.correlation_id;
-    err.requiredAnyOf = json?.required_any_of ?? json?.data?.required_any_of;
+    err.correlationId = json?.correlation_id ?? json?.data?.correlation_id ?? json?.errors?.correlation_id;
+    err.requiredAnyOf = json?.required_any_of ?? json?.data?.required_any_of ?? json?.errors?.required_any_of;
     err.payload = json;
     throw err;
   }
@@ -43,7 +54,12 @@ async function laravelFetch<T = any>(path: string, init?: RequestInit): Promise<
 async function invokeEdge<T = any>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(FUNCTION_NAME, { body });
   if (error) throw new Error(error.message || "API error");
-  if ((data as any)?.error) throw new Error((data as any).error);
+  if ((data as any)?.error) {
+    const err = new Error((data as any).error) as Error & { status?: number; correlationId?: string };
+    err.status = (data as any)?.status;
+    err.correlationId = (data as any)?.correlation_id;
+    throw err;
+  }
   return data as T;
 }
 
@@ -125,10 +141,10 @@ export const voucherApi = {
 
   listFinancialYears: async () => {
     if (isLaravelMode()) {
-      const json = await laravelFetch<any>("db/financial_years?select=id,name&order[start_date]=desc");
+      const json = await laravelFetch<any>("db/financial_years?select=id,name,start_date,end_date,is_active&order[start_date]=desc");
       return { data: unwrapList(json) } as { data: any[] };
     }
-    return supabase.from("financial_years").select("id, name");
+    return supabase.from("financial_years").select("id, name, start_date, end_date, is_active").order("start_date", { ascending: false });
   },
 
   create: async (params: {
@@ -170,8 +186,11 @@ export const voucherApi = {
       const json = await laravelFetch<any>(`vouchers/${id}`, { method: "PUT", body: JSON.stringify(body) });
       return { voucher: unwrapItem(json) };
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.voucher_date)) {
+      throw new Error("Voucher date is required and must be YYYY-MM-DD.");
+    }
     const totalDebit = body.entries.reduce((s, e) => s + (Number(e.debit) || 0), 0);
-    await supabase.from("acc_vouchers").update({
+    const { error: voucherError } = await supabase.from("acc_vouchers").update({
       voucher_date: body.voucher_date,
       branch_id: body.branch_id || null,
       financial_year_id: body.financial_year_id || null,
@@ -180,8 +199,11 @@ export const voucherApi = {
       status: body.submit ? "pending" : "draft",
       updated_at: new Date().toISOString(),
     }).eq("id", id);
-    await supabase.from("voucher_entries").delete().eq("voucher_id", id);
-    await supabase.from("voucher_entries").insert(body.entries.map((e, i) => ({ ...e, voucher_id: id, sort_order: i })));
+    if (voucherError) throw voucherError;
+    const { error: deleteError } = await supabase.from("voucher_entries").delete().eq("voucher_id", id);
+    if (deleteError) throw deleteError;
+    const { error: insertError } = await supabase.from("voucher_entries").insert(body.entries.map((e, i) => ({ ...e, voucher_id: id, sort_order: i })));
+    if (insertError) throw insertError;
     return { voucher: { id } };
   },
 

@@ -47,7 +47,7 @@ const VOUCHER_TYPES = [
 
 interface Account { id: string; account_name: string; account_code: string; }
 interface Branch { id: string; name: string; }
-interface FinYear { id: string; name: string; }
+interface FinYear { id: string; name: string; start_date?: string; end_date?: string; is_active?: boolean | number; }
 interface EntryRow { id: string; account_id: string; dr_cr: "dr" | "cr"; debit: number; credit: number; narration: string; }
 interface Voucher {
   id: string; voucher_number: string; voucher_type: string; voucher_date: string;
@@ -106,6 +106,7 @@ const AccountingVouchers = () => {
   const [formDate, setFormDate] = useState(new Date().toISOString().slice(0, 10));
   const [formBranch, setFormBranch] = useState("");
   const [formFinYear, setFormFinYear] = useState("");
+  const [manualFinYear, setManualFinYear] = useState(false);
   const [formDesc, setFormDesc] = useState("");
   // True until the user manually edits the voucher description. While true,
   // the description is auto-derived from entry narrations as "dr | cr".
@@ -230,6 +231,26 @@ const AccountingVouchers = () => {
   const totalCredit = entries.reduce((s, e) => s + (e.credit || 0), 0);
   const isBalanced = totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.01;
 
+  const matchingFinYearForDate = useCallback((isoDate: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return undefined;
+    return finYears.find((fy) => fy.start_date && fy.end_date && fy.start_date <= isoDate && fy.end_date >= isoDate);
+  }, [finYears]);
+
+  const handleFormDateChange = (nextDate: string) => {
+    setFormDate(nextDate);
+    const matching = matchingFinYearForDate(nextDate);
+    if (matching) {
+      setFormFinYear(matching.id);
+      setManualFinYear(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!formDate || !finYears.length || manualFinYear) return;
+    const matching = matchingFinYearForDate(formDate);
+    if (matching && matching.id !== formFinYear) setFormFinYear(matching.id);
+  }, [formDate, finYears, formFinYear, manualFinYear, matchingFinYearForDate]);
+
   const addEntry = () => {
     setEntries((prev) => [...prev, { id: String(Date.now()), account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" }]);
   };
@@ -338,8 +359,9 @@ const AccountingVouchers = () => {
 
   const openCreate = () => {
     setEditingVoucher(null);
-    setFormDate(new Date().toISOString().slice(0, 10));
-    setFormBranch(""); setFormFinYear(""); setFormDesc(""); setDescAuto(true);
+    const today = new Date().toISOString().slice(0, 10);
+    setFormDate(today);
+    setFormBranch(""); setFormFinYear(matchingFinYearForDate(today)?.id || ""); setManualFinYear(false); setFormDesc(""); setDescAuto(true);
     setEntries([
       { id: "1", account_id: "", dr_cr: "dr", debit: 0, credit: 0, narration: "" },
       { id: "2", account_id: "", dr_cr: "cr", debit: 0, credit: 0, narration: "" },
@@ -362,7 +384,8 @@ const AccountingVouchers = () => {
     setEditingVoucher(v);
     setFormDate(toDateInputValue(v.voucher_date));
     setFormBranch(v.branch_id || "");
-    setFormFinYear(v.financial_year_id || "");
+    setFormFinYear(matchingFinYearForDate(toDateInputValue(v.voucher_date))?.id || v.financial_year_id || "");
+    setManualFinYear(false);
     setFormDesc(v.description || ""); setDescAuto(false);
     setEntries((data || []).map((e: any) => ({
       id: e.id,
@@ -376,8 +399,7 @@ const AccountingVouchers = () => {
   };
 
   const canEditVoucher = (v: Voucher) => {
-    if (v.status === "draft" || v.status === "rejected") return canEditForType(activeTab);
-    if (v.status === "approved") return isSuperAdmin;
+    if (v.status === "draft" || v.status === "rejected" || v.status === "approved") return canEditForType(v.voucher_type || activeTab);
     return false;
   };
 
@@ -399,6 +421,20 @@ const AccountingVouchers = () => {
         variant: "destructive",
       });
       return;
+    }
+    const matchingFinYear = matchingFinYearForDate(formDate);
+    if (finYears.length > 0 && !matchingFinYear) {
+      toast({
+        title: "Financial year will be resolved",
+        description: `No loaded financial year covers ${formatDateDMY(formDate)}. The server will create/use the matching year while saving.`,
+      });
+    }
+    if (matchingFinYear && formFinYear && formFinYear !== matchingFinYear.id) {
+      toast({
+        title: "Financial year corrected",
+        description: `${formatDateDMY(formDate)} belongs to ${matchingFinYear.name}; saving with the matching year.`,
+      });
+      setFormFinYear(matchingFinYear.id);
     }
     if (!isBalanced) {
       toast({ title: "Debit and Credit must be equal", variant: "destructive" });
@@ -423,16 +459,18 @@ const AccountingVouchers = () => {
       toast({ title: "Heads up — contra posting", description: nature.warnings.map((i) => i.message).join("\n") });
     }
 
+    const resolvedFinancialYearId = matchingFinYear?.id || (!finYears.length ? formFinYear || null : null);
+
     setSaving(true);
     try {
       if (editingVoucher) {
         // Editing existing voucher
-        if (editingVoucher.status === "approved" && isSuperAdmin) {
+        if (editingVoucher.status === "approved" && isSuperAdmin && !canEditForType(editingVoucher.voucher_type || activeTab)) {
           await voucherApi.editApproved({
             id: editingVoucher.id,
             voucher_date: formDate,
             branch_id: formBranch || null,
-            financial_year_id: formFinYear || null,
+            financial_year_id: resolvedFinancialYearId,
             description: formDesc,
             entries: validEntries.map((e) => ({
               account_id: e.account_id,
@@ -447,7 +485,7 @@ const AccountingVouchers = () => {
             id: editingVoucher.id,
             voucher_date: formDate,
             branch_id: formBranch || null,
-            financial_year_id: formFinYear || null,
+            financial_year_id: resolvedFinancialYearId,
             description: formDesc,
             entries: validEntries.map((e) => ({
               account_id: e.account_id,
@@ -464,7 +502,7 @@ const AccountingVouchers = () => {
           voucher_type: activeTab,
           voucher_date: formDate,
           branch_id: formBranch || undefined,
-          financial_year_id: formFinYear || undefined,
+          financial_year_id: resolvedFinancialYearId || undefined,
           description: formDesc,
           entries: validEntries.map((e) => ({
             account_id: e.account_id,
@@ -1045,7 +1083,7 @@ const AccountingVouchers = () => {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Date</Label>
-                <DateInput value={formDate} onChange={(v) => setFormDate(v)} />
+                <DateInput value={formDate} onChange={handleFormDateChange} />
               </div>
               <div className="space-y-2">
                 <Label>Branch</Label>
@@ -1058,7 +1096,7 @@ const AccountingVouchers = () => {
               </div>
               <div className="space-y-2">
                 <Label>Financial Year</Label>
-                <Select value={formFinYear} onValueChange={setFormFinYear}>
+                <Select value={formFinYear} onValueChange={(v) => { setFormFinYear(v); setManualFinYear(true); }}>
                   <SelectTrigger><SelectValue placeholder="Select year" /></SelectTrigger>
                   <SelectContent>
                     {finYears.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
