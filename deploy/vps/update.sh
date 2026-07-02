@@ -100,12 +100,38 @@ step "tooling" ok "git/php/composer/node/npm/rsync/mysqldump present"
 # ---------- PHP extensions auto-install ----------
 CURRENT_STEP="php-extensions"
 REQUIRED_PHP_EXT=(bcmath ctype curl dom fileinfo gd intl mbstring mysql openssl pdo tokenizer xml zip)
+PHP_BUILTIN_EXT=(ctype fileinfo openssl pdo tokenizer)
+php_ext_is_builtin() {
+  local needle="$1"
+  local ext
+  for ext in "${PHP_BUILTIN_EXT[@]}"; do
+    [[ "$ext" == "$needle" ]] && return 0
+  done
+  return 1
+}
+php_ext_package_name() {
+  local ext="$1"
+  case "$ext" in
+    dom) echo "php${PHP_VERSION}-xml" ;;
+    mysql) echo "php${PHP_VERSION}-mysql" ;;
+    *) echo "php${PHP_VERSION}-${ext}" ;;
+  esac
+}
 MISSING_EXT=()
+MISSING_BUILTIN_EXT=()
 for ext in "${REQUIRED_PHP_EXT[@]}"; do
   if ! php -m 2>/dev/null | grep -qi "^${ext}$"; then
-    MISSING_EXT+=("php${PHP_VERSION}-${ext}")
+    if php_ext_is_builtin "${ext}"; then
+      MISSING_BUILTIN_EXT+=("${ext}")
+    else
+      pkg="$(php_ext_package_name "${ext}")"
+      [[ " ${MISSING_EXT[*]} " == *" ${pkg} "* ]] || MISSING_EXT+=("${pkg}")
+    fi
   fi
 done
+if (( ${#MISSING_BUILTIN_EXT[@]} > 0 )); then
+  warn "PHP built-in extensions not visible in CLI: ${MISSING_BUILTIN_EXT[*]} (not installable via apt; continuing)."
+fi
 if (( ${#MISSING_EXT[@]} > 0 )); then
   log "Installing missing PHP extensions: ${MISSING_EXT[*]}"
   if command -v apt-get >/dev/null 2>&1; then
