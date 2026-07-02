@@ -99,7 +99,7 @@ step "tooling" ok "git/php/composer/node/npm/rsync/mysqldump present"
 
 # ---------- PHP extensions auto-install ----------
 CURRENT_STEP="php-extensions"
-REQUIRED_PHP_EXT=(bcmath ctype curl dom fileinfo gd intl mbstring mysql openssl pdo tokenizer xml zip)
+REQUIRED_PHP_EXT=(bcmath ctype curl dom fileinfo gd intl mbstring openssl pdo pdo_mysql tokenizer xml zip)
 PHP_BUILTIN_EXT=(ctype fileinfo openssl pdo tokenizer)
 php_ext_is_builtin() {
   local needle="$1"
@@ -113,7 +113,7 @@ php_ext_package_name() {
   local ext="$1"
   case "$ext" in
     dom) echo "php${PHP_VERSION}-xml" ;;
-    mysql) echo "php${PHP_VERSION}-mysql" ;;
+    mysqli|mysqlnd|pdo_mysql) echo "php${PHP_VERSION}-mysql" ;;
     *) echo "php${PHP_VERSION}-${ext}" ;;
   esac
 }
@@ -155,7 +155,16 @@ if (( ${#MISSING_EXT[@]} > 0 )); then
     log "  apt-get install ${MISSING_EXT[*]}..."
     if timeout 300 apt-get install "${APT_OPTS[@]}" "${MISSING_EXT[@]}" </dev/null 2>&1 | tail -n 40; then
       systemctl reload "php${PHP_VERSION}-fpm" 2>/dev/null || true
-      step "php-extensions" ok "installed: ${MISSING_EXT[*]}"
+      STILL_MISSING=()
+      for ext in "${REQUIRED_PHP_EXT[@]}"; do
+        php -m 2>/dev/null | grep -qi "^${ext}$" || STILL_MISSING+=("${ext}")
+      done
+      if (( ${#STILL_MISSING[@]} > 0 )); then
+        warn "PHP extensions still not visible after install: ${STILL_MISSING[*]}"
+        step "php-extensions" warn "installed packages: ${MISSING_EXT[*]}; still missing: ${STILL_MISSING[*]}"
+      else
+        step "php-extensions" ok "installed: ${MISSING_EXT[*]}"
+      fi
     else
       warn "Some PHP extensions failed to install (continuing)."
       step "php-extensions" warn "install failed or timed out: ${MISSING_EXT[*]}"
