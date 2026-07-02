@@ -43,14 +43,30 @@ export function useReportData() {
       const [aRes, bRes, fyRes] = await Promise.all([
         supabase.from("chart_of_accounts").select("*").order("account_code"),
         supabase.from("branches").select("id, name"),
-        supabase.from("financial_years").select("start_date, end_date").eq("is_active", true).maybeSingle(),
+        // Fetch ALL active FYs — multiple can coexist (e.g. after auto-provisioning
+        // a new year). Pick the one containing today so the default range shows
+        // the period the user is actually operating in.
+        supabase.from("financial_years").select("start_date, end_date").eq("is_active", true),
       ]);
       setAccounts((aRes.data || []) as Account[]);
       setBranches((bRes.data || []) as Branch[]);
-      const activeYear = fyRes.data as FinancialYear | null;
-      if (activeYear?.start_date && activeYear?.end_date) {
-        setDateFrom(activeYear.start_date);
-        setDateTo(activeYear.end_date);
+      const activeYears = (fyRes.data || []) as FinancialYear[];
+      const today = new Date().toISOString().slice(0, 10);
+      const sortedByStart = [...activeYears].sort((a, b) =>
+        (a.start_date || "").localeCompare(b.start_date || ""),
+      );
+      const containsToday = sortedByStart.find(
+        (fy) => fy.start_date && fy.end_date && fy.start_date <= today && fy.end_date >= today,
+      );
+      // Default range: from the earliest active FY start to the end of the FY
+      // that contains today (or the latest active FY). Covers users who keep
+      // last year still active while the new year is running so the report
+      // isn't empty on first open.
+      const from = sortedByStart[0]?.start_date;
+      const latestEnd = (containsToday ?? sortedByStart[sortedByStart.length - 1])?.end_date;
+      if (from && latestEnd) {
+        setDateFrom(from);
+        setDateTo(latestEnd);
       }
     };
     init();
