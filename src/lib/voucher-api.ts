@@ -197,6 +197,9 @@ export const voucherApi = {
 
   editApproved: async (params: {
     id: string;
+    voucher_date?: string;
+    branch_id?: string | null;
+    financial_year_id?: string | null;
     description?: string;
     entries?: Array<{ account_id: string; debit: number; credit: number; narration: string }>;
   }) => {

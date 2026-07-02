@@ -64,6 +64,19 @@ describe("voucherApi.list — Laravel mode", () => {
     const url = String((globalThis.fetch as any).mock.calls[0][0]);
     expect(url).toContain("include_deleted=1");
   });
+
+  it("sends voucher_date when editing an approved voucher", async () => {
+    await voucherApi.editApproved({
+      id: "11111111-1111-1111-1111-111111111111",
+      voucher_date: "2025-07-02",
+      branch_id: null,
+      financial_year_id: null,
+      description: "date correction",
+      entries: [],
+    });
+    const [, init] = (globalThis.fetch as any).mock.calls[0];
+    expect(String(init.body)).toContain('"voucher_date":"2025-07-02"');
+  });
 });
 
 describe("voucherApi.list — Supabase mode", () => {
@@ -90,6 +103,25 @@ describe("voucherApi.list — Supabase mode", () => {
       to: "2025-07-31",
       page: 2,
       per_page: 25,
+    });
+  });
+
+  it("forwards voucher_date to the edge function for approved voucher edits", async () => {
+    await voucherApi.editApproved({
+      id: "22222222-2222-2222-2222-222222222222",
+      voucher_date: "2025-07-02",
+      branch_id: null,
+      financial_year_id: null,
+      description: "date correction",
+      entries: [],
+    });
+    const body = (supabase.functions.invoke as any).mock.calls[0][1].body;
+    expect(body).toMatchObject({
+      action: "edit_approved",
+      id: "22222222-2222-2222-2222-222222222222",
+      voucher_date: "2025-07-02",
+      branch_id: null,
+      financial_year_id: null,
     });
   });
 });
