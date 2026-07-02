@@ -245,11 +245,11 @@ export function BulkImportDialog({ open, onOpenChange, config }: Props) {
           )}
 
           {importing && (
-            <div className="space-y-2">
+            <div className="space-y-2" data-testid="bulk-import-progress">
               <Progress value={progress} />
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Importing... {progress}%</span>
-                <Button size="sm" variant="ghost" onClick={() => { cancelRef.current = true; }}>Cancel</Button>
+                <span>Importing {processed} / {total} ({progress}%)</span>
+                <Button size="sm" variant="ghost" onClick={() => { cancelRef.current = true; }} data-testid="bulk-import-cancel">Cancel</Button>
               </div>
             </div>
           )}
