@@ -52,15 +52,21 @@ export function useReportData() {
       setBranches((bRes.data || []) as Branch[]);
       const activeYears = (fyRes.data || []) as FinancialYear[];
       const today = new Date().toISOString().slice(0, 10);
-      const containsToday = activeYears.find(
+      const sortedByStart = [...activeYears].sort((a, b) =>
+        (a.start_date || "").localeCompare(b.start_date || ""),
+      );
+      const containsToday = sortedByStart.find(
         (fy) => fy.start_date && fy.end_date && fy.start_date <= today && fy.end_date >= today,
       );
-      // Prefer FY containing today, else the latest active FY by start_date.
-      const chosen = containsToday
-        ?? [...activeYears].sort((a, b) => (b.start_date || "").localeCompare(a.start_date || ""))[0];
-      if (chosen?.start_date && chosen?.end_date) {
-        setDateFrom(chosen.start_date);
-        setDateTo(chosen.end_date);
+      // Default range: from the earliest active FY start to the end of the FY
+      // that contains today (or the latest active FY). Covers users who keep
+      // last year still active while the new year is running so the report
+      // isn't empty on first open.
+      const from = sortedByStart[0]?.start_date;
+      const latestEnd = (containsToday ?? sortedByStart[sortedByStart.length - 1])?.end_date;
+      if (from && latestEnd) {
+        setDateFrom(from);
+        setDateTo(latestEnd);
       }
     };
     init();
