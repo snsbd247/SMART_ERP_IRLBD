@@ -77,6 +77,34 @@ describe("voucherApi.list — Laravel mode", () => {
     const [, init] = (globalThis.fetch as any).mock.calls[0];
     expect(String(init.body)).toContain('"voucher_date":"2025-07-02"');
   });
+
+  it("sends voucher_date on create", async () => {
+    await voucherApi.create({
+      voucher_type: "journal",
+      voucher_date: "2025-08-15",
+      description: "opening",
+      entries: [
+        { account_id: "a1", debit: 10, credit: 0, narration: "" },
+        { account_id: "a2", debit: 0, credit: 10, narration: "" },
+      ],
+    } as any);
+    const [, init] = (globalThis.fetch as any).mock.calls[0];
+    expect(String(init.body)).toContain('"voucher_date":"2025-08-15"');
+  });
+
+  it("sends voucher_date on plain update (non-approved)", async () => {
+    await voucherApi.update({
+      id: "33333333-3333-3333-3333-333333333333",
+      voucher_date: "2025-09-01",
+      description: "d",
+      entries: [
+        { account_id: "a1", debit: 1, credit: 0, narration: "" },
+        { account_id: "a2", debit: 0, credit: 1, narration: "" },
+      ],
+    } as any);
+    const [, init] = (globalThis.fetch as any).mock.calls[0];
+    expect(String(init.body)).toContain('"voucher_date":"2025-09-01"');
+  });
 });
 
 describe("voucherApi.list — Supabase mode", () => {
