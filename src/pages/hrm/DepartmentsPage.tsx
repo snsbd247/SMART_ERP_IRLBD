@@ -87,6 +87,19 @@ export default function DepartmentsPage() {
           <DialogFooter><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button onClick={handleSave}>Save</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkImportDialog open={importOpen} onOpenChange={setImportOpen} config={{
+        title: "Bulk Import Departments",
+        table: "departments",
+        templateFilename: "departments_template.csv",
+        columns: [
+          { key: "name", label: "Name", required: true, example: "Production" },
+          { key: "description", label: "Description", example: "Manufacturing dept" },
+          { key: "status", label: "Status", example: "active" },
+        ],
+        dedupeKey: (r) => r.name?.toLowerCase(),
+        transform: (r) => ({ name: r.name, description: r.description || null, status: (r.status || "active").toLowerCase() }),
+        onSuccess: fetch,
+      }} />
     </div>
   );
 }
