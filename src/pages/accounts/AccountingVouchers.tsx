@@ -824,6 +824,17 @@ const AccountingVouchers = () => {
                                 <ArrowLeftRight className="w-3.5 h-3.5 text-primary" />
                               </Button>
                             )}
+                            {/* Change Type (Transfer) — non-deleted, non-auto-posted, user can edit source + create at least one other type */}
+                            {!(v as any).deleted_at
+                              && v.status !== "transferred"
+                              && !(v as any).source_module
+                              && evalPerm(v.voucher_type, "edit").allowed
+                              && VOUCHER_TYPES.some((t) => t.id !== v.voucher_type && canCreateForType(t.id)) && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Change voucher type" onClick={() => openChangeType(v)} title="Change Type (Transfer)">
+                                <Shuffle className="w-3.5 h-3.5 text-amber-600" />
+                              </Button>
+                            )}
+
                             {/* History */}
                             <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View history" onClick={() => { setAuditRecordId(v.id); setAuditOpen(true); }} title="View history">
                               <History className="w-3.5 h-3.5 text-muted-foreground" />
