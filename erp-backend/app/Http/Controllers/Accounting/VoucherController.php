@@ -8,8 +8,10 @@ use App\Models\VoucherEntry;
 use App\Repositories\VoucherRepository;
 use App\Services\AccountingService;
 use App\Services\FinancialPeriodGuard;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class VoucherController extends BaseController
 {
@@ -18,6 +20,61 @@ class VoucherController extends BaseController
         private AccountingService $service,
         private FinancialPeriodGuard $period,
     ) {}
+
+    private function normalizeVoucherDateInput(Request $request): void
+    {
+        $raw = $request->input('voucher_date');
+        if (!is_string($raw) || trim($raw) === '') return;
+
+        $raw = trim($raw);
+        try {
+            if (preg_match('/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/', $raw, $m)) {
+                $request->merge(['voucher_date' => sprintf('%04d-%02d-%02d', (int) $m[3], (int) $m[2], (int) $m[1])]);
+            } else {
+                $request->merge(['voucher_date' => Carbon::parse($raw)->toDateString()]);
+            }
+        } catch (\Throwable) {
+            // Let Laravel's validator return a clear voucher_date error.
+        }
+    }
+
+    private function auditVoucherDateChange(AccVoucher $voucher, ?string $oldDate, string $newDate, Request $request, ?string $financialYearId): void
+    {
+        if (!$oldDate || $oldDate === $newDate || !Schema::hasTable('audit_log')) return;
+
+        try {
+            $row = [
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'user_id' => $request->user()?->id,
+                'user_name' => $request->user()?->name ?? $request->user()?->username ?? 'System',
+                'module' => 'accounting_vouchers',
+                'action' => 'voucher_date_changed',
+                'record_id' => $voucher->id,
+                'details' => "Voucher {$voucher->voucher_number} date changed from {$oldDate} to {$newDate}",
+                'ip_address' => $request->ip(),
+                'created_at' => now(),
+            ];
+
+            if (Schema::hasColumn('audit_log', 'old_data')) {
+                $row['old_data'] = json_encode(['voucher_date' => $oldDate]);
+            }
+            if (Schema::hasColumn('audit_log', 'new_data')) {
+                $row['new_data'] = json_encode(['voucher_date' => $newDate, 'financial_year_id' => $financialYearId]);
+            }
+            if (Schema::hasColumn('audit_log', 'user_agent')) {
+                $row['user_agent'] = substr((string) $request->userAgent(), 0, 1000);
+            }
+
+            DB::table('audit_log')->insert($row);
+        } catch (\Throwable $e) {
+            \Log::warning('Voucher date audit log insert failed', [
+                'voucher_id' => $voucher->id,
+                'old_date' => $oldDate,
+                'new_date' => $newDate,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 
     public function index(Request $request)
     {
@@ -54,6 +111,7 @@ class VoucherController extends BaseController
     {
         // Correlation id so client + server logs can be tied together for fast root-cause.
         $cid = (string) \Illuminate\Support\Str::uuid();
+        $this->normalizeVoucherDateInput($request);
 
         // Infer voucher_type from URL when the client omits it (e.g. POST /vouchers/journal).
         if (!$request->filled('voucher_type')) {
@@ -104,14 +162,11 @@ class VoucherController extends BaseController
         ]);
 
         try {
-            // Period close lock — return a friendly 422 instead of a generic 500.
-            $this->period->assertOpen($request->voucher_date, 'voucher');
-
-            // Resolve financial_year_id from the voucher date when the client did not send one.
+            // Resolve financial_year_id from the voucher date every time. This
+            // prevents stale UI selections (for example FY 2025-2026 with a
+            // 2026-07-02 voucher date) from causing hidden DB/server errors.
             $payload = $request->only('voucher_type', 'voucher_date', 'description', 'branch_id', 'financial_year_id');
-            if (empty($payload['financial_year_id'])) {
-                $payload['financial_year_id'] = $this->period->resolveId($request->voucher_date);
-            }
+            $payload['financial_year_id'] = $this->period->resolveOrCreateId($request->voucher_date);
             if (array_key_exists('branch_id', $payload) && ($payload['branch_id'] === '' || $payload['branch_id'] === null)) {
                 unset($payload['branch_id']);
             }
@@ -158,6 +213,8 @@ class VoucherController extends BaseController
 
     public function update(Request $request, string $id)
     {
+        $cid = (string) \Illuminate\Support\Str::uuid();
+        $this->normalizeVoucherDateInput($request);
         $voucher = AccVoucher::findOrFail($id);
         $user = $request->user();
         $auth = \App\Support\VoucherPermissions::authorize($user, $voucher->voucher_type, 'edit', $voucher->id, $request);
@@ -179,53 +236,66 @@ class VoucherController extends BaseController
             );
         }
 
-        $data = $request->validate([
-            'voucher_date' => 'required|date',
-            'branch_id' => 'nullable|exists:branches,id',
-            'financial_year_id' => 'nullable|exists:financial_years,id',
-            'description' => 'nullable|string',
-            'submit' => 'boolean',
-            'entries' => 'required|array|min:2',
-            'entries.*.account_id' => 'required|exists:chart_of_accounts,id',
-            'entries.*.debit' => 'numeric|min:0',
-            'entries.*.credit' => 'numeric|min:0',
-            'entries.*.narration' => 'nullable|string',
-        ]);
-
-        // Period close lock — both old and new date must be in an open period.
-        $this->period->assertOpen($voucher->voucher_date, 'original voucher date');
-        $this->period->assertOpen($data['voucher_date'], 'voucher update');
-
-        $totalDebit = collect($data['entries'])->sum('debit');
-        $totalCredit = collect($data['entries'])->sum('credit');
-        if (abs($totalDebit - $totalCredit) > 0.01) {
-            return $this->error('Debit and Credit must be equal', 422);
-        }
-
-        return DB::transaction(function () use ($voucher, $data, $totalDebit, $request) {
-            $voucher->update([
-                'voucher_date' => $data['voucher_date'],
-                'branch_id' => $data['branch_id'] ?? null,
-                'financial_year_id' => $data['financial_year_id'] ?? null,
-                'description' => $data['description'] ?? '',
-                'total_amount' => $totalDebit,
-                'status' => 'approved',
-                'approved_by' => $voucher->approved_by ?? $request->user()->id,
-                'approved_at' => $voucher->approved_at ?? now(),
+        try {
+            $data = $request->validate([
+                'voucher_date' => 'required|date',
+                'branch_id' => 'nullable|exists:branches,id',
+                'financial_year_id' => 'nullable|exists:financial_years,id',
+                'description' => 'nullable|string',
+                'submit' => 'boolean',
+                'entries' => 'required|array|min:2',
+                'entries.*.account_id' => 'required|exists:chart_of_accounts,id',
+                'entries.*.debit' => 'numeric|min:0',
+                'entries.*.credit' => 'numeric|min:0',
+                'entries.*.narration' => 'nullable|string',
             ]);
-            VoucherEntry::where('voucher_id', $voucher->id)->delete();
-            foreach ($data['entries'] as $i => $entry) {
-                VoucherEntry::create([
-                    'voucher_id' => $voucher->id,
-                    'account_id' => $entry['account_id'],
-                    'debit' => $entry['debit'] ?? 0,
-                    'credit' => $entry['credit'] ?? 0,
-                    'narration' => $entry['narration'] ?? '',
-                    'sort_order' => $i,
-                ]);
+
+            // Always resolve from the submitted voucher_date. If the next FY
+            // does not exist yet, create it once; if it exists but is inactive,
+            // return a clear 422 instead of silently keeping the old date.
+            $resolvedFinancialYearId = $this->period->resolveOrCreateId($data['voucher_date']);
+
+            $totalDebit = collect($data['entries'])->sum('debit');
+            $totalCredit = collect($data['entries'])->sum('credit');
+            if (abs($totalDebit - $totalCredit) > 0.01) {
+                return $this->error('Debit and Credit must be equal', 422, ['correlation_id' => $cid]);
             }
-            return $this->success($this->repo->findWithEntries($voucher->id));
-        });
+
+            return DB::transaction(function () use ($voucher, $data, $totalDebit, $request, $resolvedFinancialYearId) {
+                $oldDate = $voucher->voucher_date instanceof \DateTimeInterface ? $voucher->voucher_date->format('Y-m-d') : (string) $voucher->voucher_date;
+                $voucher->update([
+                    'voucher_date' => $data['voucher_date'],
+                    'branch_id' => $data['branch_id'] ?? null,
+                    'financial_year_id' => $resolvedFinancialYearId,
+                    'description' => $data['description'] ?? '',
+                    'total_amount' => $totalDebit,
+                    'status' => 'approved',
+                    'approved_by' => $voucher->approved_by ?? $request->user()->id,
+                    'approved_at' => $voucher->approved_at ?? now(),
+                ]);
+                VoucherEntry::where('voucher_id', $voucher->id)->delete();
+                foreach ($data['entries'] as $i => $entry) {
+                    VoucherEntry::create([
+                        'voucher_id' => $voucher->id,
+                        'account_id' => $entry['account_id'],
+                        'debit' => $entry['debit'] ?? 0,
+                        'credit' => $entry['credit'] ?? 0,
+                        'narration' => $entry['narration'] ?? '',
+                        'sort_order' => $i,
+                    ]);
+                }
+                $this->auditVoucherDateChange($voucher, $oldDate, $data['voucher_date'], $request, $resolvedFinancialYearId);
+                return $this->success($this->repo->findWithEntries($voucher->id));
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\InvalidArgumentException | \RuntimeException $e) {
+            \Log::warning('Voucher update rejected', ['cid' => $cid, 'voucher_id' => $id, 'user_id' => optional($request->user())->id, 'reason' => $e->getMessage()]);
+            return $this->error($e->getMessage(), 422, ['correlation_id' => $cid]);
+        } catch (\Throwable $e) {
+            \Log::error('Voucher update failed', ['cid' => $cid, 'voucher_id' => $id, 'user_id' => optional($request->user())->id, 'error' => $e->getMessage()]);
+            return $this->error('Could not update voucher. Ref: ' . $cid, 500, ['correlation_id' => $cid]);
+        }
     }
 
     public function approve(Request $request, string $id)
@@ -264,6 +334,8 @@ class VoucherController extends BaseController
 
     public function editApproved(Request $request, string $id)
     {
+        $cid = (string) \Illuminate\Support\Str::uuid();
+        $this->normalizeVoucherDateInput($request);
         if (!$request->user()->isSuperAdmin()) return $this->error('Only Super Admin can edit approved vouchers', 403);
         $voucher = AccVoucher::findOrFail($id);
         if ($voucher->status !== 'approved') return $this->error('Voucher is not approved', 422);
@@ -280,15 +352,18 @@ class VoucherController extends BaseController
             'entries.*.narration' => 'nullable|string',
         ]);
 
-        if (!empty($data['voucher_date'])) {
-            $this->period->assertOpen($voucher->voucher_date, 'original voucher date');
-            $this->period->assertOpen($data['voucher_date'], 'approved voucher date update');
-        }
+        try {
+            $resolvedFinancialYearId = null;
+            if (!empty($data['voucher_date'])) {
+                $resolvedFinancialYearId = $this->period->resolveOrCreateId($data['voucher_date']);
+            }
 
-        return DB::transaction(function () use ($voucher, $data) {
+        return DB::transaction(function () use ($voucher, $data, $resolvedFinancialYearId, $request) {
+            $oldDate = $voucher->voucher_date instanceof \DateTimeInterface ? $voucher->voucher_date->format('Y-m-d') : (string) $voucher->voucher_date;
             if (array_key_exists('voucher_date', $data)) $voucher->voucher_date = $data['voucher_date'];
             if (array_key_exists('branch_id', $data)) $voucher->branch_id = $data['branch_id'] ?: null;
-            if (array_key_exists('financial_year_id', $data)) $voucher->financial_year_id = $data['financial_year_id'] ?: null;
+            if (array_key_exists('voucher_date', $data)) $voucher->financial_year_id = $resolvedFinancialYearId;
+            elseif (array_key_exists('financial_year_id', $data)) $voucher->financial_year_id = $data['financial_year_id'] ?: null;
             if (array_key_exists('description', $data)) $voucher->description = $data['description'] ?? '';
             if (!empty($data['entries'])) {
                 $totalDebit = collect($data['entries'])->sum('debit');
@@ -308,8 +383,18 @@ class VoucherController extends BaseController
                 }
             }
             $voucher->save();
+            if (array_key_exists('voucher_date', $data)) {
+                $this->auditVoucherDateChange($voucher, $oldDate, $data['voucher_date'], $request, $resolvedFinancialYearId);
+            }
             return $this->success($this->repo->findWithEntries($voucher->id));
         });
+        } catch (\InvalidArgumentException | \RuntimeException $e) {
+            \Log::warning('Approved voucher edit rejected', ['cid' => $cid, 'voucher_id' => $id, 'user_id' => optional($request->user())->id, 'reason' => $e->getMessage()]);
+            return $this->error($e->getMessage(), 422, ['correlation_id' => $cid]);
+        } catch (\Throwable $e) {
+            \Log::error('Approved voucher edit failed', ['cid' => $cid, 'voucher_id' => $id, 'user_id' => optional($request->user())->id, 'error' => $e->getMessage()]);
+            return $this->error('Could not update approved voucher. Ref: ' . $cid, 500, ['correlation_id' => $cid]);
+        }
     }
 
     public function deleteApproved(Request $request, string $id)
