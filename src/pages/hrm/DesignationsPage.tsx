@@ -22,6 +22,7 @@ export default function DesignationsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
 
   const fetch = useCallback(async () => {
     const { data } = await supabase.from("designations" as any).select("*").order("name");
