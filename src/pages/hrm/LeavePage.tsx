@@ -143,6 +143,39 @@ export default function LeavePage() {
           <DialogFooter><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button onClick={handleSubmit}>Submit</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkImportDialog open={importOpen} onOpenChange={setImportOpen} config={{
+        title: "Bulk Import Leave Requests",
+        table: "leave_requests",
+        templateFilename: "leave_requests_template.csv",
+        helpText: "Dates: YYYY-MM-DD. Status: pending/approved/rejected.",
+        columns: [
+          { key: "employee_code", label: "Employee Code", required: true, example: "EMP-0001" },
+          { key: "leave_type", label: "Leave Type", required: true, example: "Casual" },
+          { key: "start_date", label: "From", required: true, example: "2025-01-15" },
+          { key: "end_date", label: "To", required: true, example: "2025-01-17" },
+          { key: "reason", label: "Reason", example: "Personal" },
+          { key: "status", label: "Status", example: "pending" },
+        ],
+        transform: (r) => {
+          const emp = employees.find(e => e.employee_code?.toLowerCase() === r.employee_code.toLowerCase());
+          if (!emp) throw new Error(`Employee not found: ${r.employee_code}`);
+          const lt = leaveTypes.find(l => l.name.toLowerCase() === r.leave_type.toLowerCase());
+          if (!lt) throw new Error(`Leave type not found: ${r.leave_type}`);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(r.start_date)) throw new Error("From must be YYYY-MM-DD");
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(r.end_date)) throw new Error("To must be YYYY-MM-DD");
+          const status = (r.status || "pending").toLowerCase();
+          if (!["pending", "approved", "rejected"].includes(status)) throw new Error(`Invalid status: ${status}`);
+          return {
+            employee_id: emp.id,
+            leave_type_id: lt.id,
+            start_date: r.start_date,
+            end_date: r.end_date,
+            reason: r.reason || null,
+            status,
+          };
+        },
+        onSuccess: fetchData,
+      }} />
     </div>
   );
 }
