@@ -84,11 +84,110 @@ class AccountingService
             'branch_id' => $ctx['branch_id'] ?? null,
             'financial_year_id' => $ctx['financial_year_id'] ?? null,
             'created_by' => $ctx['user_id'] ?? null,
+            'source_module' => $ctx['source_module'] ?? 'auto',
         ], [
             ['account_id' => $debitAcct->id, 'debit' => $amount, 'credit' => 0, 'narration' => $description],
             ['account_id' => $creditAcct->id, 'debit' => 0, 'credit' => $amount, 'narration' => $description],
         ], true);
     }
+
+    /**
+     * Voucher type change (transfer) — move an existing voucher from one type
+     * to another (e.g. Payment → Journal) without losing the original serial.
+     *
+     * Steps (atomic):
+     *   1) Validate: not deleted, not auto-posted (source_module NULL), new type differs.
+     *   2) Release old voucher_number to the free-list so the next same-type entry reuses it.
+     *   3) Create a new voucher of $newType with identical entries + link back via transferred_from_id.
+     *   4) Soft-delete the original voucher, mark status = 'transferred', link forward via transferred_to_id.
+     *   5) Record entries in voucher_approval_history + audit_log for full traceability.
+     */
+    public function changeVoucherType(string $id, string $newType, string $userId, ?string $reason = null): AccVoucher
+    {
+        $seqMap = ['journal' => 'journal_voucher', 'payment' => 'payment_voucher', 'receipt' => 'receipt_voucher', 'contra' => 'contra_voucher'];
+        if (!isset($seqMap[$newType])) {
+            throw new \InvalidArgumentException("Invalid target voucher type: {$newType}");
+        }
+
+        return DB::transaction(function () use ($id, $newType, $userId, $reason, $seqMap) {
+            /** @var AccVoucher $old */
+            $old = AccVoucher::with('entries')->lockForUpdate()->findOrFail($id);
+
+            if ($old->deleted_at) {
+                throw new \RuntimeException('Deleted vouchers cannot be transferred.');
+            }
+            if ($old->status === 'transferred') {
+                throw new \RuntimeException('Voucher has already been transferred.');
+            }
+            if (!empty($old->source_module)) {
+                throw new \RuntimeException('Auto-posted vouchers (from Sales/Purchase) cannot be transferred.');
+            }
+            if ($old->voucher_type === $newType) {
+                throw new \InvalidArgumentException('Target type is the same as current type.');
+            }
+
+            $oldSeqId = $seqMap[$old->voucher_type] ?? null;
+
+            // 1) Release old number so next same-type entry reuses it.
+            if ($oldSeqId) {
+                $this->seqService->release($oldSeqId, $old->voucher_number, $userId);
+            }
+
+            // 2) Create the new voucher with identical entries.
+            $entries = $old->entries->map(fn ($e) => [
+                'account_id' => $e->account_id,
+                'debit'      => (float) $e->debit,
+                'credit'     => (float) $e->credit,
+                'narration'  => $e->narration,
+            ])->all();
+
+            $new = $this->createVoucher([
+                'voucher_type'        => $newType,
+                'voucher_date'        => $old->voucher_date instanceof \DateTimeInterface ? $old->voucher_date->format('Y-m-d') : (string) $old->voucher_date,
+                'description'         => $old->description,
+                'branch_id'           => $old->branch_id,
+                'financial_year_id'   => $old->financial_year_id,
+                'created_by'          => $userId,
+                'transferred_from_id' => $old->id,
+            ], $entries, in_array($old->status, ['approved', 'posted'], true));
+
+            // 3) Soft-delete original + status='transferred' + forward link.
+            $old->update([
+                'prev_status'        => $old->status,
+                'status'             => 'transferred',
+                'deleted_at'         => now(),
+                'deleted_by'         => $userId,
+                'transferred_to_id'  => $new->id,
+                'transfer_reason'    => $reason,
+            ]);
+
+            // 4) Audit trail.
+            $actor = \App\Models\User::find($userId);
+            \App\Models\VoucherApprovalHistory::create([
+                'voucher_id'    => $old->id,
+                'actor_user_id' => $userId,
+                'actor_name'    => $actor?->name,
+                'action'        => 'change_type',
+                'before_status' => $old->prev_status,
+                'after_status'  => 'transferred',
+                'note'          => trim(($reason ?? '') . " → new: {$new->voucher_number} ({$newType})"),
+                'created_at'    => now(),
+            ]);
+            \App\Models\AuditLog::create([
+                'user_id'   => $userId,
+                'user_name' => $actor?->name ?? 'System',
+                'module'    => 'accounting_vouchers',
+                'action'    => 'voucher_type_changed',
+                'record_id' => $old->id,
+                'details'   => "Voucher {$old->voucher_number} ({$old->voucher_type}) transferred to {$new->voucher_number} ({$newType}). Reason: " . ($reason ?: '(none)'),
+                'old_data'  => ['type' => $old->voucher_type, 'number' => $old->voucher_number, 'status' => $old->prev_status],
+                'new_data'  => ['type' => $newType, 'number' => $new->voucher_number, 'transferred_from' => $old->id],
+            ]);
+
+            return $new->fresh('entries');
+        });
+    }
+
 
     public function approveVoucher(string $id, string $userId, ?string $note = null): AccVoucher
     {
