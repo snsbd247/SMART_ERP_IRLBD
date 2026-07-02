@@ -54,6 +54,9 @@ interface Voucher {
   branch_id: string | null; financial_year_id: string | null; description: string | null;
   total_amount: number; status: string; created_at: string;
   ledger_accounts?: string[];
+  created_by?: string | null;
+  creator?: { id?: string; name?: string | null; username?: string | null } | null;
+  creator_name?: string | null;
 }
 
 type SuperAdminAction = "delete" | "reopen" | "reverse" | "restore" | "purge" | null;
