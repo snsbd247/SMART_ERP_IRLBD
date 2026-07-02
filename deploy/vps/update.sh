@@ -109,11 +109,31 @@ done
 if (( ${#MISSING_EXT[@]} > 0 )); then
   log "Installing missing PHP extensions: ${MISSING_EXT[*]}"
   if command -v apt-get >/dev/null 2>&1; then
-    DEBIAN_FRONTEND=noninteractive apt-get update -y >/dev/null 2>&1 || true
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${MISSING_EXT[@]}" \
-      || warn "Some PHP extensions failed to install (continuing)."
-    systemctl reload "php${PHP_VERSION}-fpm" 2>/dev/null || true
-    step "php-extensions" ok "installed: ${MISSING_EXT[*]}"
+    # Prevent silent hangs:
+    #  - DEBIAN_FRONTEND=noninteractive + APT_LISTCHANGES_FRONTEND=none: no prompts
+    #  - NEEDRESTART_MODE=a: auto-restart services (no interactive menu on Ubuntu 22.04+)
+    #  - Dpkg::Options: keep old conffiles without asking
+    #  - DPkg::Lock::Timeout: wait up to 120s for apt lock instead of hanging forever
+    #  - timeout <s>: hard cap so the deploy never blocks indefinitely
+    #  - </dev/null: guarantee no TTY read
+    export DEBIAN_FRONTEND=noninteractive
+    export APT_LISTCHANGES_FRONTEND=none
+    export NEEDRESTART_MODE=a
+    export NEEDRESTART_SUSPEND=1
+    APT_OPTS=(-y --no-install-recommends
+      -o Dpkg::Options::=--force-confdef
+      -o Dpkg::Options::=--force-confold
+      -o DPkg::Lock::Timeout=120)
+    log "  apt-get update..."
+    timeout 180 apt-get update "${APT_OPTS[@]}" </dev/null 2>&1 | tail -n 20 || warn "apt-get update timed out or failed (continuing)."
+    log "  apt-get install ${MISSING_EXT[*]}..."
+    if timeout 300 apt-get install "${APT_OPTS[@]}" "${MISSING_EXT[@]}" </dev/null 2>&1 | tail -n 40; then
+      systemctl reload "php${PHP_VERSION}-fpm" 2>/dev/null || true
+      step "php-extensions" ok "installed: ${MISSING_EXT[*]}"
+    else
+      warn "Some PHP extensions failed to install (continuing)."
+      step "php-extensions" warn "install failed or timed out: ${MISSING_EXT[*]}"
+    fi
   else
     warn "apt-get not available; skipping auto-install of: ${MISSING_EXT[*]}"
     step "php-extensions" warn "apt-get unavailable"
