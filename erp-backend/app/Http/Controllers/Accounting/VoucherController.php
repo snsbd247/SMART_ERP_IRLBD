@@ -390,4 +390,57 @@ class VoucherController extends BaseController
             return $this->success(['purged' => true, 'id' => $vid]);
         });
     }
+
+    /**
+     * Change the type of an existing voucher (e.g. Payment → Journal).
+     * The old voucher is soft-deleted with status='transferred', its serial
+     * is released to the free-list, and a brand-new voucher of the target
+     * type is created with the same entries. Auto-posted vouchers (from
+     * Sales/Purchase modules) are blocked.
+     */
+    public function changeType(Request $request, string $id)
+    {
+        $data = $request->validate([
+            'new_type' => 'required|in:journal,payment,receipt,contra',
+            'reason'   => 'nullable|string|max:1000',
+        ]);
+
+        $voucher = AccVoucher::findOrFail($id);
+        $user    = $request->user();
+
+        // Require edit on source type AND create on target type.
+        $srcAuth = \App\Support\VoucherPermissions::authorize($user, $voucher->voucher_type, 'edit', $voucher->id, $request);
+        if (!$srcAuth['allowed']) {
+            return $this->error('You do not have permission to change this voucher.', 403, [
+                'correlation_id' => $srcAuth['correlation_id'],
+                'required_any_of' => $srcAuth['candidates'],
+            ]);
+        }
+        $dstAuth = \App\Support\VoucherPermissions::authorize($user, $data['new_type'], 'create', null, $request);
+        if (!$dstAuth['allowed']) {
+            return $this->error('You do not have permission to create the target voucher type.', 403, [
+                'correlation_id' => $dstAuth['correlation_id'],
+                'required_any_of' => $dstAuth['candidates'],
+            ]);
+        }
+
+        // Period lock applies to both original and new (same) date.
+        try {
+            $this->period->assertOpen($voucher->voucher_date, 'voucher transfer');
+        } catch (\Throwable $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        try {
+            $new = $this->service->changeVoucherType($id, $data['new_type'], $user->id, $data['reason'] ?? null);
+            return $this->success([
+                'new_voucher'      => $new,
+                'released_number'  => $voucher->voucher_number,
+                'released_type'    => $voucher->voucher_type,
+            ]);
+        } catch (\InvalidArgumentException | \RuntimeException $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+    }
 }
+
