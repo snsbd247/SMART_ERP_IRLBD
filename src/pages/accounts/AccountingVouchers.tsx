@@ -586,7 +586,38 @@ const AccountingVouchers = () => {
     }
   };
 
-  const openPrintVoucher = async (v: Voucher) => {
+  const openChangeType = (v: Voucher) => {
+    setChangeTypeVoucher(v);
+    // Preselect first different type the user is allowed to create.
+    const first = VOUCHER_TYPES.find((t) => t.id !== v.voucher_type && canCreateForType(t.id));
+    setChangeTypeTarget(first?.id ?? "");
+    setChangeTypeReason("");
+  };
+
+  const handleChangeType = async () => {
+    if (!changeTypeVoucher || !changeTypeTarget) return;
+    if (!changeTypeReason.trim()) {
+      toast({ title: "Reason required", description: "Please enter a reason for the transfer.", variant: "destructive" });
+      return;
+    }
+    setChangeTypeSaving(true);
+    try {
+      const res: any = await voucherApi.changeType(changeTypeVoucher.id, changeTypeTarget, changeTypeReason.trim());
+      const releasedNum = res?.data?.released_number ?? changeTypeVoucher.voucher_number;
+      const newNum = res?.data?.new_voucher?.voucher_number ?? "";
+      toast({
+        title: "Voucher transferred",
+        description: `New ${changeTypeTarget} voucher ${newNum} created. Released ${releasedNum} → next same-type entry will reuse it.`,
+      });
+      setChangeTypeVoucher(null);
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Transfer failed", description: err?.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setChangeTypeSaving(false);
+    }
+  };
+
     const { entries: data } = await voucherApi.get(v.id);
     const accountMap = new Map(accounts.map((a) => [a.id, a]));
     setPrintEntries((data || []).map((e: any) => {
