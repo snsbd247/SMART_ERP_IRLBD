@@ -72,6 +72,24 @@ trap on_failure ERR
 if [[ $EUID -ne 0 ]]; then err "Run as root (sudo ./update.sh)"; exit 1; fi
 if [[ ! -d "${APP_DIR}/.git" ]]; then err "${APP_DIR} is not a git checkout. Run clone.sh first."; exit 1; fi
 
+# Prevent overlapping Pull & Deploy runs. This is intentionally also here
+# (not only in deploy-runner.sh) so a newly pulled update.sh can protect the
+# VPS even before /usr/local/bin/smarterp-deploy has been refreshed.
+UPDATE_LOCK="${UPDATE_LOCK:-/var/run/smarterp-update.lock}"
+if [[ "${SMARTERP_UPDATE_LOCKED:-0}" != "1" ]]; then
+  if command -v flock >/dev/null 2>&1; then
+    exec 8>"${UPDATE_LOCK}"
+    if ! flock -n 8; then
+      warn "Another deploy update is already running; ignoring duplicate request."
+      status_write running "Another deploy update is already running; duplicate request ignored."
+      exit 0
+    fi
+    export SMARTERP_UPDATE_LOCKED=1 UPDATE_LOCK
+  else
+    warn "flock not available; duplicate deploy protection is limited."
+  fi
+fi
+
 # ============================================================
 #  PRE-DEPLOYMENT CHECKS
 # ============================================================
@@ -99,13 +117,39 @@ step "tooling" ok "git/php/composer/node/npm/rsync/mysqldump present"
 
 # ---------- PHP extensions auto-install ----------
 CURRENT_STEP="php-extensions"
-REQUIRED_PHP_EXT=(bcmath ctype curl dom fileinfo gd intl mbstring mysql openssl pdo tokenizer xml zip)
+REQUIRED_PHP_EXT=(bcmath ctype curl dom fileinfo gd intl mbstring openssl pdo pdo_mysql tokenizer xml zip)
+PHP_BUILTIN_EXT=(ctype fileinfo openssl pdo tokenizer)
+php_ext_is_builtin() {
+  local needle="$1"
+  local ext
+  for ext in "${PHP_BUILTIN_EXT[@]}"; do
+    [[ "$ext" == "$needle" ]] && return 0
+  done
+  return 1
+}
+php_ext_package_name() {
+  local ext="$1"
+  case "$ext" in
+    dom) echo "php${PHP_VERSION}-xml" ;;
+    mysqli|mysqlnd|pdo_mysql) echo "php${PHP_VERSION}-mysql" ;;
+    *) echo "php${PHP_VERSION}-${ext}" ;;
+  esac
+}
 MISSING_EXT=()
+MISSING_BUILTIN_EXT=()
 for ext in "${REQUIRED_PHP_EXT[@]}"; do
   if ! php -m 2>/dev/null | grep -qi "^${ext}$"; then
-    MISSING_EXT+=("php${PHP_VERSION}-${ext}")
+    if php_ext_is_builtin "${ext}"; then
+      MISSING_BUILTIN_EXT+=("${ext}")
+    else
+      pkg="$(php_ext_package_name "${ext}")"
+      [[ " ${MISSING_EXT[*]} " == *" ${pkg} "* ]] || MISSING_EXT+=("${pkg}")
+    fi
   fi
 done
+if (( ${#MISSING_BUILTIN_EXT[@]} > 0 )); then
+  warn "PHP built-in extensions not visible in CLI: ${MISSING_BUILTIN_EXT[*]} (not installable via apt; continuing)."
+fi
 if (( ${#MISSING_EXT[@]} > 0 )); then
   log "Installing missing PHP extensions: ${MISSING_EXT[*]}"
   if command -v apt-get >/dev/null 2>&1; then
@@ -129,7 +173,16 @@ if (( ${#MISSING_EXT[@]} > 0 )); then
     log "  apt-get install ${MISSING_EXT[*]}..."
     if timeout 300 apt-get install "${APT_OPTS[@]}" "${MISSING_EXT[@]}" </dev/null 2>&1 | tail -n 40; then
       systemctl reload "php${PHP_VERSION}-fpm" 2>/dev/null || true
-      step "php-extensions" ok "installed: ${MISSING_EXT[*]}"
+      STILL_MISSING=()
+      for ext in "${REQUIRED_PHP_EXT[@]}"; do
+        php -m 2>/dev/null | grep -qi "^${ext}$" || STILL_MISSING+=("${ext}")
+      done
+      if (( ${#STILL_MISSING[@]} > 0 )); then
+        warn "PHP extensions still not visible after install: ${STILL_MISSING[*]}"
+        step "php-extensions" warn "installed packages: ${MISSING_EXT[*]}; still missing: ${STILL_MISSING[*]}"
+      else
+        step "php-extensions" ok "installed: ${MISSING_EXT[*]}"
+      fi
     else
       warn "Some PHP extensions failed to install (continuing)."
       step "php-extensions" warn "install failed or timed out: ${MISSING_EXT[*]}"
