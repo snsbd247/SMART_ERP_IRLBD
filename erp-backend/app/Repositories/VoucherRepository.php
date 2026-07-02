@@ -11,7 +11,10 @@ class VoucherRepository extends BaseRepository
 
     public function all(array $filters = [], int $perPage = 25)
     {
-        $query = $this->model->newQuery()->with('entries.account');
+        // Eager-load creator so voucher lists can show "Entered By" without
+        // an N+1 fan-out. Guard against missing users table columns by
+        // selecting a minimal, stable subset.
+        $query = $this->model->newQuery()->with(['entries.account', 'creator:id,name,username']);
         $query = $this->applyFilters($query, $filters);
         return $query->orderBy($filters['sort'] ?? 'created_at', $filters['order'] ?? 'desc')
             ->paginate($filters['per_page'] ?? $perPage);
