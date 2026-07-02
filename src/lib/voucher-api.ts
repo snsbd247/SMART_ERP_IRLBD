@@ -24,7 +24,13 @@ async function laravelFetch<T = any>(path: string, init?: RequestInit): Promise<
   const text = await res.text();
   const json = text ? JSON.parse(text) : null;
   if (!res.ok) {
-    const msg = json?.message || json?.error || `HTTP ${res.status}`;
+    const validationMessages = json?.errors && typeof json.errors === "object"
+      ? Object.entries(json.errors)
+          .flatMap(([field, value]) => Array.isArray(value) ? value.map((v) => `${field}: ${v}`) : [`${field}: ${String(value)}`])
+      : [];
+    const msg = [json?.message || json?.error || `HTTP ${res.status}`, ...validationMessages]
+      .filter(Boolean)
+      .join("\n");
     const err = new Error(msg) as Error & {
       status?: number;
       correlationId?: string;
