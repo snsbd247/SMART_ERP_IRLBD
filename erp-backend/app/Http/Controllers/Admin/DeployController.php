@@ -42,7 +42,7 @@ class DeployController extends BaseController
         try {
             $this->guard($request);
 
-            if ($this->isRunning()) {
+            if ($this->isBusy()) {
                 return response()->json([
                     'success' => false,
                     'running' => true,
@@ -150,10 +150,28 @@ class DeployController extends BaseController
         if (!is_file(self::PID_FILE)) return false;
         $pid = (int) trim((string) @file_get_contents(self::PID_FILE));
         if ($pid <= 0) return false;
-        if (function_exists('posix_kill')) {
-            return @posix_kill($pid, 0);
-        }
-        return trim((string) @shell_exec('ps -p ' . (int) $pid . ' -o pid=')) !== '';
+
+        // The runner is root-owned while this controller runs as www-data.
+        // posix_kill($pid, 0) may return false on EPERM even when the process
+        // exists, so prefer ps and only use posix_kill as an extra positive check.
+        $psOutput = trim((string) @shell_exec('ps -p ' . (int) $pid . ' -o pid='));
+        if ($psOutput !== '') return true;
+
+        return function_exists('posix_kill') && @posix_kill($pid, 0);
+    }
+
+    private function isBusy(): bool
+    {
+        if ($this->isRunning()) return true;
+
+        $state = is_file(self::STATE_FILE) ? trim((string) @file_get_contents(self::STATE_FILE)) : '';
+        if ($state !== 'running') return false;
+
+        // Heal stale running state left behind after a finished or killed process.
+        $finalState = $this->detectFinalState();
+        $this->safeWrite(self::STATE_FILE, $finalState);
+
+        return $finalState === 'running';
     }
 
     private function safeWrite(string $path, string $contents): void
@@ -215,7 +233,7 @@ class DeployController extends BaseController
         try {
             $this->guard($request);
 
-            if ($this->isRunning()) {
+            if ($this->isBusy()) {
                 return response()->json([
                     'success' => false,
                     'running' => true,
