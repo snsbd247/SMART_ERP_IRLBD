@@ -425,11 +425,9 @@ const AccountingVouchers = () => {
     const matchingFinYear = matchingFinYearForDate(formDate);
     if (finYears.length > 0 && !matchingFinYear) {
       toast({
-        title: "Financial year not found",
-        description: `No financial year covers ${formatDateDMY(formDate)}. Please create/open the matching financial year before saving.`,
-        variant: "destructive",
+        title: "Financial year will be resolved",
+        description: `No loaded financial year covers ${formatDateDMY(formDate)}. The server will create/use the matching year while saving.`,
       });
-      return;
     }
     if (matchingFinYear && formFinYear && formFinYear !== matchingFinYear.id) {
       toast({
@@ -461,6 +459,8 @@ const AccountingVouchers = () => {
       toast({ title: "Heads up — contra posting", description: nature.warnings.map((i) => i.message).join("\n") });
     }
 
+    const resolvedFinancialYearId = matchingFinYear?.id || (!finYears.length ? formFinYear || null : null);
+
     setSaving(true);
     try {
       if (editingVoucher) {
@@ -470,7 +470,7 @@ const AccountingVouchers = () => {
             id: editingVoucher.id,
             voucher_date: formDate,
             branch_id: formBranch || null,
-            financial_year_id: matchingFinYear?.id || formFinYear || null,
+            financial_year_id: resolvedFinancialYearId,
             description: formDesc,
             entries: validEntries.map((e) => ({
               account_id: e.account_id,
@@ -485,7 +485,7 @@ const AccountingVouchers = () => {
             id: editingVoucher.id,
             voucher_date: formDate,
             branch_id: formBranch || null,
-            financial_year_id: matchingFinYear?.id || formFinYear || null,
+            financial_year_id: resolvedFinancialYearId,
             description: formDesc,
             entries: validEntries.map((e) => ({
               account_id: e.account_id,
@@ -502,7 +502,7 @@ const AccountingVouchers = () => {
           voucher_type: activeTab,
           voucher_date: formDate,
           branch_id: formBranch || undefined,
-          financial_year_id: matchingFinYear?.id || formFinYear || undefined,
+          financial_year_id: resolvedFinancialYearId || undefined,
           description: formDesc,
           entries: validEntries.map((e) => ({
             account_id: e.account_id,
