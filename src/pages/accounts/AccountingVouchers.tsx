@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AccountCombobox } from "@/components/accounts/AccountCombobox";
 import { useAccountBalances } from "@/hooks/useAccountBalances";
 import {
@@ -138,6 +139,16 @@ const AccountingVouchers = () => {
   const [changeTypeTarget, setChangeTypeTarget] = useState<string>("");
   const [changeTypeReason, setChangeTypeReason] = useState("");
   const [changeTypeSaving, setChangeTypeSaving] = useState(false);
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkChangeOpen, setBulkChangeOpen] = useState(false);
+  const [bulkTargetType, setBulkTargetType] = useState<string>("");
+  const [bulkReason, setBulkReason] = useState("");
+
+
 
 
   const [voucherAccountsMap, setVoucherAccountsMap] = useState<Record<string, string[]>>({});
@@ -618,6 +629,71 @@ const AccountingVouchers = () => {
     }
   };
 
+  // ============ Bulk actions ============
+  // Clear selection whenever the list changes (tab / filters / page / trash toggle).
+  useEffect(() => { setSelectedIds(new Set()); }, [activeTab, showDeleted, debouncedSearch, filterFrom, filterTo, page, perPage]);
+
+  const isBulkDeletable = (v: Voucher) => canDeleteVoucher(v) && !(v as any).deleted_at;
+  const isBulkTransferable = (v: Voucher) =>
+    !(v as any).deleted_at
+    && v.status !== "transferred"
+    && !(v as any).source_module
+    && evalPerm(v.voucher_type, "edit").allowed;
+
+  const toggleRow = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const toggleAll = (checked: boolean) => {
+    setSelectedIds(checked ? new Set(vouchers.map((v) => v.id)) : new Set());
+  };
+
+  const selectedVouchers = vouchers.filter((v) => selectedIds.has(v.id));
+  const selectedDeletable = selectedVouchers.filter(isBulkDeletable);
+  const selectedTransferable = selectedVouchers.filter(isBulkTransferable);
+
+  const runBulkDelete = async () => {
+    if (selectedDeletable.length === 0) return;
+    const reason = bulkReason.trim() || "Bulk delete";
+    setBulkBusy(true);
+    let ok = 0, fail = 0;
+    for (const v of selectedDeletable) {
+      try { await voucherApi.deleteApproved(v.id, reason); ok++; }
+      catch { fail++; }
+    }
+    setBulkBusy(false);
+    setBulkDeleteOpen(false);
+    setBulkReason("");
+    setSelectedIds(new Set());
+    toast({ title: "Bulk delete complete", description: `${ok} moved to trash${fail ? `, ${fail} failed` : ""}.`, variant: fail ? "destructive" : "default" });
+    fetchData();
+  };
+
+  const runBulkChangeType = async () => {
+    if (!bulkTargetType || selectedTransferable.length === 0) return;
+    if (!bulkReason.trim()) { toast({ title: "Reason required", variant: "destructive" }); return; }
+    const eligible = selectedTransferable.filter((v) => v.voucher_type !== bulkTargetType && canCreateForType(bulkTargetType));
+    if (eligible.length === 0) { toast({ title: "Nothing to transfer", description: "Selected vouchers are already of the target type or you cannot create it.", variant: "destructive" }); return; }
+    setBulkBusy(true);
+    let ok = 0, fail = 0;
+    for (const v of eligible) {
+      try { await voucherApi.changeType(v.id, bulkTargetType, bulkReason.trim()); ok++; }
+      catch { fail++; }
+    }
+    setBulkBusy(false);
+    setBulkChangeOpen(false);
+    setBulkTargetType("");
+    setBulkReason("");
+    setSelectedIds(new Set());
+    toast({ title: "Bulk transfer complete", description: `${ok} transferred${fail ? `, ${fail} failed` : ""}.`, variant: fail ? "destructive" : "default" });
+    fetchData();
+  };
+
+
+
   const openPrintVoucher = async (v: Voucher) => {
     const { entries: data } = await voucherApi.get(v.id);
     const accountMap = new Map(accounts.map((a) => [a.id, a]));
@@ -731,11 +807,32 @@ const AccountingVouchers = () => {
                 </div>
               </div>
             </div>
+            {selectedIds.size > 0 && (
+              <div className="mb-2 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+                <span className="font-medium">{selectedIds.size} selected</span>
+                <Button size="sm" variant="outline" onClick={() => setSelectedIds(new Set())} disabled={bulkBusy}>Clear</Button>
+                <div className="ml-auto flex gap-2">
+                  <Button size="sm" variant="outline" disabled={bulkBusy || selectedTransferable.length === 0} onClick={() => { setBulkTargetType(""); setBulkReason(""); setBulkChangeOpen(true); }}>
+                    <Shuffle className="w-3.5 h-3.5 mr-1" /> Change Type ({selectedTransferable.length})
+                  </Button>
+                  <Button size="sm" variant="destructive" disabled={bulkBusy || selectedDeletable.length === 0} onClick={() => { setBulkReason(""); setBulkDeleteOpen(true); }}>
+                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete ({selectedDeletable.length})
+                  </Button>
+                </div>
+              </div>
+            )}
             <Card>
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={vouchers.length > 0 && selectedIds.size === vouchers.length}
+                          onCheckedChange={(c) => toggleAll(!!c)}
+                          aria-label="Select all vouchers"
+                        />
+                      </TableHead>
                       <TableHead>Voucher #</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Ledger / Accounts</TableHead>
@@ -747,11 +844,18 @@ const AccountingVouchers = () => {
                   </TableHeader>
                   <TableBody>
                     {loading ? (
-                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
                     ) : filteredVouchers.length === 0 ? (
-                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">{q || filterFrom || filterTo ? "No vouchers match your filters" : "No vouchers yet"}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">{q || filterFrom || filterTo ? "No vouchers match your filters" : "No vouchers yet"}</TableCell></TableRow>
                     ) : filteredVouchers.map((v) => (
-                      <TableRow key={v.id}>
+                      <TableRow key={v.id} data-state={selectedIds.has(v.id) ? "selected" : undefined}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(v.id)}
+                            onCheckedChange={(c) => toggleRow(v.id, !!c)}
+                            aria-label={`Select voucher ${v.voucher_number}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-geist-mono text-xs font-medium">{v.voucher_number}</TableCell>
                         <TableCell className="text-sm">{formatDateDMY(v.voucher_date)}</TableCell>
                         <TableCell className="text-sm">{(voucherAccountsMap[v.id] || []).length > 0 ? (voucherAccountsMap[v.id] || []).join(", ") : <span className="text-muted-foreground italic">No ledger entries</span>}</TableCell>
@@ -1284,7 +1388,59 @@ const AccountingVouchers = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk delete */}
+      <Dialog open={bulkDeleteOpen} onOpenChange={(o) => !bulkBusy && setBulkDeleteOpen(o)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete {selectedDeletable.length} voucher(s)?</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            Selected vouchers will be moved to the trash. Only vouchers you have permission to delete will be processed.
+          </div>
+          <div className="space-y-1">
+            <Label>Reason (optional)</Label>
+            <Textarea value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder="Bulk delete" rows={2} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDeleteOpen(false)} disabled={bulkBusy}>Cancel</Button>
+            <Button variant="destructive" onClick={runBulkDelete} disabled={bulkBusy || selectedDeletable.length === 0}>
+              {bulkBusy ? "Deleting..." : `Delete ${selectedDeletable.length}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk change type */}
+      <Dialog open={bulkChangeOpen} onOpenChange={(o) => !bulkBusy && setBulkChangeOpen(o)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Change type for {selectedTransferable.length} voucher(s)</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            Each selected voucher will be soft-deleted (marked <b>transferred</b>) and re-created under the target type. Original serials are released for reuse.
+          </div>
+          <div className="space-y-1">
+            <Label>Target voucher type</Label>
+            <Select value={bulkTargetType} onValueChange={setBulkTargetType}>
+              <SelectTrigger><SelectValue placeholder="Select target type" /></SelectTrigger>
+              <SelectContent>
+                {VOUCHER_TYPES.filter((t) => canCreateForType(t.id)).map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Reason (required)</Label>
+            <Textarea value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder="Reason for bulk transfer" rows={2} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkChangeOpen(false)} disabled={bulkBusy}>Cancel</Button>
+            <Button onClick={runBulkChangeType} disabled={bulkBusy || !bulkTargetType || !bulkReason.trim()}>
+              {bulkBusy ? "Transferring..." : "Transfer Selected"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
 
   );
 };
