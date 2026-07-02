@@ -389,6 +389,17 @@ const AccountingVouchers = () => {
   };
 
   const handleSave = async (submitForApproval: boolean, resetForNew: boolean = false) => {
+    // Guard: voucher_date is required end-to-end. A missing/invalid date
+    // silently reverted to the previously saved value in the past — surface
+    // it explicitly instead of shipping an empty payload to the backend.
+    if (!formDate || !/^\d{4}-\d{2}-\d{2}$/.test(formDate)) {
+      toast({
+        title: "Voucher date required",
+        description: "Please pick a valid date (DD-MM-YYYY) before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!isBalanced) {
       toast({ title: "Debit and Credit must be equal", variant: "destructive" });
       return;
