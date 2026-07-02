@@ -419,6 +419,9 @@ const AccountingVouchers = () => {
         if (editingVoucher.status === "approved" && isSuperAdmin) {
           await voucherApi.editApproved({
             id: editingVoucher.id,
+            voucher_date: formDate,
+            branch_id: formBranch || null,
+            financial_year_id: formFinYear || null,
             description: formDesc,
             entries: validEntries.map((e) => ({
               account_id: e.account_id,
