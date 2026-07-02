@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, CheckCircle } from "lucide-react";
+import { Plus, CheckCircle, Upload } from "lucide-react";
+import { BulkImportDialog } from "@/components/hrm/BulkImportDialog";
 
 interface Employee { id: string; employee_code: string; first_name: string; last_name: string; }
 interface OvertimeRecord { id: string; employee_id: string; date: string; hours: number; status: string; }
@@ -21,6 +22,7 @@ export default function OvertimePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [records, setRecords] = useState<OvertimeRecord[]>([]);
   const [dialog, setDialog] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [form, setForm] = useState({ employee_id: "", date: new Date().toISOString().split("T")[0], hours: 0 });
 
   const fetchData = useCallback(async () => {
@@ -55,7 +57,10 @@ export default function OvertimePage() {
           <h1 className="text-2xl font-bold text-foreground">Overtime Management</h1>
           <p className="text-muted-foreground">Track and approve employee overtime hours</p>
         </div>
-        {canManage && <Button onClick={() => { setForm({ employee_id: "", date: new Date().toISOString().split("T")[0], hours: 0 }); setDialog(true); }}><Plus className="w-4 h-4 mr-2" />Record Overtime</Button>}
+        {canManage && <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>
+          <Button onClick={() => { setForm({ employee_id: "", date: new Date().toISOString().split("T")[0], hours: 0 }); setDialog(true); }}><Plus className="w-4 h-4 mr-2" />Record Overtime</Button>
+        </div>}
       </div>
 
       <Card>
@@ -106,6 +111,32 @@ export default function OvertimePage() {
           <DialogFooter><Button variant="outline" onClick={() => setDialog(false)}>Cancel</Button><Button onClick={save}>Save</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkImportDialog open={importOpen} onOpenChange={setImportOpen} config={{
+        title: "Bulk Import Overtime",
+        table: "overtime_records",
+        templateFilename: "overtime_template.csv",
+        helpText: "Date: YYYY-MM-DD. Hours: decimal (e.g. 2.5).",
+        columns: [
+          { key: "employee_code", label: "Employee Code", required: true, example: "EMP-0001" },
+          { key: "date", label: "Date", required: true, example: "2025-01-15" },
+          { key: "hours", label: "Hours", required: true, example: "2.5" },
+          { key: "status", label: "Status", example: "pending" },
+        ],
+        transform: (r) => {
+          const emp = employees.find(e => e.employee_code?.toLowerCase() === r.employee_code.toLowerCase());
+          if (!emp) throw new Error(`Employee not found: ${r.employee_code}`);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) throw new Error("Date must be YYYY-MM-DD");
+          const hrs = Number(r.hours);
+          if (!(hrs > 0)) throw new Error("Hours must be > 0");
+          return {
+            employee_id: emp.id,
+            date: r.date,
+            hours: hrs,
+            status: (r.status || "pending").toLowerCase(),
+          };
+        },
+        onSuccess: fetchData,
+      }} />
     </div>
   );
 }

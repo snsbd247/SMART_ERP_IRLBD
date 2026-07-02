@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Check, X } from "lucide-react";
+import { Plus, Check, X, Upload } from "lucide-react";
+import { BulkImportDialog } from "@/components/hrm/BulkImportDialog";
 
 interface LeaveType { id: string; name: string; days_per_year: number; }
 interface Employee { id: string; employee_code: string; first_name: string; last_name: string; }
@@ -29,6 +30,7 @@ export default function LeavePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [form, setForm] = useState({ employee_id: "", leave_type_id: "", start_date: "", end_date: "", reason: "" });
 
   const fetchData = useCallback(async () => {
@@ -68,7 +70,10 @@ export default function LeavePage() {
     <div className="p-4 lg:p-6 space-y-6 max-w-[1600px] mx-auto">
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold text-foreground">Leave Management</h1><p className="text-muted-foreground">Manage leave requests</p></div>
-        {isAdmin && <Button onClick={() => { setForm({ employee_id: "", leave_type_id: "", start_date: "", end_date: "", reason: "" }); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />New Leave Request</Button>}
+        {isAdmin && <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>
+          <Button onClick={() => { setForm({ employee_id: "", leave_type_id: "", start_date: "", end_date: "", reason: "" }); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />New Leave Request</Button>
+        </div>}
       </div>
 
       <Tabs defaultValue="requests">
@@ -138,6 +143,39 @@ export default function LeavePage() {
           <DialogFooter><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button onClick={handleSubmit}>Submit</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkImportDialog open={importOpen} onOpenChange={setImportOpen} config={{
+        title: "Bulk Import Leave Requests",
+        table: "leave_requests",
+        templateFilename: "leave_requests_template.csv",
+        helpText: "Dates: YYYY-MM-DD. Status: pending/approved/rejected.",
+        columns: [
+          { key: "employee_code", label: "Employee Code", required: true, example: "EMP-0001" },
+          { key: "leave_type", label: "Leave Type", required: true, example: "Casual" },
+          { key: "start_date", label: "From", required: true, example: "2025-01-15" },
+          { key: "end_date", label: "To", required: true, example: "2025-01-17" },
+          { key: "reason", label: "Reason", example: "Personal" },
+          { key: "status", label: "Status", example: "pending" },
+        ],
+        transform: (r) => {
+          const emp = employees.find(e => e.employee_code?.toLowerCase() === r.employee_code.toLowerCase());
+          if (!emp) throw new Error(`Employee not found: ${r.employee_code}`);
+          const lt = leaveTypes.find(l => l.name.toLowerCase() === r.leave_type.toLowerCase());
+          if (!lt) throw new Error(`Leave type not found: ${r.leave_type}`);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(r.start_date)) throw new Error("From must be YYYY-MM-DD");
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(r.end_date)) throw new Error("To must be YYYY-MM-DD");
+          const status = (r.status || "pending").toLowerCase();
+          if (!["pending", "approved", "rejected"].includes(status)) throw new Error(`Invalid status: ${status}`);
+          return {
+            employee_id: emp.id,
+            leave_type_id: lt.id,
+            start_date: r.start_date,
+            end_date: r.end_date,
+            reason: r.reason || null,
+            status,
+          };
+        },
+        onSuccess: fetchData,
+      }} />
     </div>
   );
 }

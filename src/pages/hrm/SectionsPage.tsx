@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, Upload } from "lucide-react";
+import { BulkImportDialog } from "@/components/hrm/BulkImportDialog";
 
 interface Section {
   id: string;
@@ -34,6 +35,7 @@ export default function SectionsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(defaultForm);
+  const [importOpen, setImportOpen] = useState(false);
 
   const fetchAll = useCallback(async () => {
     const [sRes, bRes, dRes] = await Promise.all([
@@ -94,7 +96,10 @@ export default function SectionsPage() {
           <h1 className="text-2xl font-bold text-foreground">Sections</h1>
           <p className="text-muted-foreground">Factory shop floor sections (e.g. Cutting, Sewing)</p>
         </div>
-        {isAdmin && <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" />Add Section</Button>}
+        {isAdmin && <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>
+          <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" />Add Section</Button>
+        </div>}
       </div>
       <Card>
         <CardContent className="pt-6">
@@ -172,6 +177,34 @@ export default function SectionsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkImportDialog open={importOpen} onOpenChange={setImportOpen} config={{
+        title: "Bulk Import Sections",
+        table: "sections",
+        templateFilename: "sections_template.csv",
+        helpText: "Branch and Department must match existing active names.",
+        columns: [
+          { key: "name", label: "Name", required: true, example: "Cutting" },
+          { key: "branch", label: "Branch", example: "Head Office" },
+          { key: "department", label: "Department", example: "Production" },
+          { key: "description", label: "Description", example: "" },
+          { key: "status", label: "Status", example: "active" },
+        ],
+        dedupeKey: (r) => r.name?.toLowerCase(),
+        transform: (r) => {
+          const branch_id = r.branch ? branches.find(b => b.name.toLowerCase() === r.branch.toLowerCase())?.id : null;
+          if (r.branch && !branch_id) throw new Error(`Branch not found: ${r.branch}`);
+          const department_id = r.department ? departments.find(d => d.name.toLowerCase() === r.department.toLowerCase())?.id : null;
+          if (r.department && !department_id) throw new Error(`Department not found: ${r.department}`);
+          return {
+            name: r.name,
+            branch_id: branch_id || null,
+            department_id: department_id || null,
+            description: r.description || null,
+            status: (r.status || "active").toLowerCase(),
+          };
+        },
+        onSuccess: fetchAll,
+      }} />
     </div>
   );
 }

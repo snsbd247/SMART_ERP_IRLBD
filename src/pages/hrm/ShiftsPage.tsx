@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Clock, Upload } from "lucide-react";
+import { BulkImportDialog } from "@/components/hrm/BulkImportDialog";
 
 interface Shift {
   id: string;
@@ -25,6 +26,7 @@ export default function ShiftsPage() {
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Shift | null>(null);
   const [form, setForm] = useState({ shift_name: "", start_time: "09:00", end_time: "17:00", late_after_minutes: 15 });
+  const [importOpen, setImportOpen] = useState(false);
 
   const fetch = useCallback(async () => {
     const { data } = await supabase.from("shifts" as any).select("*").order("shift_name");
@@ -70,7 +72,10 @@ export default function ShiftsPage() {
           <h1 className="text-2xl font-bold text-foreground">Shift Management</h1>
           <p className="text-muted-foreground">Configure employee work shifts</p>
         </div>
-        {isAdmin && <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" />Add Shift</Button>}
+        {isAdmin && <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>
+          <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" />Add Shift</Button>
+        </div>}
       </div>
 
       <Card>
@@ -123,6 +128,30 @@ export default function ShiftsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkImportDialog open={importOpen} onOpenChange={setImportOpen} config={{
+        title: "Bulk Import Shifts",
+        table: "shifts",
+        templateFilename: "shifts_template.csv",
+        helpText: "Time format: HH:MM (24-hour).",
+        columns: [
+          { key: "shift_name", label: "Shift Name", required: true, example: "Morning" },
+          { key: "start_time", label: "Start Time", required: true, example: "09:00" },
+          { key: "end_time", label: "End Time", required: true, example: "17:00" },
+          { key: "late_after_minutes", label: "Late After (minutes)", example: "15" },
+        ],
+        dedupeKey: (r) => r.shift_name?.toLowerCase(),
+        transform: (r) => {
+          if (!/^\d{1,2}:\d{2}$/.test(r.start_time)) throw new Error("Invalid Start Time (HH:MM)");
+          if (!/^\d{1,2}:\d{2}$/.test(r.end_time)) throw new Error("Invalid End Time (HH:MM)");
+          return {
+            shift_name: r.shift_name,
+            start_time: r.start_time,
+            end_time: r.end_time,
+            late_after_minutes: Number(r.late_after_minutes || 15),
+          };
+        },
+        onSuccess: fetch,
+      }} />
     </div>
   );
 }

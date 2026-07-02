@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Save, Calendar } from "lucide-react";
+import { Save, Calendar, Upload } from "lucide-react";
+import { BulkImportDialog } from "@/components/hrm/BulkImportDialog";
 
 interface Employee { id: string; employee_code: string; first_name: string; last_name: string; }
 interface AttendanceRecord { id: string; employee_id: string; date: string; check_in: string | null; check_out: string | null; status: string; }
@@ -22,6 +23,7 @@ export default function AttendancePage() {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [entries, setEntries] = useState<Record<string, { check_in: string; check_out: string; status: string }>>({});
   const [saving, setSaving] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     const [empRes, attRes] = await Promise.all([
@@ -87,6 +89,7 @@ export default function AttendancePage() {
             <Calendar className="w-4 h-4 text-muted-foreground" />
             <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-44" />
           </div>
+          {isAdmin && <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>}
           {isAdmin && <Button onClick={handleSave} disabled={saving}><Save className="w-4 h-4 mr-2" />{saving ? "Saving..." : "Save Attendance"}</Button>}
         </div>
       </div>
@@ -123,6 +126,36 @@ export default function AttendancePage() {
           </Table>
         </CardContent>
       </Card>
+      <BulkImportDialog open={importOpen} onOpenChange={setImportOpen} config={{
+        title: "Bulk Import Attendance",
+        table: "attendance",
+        templateFilename: "attendance_template.csv",
+        helpText: "Date: YYYY-MM-DD. Time: HH:MM. Status: present/absent/late/leave.",
+        columns: [
+          { key: "employee_code", label: "Employee Code", required: true, example: "EMP-0001" },
+          { key: "date", label: "Date", required: true, example: "2025-01-15" },
+          { key: "check_in", label: "Check In", example: "09:00" },
+          { key: "check_out", label: "Check Out", example: "17:00" },
+          { key: "status", label: "Status", example: "present" },
+          { key: "notes", label: "Notes", example: "" },
+        ],
+        transform: (r) => {
+          const emp = employees.find(e => e.employee_code?.toLowerCase() === r.employee_code.toLowerCase());
+          if (!emp) throw new Error(`Employee not found: ${r.employee_code}`);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) throw new Error("Date must be YYYY-MM-DD");
+          const status = (r.status || "present").toLowerCase();
+          if (!["present", "absent", "late", "leave"].includes(status)) throw new Error(`Invalid status: ${status}`);
+          return {
+            employee_id: emp.id,
+            date: r.date,
+            check_in: r.check_in || null,
+            check_out: r.check_out || null,
+            status,
+            notes: r.notes || null,
+          };
+        },
+        onSuccess: fetchData,
+      }} />
     </div>
   );
 }

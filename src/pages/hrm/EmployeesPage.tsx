@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, Search, Users, Eye, EyeOff, KeyRound, Wand2 } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Users, Eye, EyeOff, KeyRound, Wand2, Upload } from "lucide-react";
+import { BulkImportDialog } from "@/components/hrm/BulkImportDialog";
 
 interface Employee {
   id: string;
@@ -66,6 +67,7 @@ export default function EmployeesPage() {
   const [sections, setSections] = useState<Section[]>([]);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(defaultForm);
   const [loading, setLoading] = useState(false);
@@ -293,7 +295,10 @@ export default function EmployeesPage() {
           <h1 className="text-2xl font-bold text-foreground">Employees</h1>
           <p className="text-muted-foreground">Manage employee records</p>
         </div>
-        {isAdmin && <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" />Add Employee</Button>}
+        {isAdmin && <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>
+          <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" />Add Employee</Button>
+        </div>}
       </div>
 
       <Card>
@@ -524,6 +529,60 @@ export default function EmployeesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkImportDialog open={importOpen} onOpenChange={setImportOpen} config={{
+        title: "Bulk Import Employees",
+        table: "employees",
+        templateFilename: "employees_template.csv",
+        helpText: "Department/Designation/Branch/Section must match existing active names. Joining Date: YYYY-MM-DD.",
+        columns: [
+          { key: "employee_code", label: "Employee Code", required: true, example: "EMP-0001" },
+          { key: "first_name", label: "First Name", required: true, example: "John" },
+          { key: "last_name", label: "Last Name", required: true, example: "Doe" },
+          { key: "mobile", label: "Mobile", example: "01700000000" },
+          { key: "email", label: "Email", example: "john@example.com" },
+          { key: "national_id", label: "National ID", example: "" },
+          { key: "tin_no", label: "TIN Number", example: "" },
+          { key: "address", label: "Address", example: "" },
+          { key: "department", label: "Department", example: "Production" },
+          { key: "designation", label: "Designation", example: "Manager" },
+          { key: "branch", label: "Branch", example: "Head Office" },
+          { key: "section", label: "Section", example: "Cutting" },
+          { key: "joining_date", label: "Joining Date", example: "2025-01-01" },
+          { key: "salary", label: "Salary", example: "25000" },
+          { key: "employment_type", label: "Employment Type", example: "permanent" },
+          { key: "status", label: "Status", example: "active" },
+        ],
+        dedupeKey: (r) => r.employee_code?.toLowerCase(),
+        transform: (r) => {
+          const findId = (list: any[], name: string, field = "name") => {
+            if (!name) return null;
+            const m = list.find((x: any) => (x[field] || "").toLowerCase() === name.toLowerCase());
+            if (!m) throw new Error(`${field} not found: ${name}`);
+            return m.id;
+          };
+          if (r.joining_date && !/^\d{4}-\d{2}-\d{2}$/.test(r.joining_date)) throw new Error("Joining Date must be YYYY-MM-DD");
+          return {
+            employee_code: r.employee_code,
+            first_name: r.first_name,
+            last_name: r.last_name,
+            mobile: r.mobile || null,
+            email: r.email || null,
+            national_id: r.national_id || null,
+            tin_no: r.tin_no || null,
+            address: r.address || null,
+            department_id: r.department ? findId(departments, r.department) : null,
+            designation_id: r.designation ? findId(designations, r.designation) : null,
+            branch_id: r.branch ? findId(branches, r.branch) : null,
+            section_id: r.section ? findId(sections, r.section) : null,
+            joining_date: r.joining_date || new Date().toISOString().split("T")[0],
+            salary: Number(r.salary || 0),
+            employment_type: (r.employment_type || "permanent").toLowerCase(),
+            status: (r.status || "active").toLowerCase(),
+            approval_status: "approved",
+          };
+        },
+        onSuccess: fetchAll,
+      }} />
     </div>
   );
 }
