@@ -1404,7 +1404,7 @@ const AccountingVouchers = () => {
       <AuditLogViewer
         open={auditOpen}
         onOpenChange={setAuditOpen}
-        module="vouchers"
+        module={["accounting", "accounting_vouchers", "vouchers"]}
         recordId={auditRecordId}
         title={auditRecordId ? "Voucher History" : "Vouchers Audit Log"}
       />
