@@ -23,6 +23,7 @@ export default function AttendancePage() {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [entries, setEntries] = useState<Record<string, { check_in: string; check_out: string; status: string }>>({});
   const [saving, setSaving] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     const [empRes, attRes] = await Promise.all([
