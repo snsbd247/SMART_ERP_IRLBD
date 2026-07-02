@@ -341,23 +341,67 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
       }
     }
 
-    const qs = buildQS({
-      select: this._select,
-      filters: this._filters,
-      orders: this._orders,
-      limit: this._limit,
-      offset: this._offset,
-      single: this._mode === "select" && this._single,
-      onConflict: this._onConflict,
-    });
-    const url = `/v1/db/${this.table}${qs}`;
+    // If a filter carries a very large IN list (typically injected by the
+    // relation-filter emulation above), chunk the main SELECT so we don't
+    // exceed Apache's LimitRequestLine (8KB) and get a 414.
     let res: Result<any>;
-    switch (this._mode) {
-      case "select": res = await call<any>("GET",    url); break;
-      case "insert": res = await call<any>("POST",   url, this._body); break;
-      case "update": res = await call<any>("PATCH",  url, this._body); break;
-      case "upsert": res = await call<any>("PUT",    url, this._body); break;
-      case "delete": res = await call<any>("DELETE", url); break;
+    const largeInIdx = this._mode === "select"
+      ? this._filters.findIndex((f) => f.op === "in" && Array.isArray(f.val) && f.val.length > getInChunkSize())
+      : -1;
+    if (largeInIdx >= 0) {
+      const largeIn = this._filters[largeInIdx];
+      const otherFilters = this._filters.filter((_, i) => i !== largeInIdx);
+      let chunkSize = getInChunkSize();
+      const chunks = chunkIds((largeIn.val as any[]).map(String), chunkSize);
+      const collected: any[] = [];
+      for (let ci = 0; ci < chunks.length; ci++) {
+        let slice = chunks[ci];
+        let attempts = 0;
+        while (attempts < 4) {
+          const cqs = buildQS({
+            select: this._select,
+            filters: [...otherFilters, { col: largeIn.col, op: "in", val: slice }],
+            orders: this._orders,
+            limit: this._limit,
+            offset: this._offset,
+            onConflict: this._onConflict,
+          });
+          const r = await call<any>("GET", `/v1/db/${this.table}${cqs}`);
+          if (r.error) {
+            if (isUrlTooLargeError(r.error) && slice.length > 10) {
+              const half = Math.max(10, Math.floor(slice.length / 2));
+              chunks.splice(ci + 1, 0, slice.slice(half));
+              slice = slice.slice(0, half);
+              chunkSize = half;
+              attempts++;
+              continue;
+            }
+            return r as Result<T>;
+          }
+          collected.push(...unwrapLaravelRows(r.data));
+          break;
+        }
+      }
+      logChunkMetrics(`laravel-bridge/main/${this.table}`, { totalIds: (largeIn.val as any[]).length, chunkSize, chunkCount: chunks.length });
+      res = { data: collected, error: null };
+    } else {
+      const qs = buildQS({
+        select: this._select,
+        filters: this._filters,
+        orders: this._orders,
+        limit: this._limit,
+        offset: this._offset,
+        single: this._mode === "select" && this._single,
+        onConflict: this._onConflict,
+      });
+      const url = `/v1/db/${this.table}${qs}`;
+      switch (this._mode) {
+        case "select": res = await call<any>("GET",    url); break;
+        case "insert": res = await call<any>("POST",   url, this._body); break;
+        case "update": res = await call<any>("PATCH",  url, this._body); break;
+        case "upsert": res = await call<any>("PUT",    url, this._body); break;
+        case "delete": res = await call<any>("DELETE", url); break;
+      }
     }
     if (res.error) return res as Result<T>;
 
