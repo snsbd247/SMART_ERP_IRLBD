@@ -295,7 +295,10 @@ export default function EmployeesPage() {
           <h1 className="text-2xl font-bold text-foreground">Employees</h1>
           <p className="text-muted-foreground">Manage employee records</p>
         </div>
-        {isAdmin && <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" />Add Employee</Button>}
+        {isAdmin && <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>
+          <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" />Add Employee</Button>
+        </div>}
       </div>
 
       <Card>
