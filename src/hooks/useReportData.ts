@@ -43,14 +43,24 @@ export function useReportData() {
       const [aRes, bRes, fyRes] = await Promise.all([
         supabase.from("chart_of_accounts").select("*").order("account_code"),
         supabase.from("branches").select("id, name"),
-        supabase.from("financial_years").select("start_date, end_date").eq("is_active", true).maybeSingle(),
+        // Fetch ALL active FYs — multiple can coexist (e.g. after auto-provisioning
+        // a new year). Pick the one containing today so the default range shows
+        // the period the user is actually operating in.
+        supabase.from("financial_years").select("start_date, end_date").eq("is_active", true),
       ]);
       setAccounts((aRes.data || []) as Account[]);
       setBranches((bRes.data || []) as Branch[]);
-      const activeYear = fyRes.data as FinancialYear | null;
-      if (activeYear?.start_date && activeYear?.end_date) {
-        setDateFrom(activeYear.start_date);
-        setDateTo(activeYear.end_date);
+      const activeYears = (fyRes.data || []) as FinancialYear[];
+      const today = new Date().toISOString().slice(0, 10);
+      const containsToday = activeYears.find(
+        (fy) => fy.start_date && fy.end_date && fy.start_date <= today && fy.end_date >= today,
+      );
+      // Prefer FY containing today, else the latest active FY by start_date.
+      const chosen = containsToday
+        ?? [...activeYears].sort((a, b) => (b.start_date || "").localeCompare(a.start_date || ""))[0];
+      if (chosen?.start_date && chosen?.end_date) {
+        setDateFrom(chosen.start_date);
+        setDateTo(chosen.end_date);
       }
     };
     init();
