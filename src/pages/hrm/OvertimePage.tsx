@@ -22,6 +22,7 @@ export default function OvertimePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [records, setRecords] = useState<OvertimeRecord[]>([]);
   const [dialog, setDialog] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [form, setForm] = useState({ employee_id: "", date: new Date().toISOString().split("T")[0], hours: 0 });
 
   const fetchData = useCallback(async () => {
