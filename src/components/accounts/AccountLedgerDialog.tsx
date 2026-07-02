@@ -86,7 +86,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
           credit: Number(e.credit),
           narration: e.narration,
           voucher_number: v?.voucher_number || "",
-          voucher_date: (v?.voucher_date || "").slice(0, 10),
+          voucher_date: toDateInputValue(v?.voucher_date),
           voucher_type: v?.voucher_type || "",
           description: v?.description || "",
           running_balance: runBal,
