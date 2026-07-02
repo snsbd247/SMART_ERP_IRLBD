@@ -180,7 +180,7 @@ if (( ${#MISSING_EXT[@]} > 0 )); then
       systemctl reload "php${PHP_VERSION}-fpm" 2>/dev/null || true
       STILL_MISSING=()
       for ext in "${REQUIRED_PHP_EXT[@]}"; do
-        php -m 2>/dev/null | grep -qi "^${ext}$" || STILL_MISSING+=("${ext}")
+        php_ext_loaded "${ext}" || STILL_MISSING+=("${ext}")
       done
       if (( ${#STILL_MISSING[@]} > 0 )); then
         warn "PHP extensions still not visible after install: ${STILL_MISSING[*]}"
