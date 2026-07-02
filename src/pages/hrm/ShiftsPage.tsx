@@ -26,6 +26,7 @@ export default function ShiftsPage() {
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState<Shift | null>(null);
   const [form, setForm] = useState({ shift_name: "", start_time: "09:00", end_time: "17:00", late_after_minutes: 15 });
+  const [importOpen, setImportOpen] = useState(false);
 
   const fetch = useCallback(async () => {
     const { data } = await supabase.from("shifts" as any).select("*").order("shift_name");
