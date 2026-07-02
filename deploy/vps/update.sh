@@ -72,6 +72,24 @@ trap on_failure ERR
 if [[ $EUID -ne 0 ]]; then err "Run as root (sudo ./update.sh)"; exit 1; fi
 if [[ ! -d "${APP_DIR}/.git" ]]; then err "${APP_DIR} is not a git checkout. Run clone.sh first."; exit 1; fi
 
+# Prevent overlapping Pull & Deploy runs. This is intentionally also here
+# (not only in deploy-runner.sh) so a newly pulled update.sh can protect the
+# VPS even before /usr/local/bin/smarterp-deploy has been refreshed.
+UPDATE_LOCK="${UPDATE_LOCK:-/var/run/smarterp-update.lock}"
+if [[ "${SMARTERP_UPDATE_LOCKED:-0}" != "1" ]]; then
+  if command -v flock >/dev/null 2>&1; then
+    exec 8>"${UPDATE_LOCK}"
+    if ! flock -n 8; then
+      warn "Another deploy update is already running; ignoring duplicate request."
+      status_write running "Another deploy update is already running; duplicate request ignored."
+      exit 0
+    fi
+    export SMARTERP_UPDATE_LOCKED=1 UPDATE_LOCK
+  else
+    warn "flock not available; duplicate deploy protection is limited."
+  fi
+fi
+
 # ============================================================
 #  PRE-DEPLOYMENT CHECKS
 # ============================================================
