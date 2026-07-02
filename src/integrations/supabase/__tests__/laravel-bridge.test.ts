@@ -73,4 +73,80 @@ describe("laravelSupabaseBridge relation embeds", () => {
     expect(error).toBeNull();
     expect(data?.[0]?.account).toEqual(expect.objectContaining({ account_name: "IFIC Bank", account_code: "1252" }));
   });
+
+  it("chunks oversized IN filters injected by relation-filter emulation and returns complete results", async () => {
+    const voucherIds = Array.from({ length: 250 }, (_, i) => `v-${i.toString().padStart(4, "0")}`);
+    const entries = voucherIds.map((vid, i) => ({
+      id: `e-${i}`, voucher_id: vid, account_id: "acc-1",
+      debit: i % 2 === 0 ? "10" : "0", credit: i % 2 === 0 ? "0" : "10",
+    }));
+    const requestUrls: string[] = [];
+    let entryRequests = 0;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      requestUrls.push(url);
+      if (url.includes("/v1/db/acc_vouchers") && url.includes("select=id")) {
+        return new Response(JSON.stringify(voucherIds.map((id) => ({ id }))), {
+          status: 200, headers: { "content-type": "application/json" },
+        });
+      }
+      if (url.includes("/v1/db/voucher_entries")) {
+        entryRequests++;
+        const match = url.match(/f%5Bvoucher_id%5D%5Bin%5D=([^&]+)/);
+        const ids = match ? decodeURIComponent(match[1]).split(",") : [];
+        expect(ids.length).toBeLessThanOrEqual(100);
+        return new Response(JSON.stringify(entries.filter((e) => ids.includes(e.voucher_id))), {
+          status: 200, headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify([]), { status: 404 });
+    });
+
+    const { data, error } = await laravelSupabaseBridge
+      .from("voucher_entries")
+      .select("id, voucher_id, account_id, debit, credit")
+      .eq("account_id", "acc-1")
+      .in("acc_vouchers.status", ["approved", "posted"]);
+
+    expect(error).toBeNull();
+    expect(data).toHaveLength(250);
+    expect(entryRequests).toBeGreaterThanOrEqual(3);
+    for (const u of requestUrls) expect(u.length).toBeLessThan(8000);
+  });
+
+  it("retries with smaller chunks when the server returns 414 URL too long", async () => {
+    const voucherIds = Array.from({ length: 120 }, (_, i) => `v-${i}`);
+    let call414Seen = false;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/v1/db/acc_vouchers") && url.includes("select=id")) {
+        return new Response(JSON.stringify(voucherIds.map((id) => ({ id }))), {
+          status: 200, headers: { "content-type": "application/json" },
+        });
+      }
+      if (url.includes("/v1/db/voucher_entries")) {
+        const match = url.match(/f%5Bvoucher_id%5D%5Bin%5D=([^&]+)/);
+        const ids = match ? decodeURIComponent(match[1]).split(",") : [];
+        if (!call414Seen && ids.length > 50) {
+          call414Seen = true;
+          return new Response("URI too long", { status: 414 });
+        }
+        return new Response(JSON.stringify(ids.map((vid) => ({ id: `e-${vid}`, voucher_id: vid }))), {
+          status: 200, headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify([]), { status: 404 });
+    });
+
+    const { data, error } = await laravelSupabaseBridge
+      .from("voucher_entries")
+      .select("id, voucher_id")
+      .in("acc_vouchers.status", ["approved"]);
+
+    expect(error).toBeNull();
+    expect(call414Seen).toBe(true);
+    expect(data).toHaveLength(120);
+  });
 });
