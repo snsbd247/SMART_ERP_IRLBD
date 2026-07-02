@@ -67,6 +67,7 @@ export default function EmployeesPage() {
   const [sections, setSections] = useState<Section[]>([]);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(defaultForm);
   const [loading, setLoading] = useState(false);
