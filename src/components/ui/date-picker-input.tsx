@@ -135,6 +135,7 @@ export const DatePickerInput = React.forwardRef<HTMLInputElement, DatePickerInpu
             <Calendar
               mode="single"
               selected={selected}
+              defaultMonth={selected}
               onSelect={(date) => {
                 if (!date) return;
                 applyIso(localDateToIso(date));

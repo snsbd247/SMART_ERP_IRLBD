@@ -21,7 +21,7 @@ interface AuditEntry {
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  module: string;
+  module: string | string[];
   recordId?: string;
   title?: string;
   actionFilter?: string[]; // e.g. ["voucher_soft_deleted","voucher_restored"]
@@ -37,15 +37,17 @@ const actionBadge = (action: string) => {
 export function AuditLogViewer({ open, onOpenChange, module, recordId, title, actionFilter }: Props) {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const moduleKey = Array.isArray(module) ? module.join(",") : module;
 
   useEffect(() => {
     if (!open) return;
     (async () => {
       setLoading(true);
+      const modules = Array.isArray(module) ? module : [module];
       let q = supabase
         .from("audit_log")
         .select("id,user_name,module,action,record_id,details,ip_address,created_at")
-        .eq("module", module)
+        .in("module", modules)
         .order("created_at", { ascending: false })
         .limit(200);
       if (recordId) q = q.eq("record_id", recordId);
@@ -54,7 +56,8 @@ export function AuditLogViewer({ open, onOpenChange, module, recordId, title, ac
       setEntries((data || []) as AuditEntry[]);
       setLoading(false);
     })();
-  }, [open, module, recordId, actionFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, moduleKey, recordId, actionFilter]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
