@@ -13,7 +13,9 @@ class AccVoucher extends Model
         'total_amount', 'status', 'branch_id', 'financial_year_id',
         'created_by', 'approved_by', 'approved_at',
         'deleted_at', 'deleted_by', 'prev_status',
+        'source_module', 'transferred_to_id', 'transferred_from_id', 'transfer_reason',
     ];
+
     protected $casts = [
         'voucher_date' => 'date',
         'approved_at' => 'datetime',

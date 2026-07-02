@@ -256,6 +256,24 @@ export const voucherApi = {
 
     return { success: true };
   },
+
+  /**
+   * Change an existing voucher's type (e.g. Payment → Journal).
+   * Old voucher is soft-deleted with status='transferred'; its serial
+   * number is released to the free-list and the very next entry of the
+   * old type reuses it. Auto-posted vouchers cannot be transferred.
+   * Only implemented on Laravel/VPS mode.
+   */
+  changeType: async (id: string, newType: string, reason?: string) => {
+    if (isLaravelMode()) {
+      return laravelFetch<any>(`vouchers/${id}/change-type`, {
+        method: "POST",
+        body: JSON.stringify({ new_type: newType, reason }),
+      });
+    }
+    throw new Error("Voucher type change is only supported on the VPS/Laravel backend.");
+  },
 };
+
 
 

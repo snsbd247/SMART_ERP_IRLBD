@@ -19,7 +19,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Check, X, FileText, Trash2, RotateCcw, Pencil, ArrowLeftRight, Lock, Printer, Eye, PlusCircle, History } from "lucide-react";
+import { Plus, Check, X, FileText, Trash2, RotateCcw, Pencil, ArrowLeftRight, Lock, Printer, Eye, PlusCircle, History, Shuffle } from "lucide-react";
 import { AuditLogViewer } from "@/components/AuditLogViewer";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { PrintLayout } from "@/components/PrintLayout";
@@ -132,6 +132,13 @@ const AccountingVouchers = () => {
   const [superAdminAction, setSuperAdminAction] = useState<SuperAdminAction>(null);
   const [actionVoucher, setActionVoucher] = useState<Voucher | null>(null);
   const [actionReason, setActionReason] = useState("");
+
+  // Change-Type (transfer) dialog state
+  const [changeTypeVoucher, setChangeTypeVoucher] = useState<Voucher | null>(null);
+  const [changeTypeTarget, setChangeTypeTarget] = useState<string>("");
+  const [changeTypeReason, setChangeTypeReason] = useState("");
+  const [changeTypeSaving, setChangeTypeSaving] = useState(false);
+
 
   const [voucherAccountsMap, setVoucherAccountsMap] = useState<Record<string, string[]>>({});
   const [showDeleted, setShowDeleted] = useState(false);
@@ -579,9 +586,42 @@ const AccountingVouchers = () => {
     }
   };
 
+  const openChangeType = (v: Voucher) => {
+    setChangeTypeVoucher(v);
+    // Preselect first different type the user is allowed to create.
+    const first = VOUCHER_TYPES.find((t) => t.id !== v.voucher_type && canCreateForType(t.id));
+    setChangeTypeTarget(first?.id ?? "");
+    setChangeTypeReason("");
+  };
+
+  const handleChangeType = async () => {
+    if (!changeTypeVoucher || !changeTypeTarget) return;
+    if (!changeTypeReason.trim()) {
+      toast({ title: "Reason required", description: "Please enter a reason for the transfer.", variant: "destructive" });
+      return;
+    }
+    setChangeTypeSaving(true);
+    try {
+      const res: any = await voucherApi.changeType(changeTypeVoucher.id, changeTypeTarget, changeTypeReason.trim());
+      const releasedNum = res?.data?.released_number ?? changeTypeVoucher.voucher_number;
+      const newNum = res?.data?.new_voucher?.voucher_number ?? "";
+      toast({
+        title: "Voucher transferred",
+        description: `New ${changeTypeTarget} voucher ${newNum} created. Released ${releasedNum} → next same-type entry will reuse it.`,
+      });
+      setChangeTypeVoucher(null);
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Transfer failed", description: err?.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setChangeTypeSaving(false);
+    }
+  };
+
   const openPrintVoucher = async (v: Voucher) => {
     const { entries: data } = await voucherApi.get(v.id);
     const accountMap = new Map(accounts.map((a) => [a.id, a]));
+
     setPrintEntries((data || []).map((e: any) => {
       const account = e.account || e.chart_of_accounts || accountMap.get(e.account_id);
       return { ...e, account_name: account?.account_name || "—", account_code: account?.account_code || "" };
@@ -784,6 +824,17 @@ const AccountingVouchers = () => {
                                 <ArrowLeftRight className="w-3.5 h-3.5 text-primary" />
                               </Button>
                             )}
+                            {/* Change Type (Transfer) — non-deleted, non-auto-posted, user can edit source + create at least one other type */}
+                            {!(v as any).deleted_at
+                              && v.status !== "transferred"
+                              && !(v as any).source_module
+                              && evalPerm(v.voucher_type, "edit").allowed
+                              && VOUCHER_TYPES.some((t) => t.id !== v.voucher_type && canCreateForType(t.id)) && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Change voucher type" onClick={() => openChangeType(v)} title="Change Type (Transfer)">
+                                <Shuffle className="w-3.5 h-3.5 text-amber-600" />
+                              </Button>
+                            )}
+
                             {/* History */}
                             <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View history" onClick={() => { setAuditRecordId(v.id); setAuditOpen(true); }} title="View history">
                               <History className="w-3.5 h-3.5 text-muted-foreground" />
@@ -1185,7 +1236,56 @@ const AccountingVouchers = () => {
         recordId={auditRecordId}
         title={auditRecordId ? "Voucher History" : "Vouchers Audit Log"}
       />
+
+      {/* Change Type (Transfer) Dialog */}
+      <Dialog open={!!changeTypeVoucher} onOpenChange={(o) => !o && setChangeTypeVoucher(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Voucher Type (Transfer)</DialogTitle>
+          </DialogHeader>
+          {changeTypeVoucher && (
+            <div className="space-y-3">
+              <div className="text-sm text-muted-foreground">
+                <div><span className="font-medium text-foreground">{changeTypeVoucher.voucher_number}</span> — currently <span className="uppercase">{changeTypeVoucher.voucher_type}</span></div>
+                <div className="mt-1 text-xs">
+                  The old voucher will be marked as <b>transferred</b> (soft-deleted). Its serial <b>{changeTypeVoucher.voucher_number}</b> will be released and used by the next new <b>{changeTypeVoucher.voucher_type}</b> voucher.
+                </div>
+              </div>
+              <div>
+                <Label>New Type</Label>
+                <Select value={changeTypeTarget} onValueChange={setChangeTypeTarget}>
+                  <SelectTrigger><SelectValue placeholder="Select new type" /></SelectTrigger>
+                  <SelectContent>
+                    {VOUCHER_TYPES.filter((t) => t.id !== changeTypeVoucher.voucher_type && canCreateForType(t.id)).map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Reason <span className="text-destructive">*</span></Label>
+                <Textarea
+                  value={changeTypeReason}
+                  onChange={(e) => setChangeTypeReason(e.target.value)}
+                  placeholder="Why is this voucher being transferred to a different type?"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setChangeTypeVoucher(null)} disabled={changeTypeSaving}>Cancel</Button>
+            <Button
+              onClick={handleChangeType}
+              disabled={changeTypeSaving || !changeTypeTarget || !changeTypeReason.trim()}
+            >
+              {changeTypeSaving ? "Transferring..." : "Transfer Voucher"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 };
 
