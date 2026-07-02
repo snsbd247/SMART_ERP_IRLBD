@@ -35,6 +35,7 @@ export default function SectionsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(defaultForm);
+  const [importOpen, setImportOpen] = useState(false);
 
   const fetchAll = useCallback(async () => {
     const [sRes, bRes, dRes] = await Promise.all([
