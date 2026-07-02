@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, Upload } from "lucide-react";
+import { BulkImportDialog } from "@/components/hrm/BulkImportDialog";
 
 interface Dept { id: string; name: string; description: string | null; status: string; created_at: string; }
 
@@ -21,6 +22,7 @@ export default function DepartmentsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
 
   const fetch = useCallback(async () => {
     const { data } = await supabase.from("departments" as any).select("*").order("name");
@@ -51,7 +53,10 @@ export default function DepartmentsPage() {
     <div className="p-4 lg:p-6 space-y-6 max-w-[1600px] mx-auto">
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold text-foreground">Departments</h1><p className="text-muted-foreground">Manage departments</p></div>
-        {isAdmin && <Button onClick={() => { setEditId(null); setName(""); setDescription(""); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Add Department</Button>}
+        {isAdmin && <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>
+          <Button onClick={() => { setEditId(null); setName(""); setDescription(""); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Add Department</Button>
+        </div>}
       </div>
       <Card>
         <CardContent className="pt-6">
@@ -82,6 +87,19 @@ export default function DepartmentsPage() {
           <DialogFooter><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button onClick={handleSave}>Save</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkImportDialog open={importOpen} onOpenChange={setImportOpen} config={{
+        title: "Bulk Import Departments",
+        table: "departments",
+        templateFilename: "departments_template.csv",
+        columns: [
+          { key: "name", label: "Name", required: true, example: "Production" },
+          { key: "description", label: "Description", example: "Manufacturing dept" },
+          { key: "status", label: "Status", example: "active" },
+        ],
+        dedupeKey: (r) => r.name?.toLowerCase(),
+        transform: (r) => ({ name: r.name, description: r.description || null, status: (r.status || "active").toLowerCase() }),
+        onSuccess: fetch,
+      }} />
     </div>
   );
 }
