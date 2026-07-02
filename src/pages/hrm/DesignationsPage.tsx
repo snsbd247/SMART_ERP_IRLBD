@@ -85,6 +85,19 @@ export default function DesignationsPage() {
           <DialogFooter><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button onClick={handleSave}>Save</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkImportDialog open={importOpen} onOpenChange={setImportOpen} config={{
+        title: "Bulk Import Designations",
+        table: "designations",
+        templateFilename: "designations_template.csv",
+        columns: [
+          { key: "name", label: "Name", required: true, example: "Manager" },
+          { key: "description", label: "Description", example: "Reports to CEO" },
+          { key: "status", label: "Status", example: "active" },
+        ],
+        dedupeKey: (r) => r.name?.toLowerCase(),
+        transform: (r) => ({ name: r.name, description: r.description || null, status: (r.status || "active").toLowerCase() }),
+        onSuccess: fetch,
+      }} />
     </div>
   );
 }
