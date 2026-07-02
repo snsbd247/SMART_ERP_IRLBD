@@ -111,6 +111,32 @@ export default function OvertimePage() {
           <DialogFooter><Button variant="outline" onClick={() => setDialog(false)}>Cancel</Button><Button onClick={save}>Save</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkImportDialog open={importOpen} onOpenChange={setImportOpen} config={{
+        title: "Bulk Import Overtime",
+        table: "overtime_records",
+        templateFilename: "overtime_template.csv",
+        helpText: "Date: YYYY-MM-DD. Hours: decimal (e.g. 2.5).",
+        columns: [
+          { key: "employee_code", label: "Employee Code", required: true, example: "EMP-0001" },
+          { key: "date", label: "Date", required: true, example: "2025-01-15" },
+          { key: "hours", label: "Hours", required: true, example: "2.5" },
+          { key: "status", label: "Status", example: "pending" },
+        ],
+        transform: (r) => {
+          const emp = employees.find(e => e.employee_code?.toLowerCase() === r.employee_code.toLowerCase());
+          if (!emp) throw new Error(`Employee not found: ${r.employee_code}`);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) throw new Error("Date must be YYYY-MM-DD");
+          const hrs = Number(r.hours);
+          if (!(hrs > 0)) throw new Error("Hours must be > 0");
+          return {
+            employee_id: emp.id,
+            date: r.date,
+            hours: hrs,
+            status: (r.status || "pending").toLowerCase(),
+          };
+        },
+        onSuccess: fetchData,
+      }} />
     </div>
   );
 }
