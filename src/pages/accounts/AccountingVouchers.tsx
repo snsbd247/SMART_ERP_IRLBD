@@ -507,9 +507,25 @@ const AccountingVouchers = () => {
             affected_accounts: affected,
           },
         });
+        // Dedicated audit trail entry for voucher_date changes so the
+        // "date reverted" class of bug is always traceable to old→new.
+        if (editingVoucher) {
+          const oldDate = String(editingVoucher.voucher_date || "").slice(0, 10);
+          if (oldDate && oldDate !== formDate) {
+            await logAudit({
+              userId: user?.id,
+              module: "accounting",
+              action: "voucher_date_changed",
+              recordId: editingVoucher.id,
+              oldData: { voucher_date: oldDate },
+              newData: { voucher_date: formDate, voucher_number: editingVoucher.voucher_number },
+            });
+          }
+        }
       } catch {
         // Audit-log failures must never block voucher save.
       }
+
 
       if (resetForNew) {
         resetNewVoucherEntries();
