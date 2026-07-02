@@ -150,10 +150,14 @@ class DeployController extends BaseController
         if (!is_file(self::PID_FILE)) return false;
         $pid = (int) trim((string) @file_get_contents(self::PID_FILE));
         if ($pid <= 0) return false;
-        if (function_exists('posix_kill')) {
-            return @posix_kill($pid, 0);
-        }
-        return trim((string) @shell_exec('ps -p ' . (int) $pid . ' -o pid=')) !== '';
+
+        // The runner is root-owned while this controller runs as www-data.
+        // posix_kill($pid, 0) may return false on EPERM even when the process
+        // exists, so prefer ps and only use posix_kill as an extra positive check.
+        $psOutput = trim((string) @shell_exec('ps -p ' . (int) $pid . ' -o pid='));
+        if ($psOutput !== '') return true;
+
+        return function_exists('posix_kill') && @posix_kill($pid, 0);
     }
 
     private function isBusy(): bool
