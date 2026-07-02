@@ -3,9 +3,10 @@
 namespace App\Services;
 
 use App\Models\NumberSequence;
+use App\Models\NumberSequenceFreeItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
-class NumberSequenceService
 {
     /**
      * Default prefixes for known sequence IDs. Used to self-heal when a row
