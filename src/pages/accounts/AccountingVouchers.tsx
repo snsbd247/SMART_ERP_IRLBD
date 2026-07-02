@@ -618,8 +618,10 @@ const AccountingVouchers = () => {
     }
   };
 
+  const openPrintVoucher = async (v: Voucher) => {
     const { entries: data } = await voucherApi.get(v.id);
     const accountMap = new Map(accounts.map((a) => [a.id, a]));
+
     setPrintEntries((data || []).map((e: any) => {
       const account = e.account || e.chart_of_accounts || accountMap.get(e.account_id);
       return { ...e, account_name: account?.account_name || "—", account_code: account?.account_code || "" };
