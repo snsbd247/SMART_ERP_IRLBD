@@ -43,6 +43,21 @@ class NumberSequenceService
     public function next(string $sequenceId): string
     {
         return DB::transaction(function () use ($sequenceId) {
+            // 1) Try to reuse a released number (free-list, FIFO). Safe: consumed_at is set
+            //    atomically inside the same transaction so concurrent callers cannot claim it.
+            if (Schema::hasTable('number_sequence_free_list')) {
+                $freed = NumberSequenceFreeItem::where('sequence_id', $sequenceId)
+                    ->whereNull('consumed_at')
+                    ->orderBy('released_at')
+                    ->lockForUpdate()
+                    ->first();
+                if ($freed) {
+                    $freed->consumed_at = now();
+                    $freed->save();
+                    return $freed->number;
+                }
+            }
+
             $seq = NumberSequence::lockForUpdate()->find($sequenceId);
 
             if (!$seq) {
@@ -75,4 +90,22 @@ class NumberSequenceService
             return "{$seq->prefix}-{$seq->year}-{$num}";
         });
     }
+
+    /**
+     * Release a previously issued number back to the free-list so the very
+     * next call to next() for the same sequence returns it.
+     * No-op if the free-list table hasn't been migrated yet.
+     */
+    public function release(string $sequenceId, string $number, ?string $releasedBy = null): void
+    {
+        if (!Schema::hasTable('number_sequence_free_list')) return;
+        NumberSequenceFreeItem::create([
+            'sequence_id' => $sequenceId,
+            'number'      => $number,
+            'released_by' => $releasedBy,
+            'released_at' => now(),
+        ]);
+    }
+}
+
 }
