@@ -365,7 +365,7 @@ Deno.serve(async (req) => {
         if (!isSuperAdmin(roles)) {
           return err("Only Super Admin can edit approved vouchers", 403);
         }
-        const { id, description, entries: newEntries } = body;
+        const { id, voucher_date, branch_id, financial_year_id, description, entries: newEntries } = body;
 
         const { data: oldVoucher } = await admin.from("acc_vouchers").select("*").eq("id", id).single();
         if (!oldVoucher) return err("Voucher not found", 404);
@@ -400,19 +400,27 @@ Deno.serve(async (req) => {
 
           // Update voucher amount
           const newTotal = newEntries.reduce((s: number, e: any) => s + (e.debit || 0), 0);
-          await admin
-            .from("acc_vouchers")
-            .update({
-              total_amount: newTotal,
-              description: description !== undefined ? description : oldVoucher.description,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", id);
+          const voucherPatch: Record<string, unknown> = {
+            total_amount: newTotal,
+            description: description !== undefined ? description : oldVoucher.description,
+            updated_at: new Date().toISOString(),
+          };
+          if (voucher_date !== undefined) voucherPatch.voucher_date = voucher_date;
+          if (branch_id !== undefined) voucherPatch.branch_id = branch_id || null;
+          if (financial_year_id !== undefined) voucherPatch.financial_year_id = financial_year_id || null;
+          await admin.from("acc_vouchers").update(voucherPatch).eq("id", id);
         } else if (description !== undefined) {
-          await admin
-            .from("acc_vouchers")
-            .update({ description, updated_at: new Date().toISOString() })
-            .eq("id", id);
+          const voucherPatch: Record<string, unknown> = { description, updated_at: new Date().toISOString() };
+          if (voucher_date !== undefined) voucherPatch.voucher_date = voucher_date;
+          if (branch_id !== undefined) voucherPatch.branch_id = branch_id || null;
+          if (financial_year_id !== undefined) voucherPatch.financial_year_id = financial_year_id || null;
+          await admin.from("acc_vouchers").update(voucherPatch).eq("id", id);
+        } else if (voucher_date !== undefined || branch_id !== undefined || financial_year_id !== undefined) {
+          const voucherPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+          if (voucher_date !== undefined) voucherPatch.voucher_date = voucher_date;
+          if (branch_id !== undefined) voucherPatch.branch_id = branch_id || null;
+          if (financial_year_id !== undefined) voucherPatch.financial_year_id = financial_year_id || null;
+          await admin.from("acc_vouchers").update(voucherPatch).eq("id", id);
         }
 
         // Full audit trail with old/new values
@@ -426,11 +434,13 @@ Deno.serve(async (req) => {
             voucher_number: oldVoucher.voucher_number,
             old_values: {
               description: oldVoucher.description,
+              voucher_date: oldVoucher.voucher_date,
               total_amount: oldVoucher.total_amount,
               entries: oldEntries,
             },
             new_values: {
               description: description !== undefined ? description : oldVoucher.description,
+              voucher_date: voucher_date !== undefined ? voucher_date : oldVoucher.voucher_date,
               entries: newEntries || oldEntries,
             },
           }),
