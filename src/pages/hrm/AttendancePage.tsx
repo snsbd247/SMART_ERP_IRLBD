@@ -89,6 +89,7 @@ export default function AttendancePage() {
             <Calendar className="w-4 h-4 text-muted-foreground" />
             <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-44" />
           </div>
+          {isAdmin && <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>}
           {isAdmin && <Button onClick={handleSave} disabled={saving}><Save className="w-4 h-4 mr-2" />{saving ? "Saving..." : "Save Attendance"}</Button>}
         </div>
       </div>
