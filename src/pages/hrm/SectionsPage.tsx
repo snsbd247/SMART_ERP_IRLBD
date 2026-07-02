@@ -96,7 +96,10 @@ export default function SectionsPage() {
           <h1 className="text-2xl font-bold text-foreground">Sections</h1>
           <p className="text-muted-foreground">Factory shop floor sections (e.g. Cutting, Sewing)</p>
         </div>
-        {isAdmin && <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" />Add Section</Button>}
+        {isAdmin && <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>
+          <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" />Add Section</Button>
+        </div>}
       </div>
       <Card>
         <CardContent className="pt-6">
