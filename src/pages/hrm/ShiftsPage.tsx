@@ -72,7 +72,10 @@ export default function ShiftsPage() {
           <h1 className="text-2xl font-bold text-foreground">Shift Management</h1>
           <p className="text-muted-foreground">Configure employee work shifts</p>
         </div>
-        {isAdmin && <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" />Add Shift</Button>}
+        {isAdmin && <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>
+          <Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" />Add Shift</Button>
+        </div>}
       </div>
 
       <Card>
