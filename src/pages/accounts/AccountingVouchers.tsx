@@ -629,6 +629,71 @@ const AccountingVouchers = () => {
     }
   };
 
+  // ============ Bulk actions ============
+  // Clear selection whenever the list changes (tab / filters / page / trash toggle).
+  useEffect(() => { setSelectedIds(new Set()); }, [activeTab, showDeleted, debouncedSearch, filterFrom, filterTo, page, perPage]);
+
+  const isBulkDeletable = (v: Voucher) => canDeleteVoucher(v) && !(v as any).deleted_at;
+  const isBulkTransferable = (v: Voucher) =>
+    !(v as any).deleted_at
+    && v.status !== "transferred"
+    && !(v as any).source_module
+    && evalPerm(v.voucher_type, "edit").allowed;
+
+  const toggleRow = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const toggleAll = (checked: boolean) => {
+    setSelectedIds(checked ? new Set(vouchers.map((v) => v.id)) : new Set());
+  };
+
+  const selectedVouchers = vouchers.filter((v) => selectedIds.has(v.id));
+  const selectedDeletable = selectedVouchers.filter(isBulkDeletable);
+  const selectedTransferable = selectedVouchers.filter(isBulkTransferable);
+
+  const runBulkDelete = async () => {
+    if (selectedDeletable.length === 0) return;
+    const reason = bulkReason.trim() || "Bulk delete";
+    setBulkBusy(true);
+    let ok = 0, fail = 0;
+    for (const v of selectedDeletable) {
+      try { await voucherApi.deleteApproved(v.id, reason); ok++; }
+      catch { fail++; }
+    }
+    setBulkBusy(false);
+    setBulkDeleteOpen(false);
+    setBulkReason("");
+    setSelectedIds(new Set());
+    toast({ title: "Bulk delete complete", description: `${ok} moved to trash${fail ? `, ${fail} failed` : ""}.`, variant: fail ? "destructive" : "default" });
+    fetchData();
+  };
+
+  const runBulkChangeType = async () => {
+    if (!bulkTargetType || selectedTransferable.length === 0) return;
+    if (!bulkReason.trim()) { toast({ title: "Reason required", variant: "destructive" }); return; }
+    const eligible = selectedTransferable.filter((v) => v.voucher_type !== bulkTargetType && canCreateForType(bulkTargetType));
+    if (eligible.length === 0) { toast({ title: "Nothing to transfer", description: "Selected vouchers are already of the target type or you cannot create it.", variant: "destructive" }); return; }
+    setBulkBusy(true);
+    let ok = 0, fail = 0;
+    for (const v of eligible) {
+      try { await voucherApi.changeType(v.id, bulkTargetType, bulkReason.trim()); ok++; }
+      catch { fail++; }
+    }
+    setBulkBusy(false);
+    setBulkChangeOpen(false);
+    setBulkTargetType("");
+    setBulkReason("");
+    setSelectedIds(new Set());
+    toast({ title: "Bulk transfer complete", description: `${ok} transferred${fail ? `, ${fail} failed` : ""}.`, variant: fail ? "destructive" : "default" });
+    fetchData();
+  };
+
+
+
   const openPrintVoucher = async (v: Voucher) => {
     const { entries: data } = await voucherApi.get(v.id);
     const accountMap = new Map(accounts.map((a) => [a.id, a]));
