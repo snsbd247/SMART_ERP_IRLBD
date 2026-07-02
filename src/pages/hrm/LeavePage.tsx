@@ -70,7 +70,10 @@ export default function LeavePage() {
     <div className="p-4 lg:p-6 space-y-6 max-w-[1600px] mx-auto">
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold text-foreground">Leave Management</h1><p className="text-muted-foreground">Manage leave requests</p></div>
-        {isAdmin && <Button onClick={() => { setForm({ employee_id: "", leave_type_id: "", start_date: "", end_date: "", reason: "" }); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />New Leave Request</Button>}
+        {isAdmin && <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>
+          <Button onClick={() => { setForm({ employee_id: "", leave_type_id: "", start_date: "", end_date: "", reason: "" }); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />New Leave Request</Button>
+        </div>}
       </div>
 
       <Tabs defaultValue="requests">
