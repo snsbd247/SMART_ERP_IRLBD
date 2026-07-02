@@ -909,15 +909,16 @@ const AccountingVouchers = () => {
                       <TableHead>Ledger / Accounts</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Entered By</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="w-56">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading ? (
-                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
                     ) : filteredVouchers.length === 0 ? (
-                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">{q || filterFrom || filterTo ? "No vouchers match your filters" : "No vouchers yet"}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">{q || filterFrom || filterTo ? "No vouchers match your filters" : "No vouchers yet"}</TableCell></TableRow>
                     ) : filteredVouchers.map((v) => (
                       <TableRow key={v.id} data-state={selectedIds.has(v.id) ? "selected" : undefined}>
                         <TableCell>
@@ -932,6 +933,7 @@ const AccountingVouchers = () => {
                         <TableCell className="text-sm">{(voucherAccountsMap[v.id] || []).length > 0 ? (voucherAccountsMap[v.id] || []).join(", ") : <span className="text-muted-foreground italic">No ledger entries</span>}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{v.description || "—"}</TableCell>
                         <TableCell className="text-right tabular-nums font-medium">{fc(v.total_amount)}</TableCell>
+                        <TableCell className="text-sm">{v.creator?.name || v.creator?.username || v.creator_name || <span className="text-muted-foreground italic">—</span>}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
                             {statusBadge(v.status)}
