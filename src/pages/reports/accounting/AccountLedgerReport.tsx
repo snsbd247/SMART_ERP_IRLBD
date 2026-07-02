@@ -31,7 +31,9 @@ const AccountLedgerReport = () => {
     if (!selectedAccount || selectedAccount === "all") return;
     setLoading(true);
     hasFetched.current = true;
-    const statuses = statusFilter === "both" ? ["approved", "posted"] : [statusFilter];
+    // Shared source of truth — see src/lib/shared-balance.ts
+    const { BALANCE_VOUCHER_STATUSES } = await import("@/lib/shared-balance");
+    const statuses = statusFilter === "both" ? [...BALANCE_VOUCHER_STATUSES] : [statusFilter];
     const acc = accounts.find((a) => a.id === selectedAccount);
 
     // Single source of truth: opening = base opening + every prior-period entry.

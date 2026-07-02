@@ -4,6 +4,7 @@ import { TopNavbar } from "@/components/TopNavbar";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CommandPalette } from "@/components/CommandPalette";
 import { BrandingFooter } from "@/components/BrandingFooter";
+import { ChunkRetryIndicator } from "@/components/ChunkRetryIndicator";
 
 export const AppLayout = () => {
   return (
@@ -18,6 +19,7 @@ export const AppLayout = () => {
         <BrandingFooter />
       </div>
       <CommandPalette />
+      <ChunkRetryIndicator />
     </div>
   );
 };
