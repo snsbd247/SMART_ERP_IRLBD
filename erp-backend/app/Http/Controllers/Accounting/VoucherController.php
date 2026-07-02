@@ -269,6 +269,9 @@ class VoucherController extends BaseController
         if ($voucher->status !== 'approved') return $this->error('Voucher is not approved', 422);
 
         $data = $request->validate([
+            'voucher_date' => 'nullable|date',
+            'branch_id' => 'nullable|exists:branches,id',
+            'financial_year_id' => 'nullable|exists:financial_years,id',
             'description' => 'nullable|string',
             'entries' => 'nullable|array|min:2',
             'entries.*.account_id' => 'required_with:entries|exists:chart_of_accounts,id',
@@ -277,7 +280,15 @@ class VoucherController extends BaseController
             'entries.*.narration' => 'nullable|string',
         ]);
 
+        if (!empty($data['voucher_date'])) {
+            $this->period->assertOpen($voucher->voucher_date, 'original voucher date');
+            $this->period->assertOpen($data['voucher_date'], 'approved voucher date update');
+        }
+
         return DB::transaction(function () use ($voucher, $data) {
+            if (array_key_exists('voucher_date', $data)) $voucher->voucher_date = $data['voucher_date'];
+            if (array_key_exists('branch_id', $data)) $voucher->branch_id = $data['branch_id'] ?: null;
+            if (array_key_exists('financial_year_id', $data)) $voucher->financial_year_id = $data['financial_year_id'] ?: null;
             if (array_key_exists('description', $data)) $voucher->description = $data['description'] ?? '';
             if (!empty($data['entries'])) {
                 $totalDebit = collect($data['entries'])->sum('debit');
