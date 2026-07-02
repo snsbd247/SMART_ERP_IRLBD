@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -48,5 +49,77 @@ class FinancialPeriodGuard
             ->whereDate('start_date', '<=', $d)
             ->whereDate('end_date', '>=', $d)
             ->value('id');
+    }
+
+    /**
+     * Resolve the active financial-year UUID for a date, creating the missing
+     * July→June year when it does not exist yet. This is intentionally used by
+     * Accounting Voucher add/edit only: other modules keep the stricter
+     * assertOpen() behaviour so closed-period controls are not weakened.
+     */
+    public function resolveOrCreateId(string|Carbon|null $date): string
+    {
+        if (! $date) {
+            throw new RuntimeException('Voucher date is required for financial year resolution.');
+        }
+
+        $d = $date instanceof Carbon ? $date->copy() : Carbon::parse($date);
+        $iso = $d->toDateString();
+
+        $existing = DB::table('financial_years')
+            ->whereDate('start_date', '<=', $iso)
+            ->whereDate('end_date', '>=', $iso)
+            ->orderByDesc('is_active')
+            ->first();
+
+        if ($existing) {
+            if ((int) $existing->is_active !== 1) {
+                $name = $existing->name ?? ($existing->start_date . ' to ' . $existing->end_date);
+                throw new RuntimeException(
+                    "Date {$iso} falls in financial year {$name}, but that year is inactive/closed. " .
+                    "Activate it in Settings → Financial Years before saving this voucher."
+                );
+            }
+            return (string) $existing->id;
+        }
+
+        // Bangladesh/common fiscal year used by the app: July 1 → June 30.
+        $startYear = ((int) $d->month >= 7) ? (int) $d->year : (int) $d->year - 1;
+        $start = Carbon::create($startYear, 7, 1)->startOfDay();
+        $end = $start->copy()->addYear()->subDay();
+        $name = sprintf('FY %d-%d', $startYear, $startYear + 1);
+
+        return DB::transaction(function () use ($iso, $start, $end, $name) {
+            // Re-check inside the transaction to avoid duplicate creation if
+            // two voucher saves for the same new FY land at the same time.
+            $again = DB::table('financial_years')
+                ->whereDate('start_date', '<=', $iso)
+                ->whereDate('end_date', '>=', $iso)
+                ->orderByDesc('is_active')
+                ->lockForUpdate()
+                ->first();
+
+            if ($again) {
+                if ((int) $again->is_active !== 1) {
+                    throw new RuntimeException(
+                        "Date {$iso} falls in financial year {$again->name}, but that year is inactive/closed. " .
+                        "Activate it in Settings → Financial Years before saving this voucher."
+                    );
+                }
+                return (string) $again->id;
+            }
+
+            $id = (string) Str::uuid();
+            DB::table('financial_years')->insert([
+                'id' => $id,
+                'name' => $name,
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+                'is_active' => 1,
+                'created_at' => now(),
+            ]);
+
+            return $id;
+        });
     }
 }
