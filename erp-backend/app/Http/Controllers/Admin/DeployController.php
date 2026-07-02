@@ -42,7 +42,7 @@ class DeployController extends BaseController
         try {
             $this->guard($request);
 
-            if ($this->isRunning()) {
+            if ($this->isBusy()) {
                 return response()->json([
                     'success' => false,
                     'running' => true,
@@ -156,6 +156,20 @@ class DeployController extends BaseController
         return trim((string) @shell_exec('ps -p ' . (int) $pid . ' -o pid=')) !== '';
     }
 
+    private function isBusy(): bool
+    {
+        if ($this->isRunning()) return true;
+
+        $state = is_file(self::STATE_FILE) ? trim((string) @file_get_contents(self::STATE_FILE)) : '';
+        if ($state !== 'running') return false;
+
+        // Heal stale running state left behind after a finished or killed process.
+        $finalState = $this->detectFinalState();
+        $this->safeWrite(self::STATE_FILE, $finalState);
+
+        return $finalState === 'running';
+    }
+
     private function safeWrite(string $path, string $contents): void
     {
         if (@file_put_contents($path, $contents) === false) {
@@ -215,7 +229,7 @@ class DeployController extends BaseController
         try {
             $this->guard($request);
 
-            if ($this->isRunning()) {
+            if ($this->isBusy()) {
                 return response()->json([
                     'success' => false,
                     'running' => true,
