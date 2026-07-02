@@ -53,7 +53,10 @@ export default function DesignationsPage() {
     <div className="p-4 lg:p-6 space-y-6 max-w-[1600px] mx-auto">
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold text-foreground">Designations</h1><p className="text-muted-foreground">Manage designations</p></div>
-        {isAdmin && <Button onClick={() => { setEditId(null); setName(""); setDescription(""); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Add Designation</Button>}
+        {isAdmin && <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>
+          <Button onClick={() => { setEditId(null); setName(""); setDescription(""); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Add Designation</Button>
+        </div>}
       </div>
       <Card><CardContent className="pt-6">
         <Table>
