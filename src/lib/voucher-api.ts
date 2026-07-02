@@ -22,7 +22,12 @@ async function laravelFetch<T = any>(path: string, init?: RequestInit): Promise<
     },
   });
   const text = await res.text();
-  const json = text ? JSON.parse(text) : null;
+  let json: any = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    json = { message: text || `HTTP ${res.status}` };
+  }
   if (!res.ok) {
     const validationMessages = json?.errors && typeof json.errors === "object"
       ? Object.entries(json.errors)
