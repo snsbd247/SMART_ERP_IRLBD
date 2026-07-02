@@ -27,8 +27,12 @@ export type Database = {
           financial_year_id: string | null
           id: string
           prev_status: string | null
+          source_module: string | null
           status: string
           total_amount: number
+          transfer_reason: string | null
+          transferred_from_id: string | null
+          transferred_to_id: string | null
           updated_at: string
           voucher_date: string
           voucher_number: string
@@ -46,8 +50,12 @@ export type Database = {
           financial_year_id?: string | null
           id?: string
           prev_status?: string | null
+          source_module?: string | null
           status?: string
           total_amount?: number
+          transfer_reason?: string | null
+          transferred_from_id?: string | null
+          transferred_to_id?: string | null
           updated_at?: string
           voucher_date?: string
           voucher_number: string
@@ -65,8 +73,12 @@ export type Database = {
           financial_year_id?: string | null
           id?: string
           prev_status?: string | null
+          source_module?: string | null
           status?: string
           total_amount?: number
+          transfer_reason?: string | null
+          transferred_from_id?: string | null
+          transferred_to_id?: string | null
           updated_at?: string
           voucher_date?: string
           voucher_number?: string
@@ -2366,6 +2378,33 @@ export type Database = {
           module_name?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      number_sequence_free_list: {
+        Row: {
+          consumed_at: string | null
+          id: string
+          number: string
+          released_at: string
+          released_by: string | null
+          sequence_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          id?: string
+          number: string
+          released_at?: string
+          released_by?: string | null
+          sequence_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          id?: string
+          number?: string
+          released_at?: string
+          released_by?: string | null
+          sequence_id?: string
         }
         Relationships: []
       }
