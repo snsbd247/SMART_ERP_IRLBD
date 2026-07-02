@@ -140,6 +140,16 @@ const AccountingVouchers = () => {
   const [changeTypeReason, setChangeTypeReason] = useState("");
   const [changeTypeSaving, setChangeTypeSaving] = useState(false);
 
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkChangeOpen, setBulkChangeOpen] = useState(false);
+  const [bulkTargetType, setBulkTargetType] = useState<string>("");
+  const [bulkReason, setBulkReason] = useState("");
+
+
+
 
   const [voucherAccountsMap, setVoucherAccountsMap] = useState<Record<string, string[]>>({});
   const [showDeleted, setShowDeleted] = useState(false);
