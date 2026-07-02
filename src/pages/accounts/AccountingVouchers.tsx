@@ -807,11 +807,32 @@ const AccountingVouchers = () => {
                 </div>
               </div>
             </div>
+            {selectedIds.size > 0 && (
+              <div className="mb-2 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+                <span className="font-medium">{selectedIds.size} selected</span>
+                <Button size="sm" variant="outline" onClick={() => setSelectedIds(new Set())} disabled={bulkBusy}>Clear</Button>
+                <div className="ml-auto flex gap-2">
+                  <Button size="sm" variant="outline" disabled={bulkBusy || selectedTransferable.length === 0} onClick={() => { setBulkTargetType(""); setBulkReason(""); setBulkChangeOpen(true); }}>
+                    <Shuffle className="w-3.5 h-3.5 mr-1" /> Change Type ({selectedTransferable.length})
+                  </Button>
+                  <Button size="sm" variant="destructive" disabled={bulkBusy || selectedDeletable.length === 0} onClick={() => { setBulkReason(""); setBulkDeleteOpen(true); }}>
+                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete ({selectedDeletable.length})
+                  </Button>
+                </div>
+              </div>
+            )}
             <Card>
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={vouchers.length > 0 && selectedIds.size === vouchers.length}
+                          onCheckedChange={(c) => toggleAll(!!c)}
+                          aria-label="Select all vouchers"
+                        />
+                      </TableHead>
                       <TableHead>Voucher #</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Ledger / Accounts</TableHead>
@@ -823,11 +844,18 @@ const AccountingVouchers = () => {
                   </TableHeader>
                   <TableBody>
                     {loading ? (
-                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
                     ) : filteredVouchers.length === 0 ? (
-                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">{q || filterFrom || filterTo ? "No vouchers match your filters" : "No vouchers yet"}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">{q || filterFrom || filterTo ? "No vouchers match your filters" : "No vouchers yet"}</TableCell></TableRow>
                     ) : filteredVouchers.map((v) => (
-                      <TableRow key={v.id}>
+                      <TableRow key={v.id} data-state={selectedIds.has(v.id) ? "selected" : undefined}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(v.id)}
+                            onCheckedChange={(c) => toggleRow(v.id, !!c)}
+                            aria-label={`Select voucher ${v.voucher_number}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-geist-mono text-xs font-medium">{v.voucher_number}</TableCell>
                         <TableCell className="text-sm">{formatDateDMY(v.voucher_date)}</TableCell>
                         <TableCell className="text-sm">{(voucherAccountsMap[v.id] || []).length > 0 ? (voucherAccountsMap[v.id] || []).join(", ") : <span className="text-muted-foreground italic">No ledger entries</span>}</TableCell>
