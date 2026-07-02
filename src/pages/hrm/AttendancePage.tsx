@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Save, Calendar } from "lucide-react";
+import { Save, Calendar, Upload } from "lucide-react";
+import { BulkImportDialog } from "@/components/hrm/BulkImportDialog";
 
 interface Employee { id: string; employee_code: string; first_name: string; last_name: string; }
 interface AttendanceRecord { id: string; employee_id: string; date: string; check_in: string | null; check_out: string | null; status: string; }
