@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, Inbox, Search } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { signedOpeningBalance, formatSignedBalance } from "@/lib/balance-format";
+import { isoToDmy, toDateInputValue } from "@/lib/date-format";
 
 interface Props {
   accountId: string | null;
@@ -75,16 +76,19 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
       let runBal = signedOpeningBalance(openingBalance, openingBalanceType);
 
       const mapped = (data || []).map((e: any) => {
+        // acc_vouchers may come as object (Supabase FK embed) or array (PostgREST
+        // when relation isn't uniquely detected, or the Laravel bridge stitch).
+        const v = Array.isArray(e.acc_vouchers) ? e.acc_vouchers[0] : e.acc_vouchers;
         runBal += Number(e.debit) - Number(e.credit);
         return {
           id: e.id,
           debit: Number(e.debit),
           credit: Number(e.credit),
           narration: e.narration,
-          voucher_number: e.acc_vouchers?.voucher_number || "",
-          voucher_date: e.acc_vouchers?.voucher_date || "",
-          voucher_type: e.acc_vouchers?.voucher_type || "",
-          description: e.acc_vouchers?.description || "",
+          voucher_number: v?.voucher_number || "",
+          voucher_date: toDateInputValue(v?.voucher_date),
+          voucher_type: v?.voucher_type || "",
+          description: v?.description || "",
           running_balance: runBal,
         };
       });
@@ -209,7 +213,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
               </TableRow>
             ) : pageEntries.map((e) => (
               <TableRow key={e.id}>
-                <TableCell>{e.voucher_date}</TableCell>
+                <TableCell>{isoToDmy(e.voucher_date)}</TableCell>
                 <TableCell><Badge variant="secondary" className="text-xs">{labelVoucherType(e.voucher_type)}</Badge></TableCell>
                 <TableCell className="font-mono text-xs">{e.voucher_number}</TableCell>
                 <TableCell className="text-muted-foreground">{e.description || e.narration || "—"}</TableCell>
