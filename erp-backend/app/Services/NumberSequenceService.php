@@ -7,7 +7,9 @@ use App\Models\NumberSequenceFreeItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+class NumberSequenceService
 {
+
     /**
      * Default prefixes for known sequence IDs. Used to self-heal when a row
      * is missing from the number_sequences table (e.g. fresh deployments
