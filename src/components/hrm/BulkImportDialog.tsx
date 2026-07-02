@@ -80,10 +80,12 @@ export function BulkImportDialog({ open, onOpenChange, config }: Props) {
   const [parsed, setParsed] = useState<ParsedRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [processed, setProcessed] = useState(0);
+  const [total, setTotal] = useState(0);
   const cancelRef = useRef(false);
-  const [result, setResult] = useState<{ ok: number; fail: number; errors: ParsedRow[] } | null>(null);
+  const [result, setResult] = useState<{ ok: number; fail: number; errors: ParsedRow[]; cancelled?: boolean } | null>(null);
 
-  const reset = () => { setParsed([]); setResult(null); setProgress(0); cancelRef.current = false; if (inputRef.current) inputRef.current.value = ""; };
+  const reset = () => { setParsed([]); setResult(null); setProgress(0); setProcessed(0); setTotal(0); cancelRef.current = false; if (inputRef.current) inputRef.current.value = ""; };
 
   const downloadTemplate = () => {
     const headers = config.columns.map(c => c.label + (c.required ? " *" : ""));
