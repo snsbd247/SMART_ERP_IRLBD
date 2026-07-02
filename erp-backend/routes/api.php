@@ -109,6 +109,8 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:accounts.delete')->post('vouchers/{id}/delete-approved', [\App\Http\Controllers\Accounting\VoucherController::class, 'deleteApproved'])->whereUuid('id');
         Route::middleware('permission:accounts.edit')->post('vouchers/{id}/restore', [\App\Http\Controllers\Accounting\VoucherController::class, 'restore'])->whereUuid('id');
         Route::middleware('permission:accounts.delete')->post('vouchers/{id}/purge', [\App\Http\Controllers\Accounting\VoucherController::class, 'purge'])->whereUuid('id');
+        Route::middleware('permission:accounts.edit')->post('vouchers/{id}/change-type', [\App\Http\Controllers\Accounting\VoucherController::class, 'changeType'])->whereUuid('id');
+
 
         // ─── Generic Super-Admin soft delete / restore (sales, purchases, payments) ──
         Route::middleware('permission:accounts.delete')->post('soft-delete/{table}/{id}', [\App\Http\Controllers\SoftDeleteController::class, 'delete']);
