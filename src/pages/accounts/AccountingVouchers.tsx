@@ -133,6 +133,13 @@ const AccountingVouchers = () => {
   const [actionVoucher, setActionVoucher] = useState<Voucher | null>(null);
   const [actionReason, setActionReason] = useState("");
 
+  // Change-Type (transfer) dialog state
+  const [changeTypeVoucher, setChangeTypeVoucher] = useState<Voucher | null>(null);
+  const [changeTypeTarget, setChangeTypeTarget] = useState<string>("");
+  const [changeTypeReason, setChangeTypeReason] = useState("");
+  const [changeTypeSaving, setChangeTypeSaving] = useState(false);
+
+
   const [voucherAccountsMap, setVoucherAccountsMap] = useState<Record<string, string[]>>({});
   const [showDeleted, setShowDeleted] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
