@@ -11,10 +11,19 @@ APP_DIR="${APP_DIR:-/opt/smarterp}"
 LOG=/var/log/smarterp-deploy.log
 PID=/var/run/smarterp-deploy.pid
 STATE=/var/log/smarterp-deploy.state
+LOCK=/var/run/smarterp-deploy.lock
 
 if [[ "${1:-}" == "--check" ]]; then
   test -x "${APP_DIR}/deploy/vps/update.sh"
   exit $?
+fi
+
+exec 9>"$LOCK"
+if ! flock -n 9; then
+  existing_pid="$(cat "$PID" 2>/dev/null || true)"
+  echo "[$(date +%H:%M:%S)] Deploy already running${existing_pid:+ (pid ${existing_pid})}; ignoring duplicate request."
+  echo "running" > "$STATE" 2>/dev/null || true
+  exit 0
 fi
 
 echo "$$" > "$PID"
