@@ -424,8 +424,16 @@ const AccountingVouchers = () => {
         variant: "destructive",
       });
       return;
+    // Block posting when the currently-selected FY is inactive (edit-mode legacy vouchers).
+    const selectedFy = finYears.find((f) => f.id === formFinYear);
+    if (selectedFy && !selectedFy.is_active) {
+      toast({
+        title: "Inactive Financial Year",
+        description: `${selectedFy.name} is inactive. Activate it in Settings → Financial Years, or change the voucher date to an active year.`,
+        variant: "destructive",
+      });
+      return;
     }
-    const matchingFinYear = matchingFinYearForDate(formDate);
     if (finYears.length > 0 && !matchingFinYear) {
       toast({
         title: "Financial year will be resolved",
