@@ -332,11 +332,21 @@ export default function IdCardsPage() {
                 <QRCodeCanvas value={qrPayload} size={256} level="M" ref={qrRef as any} includeMargin />
               </div>
 
+              {/* View mode toggle */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                {(["both", "front", "back"] as const).map((m) => (
+                  <Button key={m} size="sm" variant={viewMode === m ? "default" : "outline"} onClick={() => setViewMode(m)}>
+                    {m === "both" ? "Both" : m === "front" ? "Front" : "Back"}
+                  </Button>
+                ))}
+              </div>
+
               <div className="flex flex-wrap justify-center gap-8">
-                {/* FRONT */}
-                <div>
+                {/* FRONT — 340×539 preview = exact CR80 (54×85.6mm) at ~6.3 px/mm */}
+                <div style={{ display: viewMode === "back" ? "none" : "block" }}>
                   <p className="text-xs font-semibold text-muted-foreground text-center mb-2 uppercase tracking-wider">Front Side</p>
-                  <div className="w-[340px] h-[540px] rounded-md overflow-hidden bg-white shadow-lg relative">
+                  <div ref={frontCardRef} className="w-[340px] h-[539px] overflow-hidden bg-white shadow-lg relative">
+
                     <div className="bg-[#ef7a1a] px-4 pt-3 pb-4 h-[340px]">
                       <div className="flex items-center gap-2 mb-2">
                         {companyLogo ? (
