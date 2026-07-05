@@ -42,7 +42,7 @@ describe("HRM employee flows (Laravel/VPS mode)", () => {
   it("1. Public verify endpoint requires no auth token and returns employee details", async () => {
     const { getApiBaseUrl } = await import("@/lib/laravel-auth");
     // Force an explicit base URL in this test (no window.location on jsdom).
-    (import.meta as any).env.VITE_API_BASE_URL = "https://erp.example.com";
+    vi.stubEnv("VITE_API_BASE_URL", "https://erp.example.com");
 
     const fetchSpy = mockFetchSequence([
       { ok: true, json: { success: true, data: {
@@ -69,7 +69,7 @@ describe("HRM employee flows (Laravel/VPS mode)", () => {
   });
 
   it("2. Photo upload uses the dedicated Laravel endpoint (FormData 'photo')", async () => {
-    (import.meta as any).env.VITE_API_BASE_URL = "https://erp.example.com";
+    vi.stubEnv("VITE_API_BASE_URL", "https://erp.example.com");
     const fetchSpy = mockFetchSequence([
       { ok: true, json: { success: true, data: { photo_url: "/storage/employees/abcd.jpg" } } },
     ]);
@@ -98,7 +98,7 @@ describe("HRM employee flows (Laravel/VPS mode)", () => {
   });
 
   it("3. Create Employee with create_login sends username + password to /v1/employees", async () => {
-    (import.meta as any).env.VITE_API_BASE_URL = "https://erp.example.com";
+    vi.stubEnv("VITE_API_BASE_URL", "https://erp.example.com");
     const fetchSpy = mockFetchSequence([
       { ok: true, json: { success: true, data: { id: "new-emp", employee_code: "EMP-0002" } } },
     ]);
@@ -139,7 +139,7 @@ describe("HRM employee flows (Laravel/VPS mode)", () => {
     // flow is the single /v1/employees POST — proving the flow no longer depends
     // on the edge function and therefore cannot break other modules that share
     // it (audit log, profiles, etc.).
-    (import.meta as any).env.VITE_API_BASE_URL = "https://erp.example.com";
+    vi.stubEnv("VITE_API_BASE_URL", "https://erp.example.com");
     const fetchSpy = mockFetchSequence([
       { ok: true, json: { success: true, data: { id: "e1" } } },
     ]);
