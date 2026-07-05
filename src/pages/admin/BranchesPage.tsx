@@ -257,7 +257,7 @@ const BranchesPage = () => {
               <p className="text-[11px] text-muted-foreground">
                 Required for employee self check-in. Latitude −90 to 90, Longitude −180 to 180.
               </p>
-
+              <MapPreview lat={formLat} lng={formLng} radius={formRadius} />
             </div>
           </div>
           <DialogFooter>
