@@ -237,16 +237,18 @@ class AttendanceController extends BaseController
         }
         $today = Carbon::today()->toDateString();
         $att = Attendance::where('employee_id', $user->employee_id)->where('date', $today)->first();
-        $branch = $this->resolveGeoBranch($user);
+        [$branch, $source] = $this->resolveGeoBranchWithSource($user);
         return response()->json([
             'success' => true,
             'data' => $att,
+            'branch_source' => $source,
             'branch' => $branch ? [
                 'id' => $branch->id,
                 'name' => $branch->name,
                 'latitude' => $branch->latitude,
                 'longitude' => $branch->longitude,
                 'geofence_radius_m' => $branch->geofence_radius_m ?? 10,
+                'source' => $source,
             ] : null,
         ]);
     }
