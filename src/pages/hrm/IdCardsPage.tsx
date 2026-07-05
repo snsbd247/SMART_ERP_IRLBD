@@ -423,12 +423,12 @@ export default function IdCardsPage() {
                           Click <b>Configure Addresses</b> above to map Factory and Head Office.
                         </p>
                       )}
-                      <div className="mt-auto pl-1 pb-1">
+                      <div className="mt-auto flex justify-center pt-1 pb-2">
                         <QRCodeCanvas value={qrPayload} size={BACK_QR.onScreenPx} level="M" includeMargin={false} />
                       </div>
                     </div>
 
-                    <div className="w-8 bg-black flex items-center justify-center my-1 rounded-l-md">
+                    <div className="w-8 bg-black flex items-center justify-center">
                       <span
                         className="text-white font-bold text-sm tracking-[3px]"
                         style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
@@ -436,6 +436,7 @@ export default function IdCardsPage() {
                         {sidebarText}
                       </span>
                     </div>
+
                   </div>
                 </div>
               </div>
