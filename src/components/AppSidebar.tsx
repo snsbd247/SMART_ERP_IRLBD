@@ -353,18 +353,21 @@ export const AppSidebar = () => {
     <>
       <div
         data-testid="sidebar-header"
-        className="px-4 py-3 border-b border-sidebar-border flex items-center justify-between gap-2"
+        className="px-4 py-3 border-b border-sidebar-border flex items-center justify-center gap-2 relative"
       >
-        <div className="min-w-0">
-          <h2 className="font-bold text-sidebar-foreground text-sm tracking-tight truncate">{branding.software_name || "ERP System"}</h2>
-          {profile && (
-            <p className="text-[10px] text-sidebar-foreground/60 truncate">
-              {profile.name || profile.email}
-            </p>
-          )}
-        </div>
+        {branding.company_logo_url ? (
+          <img
+            src={branding.company_logo_url}
+            alt={branding.software_name || "Logo"}
+            className="max-h-12 w-auto object-contain mx-auto"
+          />
+        ) : (
+          <h2 className="font-bold text-sidebar-foreground text-sm tracking-tight truncate text-center">
+            {branding.software_name || "ERP System"}
+          </h2>
+        )}
         {isMobile && (
-          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)} className="h-8 w-8 shrink-0">
+          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)} className="h-8 w-8 shrink-0 absolute right-2 top-1/2 -translate-y-1/2">
             <X className="w-4 h-4" />
           </Button>
         )}
