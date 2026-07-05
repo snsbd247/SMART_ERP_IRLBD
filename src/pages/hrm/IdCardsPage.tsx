@@ -428,38 +428,40 @@ export default function IdCardsPage() {
                 {/* BACK */}
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground text-center mb-2 uppercase tracking-wider">Back Side</p>
-                  <div className="w-[340px] h-[540px] rounded-md overflow-hidden bg-white shadow-lg flex flex-row">
-                    <div className="flex-1 px-3.5 pt-4 pb-3 flex flex-col">
+                  <div className="w-[340px] h-[540px] rounded-md overflow-hidden bg-white shadow-lg flex flex-row" style={{ color: "#000" }}>
+                    <div className="flex-1 px-3.5 pt-4 pb-3 flex flex-col" style={{ color: "#000" }}>
                       {factoryAddr && (
-                        <div className="mb-2.5">
-                          <div className="flex items-center justify-center mb-1.5">
-                            <span className="relative px-2.5 text-xs font-extrabold text-black
-                              before:content-[''] before:absolute before:top-1/2 before:right-full before:w-10 before:h-[2px] before:bg-black
-                              after:content-[''] after:absolute after:top-1/2 after:left-full after:w-10 after:h-[2px] after:bg-black">
+                        <div className="mb-2">
+                          <div className="flex items-center justify-center mb-1">
+                            <span className="relative px-2.5 text-[13px] font-extrabold"
+                              style={{ color: "#000" }}>
+                              <span className="absolute top-1/2 right-full w-10 h-[2px] bg-black" />
                               Factory:
+                              <span className="absolute top-1/2 left-full w-10 h-[2px] bg-black" />
                             </span>
                           </div>
-                          <p className="text-[11px] leading-snug text-black text-center whitespace-pre-line">
+                          <div className="text-[11px] leading-snug text-center whitespace-pre-line" style={{ color: "#000" }}>
                             {factoryAddr}
-                            {companyPhone && <><br />Phone: {companyPhone}</>}
-                            {companyEmail && <><br />Email: {companyEmail}</>}
-                          </p>
+                            {companyPhone && <div>Phone: <span style={{ color: "#000" }}>{companyPhone}</span></div>}
+                            {companyEmail && <div>Email: <span style={{ color: "#000" }}>{companyEmail}</span></div>}
+                          </div>
                         </div>
                       )}
                       {headOfficeAddr && (
-                        <div className="mb-2">
-                          <div className="flex items-center justify-center mb-1.5">
-                            <span className="relative px-2.5 text-xs font-extrabold text-black
-                              before:content-[''] before:absolute before:top-1/2 before:right-full before:w-10 before:h-[2px] before:bg-black
-                              after:content-[''] after:absolute after:top-1/2 after:left-full after:w-10 after:h-[2px] after:bg-black">
+                        <div className="mb-1">
+                          <div className="flex items-center justify-center mb-1">
+                            <span className="relative px-2.5 text-[13px] font-extrabold"
+                              style={{ color: "#000" }}>
+                              <span className="absolute top-1/2 right-full w-10 h-[2px] bg-black" />
                               Head Office
+                              <span className="absolute top-1/2 left-full w-10 h-[2px] bg-black" />
                             </span>
                           </div>
-                          <p className="text-[11px] leading-snug text-black text-center whitespace-pre-line">
+                          <div className="text-[11px] leading-snug text-center whitespace-pre-line" style={{ color: "#000" }}>
                             {headOfficeAddr}
-                            {!factoryAddr && companyPhone && <><br />Phone: {companyPhone}</>}
-                            {!factoryAddr && companyEmail && <><br />Email: {companyEmail}</>}
-                          </p>
+                            {!factoryAddr && companyPhone && <div>Phone: <span style={{ color: "#000" }}>{companyPhone}</span></div>}
+                            {!factoryAddr && companyEmail && <div>Email: <span style={{ color: "#000" }}>{companyEmail}</span></div>}
+                          </div>
                         </div>
                       )}
                       {!factoryAddr && !headOfficeAddr && (
@@ -467,10 +469,11 @@ export default function IdCardsPage() {
                           Click <b>Configure Addresses</b> above to map Factory and Head Office.
                         </p>
                       )}
-                      <div className="mt-auto text-center pt-2">
+                      <div className="text-center pt-3">
                         <QRCodeCanvas value={qrPayload} size={120} level="M" includeMargin />
                       </div>
                     </div>
+
                     <div className="w-8 bg-black flex items-center justify-center">
                       <span
                         className="text-white font-bold text-sm tracking-[3px]"
