@@ -228,11 +228,11 @@ export default function IdCardsPage() {
       body { font-family: Arial, Helvetica, sans-serif; background: #fff; color: #000; }
 
       /* FRONT */
-      .front .top { background: #ef7a1a; padding: 3mm 3mm 4mm; height: 54mm; }
-      .front .brand { display: flex; align-items: center; justify-content: center; margin-bottom: 2.5mm; height: 12mm; }
-      .front .logo { max-height: 12mm; width: auto; object-fit: contain; background: transparent; }
-      .front .brand-en { font-size: 5mm; font-weight: 900; color: #111; font-style: italic; letter-spacing: 0.3mm; line-height: 1; text-transform: uppercase; text-align: center; }
-      .front .photo-wrap { display: flex; justify-content: center; margin-top: 1.5mm; }
+     .front .top { background: #ef7a1a; padding: 6mm 3mm 4mm; height: 54mm; }
+     .front .brand { display: flex; align-items: center; justify-content: center; margin-bottom: 5mm; height: 12mm; }
+     .front .logo { max-height: 12mm; width: auto; object-fit: contain; background: transparent; }
+     .front .brand-en { font-size: 5mm; font-weight: 900; color: #111; font-style: italic; letter-spacing: 0.3mm; line-height: 1; text-transform: uppercase; text-align: center; }
+     .front .photo-wrap { display: flex; justify-content: center; margin-top: 0; }
       .front .photo { width: 28mm; height: 32mm; object-fit: cover; border: 0.8mm solid #2f6bd6; background: #fff; }
       .front .photo.ph { display:flex; align-items:center; justify-content:center; font-size:10mm; font-weight:700; color:#475569; }
       .front .bottom { padding: 3mm 2mm 2mm; text-align: center; }
@@ -430,15 +430,16 @@ export default function IdCardsPage() {
                   <p className="text-xs font-semibold text-muted-foreground text-center mb-2 uppercase tracking-wider">Front Side</p>
                   <div ref={frontCardRef} className="w-[340px] h-[539px] overflow-hidden bg-white shadow-lg relative">
 
-                    <div className="bg-[#ef7a1a] px-4 pt-3 pb-4 h-[340px]">
-                      <div className="flex items-center justify-center mb-2 h-12">
+                    <div className="bg-[#ef7a1a] px-4 pt-6 pb-4 h-[340px]">
+                      <div className="flex items-center justify-center mb-6 h-12">
                         {companyLogo ? (
                           <img src={companyLogo} alt="Logo" className="max-h-12 w-auto object-contain" />
                         ) : (
                           <div className="text-[22px] font-black italic text-black tracking-wide leading-none uppercase text-center">{companyName}</div>
                         )}
                       </div>
-                      <div className="flex justify-center mt-2">
+                      <div className="flex justify-center">
+
                         {emp.photo_url ? (
                           <img src={emp.photo_url} alt="Photo" className="w-44 h-[210px] object-cover border-[3px] border-[#2f6bd6] bg-white" />
                         ) : (
