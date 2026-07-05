@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import {
   BACK_QR,
   BACK_COLORS,
+  BACK_FONT_SCALE,
   CARD_MM,
   PRINT_PAGE,
   backCssBlock,
@@ -18,9 +19,9 @@ const page = pageFrameCss();
 // idCardLayout.ts so any drift in the shared constants is caught in one place.
 describe("ID card back side — sample alignment", () => {
   it("uses shared layout constants (no hardcoded values in the page)", () => {
-    expect(source).toContain('import { BACK_QR, backCssBlock, pageFrameCss } from "./idCardLayout"');
+    expect(source).toContain('import { BACK_QR, BACK_FONT_SCALE, backCssBlock, pageFrameCss } from "./idCardLayout"');
     expect(source).toContain("size={BACK_QR.onScreenPx}");
-    expect(source).toContain("${backCssBlock()}");
+    expect(source).toContain("${backCssBlock(backFontScale)}");
     expect(source).toContain("${pageFrameCss()}");
   });
 
@@ -29,6 +30,19 @@ describe("ID card back side — sample alignment", () => {
     expect(BACK_COLORS.highlight.toLowerCase()).toBe("#dc2626");
     expect(back).toContain(`color: ${BACK_COLORS.body}`);
     expect(back).toContain(`color: ${BACK_COLORS.highlight}`);
+  });
+
+  it("scales back body + header font sizes with BACK_FONT_SCALE", () => {
+    const small = backCssBlock(BACK_FONT_SCALE.min);
+    const large = backCssBlock(BACK_FONT_SCALE.max);
+    expect(back).toContain(`font-size: ${(2.6).toFixed(3)}mm`);
+    expect(back).toContain(`font-size: ${(2.2).toFixed(3)}mm`);
+    expect(small).toContain(`font-size: ${(2.6 * BACK_FONT_SCALE.min).toFixed(3)}mm`);
+    expect(large).toContain(`font-size: ${(2.2 * BACK_FONT_SCALE.max).toFixed(3)}mm`);
+    // UI exposes +/- controls wired to BACK_FONT_SCALE bounds.
+    expect(source).toContain("BACK_FONT_SCALE.step");
+    expect(source).toContain("BACK_FONT_SCALE.min");
+    expect(source).toContain("BACK_FONT_SCALE.max");
   });
 
   it("centers the QR horizontally at the bottom of the main column", () => {
