@@ -209,6 +209,22 @@ export default function MyAttendancePage() {
                   </div>
                 </div>
               )}
+              {branchConfigured && geoError && (
+                <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <p>{geoError}</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePunch(lastAction ?? "check_in")}
+                      disabled={checking}
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 mr-1" /> Retry {lastAction === "check_out" ? "Check Out" : "Check In"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
