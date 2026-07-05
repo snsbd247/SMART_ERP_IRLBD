@@ -94,13 +94,22 @@ export default function IdCardsPage() {
   const { factory: factoryAddr, head: headOfficeAddr } = splitAddresses(settings?.address);
 
   const verifyUrl = emp ? `${window.location.origin}/employee/verify/${emp.employee_code}` : "";
-  // QR encodes verification URL with employee id — scanners open URL, humans see ID in query.
   const qrPayload = emp ? `${verifyUrl}?eid=${encodeURIComponent(emp.employee_code)}` : "";
-  // Barcode: Code128 with digits rendered underneath by the API (text=true).
-  const barcodeUrl = emp
-    ? `https://barcodeapi.org/api/code128/${encodeURIComponent(emp.employee_code)}?text=false`
-    : "";
-  const sidebarText = (companyWebsite || `www.${companyName}.com`).replace(/^https?:\/\//i, "").toUpperCase();
+  const rawSite = (companyWebsite || "").replace(/^https?:\/\//i, "").replace(/\/$/, "").toUpperCase();
+  const sidebarText = rawSite ? (rawSite.startsWith("WWW.") ? rawSite : `WWW.${rawSite}`) : `WWW.${companyName.replace(/\s+/g, "").toUpperCase()}.COM`;
+
+  // Render barcode locally with JsBarcode whenever employee changes
+  useEffect(() => {
+    if (emp && barcodeRef.current) {
+      try {
+        JsBarcode(barcodeRef.current, emp.employee_code, {
+          format: "CODE128", displayValue: false, height: 55, width: 2,
+          margin: 0, background: "#ffffff", lineColor: "#000000",
+        });
+      } catch { /* ignore */ }
+    }
+  }, [emp?.id]);
+
 
   const openAddrDialog = () => {
     setFactoryInput(factoryAddr);
