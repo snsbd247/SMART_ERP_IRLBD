@@ -83,17 +83,47 @@ export default function IdCardsPage() {
   const barcodeRef = useRef<HTMLCanvasElement | null>(null);
   const frontCardRef = useRef<HTMLDivElement | null>(null);
   const backCardRef = useRef<HTMLDivElement | null>(null);
+  const backContentRef = useRef<HTMLDivElement | null>(null);
   const [viewMode, setViewMode] = useState<"both" | "front" | "back">("both");
-  const [backFontScale, setBackFontScale] = useState<number>(BACK_FONT_SCALE.default);
-  const adjustBackFont = (delta: number) => {
-    setBackFontScale((prev) => {
-      const next = Math.round((prev + delta) * 100) / 100;
-      return Math.min(BACK_FONT_SCALE.max, Math.max(BACK_FONT_SCALE.min, next));
-    });
-  };
+  const [backFontScale, setBackFontScale] = useState<number>(() => {
+    if (typeof window === "undefined") return BACK_FONT_SCALE.default;
+    const raw = window.localStorage.getItem(BACK_SCALE_STORAGE_KEY);
+    const parsed = raw ? parseFloat(raw) : NaN;
+    return Number.isFinite(parsed) ? snapToStep(parsed) : BACK_FONT_SCALE.default;
+  });
+  const [backOverflow, setBackOverflow] = useState(false);
+
+  // Persist scale so refresh keeps the last-used value.
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(BACK_SCALE_STORAGE_KEY, String(backFontScale));
+    }
+  }, [backFontScale]);
+
   // Preview base sizes in px (matched to the CR80 preview scale).
   const backBodyPx = (10.5 * backFontScale).toFixed(2);
   const backHeaderPx = (13 * backFontScale).toFixed(2);
+
+  // Measure overflow after each render / scale change.
+  useLayoutEffect(() => {
+    const el = backContentRef.current;
+    if (!el) return;
+    setBackOverflow(el.scrollHeight > el.clientHeight + 1);
+  }, [backFontScale, viewMode, employees, selectedEmp]);
+
+  // Auto-fit: pick the largest 5%-stepped scale (within bounds) that avoids overflow.
+  const autoFitBack = useCallback(() => {
+    const el = backContentRef.current;
+    if (!el) return;
+    const client = el.clientHeight;
+    const scroll = el.scrollHeight;
+    if (client <= 0) return;
+    // Approximate: text height scales linearly with font scale.
+    const ratio = client / Math.max(scroll, 1);
+    const target = snapToStep(backFontScale * ratio * 0.98); // 2% safety margin
+    setBackFontScale(target);
+  }, [backFontScale]);
+
 
 
 
