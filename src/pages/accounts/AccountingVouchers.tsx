@@ -425,12 +425,13 @@ const AccountingVouchers = () => {
       });
       return;
     }
-    // Block posting when the currently-selected FY is inactive (edit-mode legacy vouchers).
+    // Block POSTING (submit) when the currently-selected FY is inactive.
+    // Save-as-Draft is still allowed so users can preserve work on legacy vouchers.
     const selectedFy = finYears.find((f) => f.id === formFinYear);
-    if (selectedFy && !selectedFy.is_active) {
+    if (submitForApproval && selectedFy && !selectedFy.is_active) {
       toast({
-        title: "Inactive Financial Year",
-        description: `${selectedFy.name} is inactive. Activate it in Settings → Financial Years, or change the voucher date to an active year.`,
+        title: "Posting blocked — Inactive Financial Year",
+        description: `${selectedFy.name} is inactive. You may save as draft, but posting requires an active year. Activate it in Settings → Financial Years.`,
         variant: "destructive",
       });
       return;
