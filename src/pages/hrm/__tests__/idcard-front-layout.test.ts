@@ -14,9 +14,9 @@ describe("ID card front side — sample alignment", () => {
     expect(source).toContain('h-[340px]'); // top band height in preview
   });
 
-  it("renders the company logo transparently (no white pill background)", () => {
-    // Logo <img> and fallback both drop bg-white / rounded pill.
-    expect(source).toContain('<img src={companyLogo} alt="Logo" className="h-10 w-10 object-contain" />');
+  it("renders the company logo centered (no name beside it) or falls back to name only", () => {
+    // Logo image is centered and sized to max-h-12; no name shown next to logo.
+    expect(source).toContain('<img src={companyLogo} alt="Logo" className="max-h-12 w-auto object-contain" />');
     expect(source).not.toMatch(/alt="Logo"[^/]*bg-white/);
   });
 

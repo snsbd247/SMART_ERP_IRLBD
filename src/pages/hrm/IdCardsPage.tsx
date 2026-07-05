@@ -162,9 +162,9 @@ export default function IdCardsPage() {
     const photoHtml = emp?.photo_url
       ? `<img src="${emp.photo_url}" class="photo" crossorigin="anonymous" />`
       : `<div class="photo ph">${emp!.first_name[0]}${emp!.last_name[0]}</div>`;
-    const logoHtml = companyLogo
+    const brandInner = companyLogo
       ? `<img src="${companyLogo}" class="logo" crossorigin="anonymous" />`
-      : `<div class="logo lp">${companyName[0]}</div>`;
+      : `<div class="brand-en">${companyName}</div>`;
     const factoryHtml = factoryAddr
       ? `<div class="sec"><div class="st"><span>Factory:</span></div><p class="sb">${factoryAddr.replace(/\n/g, "<br/>")}${companyPhone ? `<br/>Phone: <span class="hl">${companyPhone}</span>` : ""}${companyEmail ? `<br/>Email: <span class="hl">${companyEmail}</span>` : ""}</p></div>` : "";
     const headHtml = headOfficeAddr
@@ -180,10 +180,9 @@ export default function IdCardsPage() {
 
       /* FRONT */
       .front .top { background: #ef7a1a; padding: 3mm 3mm 4mm; height: 54mm; }
-      .front .brand { display: flex; align-items: center; gap: 2mm; margin-bottom: 2.5mm; }
-      .front .logo { height: 9mm; width: 9mm; object-fit: contain; background: transparent; }
-      .front .logo.lp { display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; font-size:5mm; background: transparent; }
-      .front .brand-en { font-size: 6mm; font-weight: 900; color: #111; font-style: italic; letter-spacing: 0.3mm; line-height: 1; text-transform: uppercase; }
+      .front .brand { display: flex; align-items: center; justify-content: center; margin-bottom: 2.5mm; height: 12mm; }
+      .front .logo { max-height: 12mm; width: auto; object-fit: contain; background: transparent; }
+      .front .brand-en { font-size: 5mm; font-weight: 900; color: #111; font-style: italic; letter-spacing: 0.3mm; line-height: 1; text-transform: uppercase; text-align: center; }
       .front .photo-wrap { display: flex; justify-content: center; margin-top: 1.5mm; }
       .front .photo { width: 28mm; height: 32mm; object-fit: cover; border: 0.8mm solid #2f6bd6; background: #fff; }
       .front .photo.ph { display:flex; align-items:center; justify-content:center; font-size:10mm; font-weight:700; color:#475569; }
@@ -199,7 +198,7 @@ export default function IdCardsPage() {
     </style></head><body>
       <div class="card front">
         <div class="top">
-          <div class="brand">${logoHtml}<div class="brand-en">${companyName}</div></div>
+          <div class="brand">${brandInner}</div>
           <div class="photo-wrap">${photoHtml}</div>
         </div>
         <div class="bottom">
@@ -336,13 +335,12 @@ export default function IdCardsPage() {
                   <div ref={frontCardRef} className="w-[340px] h-[539px] overflow-hidden bg-white shadow-lg relative">
 
                     <div className="bg-[#ef7a1a] px-4 pt-3 pb-4 h-[340px]">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center justify-center mb-2 h-12">
                         {companyLogo ? (
-                          <img src={companyLogo} alt="Logo" className="h-10 w-10 object-contain" />
+                          <img src={companyLogo} alt="Logo" className="max-h-12 w-auto object-contain" />
                         ) : (
-                          <div className="h-10 w-10 flex items-center justify-center text-white font-extrabold text-xl">{companyName[0]}</div>
+                          <div className="text-[22px] font-black italic text-black tracking-wide leading-none uppercase text-center">{companyName}</div>
                         )}
-                        <div className="text-[30px] font-black italic text-black tracking-wide leading-none uppercase">{companyName}</div>
                       </div>
                       <div className="flex justify-center mt-2">
                         {emp.photo_url ? (
