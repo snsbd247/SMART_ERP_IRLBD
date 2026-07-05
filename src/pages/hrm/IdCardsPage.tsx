@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
@@ -8,11 +8,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Slider } from "@/components/ui/slider";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { QRCodeCanvas } from "qrcode.react";
 import JsBarcode from "jsbarcode";
-import { CreditCard, Printer, Download, MapPin, Minus, Plus } from "lucide-react";
+import { CreditCard, Printer, Download, MapPin, Wand2, AlertTriangle } from "lucide-react";
 import { BACK_QR, BACK_FONT_SCALE, backCssBlock, pageFrameCss } from "./idCardLayout";
+
+const BACK_SCALE_STORAGE_KEY = "idcard.backFontScale.v1";
+const snapToStep = (v: number): number => {
+  const steps = Math.round((v - BACK_FONT_SCALE.min) / BACK_FONT_SCALE.step);
+  const snapped = BACK_FONT_SCALE.min + steps * BACK_FONT_SCALE.step;
+  return Math.min(BACK_FONT_SCALE.max, Math.max(BACK_FONT_SCALE.min, Math.round(snapped * 100) / 100));
+};
 
 interface Employee {
   id: string; employee_code: string; first_name: string; last_name: string;
@@ -74,17 +83,47 @@ export default function IdCardsPage() {
   const barcodeRef = useRef<HTMLCanvasElement | null>(null);
   const frontCardRef = useRef<HTMLDivElement | null>(null);
   const backCardRef = useRef<HTMLDivElement | null>(null);
+  const backContentRef = useRef<HTMLDivElement | null>(null);
   const [viewMode, setViewMode] = useState<"both" | "front" | "back">("both");
-  const [backFontScale, setBackFontScale] = useState<number>(BACK_FONT_SCALE.default);
-  const adjustBackFont = (delta: number) => {
-    setBackFontScale((prev) => {
-      const next = Math.round((prev + delta) * 100) / 100;
-      return Math.min(BACK_FONT_SCALE.max, Math.max(BACK_FONT_SCALE.min, next));
-    });
-  };
+  const [backFontScale, setBackFontScale] = useState<number>(() => {
+    if (typeof window === "undefined") return BACK_FONT_SCALE.default;
+    const raw = window.localStorage.getItem(BACK_SCALE_STORAGE_KEY);
+    const parsed = raw ? parseFloat(raw) : NaN;
+    return Number.isFinite(parsed) ? snapToStep(parsed) : BACK_FONT_SCALE.default;
+  });
+  const [backOverflow, setBackOverflow] = useState(false);
+
+  // Persist scale so refresh keeps the last-used value.
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(BACK_SCALE_STORAGE_KEY, String(backFontScale));
+    }
+  }, [backFontScale]);
+
   // Preview base sizes in px (matched to the CR80 preview scale).
   const backBodyPx = (10.5 * backFontScale).toFixed(2);
   const backHeaderPx = (13 * backFontScale).toFixed(2);
+
+  // Measure overflow after each render / scale change.
+  useLayoutEffect(() => {
+    const el = backContentRef.current;
+    if (!el) return;
+    setBackOverflow(el.scrollHeight > el.clientHeight + 1);
+  }, [backFontScale, viewMode, employees, selectedEmp]);
+
+  // Auto-fit: pick the largest 5%-stepped scale (within bounds) that avoids overflow.
+  const autoFitBack = useCallback(() => {
+    const el = backContentRef.current;
+    if (!el) return;
+    const client = el.clientHeight;
+    const scroll = el.scrollHeight;
+    if (client <= 0) return;
+    // Approximate: text height scales linearly with font scale.
+    const ratio = client / Math.max(scroll, 1);
+    const target = snapToStep(backFontScale * ratio * 0.98); // 2% safety margin
+    setBackFontScale(target);
+  }, [backFontScale]);
+
 
 
 
@@ -336,42 +375,54 @@ export default function IdCardsPage() {
                     {m === "both" ? "Both" : m === "front" ? "Front" : "Back"}
                   </Button>
                 ))}
-                {viewMode !== "front" && (
-                  <div className="flex items-center gap-1 ml-2 border rounded-md px-2 py-1">
-                    <span className="text-xs text-muted-foreground mr-1">Back font</span>
+              </div>
+
+              {viewMode !== "front" && (
+                <div className="max-w-md mx-auto mb-4 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground shrink-0">Back font</span>
+                    <Slider
+                      value={[backFontScale]}
+                      min={BACK_FONT_SCALE.min}
+                      max={BACK_FONT_SCALE.max}
+                      step={BACK_FONT_SCALE.step}
+                      onValueChange={(v) => setBackFontScale(snapToStep(v[0] ?? BACK_FONT_SCALE.default))}
+                      aria-label="Back side font scale"
+                      className="flex-1"
+                    />
+                    <span className="text-xs font-mono w-12 text-right tabular-nums">{Math.round(backFontScale * 100)}%</span>
                     <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6"
-                      onClick={() => adjustBackFont(-BACK_FONT_SCALE.step)}
-                      disabled={backFontScale <= BACK_FONT_SCALE.min + 1e-6}
-                      aria-label="Decrease back font size"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      onClick={autoFitBack}
+                      title="Auto-fit to avoid clipping"
                     >
-                      <Minus className="w-3 h-3" />
-                    </Button>
-                    <span className="text-xs font-mono w-10 text-center">{Math.round(backFontScale * 100)}%</span>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6"
-                      onClick={() => adjustBackFont(BACK_FONT_SCALE.step)}
-                      disabled={backFontScale >= BACK_FONT_SCALE.max - 1e-6}
-                      aria-label="Increase back font size"
-                    >
-                      <Plus className="w-3 h-3" />
+                      <Wand2 className="w-3 h-3 mr-1" />Auto-fit
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-6 px-2 text-xs"
+                      className="h-7 px-2 text-xs"
                       onClick={() => setBackFontScale(BACK_FONT_SCALE.default)}
                       disabled={Math.abs(backFontScale - BACK_FONT_SCALE.default) < 1e-6}
                     >
                       Reset
                     </Button>
                   </div>
-                )}
-              </div>
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Limits: {Math.round(BACK_FONT_SCALE.min * 100)}%–{Math.round(BACK_FONT_SCALE.max * 100)}% · saved automatically
+                  </p>
+                  {backOverflow && (
+                    <Alert variant="destructive" className="py-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        Content overflows the back side at {Math.round(backFontScale * 100)}%. Reduce the scale or click <b>Auto-fit</b>.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
 
               <div className="flex flex-wrap justify-center gap-8">
                 {/* FRONT — 340×539 preview = exact CR80 (54×85.6mm) at ~6.3 px/mm */}
@@ -414,7 +465,7 @@ export default function IdCardsPage() {
                   <p className="text-xs font-semibold text-muted-foreground text-center mb-2 uppercase tracking-wider">Back Side</p>
                   <div ref={backCardRef} className="w-[340px] h-[539px] overflow-hidden bg-white shadow-lg flex flex-row">
 
-                    <div className="flex-1 px-3 pt-4 pb-3 flex flex-col">
+                    <div ref={backContentRef} className="flex-1 px-3 pt-4 pb-3 flex flex-col overflow-hidden">
                       {factoryAddr && (
                         <div className="mb-2">
                           <div className="flex items-center justify-center mb-1">
