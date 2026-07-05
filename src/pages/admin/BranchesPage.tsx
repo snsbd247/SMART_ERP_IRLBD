@@ -241,11 +241,11 @@ const BranchesPage = () => {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Latitude</Label>
+                  <Label className="text-xs">Latitude <span className="text-destructive">*</span></Label>
                   <Input value={formLat} onChange={(e) => setFormLat(e.target.value)} placeholder="23.7808" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Longitude</Label>
+                  <Label className="text-xs">Longitude <span className="text-destructive">*</span></Label>
                   <Input value={formLng} onChange={(e) => setFormLng(e.target.value)} placeholder="90.2792" />
                 </div>
                 <div className="space-y-1.5">
@@ -253,6 +253,10 @@ const BranchesPage = () => {
                   <Input type="number" min={1} value={formRadius} onChange={(e) => setFormRadius(e.target.value)} />
                 </div>
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                Required for employee self check-in. Latitude −90 to 90, Longitude −180 to 180.
+              </p>
+
             </div>
           </div>
           <DialogFooter>
