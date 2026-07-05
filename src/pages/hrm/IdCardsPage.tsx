@@ -204,7 +204,7 @@ export default function IdCardsPage() {
       .front .bc p { font-size: 3mm; font-weight: 700; letter-spacing: 1mm; margin-top: 0.5mm; color: #000; }
 
       /* BACK — sample-aligned (shared with tests) */
-      ${backCssBlock()}
+      ${backCssBlock(backFontScale)}
     </style></head><body>
       <div class="card front">
         <div class="top">
