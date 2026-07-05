@@ -18,6 +18,9 @@ interface Branch {
   address: string | null;
   phone: string | null;
   status: string;
+  latitude: number | null;
+  longitude: number | null;
+  geofence_radius_m: number | null;
 }
 
 const BranchesPage = () => {
@@ -31,6 +34,9 @@ const BranchesPage = () => {
   const [formAddress, setFormAddress] = useState("");
   const [formPhone, setFormPhone] = useState("");
   const [formStatus, setFormStatus] = useState("active");
+  const [formLat, setFormLat] = useState("");
+  const [formLng, setFormLng] = useState("");
+  const [formRadius, setFormRadius] = useState("10");
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
