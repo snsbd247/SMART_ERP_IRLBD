@@ -19,7 +19,7 @@ const FinancialYearsPage = () => {
   const [years, setYears] = useState<FY[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<FY | null>(null);
-  const [form, setForm] = useState({ name: "", start_date: "", end_date: "" });
+  const [form, setForm] = useState({ name: "", start_date: "", end_date: "", is_active: false });
   const [deleteTarget, setDeleteTarget] = useState<FY | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
