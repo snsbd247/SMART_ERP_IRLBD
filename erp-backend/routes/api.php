@@ -26,6 +26,30 @@ Route::get('v1/public/branding', [\App\Http\Controllers\Admin\BrandingController
 Route::get('v1/public/employee-registration/config', [\App\Http\Controllers\PublicEmployeeRegistrationController::class, 'config']);
 Route::post('v1/public/employee-registration', [\App\Http\Controllers\PublicEmployeeRegistrationController::class, 'register']);
 
+// Public employee verification (used by /verify/{code} SPA route + QR)
+Route::get('v1/public/employee-verify/{code}', function (string $code) {
+    $emp = \App\Models\Employee::where('employee_code', $code)->first();
+    if (!$emp) {
+        return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
+    }
+    $dept = $emp->department_id ? \App\Models\Department::find($emp->department_id) : null;
+    $desig = $emp->designation_id ? \App\Models\Designation::find($emp->designation_id) : null;
+    $company = \App\Models\CompanySetting::first();
+    return response()->json(['success' => true, 'data' => [
+        'first_name' => $emp->first_name,
+        'last_name' => $emp->last_name,
+        'employee_code' => $emp->employee_code,
+        'photo_url' => $emp->photo_url,
+        'status' => $emp->status,
+        'joining_date' => $emp->joining_date,
+        'department_name' => $dept?->name,
+        'designation_name' => $desig?->name,
+        'company_name' => $company?->company_name,
+        'company_logo_url' => $company?->company_logo_url,
+        'company_address' => $company?->address,
+    ]]);
+});
+
 // Protected routes
 Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App\Http\Middleware\UpdateLastSeen::class])->group(function () {
 
