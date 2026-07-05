@@ -82,6 +82,32 @@ class AttendanceController extends BaseController
     /**
      * Self check-in/out from portal. Enforces branch geofence.
      */
+    /**
+     * Resolve the geo-fence branch for a user. Falls back through:
+     *  1. Employee's assigned branch
+     *  2. User's own branch_id
+     *  3. Any single active branch that has lat/lng configured
+     */
+    private function resolveGeoBranch($user): ?Branch
+    {
+        $employee = $user->employee_id ? Employee::with('branch')->find($user->employee_id) : null;
+
+        $candidate = $employee?->branch;
+        if ($candidate && $candidate->latitude !== null && $candidate->longitude !== null) {
+            return $candidate;
+        }
+
+        if ($user->branch_id) {
+            $b = Branch::find($user->branch_id);
+            if ($b && $b->latitude !== null && $b->longitude !== null) return $b;
+        }
+
+        $configured = Branch::whereNotNull('latitude')->whereNotNull('longitude')->get();
+        if ($configured->count() === 1) return $configured->first();
+
+        return $candidate; // may still be null / unconfigured
+    }
+
     public function selfCheckIn(Request $request)
     {
         $data = $request->validate([
@@ -95,12 +121,12 @@ class AttendanceController extends BaseController
             return response()->json(['success' => false, 'message' => 'No employee profile linked to this account.'], 403);
         }
 
-        $employee = Employee::with('branch')->find($user->employee_id);
+        $employee = Employee::find($user->employee_id);
         if (!$employee) {
             return response()->json(['success' => false, 'message' => 'Employee not found.'], 404);
         }
 
-        $branch = $employee->branch;
+        $branch = $this->resolveGeoBranch($user);
         if (!$branch || $branch->latitude === null || $branch->longitude === null) {
             return response()->json(['success' => false, 'message' => 'Branch location not configured. Contact admin.'], 422);
         }
@@ -161,18 +187,18 @@ class AttendanceController extends BaseController
         if (!$user || !$user->employee_id) {
             return response()->json(['success' => true, 'data' => null]);
         }
-        $employee = Employee::with('branch')->find($user->employee_id);
         $today = Carbon::today()->toDateString();
         $att = Attendance::where('employee_id', $user->employee_id)->where('date', $today)->first();
+        $branch = $this->resolveGeoBranch($user);
         return response()->json([
             'success' => true,
             'data' => $att,
-            'branch' => $employee && $employee->branch ? [
-                'id' => $employee->branch->id,
-                'name' => $employee->branch->name,
-                'latitude' => $employee->branch->latitude,
-                'longitude' => $employee->branch->longitude,
-                'geofence_radius_m' => $employee->branch->geofence_radius_m ?? 10,
+            'branch' => $branch ? [
+                'id' => $branch->id,
+                'name' => $branch->name,
+                'latitude' => $branch->latitude,
+                'longitude' => $branch->longitude,
+                'geofence_radius_m' => $branch->geofence_radius_m ?? 10,
             ] : null,
         ]);
     }
