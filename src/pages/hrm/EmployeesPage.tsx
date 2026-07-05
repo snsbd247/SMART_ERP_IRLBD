@@ -89,8 +89,10 @@ export default function EmployeesPage() {
     if (branchRes.data) setBranches(branchRes.data as any);
     if (secRes.data) setSections(secRes.data as any);
 
-    // Fetch which employees have linked user accounts
-    const { data: profiles } = await supabase.from("profiles").select("id, employee_id, username").not("employee_id", "is", null);
+    // Fetch which employees have linked user accounts.
+    // Filter client-side so we don't depend on bridge-specific "IS NOT NULL"
+    // translation (the Laravel bridge maps .not("col","is",null) to "!= NULL").
+    const { data: profiles } = await supabase.from("profiles").select("id, employee_id, username");
     if (profiles) {
       const map: Record<string, string> = {};
       (profiles as any[]).forEach(p => {
