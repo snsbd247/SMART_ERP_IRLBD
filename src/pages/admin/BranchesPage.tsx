@@ -270,4 +270,83 @@ const BranchesPage = () => {
   );
 };
 
+function MapPreview({ lat, lng, radius }: { lat: string; lng: string; radius: string }) {
+  const latN = Number(lat);
+  const lngN = Number(lng);
+  const valid =
+    lat.trim() !== "" && lng.trim() !== "" &&
+    Number.isFinite(latN) && Number.isFinite(lngN) &&
+    latN >= -90 && latN <= 90 && lngN >= -180 && lngN <= 180;
+
+  const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
+  const [meErr, setMeErr] = useState<string | null>(null);
+
+  const distance = useMemo(() => {
+    if (!valid || !me) return null;
+    return haversineMeters(latN, lngN, me.lat, me.lng);
+  }, [valid, me, latN, lngN]);
+
+  const radiusN = Number(radius) || 10;
+  const withinFence = distance != null ? distance <= radiusN : null;
+
+  if (!valid) {
+    return (
+      <div className="rounded-md border border-dashed border-border p-3 text-[11px] text-muted-foreground">
+        Enter valid latitude and longitude to preview the location on the map.
+      </div>
+    );
+  }
+
+  const delta = 0.005;
+  const bbox = `${lngN - delta},${latN - delta},${lngN + delta},${latN + delta}`;
+  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latN},${lngN}`;
+
+  return (
+    <div className="space-y-2">
+      <div className="rounded-md overflow-hidden border border-border">
+        <iframe
+          title="Branch location preview"
+          src={src}
+          className="w-full h-48"
+          loading="lazy"
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+        <a
+          href={`https://www.openstreetmap.org/?mlat=${latN}&mlon=${lngN}#map=18/${latN}/${lngN}`}
+          target="_blank"
+          rel="noreferrer"
+          className="text-primary hover:underline"
+        >
+          Open in OpenStreetMap
+        </a>
+        <span className="text-muted-foreground">·</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-[11px]"
+          onClick={() => {
+            setMeErr(null);
+            if (!navigator.geolocation) { setMeErr("Geolocation not supported"); return; }
+            navigator.geolocation.getCurrentPosition(
+              (p) => setMe({ lat: p.coords.latitude, lng: p.coords.longitude }),
+              (e) => setMeErr(e.message),
+              { enableHighAccuracy: true, timeout: 15000 },
+            );
+          }}
+        >
+          Measure distance from me
+        </Button>
+        {distance != null && (
+          <span className={withinFence ? "text-primary" : "text-destructive"}>
+            {Math.round(distance)}m from you · fence {radiusN}m {withinFence ? "✓ inside" : "✗ outside"}
+          </span>
+        )}
+        {meErr && <span className="text-destructive">{meErr}</span>}
+      </div>
+    </div>
+  );
+}
+
 export default BranchesPage;
