@@ -67,13 +67,37 @@ const BranchesPage = () => {
 
   const handleSave = async () => {
     if (!formName.trim() || !formCode.trim()) return;
+
+    // Geo-fence validation: coordinates required and within valid ranges.
+    const latStr = formLat.trim();
+    const lngStr = formLng.trim();
+    if (latStr === "" || lngStr === "") {
+      toast({ title: "Location required", description: "Latitude and Longitude are required for geo-fence attendance.", variant: "destructive" });
+      return;
+    }
+    const latNum = Number(latStr);
+    const lngNum = Number(lngStr);
+    if (!Number.isFinite(latNum) || latNum < -90 || latNum > 90) {
+      toast({ title: "Invalid latitude", description: "Latitude must be a number between -90 and 90.", variant: "destructive" });
+      return;
+    }
+    if (!Number.isFinite(lngNum) || lngNum < -180 || lngNum > 180) {
+      toast({ title: "Invalid longitude", description: "Longitude must be a number between -180 and 180.", variant: "destructive" });
+      return;
+    }
+    const radiusNum = formRadius.trim() === "" ? 10 : Number(formRadius);
+    if (!Number.isFinite(radiusNum) || radiusNum < 1) {
+      toast({ title: "Invalid radius", description: "Radius must be at least 1 metre.", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
     try {
       const payload: any = {
         name: formName, code: formCode, address: formAddress, phone: formPhone, status: formStatus,
-        latitude: formLat.trim() === "" ? null : Number(formLat),
-        longitude: formLng.trim() === "" ? null : Number(formLng),
-        geofence_radius_m: formRadius.trim() === "" ? 10 : Number(formRadius),
+        latitude: latNum,
+        longitude: lngNum,
+        geofence_radius_m: radiusNum,
       };
       if (editBranch) {
         const { error } = await supabase.from("branches").update(payload).eq("id", editBranch.id);
@@ -91,6 +115,7 @@ const BranchesPage = () => {
       setSaving(false);
     }
   };
+
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this branch?")) return;
