@@ -31,6 +31,7 @@ import GithubDeploySyncPage from "./pages/admin/GithubDeploySyncPage";
 
 import ChartOfAccounts from "./pages/accounts/ChartOfAccounts";
 import AccountingVouchers from "./pages/accounts/AccountingVouchers";
+import AccountingAuditLogPage from "./pages/accounts/AccountingAuditLogPage";
 import TreasuryInformationPage from "./pages/accounts/TreasuryInformationPage";
 import VoucherApprovalDashboard from "./pages/accounts/VoucherApprovalDashboard";
 import PermissionMatrixPage from "./pages/admin/PermissionMatrixPage";
