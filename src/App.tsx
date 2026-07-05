@@ -31,6 +31,7 @@ import GithubDeploySyncPage from "./pages/admin/GithubDeploySyncPage";
 
 import ChartOfAccounts from "./pages/accounts/ChartOfAccounts";
 import AccountingVouchers from "./pages/accounts/AccountingVouchers";
+import AccountingAuditLogPage from "./pages/accounts/AccountingAuditLogPage";
 import TreasuryInformationPage from "./pages/accounts/TreasuryInformationPage";
 import VoucherApprovalDashboard from "./pages/accounts/VoucherApprovalDashboard";
 import PermissionMatrixPage from "./pages/admin/PermissionMatrixPage";
@@ -226,6 +227,7 @@ const App = () => (
                 {/* ─── Accounts ─────────────────────────────────── */}
                 <Route path="/accounts/chart" element={<P perm="accounts.view"><ChartOfAccounts /></P>} />
                 <Route path="/accounts/vouchers" element={<AccountingVouchers />} />
+                <Route path="/accounts/audit-log" element={<AccountingAuditLogPage />} />
                 <Route path="/accounts/approvals" element={<P perm="accounts.view"><VoucherApprovalDashboard /></P>} />
                 <Route path="/accounts/treasury" element={<P perm="accounts.view"><TreasuryInformationPage /></P>} />
                 <Route path="/admin/permission-matrix" element={<P perm="roles.view"><PermissionMatrixPage /></P>} />

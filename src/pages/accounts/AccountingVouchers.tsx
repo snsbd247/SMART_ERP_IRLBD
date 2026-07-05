@@ -425,12 +425,13 @@ const AccountingVouchers = () => {
       });
       return;
     }
-    // Block posting when the currently-selected FY is inactive (edit-mode legacy vouchers).
+    // Block POSTING (submit) when the currently-selected FY is inactive.
+    // Save-as-Draft is still allowed so users can preserve work on legacy vouchers.
     const selectedFy = finYears.find((f) => f.id === formFinYear);
-    if (selectedFy && !selectedFy.is_active) {
+    if (submitForApproval && selectedFy && !selectedFy.is_active) {
       toast({
-        title: "Inactive Financial Year",
-        description: `${selectedFy.name} is inactive. Activate it in Settings → Financial Years, or change the voucher date to an active year.`,
+        title: "Posting blocked — Inactive Financial Year",
+        description: `${selectedFy.name} is inactive. You may save as draft, but posting requires an active year. Activate it in Settings → Financial Years.`,
         variant: "destructive",
       });
       return;
@@ -611,6 +612,12 @@ const AccountingVouchers = () => {
             },
           });
         }
+      } else if (err?.status === 422 && /financial year|inactive/i.test(err?.message || "")) {
+        toast({
+          title: "Inactive Financial Year",
+          description: `${err.message}\nOpen Settings → Financial Years and activate the year, or change the voucher date.`,
+          variant: "destructive",
+        });
       } else {
         toast({ title: "Error", description: err?.message, variant: "destructive" });
       }
@@ -1276,15 +1283,21 @@ const AccountingVouchers = () => {
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t mt-4">
             <Button variant="outline" onClick={() => { setDialogOpen(false); setEditingVoucher(null); }}>Cancel</Button>
-            {editingVoucher?.status === "approved" ? (
-              <Button onClick={() => handleSave(false)} disabled={saving || !isBalanced}>Save Changes</Button>
-            ) : (
-              <>
-                <Button variant="outline" className="border-amber-500 bg-amber-100 text-amber-900 hover:bg-amber-200 hover:text-amber-900 dark:bg-amber-500/20 dark:text-amber-100 dark:border-amber-400/60 dark:hover:bg-amber-500/30" onClick={() => handleSave(false)} disabled={saving || !isBalanced}>Save as Draft</Button>
-                <Button onClick={() => handleSave(true)} disabled={saving || !isBalanced}>Submit for Approval</Button>
-                <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleSave(true, true)} disabled={saving || !isBalanced}>Submit &amp; New</Button>
-              </>
-            )}
+            {(() => {
+              const _sel = finYears.find((f) => f.id === formFinYear);
+              const fyInactive = !!_sel && !_sel.is_active;
+              const postDisabled = saving || !isBalanced || fyInactive;
+              const postTitle = fyInactive ? `${_sel!.name} is inactive — posting blocked` : undefined;
+              return editingVoucher?.status === "approved" ? (
+                <Button onClick={() => handleSave(false)} disabled={postDisabled} title={postTitle}>Save Changes</Button>
+              ) : (
+                <>
+                  <Button variant="outline" className="border-amber-500 bg-amber-100 text-amber-900 hover:bg-amber-200 hover:text-amber-900 dark:bg-amber-500/20 dark:text-amber-100 dark:border-amber-400/60 dark:hover:bg-amber-500/30" onClick={() => handleSave(false)} disabled={saving || !isBalanced}>Save as Draft</Button>
+                  <Button onClick={() => handleSave(true)} disabled={postDisabled} title={postTitle}>Submit for Approval</Button>
+                  <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleSave(true, true)} disabled={postDisabled} title={postTitle}>Submit &amp; New</Button>
+                </>
+              );
+            })()}
           </div>
         </CardContent>
       </Card>
