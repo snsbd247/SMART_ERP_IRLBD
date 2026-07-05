@@ -1119,6 +1119,14 @@ const AccountingVouchers = () => {
                       .map((f) => <SelectItem key={f.id} value={f.id}>{f.name}{!f.is_active ? " (Inactive)" : ""}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {(() => {
+                  const sel = finYears.find((f) => f.id === formFinYear);
+                  return sel && !sel.is_active ? (
+                    <p className="text-xs text-destructive mt-1">
+                      ⚠ {sel.name} is inactive — posting is blocked until it is activated.
+                    </p>
+                  ) : null;
+                })()}
               </div>
             </div>
             {/* Entry Grid */}
