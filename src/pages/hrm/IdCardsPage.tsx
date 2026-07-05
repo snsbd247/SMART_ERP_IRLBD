@@ -11,8 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { QRCodeCanvas } from "qrcode.react";
 import JsBarcode from "jsbarcode";
-import { CreditCard, Printer, Download, MapPin } from "lucide-react";
-import { BACK_QR, backCssBlock, pageFrameCss } from "./idCardLayout";
+import { CreditCard, Printer, Download, MapPin, Minus, Plus } from "lucide-react";
+import { BACK_QR, BACK_FONT_SCALE, backCssBlock, pageFrameCss } from "./idCardLayout";
 
 interface Employee {
   id: string; employee_code: string; first_name: string; last_name: string;
