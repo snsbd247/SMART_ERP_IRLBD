@@ -142,12 +142,13 @@ async function fetchAllVoucherEntriesLaravel(opts: {
   const buildPath = (slice: string[]): string => {
     const parts: string[] = [
       "select=id,account_id,debit,credit,narration,voucher_id",
-      `f[voucher_id][in]=${encodeURIComponent(slice.join(","))}`,
+      `f%5Bvoucher_id%5D%5Bin%5D=${encodeURIComponent(slice.join(","))}`,
       `limit=10000`,
     ];
-    if (opts.accountId) parts.push(`f[account_id][eq]=${encodeURIComponent(opts.accountId)}`);
+    if (opts.accountId) parts.push(`f%5Baccount_id%5D%5Beq%5D=${encodeURIComponent(opts.accountId)}`);
     return `db/voucher_entries?${parts.join("&")}`;
   };
+
   const chunks = chunkIds(voucherIds, chunkSize);
   for (let ci = 0; ci < chunks.length; ci++) {
     let slice = chunks[ci];
