@@ -11,8 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { QRCodeCanvas } from "qrcode.react";
 import JsBarcode from "jsbarcode";
-import { CreditCard, Printer, Download, MapPin } from "lucide-react";
-import { BACK_QR, backCssBlock, pageFrameCss } from "./idCardLayout";
+import { CreditCard, Printer, Download, MapPin, Minus, Plus } from "lucide-react";
+import { BACK_QR, BACK_FONT_SCALE, backCssBlock, pageFrameCss } from "./idCardLayout";
 
 interface Employee {
   id: string; employee_code: string; first_name: string; last_name: string;
@@ -75,6 +75,16 @@ export default function IdCardsPage() {
   const frontCardRef = useRef<HTMLDivElement | null>(null);
   const backCardRef = useRef<HTMLDivElement | null>(null);
   const [viewMode, setViewMode] = useState<"both" | "front" | "back">("both");
+  const [backFontScale, setBackFontScale] = useState<number>(BACK_FONT_SCALE.default);
+  const adjustBackFont = (delta: number) => {
+    setBackFontScale((prev) => {
+      const next = Math.round((prev + delta) * 100) / 100;
+      return Math.min(BACK_FONT_SCALE.max, Math.max(BACK_FONT_SCALE.min, next));
+    });
+  };
+  // Preview base sizes in px (matched to the CR80 preview scale).
+  const backBodyPx = (10.5 * backFontScale).toFixed(2);
+  const backHeaderPx = (13 * backFontScale).toFixed(2);
 
 
 
@@ -194,7 +204,7 @@ export default function IdCardsPage() {
       .front .bc p { font-size: 3mm; font-weight: 700; letter-spacing: 1mm; margin-top: 0.5mm; color: #000; }
 
       /* BACK — sample-aligned (shared with tests) */
-      ${backCssBlock()}
+      ${backCssBlock(backFontScale)}
     </style></head><body>
       <div class="card front">
         <div class="top">
@@ -320,12 +330,47 @@ export default function IdCardsPage() {
               </div>
 
               {/* View mode toggle */}
-              <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
                 {(["both", "front", "back"] as const).map((m) => (
                   <Button key={m} size="sm" variant={viewMode === m ? "default" : "outline"} onClick={() => setViewMode(m)}>
                     {m === "both" ? "Both" : m === "front" ? "Front" : "Back"}
                   </Button>
                 ))}
+                {viewMode !== "front" && (
+                  <div className="flex items-center gap-1 ml-2 border rounded-md px-2 py-1">
+                    <span className="text-xs text-muted-foreground mr-1">Back font</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      onClick={() => adjustBackFont(-BACK_FONT_SCALE.step)}
+                      disabled={backFontScale <= BACK_FONT_SCALE.min + 1e-6}
+                      aria-label="Decrease back font size"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </Button>
+                    <span className="text-xs font-mono w-10 text-center">{Math.round(backFontScale * 100)}%</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      onClick={() => adjustBackFont(BACK_FONT_SCALE.step)}
+                      disabled={backFontScale >= BACK_FONT_SCALE.max - 1e-6}
+                      aria-label="Increase back font size"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => setBackFontScale(BACK_FONT_SCALE.default)}
+                      disabled={Math.abs(backFontScale - BACK_FONT_SCALE.default) < 1e-6}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-wrap justify-center gap-8">
@@ -373,22 +418,22 @@ export default function IdCardsPage() {
                       {factoryAddr && (
                         <div className="mb-2">
                           <div className="flex items-center justify-center mb-1">
-                            <span className="relative px-2.5 text-[13px] font-extrabold text-black">
+                            <span className="relative px-2.5 font-extrabold text-black" style={{ fontSize: `${backHeaderPx}px` }}>
                               <span className="absolute top-1/2 right-full w-8 h-[1.5px] bg-black" />
                               Factory:
                               <span className="absolute top-1/2 left-full w-8 h-[1.5px] bg-black" />
                             </span>
                           </div>
-                          <div className="text-[10.5px] leading-[1.35] text-center whitespace-pre-line" style={{ color: "#1e3a8a" }}>
+                          <div className="leading-[1.35] text-center whitespace-pre-line" style={{ color: "#1e3a8a", fontSize: `${backBodyPx}px` }}>
                             {factoryAddr}
                           </div>
                           {companyPhone && (
-                            <div className="text-[10.5px] leading-[1.35] text-center" style={{ color: "#1e3a8a" }}>
+                            <div className="leading-[1.35] text-center" style={{ color: "#1e3a8a", fontSize: `${backBodyPx}px` }}>
                               Phone: <span style={{ color: "#dc2626" }}>{companyPhone}</span>
                             </div>
                           )}
                           {companyEmail && (
-                            <div className="text-[10.5px] leading-[1.35] text-center" style={{ color: "#1e3a8a" }}>
+                            <div className="leading-[1.35] text-center" style={{ color: "#1e3a8a", fontSize: `${backBodyPx}px` }}>
                               Email: <span style={{ color: "#dc2626" }}>{companyEmail}</span>
                             </div>
                           )}
@@ -397,22 +442,22 @@ export default function IdCardsPage() {
                       {headOfficeAddr && (
                         <div className="mb-1">
                           <div className="flex items-center justify-center mb-1">
-                            <span className="relative px-2.5 text-[13px] font-extrabold text-black">
+                            <span className="relative px-2.5 font-extrabold text-black" style={{ fontSize: `${backHeaderPx}px` }}>
                               <span className="absolute top-1/2 right-full w-8 h-[1.5px] bg-black" />
                               Head Office
                               <span className="absolute top-1/2 left-full w-8 h-[1.5px] bg-black" />
                             </span>
                           </div>
-                          <div className="text-[10.5px] leading-[1.35] text-center whitespace-pre-line" style={{ color: "#1e3a8a" }}>
+                          <div className="leading-[1.35] text-center whitespace-pre-line" style={{ color: "#1e3a8a", fontSize: `${backBodyPx}px` }}>
                             {headOfficeAddr}
                           </div>
                           {!factoryAddr && companyPhone && (
-                            <div className="text-[10.5px] leading-[1.35] text-center" style={{ color: "#1e3a8a" }}>
+                            <div className="leading-[1.35] text-center" style={{ color: "#1e3a8a", fontSize: `${backBodyPx}px` }}>
                               Phone: <span style={{ color: "#dc2626" }}>{companyPhone}</span>
                             </div>
                           )}
                           {!factoryAddr && companyEmail && (
-                            <div className="text-[10.5px] leading-[1.35] text-center" style={{ color: "#1e3a8a" }}>
+                            <div className="leading-[1.35] text-center" style={{ color: "#1e3a8a", fontSize: `${backBodyPx}px` }}>
                               Email: <span style={{ color: "#dc2626" }}>{companyEmail}</span>
                             </div>
                           )}
