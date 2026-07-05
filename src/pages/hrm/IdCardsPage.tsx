@@ -71,6 +71,10 @@ export default function IdCardsPage() {
   const [savingAddr, setSavingAddr] = useState(false);
   const qrRef = useRef<HTMLCanvasElement | null>(null);
   const barcodeRef = useRef<HTMLCanvasElement | null>(null);
+  const frontCardRef = useRef<HTMLDivElement | null>(null);
+  const backCardRef = useRef<HTMLDivElement | null>(null);
+  const [viewMode, setViewMode] = useState<"both" | "front" | "back">("both");
+
 
 
   useEffect(() => {
