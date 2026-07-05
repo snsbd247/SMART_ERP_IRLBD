@@ -379,9 +379,10 @@ export default function IdCardsPage() {
 
 
                 {/* BACK */}
-                <div>
+                <div style={{ display: viewMode === "front" ? "none" : "block" }}>
                   <p className="text-xs font-semibold text-muted-foreground text-center mb-2 uppercase tracking-wider">Back Side</p>
-                  <div className="w-[340px] h-[540px] rounded-md overflow-hidden bg-white shadow-lg flex flex-row" style={{ color: "#000" }}>
+                  <div ref={backCardRef} className="w-[340px] h-[539px] overflow-hidden bg-white shadow-lg flex flex-row" style={{ color: "#000" }}>
+
                     <div className="flex-1 px-3.5 pt-4 pb-3 flex flex-col" style={{ color: "#000" }}>
                       {factoryAddr && (
                         <div className="mb-2">
