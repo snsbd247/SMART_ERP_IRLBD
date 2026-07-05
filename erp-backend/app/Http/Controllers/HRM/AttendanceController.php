@@ -4,7 +4,9 @@ namespace App\Http\Controllers\HRM;
 
 use App\Http\Controllers\BaseController;
 use App\Models\Attendance;
+use App\Models\Employee;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class AttendanceController extends BaseController
