@@ -343,6 +343,11 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::delete('fund-settings/{id}', [\App\Http\Controllers\HRM\FundController::class, 'settingsDestroy']);
         });
 
+        // ─── Portal self-service (no hrm permission required) ────
+        Route::post('portal/attendance/self', [\App\Http\Controllers\HRM\AttendanceController::class, 'selfCheckIn']);
+        Route::get('portal/attendance/today', [\App\Http\Controllers\HRM\AttendanceController::class, 'selfToday']);
+
+
         // ─── Administration ─────────────────────────────────────
         // Branches
         Route::middleware('permission:branches.view')->group(function () {
