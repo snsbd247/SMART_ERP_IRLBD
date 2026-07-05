@@ -228,11 +228,11 @@ export default function IdCardsPage() {
       body { font-family: Arial, Helvetica, sans-serif; background: #fff; color: #000; }
 
       /* FRONT */
-      .front .top { background: #ef7a1a; padding: 3mm 3mm 4mm; height: 54mm; }
-      .front .brand { display: flex; align-items: center; justify-content: center; margin-bottom: 2.5mm; height: 12mm; }
-      .front .logo { max-height: 12mm; width: auto; object-fit: contain; background: transparent; }
-      .front .brand-en { font-size: 5mm; font-weight: 900; color: #111; font-style: italic; letter-spacing: 0.3mm; line-height: 1; text-transform: uppercase; text-align: center; }
-      .front .photo-wrap { display: flex; justify-content: center; margin-top: 1.5mm; }
+     .front .top { background: #ef7a1a; padding: 6mm 3mm 4mm; height: 54mm; }
+     .front .brand { display: flex; align-items: center; justify-content: center; margin-bottom: 5mm; height: 12mm; }
+     .front .logo { max-height: 12mm; width: auto; object-fit: contain; background: transparent; }
+     .front .brand-en { font-size: 5mm; font-weight: 900; color: #111; font-style: italic; letter-spacing: 0.3mm; line-height: 1; text-transform: uppercase; text-align: center; }
+     .front .photo-wrap { display: flex; justify-content: center; margin-top: 0; }
       .front .photo { width: 28mm; height: 32mm; object-fit: cover; border: 0.8mm solid #2f6bd6; background: #fff; }
       .front .photo.ph { display:flex; align-items:center; justify-content:center; font-size:10mm; font-weight:700; color:#475569; }
       .front .bottom { padding: 3mm 2mm 2mm; text-align: center; }
