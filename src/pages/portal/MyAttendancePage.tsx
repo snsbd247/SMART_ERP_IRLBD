@@ -55,14 +55,36 @@ export default function MyAttendancePage() {
 
   useEffect(() => { loadToday(); }, [loadToday]);
 
-  const handlePunch = async (action: "check_in" | "check_out") => {
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [lastAction, setLastAction] = useState<"check_in" | "check_out" | null>(null);
+
+  const logGeoPermission = useCallback(
+    async (status: "granted" | "denied" | "timeout" | "unavailable" | "error", message?: string) => {
+      if (!laravel) return;
+      try {
+        await callPortalApi("/api/v1/portal/attendance/geo-permission", {
+          method: "POST",
+          body: JSON.stringify({ status, context: "check_in", message: message ?? null }),
+        });
+      } catch { /* best-effort audit */ }
+    },
+    [laravel],
+  );
+
+  const handlePunch = useCallback(async (action: "check_in" | "check_out") => {
+    setLastAction(action);
+    setGeoError(null);
     if (!navigator.geolocation) {
-      toast({ title: "Geolocation not supported by this browser", variant: "destructive" });
+      const msg = "Geolocation not supported by this browser";
+      setGeoError(msg);
+      await logGeoPermission("unavailable", msg);
+      toast({ title: msg, variant: "destructive" });
       return;
     }
     setChecking(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        await logGeoPermission("granted");
         try {
           const res = await callPortalApi("/api/v1/portal/attendance/self", {
             method: "POST",
@@ -72,24 +94,39 @@ export default function MyAttendancePage() {
               longitude: pos.coords.longitude,
             }),
           });
+          const src = res.branch_source ? ` · via ${res.branch_source} branch` : "";
           toast({
             title: action === "check_in" ? "Checked in" : "Checked out",
-            description: `Distance: ${res.distance_m}m from branch`,
+            description: `Distance: ${res.distance_m}m from branch${src}`,
           });
+          setGeoError(null);
           await loadToday();
         } catch (e: any) {
+          setGeoError(e.message);
           toast({ title: "Attendance failed", description: e.message, variant: "destructive" });
         } finally {
           setChecking(false);
         }
       },
-      (err) => {
+      async (err) => {
         setChecking(false);
-        toast({ title: "Location required", description: err.message, variant: "destructive" });
+        const status =
+          err.code === err.PERMISSION_DENIED ? "denied" :
+          err.code === err.TIMEOUT ? "timeout" :
+          err.code === err.POSITION_UNAVAILABLE ? "unavailable" : "error";
+        const msg =
+          status === "denied"
+            ? "Location permission was denied. Enable location for this site in your browser settings and click Retry."
+            : status === "timeout"
+              ? "Location request timed out. Move to a spot with better GPS/Wi-Fi and click Retry."
+              : err.message || "Unable to get your location. Click Retry.";
+        setGeoError(msg);
+        await logGeoPermission(status, err.message);
+        toast({ title: "Location required", description: msg, variant: "destructive" });
       },
       { enableHighAccuracy: true, timeout: 15000 }
     );
-  };
+  }, [loadToday, logGeoPermission, toast]);
 
   if (loading) return <div className="text-center py-16 text-muted-foreground">Loading...</div>;
   if (!employee) return <div className="text-center py-16 text-muted-foreground">No employee profile linked.</div>;
