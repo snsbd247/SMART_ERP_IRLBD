@@ -330,12 +330,47 @@ export default function IdCardsPage() {
               </div>
 
               {/* View mode toggle */}
-              <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
                 {(["both", "front", "back"] as const).map((m) => (
                   <Button key={m} size="sm" variant={viewMode === m ? "default" : "outline"} onClick={() => setViewMode(m)}>
                     {m === "both" ? "Both" : m === "front" ? "Front" : "Back"}
                   </Button>
                 ))}
+                {viewMode !== "front" && (
+                  <div className="flex items-center gap-1 ml-2 border rounded-md px-2 py-1">
+                    <span className="text-xs text-muted-foreground mr-1">Back font</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      onClick={() => adjustBackFont(-BACK_FONT_SCALE.step)}
+                      disabled={backFontScale <= BACK_FONT_SCALE.min + 1e-6}
+                      aria-label="Decrease back font size"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </Button>
+                    <span className="text-xs font-mono w-10 text-center">{Math.round(backFontScale * 100)}%</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      onClick={() => adjustBackFont(BACK_FONT_SCALE.step)}
+                      disabled={backFontScale >= BACK_FONT_SCALE.max - 1e-6}
+                      aria-label="Increase back font size"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => setBackFontScale(BACK_FONT_SCALE.default)}
+                      disabled={Math.abs(backFontScale - BACK_FONT_SCALE.default) < 1e-6}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-wrap justify-center gap-8">
