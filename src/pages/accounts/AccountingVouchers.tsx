@@ -611,6 +611,12 @@ const AccountingVouchers = () => {
             },
           });
         }
+      } else if (err?.status === 422 && /financial year|inactive/i.test(err?.message || "")) {
+        toast({
+          title: "Inactive Financial Year",
+          description: `${err.message}\nOpen Settings → Financial Years and activate the year, or change the voucher date.`,
+          variant: "destructive",
+        });
       } else {
         toast({ title: "Error", description: err?.message, variant: "destructive" });
       }
