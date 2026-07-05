@@ -70,6 +70,8 @@ export default function IdCardsPage() {
   const [headInput, setHeadInput] = useState("");
   const [savingAddr, setSavingAddr] = useState(false);
   const qrRef = useRef<HTMLCanvasElement | null>(null);
+  const barcodeRef = useRef<HTMLCanvasElement | null>(null);
+
 
   useEffect(() => {
     (async () => {
