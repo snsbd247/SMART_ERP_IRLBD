@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
@@ -8,11 +8,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Slider } from "@/components/ui/slider";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { QRCodeCanvas } from "qrcode.react";
 import JsBarcode from "jsbarcode";
-import { CreditCard, Printer, Download, MapPin, Minus, Plus } from "lucide-react";
+import { CreditCard, Printer, Download, MapPin, Wand2, AlertTriangle } from "lucide-react";
 import { BACK_QR, BACK_FONT_SCALE, backCssBlock, pageFrameCss } from "./idCardLayout";
+
+const BACK_SCALE_STORAGE_KEY = "idcard.backFontScale.v1";
+const snapToStep = (v: number): number => {
+  const steps = Math.round((v - BACK_FONT_SCALE.min) / BACK_FONT_SCALE.step);
+  const snapped = BACK_FONT_SCALE.min + steps * BACK_FONT_SCALE.step;
+  return Math.min(BACK_FONT_SCALE.max, Math.max(BACK_FONT_SCALE.min, Math.round(snapped * 100) / 100));
+};
 
 interface Employee {
   id: string; employee_code: string; first_name: string; last_name: string;
