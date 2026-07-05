@@ -31,18 +31,21 @@ describe("ID card back side — sample alignment", () => {
     expect(back).toContain(`color: ${BACK_COLORS.highlight}`);
   });
 
-  it("anchors the QR to the bottom-left of the main column", () => {
+  it("centers the QR horizontally at the bottom of the main column", () => {
     expect(back).toMatch(/\.back \.qr\s*{[^}]*margin-top:\s*auto/);
+    expect(back).toMatch(/\.back \.qr\s*{[^}]*justify-content:\s*center/);
     expect(back).toContain(
       `padding: ${BACK_QR.padMm.top}mm ${BACK_QR.padMm.right}mm ${BACK_QR.padMm.bottom}mm ${BACK_QR.padMm.left}mm`,
     );
     expect(back).toContain(`width: ${BACK_QR.sizeMm}mm; height: ${BACK_QR.sizeMm}mm`);
   });
 
-  it("renders the black sidebar strip with rounded inside corners", () => {
-    expect(back).toMatch(/\.back \.side\s*{[^}]*border-radius:\s*1mm 0 0 1mm/);
-    expect(source).toContain("rounded-l-md");
+  it("renders the black sidebar strip flush with the card edge (no rounding, no margin)", () => {
+    expect(back).toMatch(/\.back \.side\s*{[^}]*border-radius:\s*0/);
+    expect(back).toMatch(/\.back \.side\s*{[^}]*margin:\s*0/);
+    expect(source).not.toContain("rounded-l-md");
   });
+
 
   it("wraps Phone/Email values in the red highlight span", () => {
     expect(source).toContain('Phone: <span class="hl">${companyPhone}</span>');
