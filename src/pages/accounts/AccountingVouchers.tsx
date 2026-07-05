@@ -1104,7 +1104,9 @@ const AccountingVouchers = () => {
                 <Select value={formFinYear} onValueChange={(v) => { setFormFinYear(v); setManualFinYear(true); }}>
                   <SelectTrigger><SelectValue placeholder="Select year" /></SelectTrigger>
                   <SelectContent>
-                    {finYears.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                    {finYears
+                      .filter((f) => f.is_active || f.id === formFinYear)
+                      .map((f) => <SelectItem key={f.id} value={f.id}>{f.name}{!f.is_active ? " (Inactive)" : ""}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
