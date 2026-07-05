@@ -148,7 +148,12 @@ export default function IdCardsPage() {
     }
   };
 
-  const buildCardHtml = (qrDataUrl: string) => {
+  const getBarcodeDataUrl = (): string => {
+    const c = barcodeRef.current;
+    return c ? c.toDataURL("image/png") : "";
+  };
+
+  const buildCardHtml = (qrDataUrl: string, barcodeDataUrl: string) => {
     const photoHtml = emp?.photo_url
       ? `<img src="${emp.photo_url}" class="photo" crossorigin="anonymous" />`
       : `<div class="photo ph">${emp!.first_name[0]}${emp!.last_name[0]}</div>`;
@@ -160,40 +165,42 @@ export default function IdCardsPage() {
     const headHtml = headOfficeAddr
       ? `<div class="sec"><div class="st"><span>Head Office</span></div><p class="sb">${headOfficeAddr.replace(/\n/g, "<br/>")}${!factoryAddr && companyPhone ? `<br/>Phone: ${companyPhone}` : ""}${!factoryAddr && companyEmail ? `<br/>Email: ${companyEmail}` : ""}</p></div>` : "";
 
-    return `<html><head><title>ID Card - ${emp!.employee_code}</title><style>
-      /* CR80 portrait: 53.98mm × 85.6mm */
+    return `<html><head><title>ID Card - ${emp!.employee_code}</title>
+      <meta name="format-detection" content="telephone=no,email=no,address=no" />
+      <style>
       @page { size: 54mm 85.6mm; margin: 0; }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: Arial, Helvetica, sans-serif; background: #fff; }
+      a { color: inherit !important; text-decoration: none !important; }
+      body { font-family: Arial, Helvetica, sans-serif; background: #fff; color: #000; }
       .card { width: 54mm; height: 85.6mm; overflow: hidden; background: #fff; position: relative; page-break-after: always; }
       .card:last-child { page-break-after: auto; }
 
       /* FRONT */
       .front .top { background: #ef7a1a; padding: 3mm 3mm 4mm; height: 54mm; }
       .front .brand { display: flex; align-items: center; gap: 2mm; margin-bottom: 2.5mm; }
-      .front .logo { height: 8mm; width: 8mm; object-fit: contain; background: #fff; padding: 0.4mm; border-radius: 1mm; }
+      .front .logo { height: 9mm; width: 9mm; object-fit: contain; background: #fff; padding: 0.4mm; border-radius: 1mm; }
       .front .logo.lp { display:flex; align-items:center; justify-content:center; font-weight:800; color:#ef7a1a; font-size:5mm; }
-      .front .brand-en { font-size: 4.6mm; font-weight: 800; color: #111; font-style: italic; letter-spacing: 0.2mm; }
-      .front .photo-wrap { display: flex; justify-content: center; margin-top: 1mm; }
-      .front .photo { width: 26mm; height: 32mm; object-fit: cover; border: 0.8mm solid #2f6bd6; background: #fff; }
+      .front .brand-en { font-size: 6mm; font-weight: 900; color: #111; font-style: italic; letter-spacing: 0.3mm; line-height: 1; text-transform: uppercase; }
+      .front .photo-wrap { display: flex; justify-content: center; margin-top: 1.5mm; }
+      .front .photo { width: 28mm; height: 32mm; object-fit: cover; border: 0.8mm solid #2f6bd6; background: #fff; }
       .front .photo.ph { display:flex; align-items:center; justify-content:center; font-size:10mm; font-weight:700; color:#475569; }
       .front .bottom { padding: 3mm 2mm 2mm; text-align: center; }
-      .front .name { font-size: 4mm; font-weight: 800; color: #111; }
-      .front .desig { font-size: 2.8mm; color: #333; margin-top: 0.5mm; }
+      .front .name { font-size: 4mm; font-weight: 800; color: #000; }
+      .front .desig { font-size: 2.8mm; color: #000; margin-top: 0.5mm; }
       .front .bc { margin-top: 2.5mm; }
       .front .bc img { height: 11mm; width: 40mm; object-fit: fill; }
-      .front .bc p { font-size: 3mm; font-weight: 700; letter-spacing: 1.5mm; margin-top: 0.5mm; color: #111; }
+      .front .bc p { font-size: 3mm; font-weight: 700; letter-spacing: 1mm; margin-top: 0.5mm; color: #000; }
 
       /* BACK */
       .back { display: flex; }
-      .back .main { flex: 1; padding: 3mm 2.5mm 2mm; display: flex; flex-direction: column; }
+      .back .main { flex: 1; padding: 3mm 2.5mm 2mm; display: flex; flex-direction: column; color: #000; }
       .back .sec { margin-bottom: 2mm; }
       .back .st { display:flex; justify-content:center; margin-bottom: 1mm; }
-      .back .st span { position: relative; font-size: 2.6mm; font-weight: 800; color: #111; padding: 0 2mm; }
-      .back .st span::before, .back .st span::after { content:""; position:absolute; top:50%; width: 8mm; height: 0.4mm; background: #111; }
+      .back .st span { position: relative; font-size: 2.6mm; font-weight: 800; color: #000; padding: 0 2mm; }
+      .back .st span::before, .back .st span::after { content:""; position:absolute; top:50%; width: 8mm; height: 0.4mm; background: #000; }
       .back .st span::before { right: 100%; } .back .st span::after { left: 100%; }
-      .back .sb { font-size: 2.4mm; line-height: 1.4; color: #111; text-align: center; }
-      .back .qr { text-align: center; margin-top: auto; padding-top: 1.5mm; }
+      .back .sb { font-size: 2.4mm; line-height: 1.4; color: #000; text-align: center; }
+      .back .qr { text-align: center; margin-top: 2mm; }
       .back .qr img { width: 22mm; height: 22mm; }
       .back .side { width: 5mm; background: #111; display:flex; align-items:center; justify-content:center; }
       .back .side span { color:#fff; font-size: 2.6mm; font-weight: 700; letter-spacing: 1mm; writing-mode: vertical-rl; transform: rotate(180deg); }
@@ -206,7 +213,7 @@ export default function IdCardsPage() {
         <div class="bottom">
           <p class="name">${emp!.first_name} ${emp!.last_name}</p>
           <p class="desig">${desigName}</p>
-          <div class="bc"><img src="${barcodeUrl}" crossorigin="anonymous" /><p>${emp!.employee_code}</p></div>
+          <div class="bc"><img src="${barcodeDataUrl}" /><p>${emp!.employee_code}</p></div>
         </div>
       </div>
       <div class="card back">
@@ -225,10 +232,11 @@ export default function IdCardsPage() {
     if (!emp) return;
     const win = window.open("", "_blank");
     if (!win) return;
-    win.document.write(buildCardHtml(getQrDataUrl()));
+    win.document.write(buildCardHtml(getQrDataUrl(), getBarcodeDataUrl()));
     win.document.close();
     setTimeout(() => win.print(), 900);
   };
+
 
   const handleDownloadPdf = async () => {
     if (!emp) return;
