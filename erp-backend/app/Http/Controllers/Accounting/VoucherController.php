@@ -7,6 +7,7 @@ use App\Models\AccVoucher;
 use App\Models\VoucherEntry;
 use App\Repositories\VoucherRepository;
 use App\Services\AccountingService;
+use App\Services\AuditService;
 use App\Services\FinancialPeriodGuard;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -19,7 +20,9 @@ class VoucherController extends BaseController
         private VoucherRepository $repo,
         private AccountingService $service,
         private FinancialPeriodGuard $period,
+        private AuditService $audit,
     ) {}
+
 
     private function normalizeVoucherDateInput(Request $request): void
     {
@@ -162,6 +165,21 @@ class VoucherController extends BaseController
         ]);
 
         try {
+            // Reject if the client explicitly picked an inactive Financial Year.
+            $requestedFyId = $request->input('financial_year_id');
+            if ($requestedFyId) {
+                $requestedFy = DB::table('financial_years')->where('id', $requestedFyId)->first();
+                if ($requestedFy && (int) $requestedFy->is_active !== 1) {
+                    $this->audit->log(
+                        'accounting', 'reject_inactive_fy', null,
+                        "Blocked voucher post: FY {$requestedFy->name} is inactive",
+                        $request, null,
+                        ['financial_year_id' => $requestedFyId, 'financial_year_name' => $requestedFy->name, 'voucher_type' => $request->input('voucher_type'), 'voucher_date' => $request->input('voucher_date')]
+                    );
+                    throw new \RuntimeException("Selected Financial Year '{$requestedFy->name}' is inactive. Activate it in Settings → Financial Years or pick an active one.");
+                }
+            }
+
             // Resolve financial_year_id from the voucher date every time. This
             // prevents stale UI selections (for example FY 2025-2026 with a
             // 2026-07-02 voucher date) from causing hidden DB/server errors.
@@ -171,6 +189,7 @@ class VoucherController extends BaseController
                 unset($payload['branch_id']);
             }
             $payload['created_by'] = $request->user()?->id;
+
 
             $voucher = $this->service->createVoucher(
                 $payload,
