@@ -165,9 +165,9 @@ export default function IdCardsPage() {
       ? `<img src="${companyLogo}" class="logo" crossorigin="anonymous" />`
       : `<div class="logo lp">${companyName[0]}</div>`;
     const factoryHtml = factoryAddr
-      ? `<div class="sec"><div class="st"><span>Factory:</span></div><p class="sb">${factoryAddr.replace(/\n/g, "<br/>")}${companyPhone ? `<br/>Phone: ${companyPhone}` : ""}${companyEmail ? `<br/>Email: ${companyEmail}` : ""}</p></div>` : "";
+      ? `<div class="sec"><div class="st"><span>Factory:</span></div><p class="sb">${factoryAddr.replace(/\n/g, "<br/>")}${companyPhone ? `<br/>Phone: <span class="hl">${companyPhone}</span>` : ""}${companyEmail ? `<br/>Email: <span class="hl">${companyEmail}</span>` : ""}</p></div>` : "";
     const headHtml = headOfficeAddr
-      ? `<div class="sec"><div class="st"><span>Head Office</span></div><p class="sb">${headOfficeAddr.replace(/\n/g, "<br/>")}${!factoryAddr && companyPhone ? `<br/>Phone: ${companyPhone}` : ""}${!factoryAddr && companyEmail ? `<br/>Email: ${companyEmail}` : ""}</p></div>` : "";
+      ? `<div class="sec"><div class="st"><span>Head Office</span></div><p class="sb">${headOfficeAddr.replace(/\n/g, "<br/>")}${!factoryAddr && companyPhone ? `<br/>Phone: <span class="hl">${companyPhone}</span>` : ""}${!factoryAddr && companyEmail ? `<br/>Email: <span class="hl">${companyEmail}</span>` : ""}</p></div>` : "";
 
     return `<html><head><title>ID Card - ${emp!.employee_code}</title>
       <meta name="format-detection" content="telephone=no,email=no,address=no" />
@@ -195,18 +195,19 @@ export default function IdCardsPage() {
       .front .bc img { height: 11mm; width: 40mm; object-fit: fill; }
       .front .bc p { font-size: 3mm; font-weight: 700; letter-spacing: 1mm; margin-top: 0.5mm; color: #000; }
 
-      /* BACK */
+      /* BACK — sample-aligned */
       .back { display: flex; }
-      .back .main { flex: 1; padding: 3mm 2.5mm 2mm; display: flex; flex-direction: column; color: #000; }
-      .back .sec { margin-bottom: 2mm; }
-      .back .st { display:flex; justify-content:center; margin-bottom: 1mm; }
+      .back .main { flex: 1; padding: 3mm 2.5mm 2mm; display: flex; flex-direction: column; }
+      .back .sec { margin-bottom: 1.5mm; }
+      .back .st { display:flex; justify-content:center; margin-bottom: 0.8mm; }
       .back .st span { position: relative; font-size: 2.6mm; font-weight: 800; color: #000; padding: 0 2mm; }
-      .back .st span::before, .back .st span::after { content:""; position:absolute; top:50%; width: 8mm; height: 0.4mm; background: #000; }
+      .back .st span::before, .back .st span::after { content:""; position:absolute; top:50%; width: 7mm; height: 0.3mm; background: #000; }
       .back .st span::before { right: 100%; } .back .st span::after { left: 100%; }
-      .back .sb { font-size: 2.4mm; line-height: 1.4; color: #000; text-align: center; }
-      .back .qr { text-align: center; margin-top: 2mm; }
-      .back .qr img { width: 22mm; height: 22mm; }
-      .back .side { width: 5mm; background: #111; display:flex; align-items:center; justify-content:center; }
+      .back .sb { font-size: 2.2mm; line-height: 1.35; color: #1e3a8a; text-align: center; margin: 0; }
+      .back .sb .hl { color: #dc2626; }
+      .back .qr { margin-top: auto; padding: 0 0 1mm 1mm; }
+      .back .qr img { width: 22mm; height: 22mm; display: block; }
+      .back .side { width: 5mm; background: #111; display:flex; align-items:center; justify-content:center; border-radius: 1mm 0 0 1mm; margin: 1mm 0 1mm 0; }
       .back .side span { color:#fff; font-size: 2.6mm; font-weight: 700; letter-spacing: 1mm; writing-mode: vertical-rl; transform: rotate(180deg); }
     </style></head><body>
       <div class="card front">
@@ -442,7 +443,7 @@ export default function IdCardsPage() {
                       </div>
                     </div>
 
-                    <div className="w-8 bg-black flex items-center justify-center">
+                    <div className="w-8 bg-black flex items-center justify-center my-1 rounded-l-md">
                       <span
                         className="text-white font-bold text-sm tracking-[3px]"
                         style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
