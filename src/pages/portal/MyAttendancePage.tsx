@@ -138,9 +138,15 @@ export default function MyAttendancePage() {
                 )}
               </div>
               {!branchConfigured ? (
-                <p className="text-xs text-destructive">
-                  Branch location is not configured yet. Please contact admin.
-                </p>
+                <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive space-y-1">
+                  <p className="font-semibold">Branch location is not configured.</p>
+                  <p className="text-destructive/90">Please ask your administrator to complete the following:</p>
+                  <ol className="list-decimal ml-5 space-y-0.5 text-destructive/90">
+                    <li>Open <b>Admin → Branches</b>.</li>
+                    <li>Edit your branch and set <b>Latitude</b> (−90 to 90) and <b>Longitude</b> (−180 to 180).</li>
+                    <li>Set the geo-fence <b>Radius</b> in metres and save.</li>
+                  </ol>
+                </div>
               ) : (
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="text-xs text-muted-foreground">
