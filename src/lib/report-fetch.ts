@@ -102,16 +102,17 @@ async function fetchAllVoucherEntriesLaravel(opts: {
   for (let safety = 0; safety < 50; safety++) {
     const parts: string[] = [
       "select=id,voucher_number,voucher_date,voucher_type,status,description,branch_id",
-      `f[voucher_date][gte]=${encodeURIComponent(opts.dateFrom)}`,
-      `f[voucher_date][lte]=${encodeURIComponent(opts.dateTo)}`,
-      `f[status][in]=${encodeURIComponent(opts.statuses.join(","))}`,
-      `order[voucher_date]=asc`,
+      `f%5Bvoucher_date%5D%5Bgte%5D=${encodeURIComponent(opts.dateFrom)}`,
+      `f%5Bvoucher_date%5D%5Blte%5D=${encodeURIComponent(opts.dateTo)}`,
+      `f%5Bstatus%5D%5Bin%5D=${encodeURIComponent(opts.statuses.join(","))}`,
+      `order%5Bvoucher_date%5D=asc`,
       `limit=${opts.pageSize}`,
       `offset=${offset}`,
     ];
     if (opts.branchId && opts.branchId !== "all") {
-      parts.push(`f[branch_id][eq]=${encodeURIComponent(opts.branchId)}`);
+      parts.push(`f%5Bbranch_id%5D%5Beq%5D=${encodeURIComponent(opts.branchId)}`);
     }
+
     let page: any[] = [];
     try {
       const json = await laravelGet(`db/acc_vouchers?${parts.join("&")}`);
