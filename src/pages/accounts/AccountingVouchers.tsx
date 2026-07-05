@@ -236,7 +236,7 @@ const AccountingVouchers = () => {
 
   const matchingFinYearForDate = useCallback((isoDate: string) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return undefined;
-    return finYears.find((fy) => fy.start_date && fy.end_date && fy.start_date <= isoDate && fy.end_date >= isoDate);
+    return finYears.find((fy) => fy.is_active && fy.start_date && fy.end_date && fy.start_date <= isoDate && fy.end_date >= isoDate);
   }, [finYears]);
 
   const handleFormDateChange = (nextDate: string) => {
@@ -1104,7 +1104,9 @@ const AccountingVouchers = () => {
                 <Select value={formFinYear} onValueChange={(v) => { setFormFinYear(v); setManualFinYear(true); }}>
                   <SelectTrigger><SelectValue placeholder="Select year" /></SelectTrigger>
                   <SelectContent>
-                    {finYears.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                    {finYears
+                      .filter((f) => f.is_active || f.id === formFinYear)
+                      .map((f) => <SelectItem key={f.id} value={f.id}>{f.name}{!f.is_active ? " (Inactive)" : ""}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
