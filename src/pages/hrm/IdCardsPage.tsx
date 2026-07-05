@@ -418,22 +418,22 @@ export default function IdCardsPage() {
                       {factoryAddr && (
                         <div className="mb-2">
                           <div className="flex items-center justify-center mb-1">
-                            <span className="relative px-2.5 text-[13px] font-extrabold text-black">
+                            <span className="relative px-2.5 font-extrabold text-black" style={{ fontSize: `${backHeaderPx}px` }}>
                               <span className="absolute top-1/2 right-full w-8 h-[1.5px] bg-black" />
                               Factory:
                               <span className="absolute top-1/2 left-full w-8 h-[1.5px] bg-black" />
                             </span>
                           </div>
-                          <div className="text-[10.5px] leading-[1.35] text-center whitespace-pre-line" style={{ color: "#1e3a8a" }}>
+                          <div className="leading-[1.35] text-center whitespace-pre-line" style={{ color: "#1e3a8a", fontSize: `${backBodyPx}px` }}>
                             {factoryAddr}
                           </div>
                           {companyPhone && (
-                            <div className="text-[10.5px] leading-[1.35] text-center" style={{ color: "#1e3a8a" }}>
+                            <div className="leading-[1.35] text-center" style={{ color: "#1e3a8a", fontSize: `${backBodyPx}px` }}>
                               Phone: <span style={{ color: "#dc2626" }}>{companyPhone}</span>
                             </div>
                           )}
                           {companyEmail && (
-                            <div className="text-[10.5px] leading-[1.35] text-center" style={{ color: "#1e3a8a" }}>
+                            <div className="leading-[1.35] text-center" style={{ color: "#1e3a8a", fontSize: `${backBodyPx}px` }}>
                               Email: <span style={{ color: "#dc2626" }}>{companyEmail}</span>
                             </div>
                           )}
@@ -442,22 +442,22 @@ export default function IdCardsPage() {
                       {headOfficeAddr && (
                         <div className="mb-1">
                           <div className="flex items-center justify-center mb-1">
-                            <span className="relative px-2.5 text-[13px] font-extrabold text-black">
+                            <span className="relative px-2.5 font-extrabold text-black" style={{ fontSize: `${backHeaderPx}px` }}>
                               <span className="absolute top-1/2 right-full w-8 h-[1.5px] bg-black" />
                               Head Office
                               <span className="absolute top-1/2 left-full w-8 h-[1.5px] bg-black" />
                             </span>
                           </div>
-                          <div className="text-[10.5px] leading-[1.35] text-center whitespace-pre-line" style={{ color: "#1e3a8a" }}>
+                          <div className="leading-[1.35] text-center whitespace-pre-line" style={{ color: "#1e3a8a", fontSize: `${backBodyPx}px` }}>
                             {headOfficeAddr}
                           </div>
                           {!factoryAddr && companyPhone && (
-                            <div className="text-[10.5px] leading-[1.35] text-center" style={{ color: "#1e3a8a" }}>
+                            <div className="leading-[1.35] text-center" style={{ color: "#1e3a8a", fontSize: `${backBodyPx}px` }}>
                               Phone: <span style={{ color: "#dc2626" }}>{companyPhone}</span>
                             </div>
                           )}
                           {!factoryAddr && companyEmail && (
-                            <div className="text-[10.5px] leading-[1.35] text-center" style={{ color: "#1e3a8a" }}>
+                            <div className="leading-[1.35] text-center" style={{ color: "#1e3a8a", fontSize: `${backBodyPx}px` }}>
                               Email: <span style={{ color: "#dc2626" }}>{companyEmail}</span>
                             </div>
                           )}
