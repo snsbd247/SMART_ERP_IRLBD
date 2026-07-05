@@ -443,7 +443,7 @@ export default function IdCardsPage() {
                       </div>
                     </div>
 
-                    <div className="w-8 bg-black flex items-center justify-center">
+                    <div className="w-8 bg-black flex items-center justify-center my-1 rounded-l-md">
                       <span
                         className="text-white font-bold text-sm tracking-[3px]"
                         style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
