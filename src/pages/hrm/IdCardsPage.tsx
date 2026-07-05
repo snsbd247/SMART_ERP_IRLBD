@@ -182,8 +182,8 @@ export default function IdCardsPage() {
       /* FRONT */
       .front .top { background: #ef7a1a; padding: 3mm 3mm 4mm; height: 54mm; }
       .front .brand { display: flex; align-items: center; gap: 2mm; margin-bottom: 2.5mm; }
-      .front .logo { height: 9mm; width: 9mm; object-fit: contain; background: #fff; padding: 0.4mm; border-radius: 1mm; }
-      .front .logo.lp { display:flex; align-items:center; justify-content:center; font-weight:800; color:#ef7a1a; font-size:5mm; }
+      .front .logo { height: 9mm; width: 9mm; object-fit: contain; background: transparent; }
+      .front .logo.lp { display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; font-size:5mm; background: transparent; }
       .front .brand-en { font-size: 6mm; font-weight: 900; color: #111; font-style: italic; letter-spacing: 0.3mm; line-height: 1; text-transform: uppercase; }
       .front .photo-wrap { display: flex; justify-content: center; margin-top: 1.5mm; }
       .front .photo { width: 28mm; height: 32mm; object-fit: cover; border: 0.8mm solid #2f6bd6; background: #fff; }
@@ -350,9 +350,9 @@ export default function IdCardsPage() {
                     <div className="bg-[#ef7a1a] px-4 pt-3 pb-4 h-[340px]">
                       <div className="flex items-center gap-2 mb-2">
                         {companyLogo ? (
-                          <img src={companyLogo} alt="Logo" className="h-10 w-10 object-contain bg-white p-0.5 rounded-sm" />
+                          <img src={companyLogo} alt="Logo" className="h-10 w-10 object-contain" />
                         ) : (
-                          <div className="h-10 w-10 rounded-sm bg-white flex items-center justify-center text-[#ef7a1a] font-extrabold text-xl">{companyName[0]}</div>
+                          <div className="h-10 w-10 flex items-center justify-center text-white font-extrabold text-xl">{companyName[0]}</div>
                         )}
                         <div className="text-[30px] font-black italic text-black tracking-wide leading-none uppercase">{companyName}</div>
                       </div>
