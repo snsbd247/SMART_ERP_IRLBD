@@ -20,7 +20,9 @@ class VoucherController extends BaseController
         private VoucherRepository $repo,
         private AccountingService $service,
         private FinancialPeriodGuard $period,
+        private AuditService $audit,
     ) {}
+
 
     private function normalizeVoucherDateInput(Request $request): void
     {
