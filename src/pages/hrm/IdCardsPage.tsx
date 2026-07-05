@@ -426,7 +426,7 @@ export default function IdCardsPage() {
                         </p>
                       )}
                       <div className="mt-auto pl-1 pb-1">
-                        <QRCodeCanvas value={qrPayload} size={110} level="M" includeMargin={false} />
+                        <QRCodeCanvas value={qrPayload} size={BACK_QR.onScreenPx} level="M" includeMargin={false} />
                       </div>
                     </div>
 
