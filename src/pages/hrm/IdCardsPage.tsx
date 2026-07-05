@@ -71,6 +71,10 @@ export default function IdCardsPage() {
   const [savingAddr, setSavingAddr] = useState(false);
   const qrRef = useRef<HTMLCanvasElement | null>(null);
   const barcodeRef = useRef<HTMLCanvasElement | null>(null);
+  const frontCardRef = useRef<HTMLDivElement | null>(null);
+  const backCardRef = useRef<HTMLDivElement | null>(null);
+  const [viewMode, setViewMode] = useState<"both" | "front" | "back">("both");
+
 
 
   useEffect(() => {
@@ -228,126 +232,65 @@ export default function IdCardsPage() {
     return c ? c.toDataURL("image/png") : "";
   };
 
-  const handlePrint = () => {
-    if (!emp) return;
-    const win = window.open("", "_blank");
-    if (!win) return;
-    win.document.write(buildCardHtml(getQrDataUrl(), getBarcodeDataUrl()));
-    win.document.close();
-    setTimeout(() => win.print(), 900);
+  // Snapshot the actual rendered card DOM so preview === print === PDF (CR80 exact).
+  const snapshotCards = async (): Promise<{ front: string; back: string } | null> => {
+    if (!frontCardRef.current || !backCardRef.current) return null;
+    const [{ default: html2canvas }] = await Promise.all([import("html2canvas")]);
+    const opts = { scale: 4, backgroundColor: "#ffffff", useCORS: true, logging: false } as any;
+    // Force both refs visible for snapshot even if user picked front/back only
+    const wasFrontHidden = frontCardRef.current.style.display === "none";
+    const wasBackHidden = backCardRef.current.style.display === "none";
+    if (wasFrontHidden) frontCardRef.current.style.display = "";
+    if (wasBackHidden) backCardRef.current.style.display = "";
+    const [f, b] = await Promise.all([
+      html2canvas(frontCardRef.current, opts),
+      html2canvas(backCardRef.current, opts),
+    ]);
+    if (wasFrontHidden) frontCardRef.current.style.display = "none";
+    if (wasBackHidden) backCardRef.current.style.display = "none";
+    return { front: f.toDataURL("image/png"), back: b.toDataURL("image/png") };
   };
 
+  const handlePrint = async () => {
+    if (!emp) return;
+    const snaps = await snapshotCards();
+    if (!snaps) return;
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<html><head><title>ID Card - ${emp.employee_code}</title>
+      <style>
+        @page { size: 53.98mm 85.6mm; margin: 0; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html, body { background:#fff; }
+        .card { width: 53.98mm; height: 85.6mm; page-break-after: always; display:block; }
+        .card:last-child { page-break-after: auto; }
+        .card img { width: 53.98mm; height: 85.6mm; display:block; }
+      </style></head><body>
+      <div class="card"><img src="${snaps.front}" /></div>
+      <div class="card"><img src="${snaps.back}" /></div>
+      <script>window.onload=()=>setTimeout(()=>window.print(),300);</script>
+    </body></html>`);
+    win.document.close();
+  };
 
   const handleDownloadPdf = async () => {
     if (!emp) return;
     try {
+      const snaps = await snapshotCards();
+      if (!snaps) return;
       const [{ default: jsPDF }] = await Promise.all([import("jspdf")]);
-      // CR80 portrait dimensions
       const W = 53.98, H = 85.6;
       const pdf = new jsPDF({ unit: "mm", format: [W, H], orientation: "portrait" });
-
-      const [logoData, photoData] = await Promise.all([
-        companyLogo ? fetchAsDataUrl(companyLogo) : Promise.resolve(null),
-        emp.photo_url ? fetchAsDataUrl(emp.photo_url) : Promise.resolve(null),
-      ]);
-      const barcodeData = getBarcodeDataUrl();
-      const qrData = getQrDataUrl();
-
-
-      // ===== FRONT =====
-      pdf.setFillColor(239, 122, 26);
-      pdf.rect(0, 0, W, 54, "F");
-      // Logo
-      if (logoData) {
-        pdf.setFillColor(255, 255, 255);
-        pdf.rect(3, 3, 8, 8, "F");
-        try { pdf.addImage(logoData, "PNG", 3.4, 3.4, 7.2, 7.2); } catch { /* ignore */ }
-      }
-      // Company name
-      pdf.setTextColor(17, 17, 17);
-      pdf.setFont("helvetica", "bolditalic");
-      pdf.setFontSize(13);
-      pdf.text(companyName, 13, 9);
-      // Photo
-      const photoW = 26, photoH = 32, photoX = (W - photoW) / 2, photoY = 16;
-      pdf.setFillColor(47, 107, 214);
-      pdf.rect(photoX - 0.8, photoY - 0.8, photoW + 1.6, photoH + 1.6, "F");
-      pdf.setFillColor(255, 255, 255);
-      pdf.rect(photoX, photoY, photoW, photoH, "F");
-      if (photoData) {
-        try { pdf.addImage(photoData, "JPEG", photoX, photoY, photoW, photoH); } catch { /* ignore */ }
-      } else {
-        pdf.setTextColor(71, 85, 105);
-        pdf.setFontSize(24);
-        pdf.setFont("helvetica", "bold");
-        pdf.text(`${emp.first_name[0]}${emp.last_name[0]}`, W / 2, photoY + photoH / 2 + 3, { align: "center" });
-      }
-      // Name & designation
-      pdf.setTextColor(17, 17, 17);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
-      pdf.text(`${emp.first_name} ${emp.last_name}`, W / 2, 60, { align: "center" });
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(8);
-      pdf.text(desigName, W / 2, 64, { align: "center" });
-      // Barcode
-      if (barcodeData) {
-        try { pdf.addImage(barcodeData, "PNG", (W - 40) / 2, 68, 40, 11); } catch { /* ignore */ }
-      }
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(9);
-      pdf.text(emp.employee_code, W / 2, 82, { align: "center", charSpace: 1.2 });
-
-      // ===== BACK =====
+      pdf.addImage(snaps.front, "PNG", 0, 0, W, H, undefined, "FAST");
       pdf.addPage([W, H], "portrait");
-      // Right black sidebar
-      pdf.setFillColor(17, 17, 17);
-      pdf.rect(W - 5, 0, 5, H, "F");
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      // Rotated vertical text (270deg reads bottom-to-top on right side)
-      pdf.text(sidebarText, W - 1.5, H - 5, { angle: 90 });
-
-      let y = 5;
-      const drawSection = (title: string, body: string) => {
-        pdf.setTextColor(17, 17, 17);
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(8);
-        const midX = (W - 5) / 2;
-        pdf.text(title, midX, y + 3, { align: "center" });
-        pdf.setDrawColor(17, 17, 17);
-        pdf.setLineWidth(0.3);
-        pdf.line(midX - 18, y + 2.7, midX - 8, y + 2.7);
-        pdf.line(midX + 8, y + 2.7, midX + 18, y + 2.7);
-        y += 5;
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(7);
-        const lines = pdf.splitTextToSize(body, W - 10);
-        pdf.text(lines, midX, y, { align: "center" });
-        y += lines.length * 3 + 2;
-      };
-
-      if (factoryAddr) {
-        const body = factoryAddr + (companyPhone ? `\nPhone: ${companyPhone}` : "") + (companyEmail ? `\nEmail: ${companyEmail}` : "");
-        drawSection("Factory:", body);
-      }
-      if (headOfficeAddr) {
-        const body = headOfficeAddr + (!factoryAddr && companyPhone ? `\nPhone: ${companyPhone}` : "") + (!factoryAddr && companyEmail ? `\nEmail: ${companyEmail}` : "");
-        drawSection("Head Office", body);
-      }
-      // QR
-      if (qrData) {
-        const qrSize = 22;
-        try { pdf.addImage(qrData, "PNG", (W - 5 - qrSize) / 2, H - qrSize - 4, qrSize, qrSize); } catch { /* ignore */ }
-      }
-
+      pdf.addImage(snaps.back, "PNG", 0, 0, W, H, undefined, "FAST");
       pdf.save(`id-card-${emp.employee_code}.pdf`);
-      toast({ title: "PDF downloaded" });
+      toast({ title: "PDF downloaded", description: `Verify URL: ${verifyUrl}` });
     } catch (err: any) {
       toast({ title: "PDF failed", description: err.message, variant: "destructive" });
     }
   };
+
 
   return (
     <div className="p-4 lg:p-6 space-y-6 max-w-[1600px] mx-auto">
@@ -389,11 +332,21 @@ export default function IdCardsPage() {
                 <QRCodeCanvas value={qrPayload} size={256} level="M" ref={qrRef as any} includeMargin />
               </div>
 
+              {/* View mode toggle */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                {(["both", "front", "back"] as const).map((m) => (
+                  <Button key={m} size="sm" variant={viewMode === m ? "default" : "outline"} onClick={() => setViewMode(m)}>
+                    {m === "both" ? "Both" : m === "front" ? "Front" : "Back"}
+                  </Button>
+                ))}
+              </div>
+
               <div className="flex flex-wrap justify-center gap-8">
-                {/* FRONT */}
-                <div>
+                {/* FRONT — 340×539 preview = exact CR80 (54×85.6mm) at ~6.3 px/mm */}
+                <div style={{ display: viewMode === "back" ? "none" : "block" }}>
                   <p className="text-xs font-semibold text-muted-foreground text-center mb-2 uppercase tracking-wider">Front Side</p>
-                  <div className="w-[340px] h-[540px] rounded-md overflow-hidden bg-white shadow-lg relative">
+                  <div ref={frontCardRef} className="w-[340px] h-[539px] overflow-hidden bg-white shadow-lg relative">
+
                     <div className="bg-[#ef7a1a] px-4 pt-3 pb-4 h-[340px]">
                       <div className="flex items-center gap-2 mb-2">
                         {companyLogo ? (
@@ -426,9 +379,10 @@ export default function IdCardsPage() {
 
 
                 {/* BACK */}
-                <div>
+                <div style={{ display: viewMode === "front" ? "none" : "block" }}>
                   <p className="text-xs font-semibold text-muted-foreground text-center mb-2 uppercase tracking-wider">Back Side</p>
-                  <div className="w-[340px] h-[540px] rounded-md overflow-hidden bg-white shadow-lg flex flex-row" style={{ color: "#000" }}>
+                  <div ref={backCardRef} className="w-[340px] h-[539px] overflow-hidden bg-white shadow-lg flex flex-row" style={{ color: "#000" }}>
+
                     <div className="flex-1 px-3.5 pt-4 pb-3 flex flex-col" style={{ color: "#000" }}>
                       {factoryAddr && (
                         <div className="mb-2">
