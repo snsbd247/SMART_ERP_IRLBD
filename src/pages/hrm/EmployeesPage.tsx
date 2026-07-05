@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 import { useAuth } from "@/contexts/AuthContext";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
