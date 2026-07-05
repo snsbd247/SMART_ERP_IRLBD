@@ -227,6 +227,7 @@ const App = () => (
                 {/* ─── Accounts ─────────────────────────────────── */}
                 <Route path="/accounts/chart" element={<P perm="accounts.view"><ChartOfAccounts /></P>} />
                 <Route path="/accounts/vouchers" element={<AccountingVouchers />} />
+                <Route path="/accounts/audit-log" element={<AccountingAuditLogPage />} />
                 <Route path="/accounts/approvals" element={<P perm="accounts.view"><VoucherApprovalDashboard /></P>} />
                 <Route path="/accounts/treasury" element={<P perm="accounts.view"><TreasuryInformationPage /></P>} />
                 <Route path="/admin/permission-matrix" element={<P perm="roles.view"><PermissionMatrixPage /></P>} />
