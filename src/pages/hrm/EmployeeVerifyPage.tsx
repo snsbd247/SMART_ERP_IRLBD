@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getApiBaseUrl, isLaravelMode } from "@/lib/laravel-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,23 @@ export default function EmployeeVerifyPage() {
 
   useEffect(() => {
     (async () => {
+      // In Laravel mode, company info comes from the public verify response;
+      // fetch branding here so header renders before a search.
+      if (isLaravelMode()) {
+        try {
+          const base = getApiBaseUrl();
+          if (!base) return;
+          const res = await fetch(`${base}/v1/public/branding`);
+          const json = await res.json().catch(() => ({}));
+          const b = json?.data || json;
+          if (b) {
+            setCompanyName(b.company_name || "");
+            setCompanyLogo(b.company_logo_url || "");
+            setCompanyAddress(b.address || "");
+          }
+        } catch { /* ignore */ }
+        return;
+      }
       const { data } = await supabase
         .from("company_settings")
         .select("company_name, company_logo_url, address")
@@ -116,6 +134,40 @@ export default function EmployeeVerifyPage() {
     setSearched(true);
     setShowCert(false);
     setSignature(null);
+
+    // Laravel mode: use the public verify endpoint (no auth required).
+    if (isLaravelMode()) {
+      try {
+        const base = getApiBaseUrl();
+        const res = await fetch(`${base}/v1/public/employee-verify/${encodeURIComponent(trimmed)}`);
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.success) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+        const d = json.data;
+        setEmployee({
+          first_name: d.first_name,
+          last_name: d.last_name,
+          employee_code: d.employee_code,
+          photo_url: d.photo_url || null,
+          status: d.status,
+          department_id: null,
+          designation_id: null,
+          joining_date: d.joining_date || null,
+        });
+        setDepartment(d.department_name || "");
+        setDesignation(d.designation_name || "");
+        if (d.company_name) setCompanyName(d.company_name);
+        if (d.company_logo_url) setCompanyLogo(d.company_logo_url);
+        if (d.company_address) setCompanyAddress(d.company_address);
+      } catch {
+        setNotFound(true);
+      }
+      setLoading(false);
+      return;
+    }
 
     const { data: emp } = await supabase
       .from("employees" as any)
