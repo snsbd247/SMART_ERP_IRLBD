@@ -375,42 +375,54 @@ export default function IdCardsPage() {
                     {m === "both" ? "Both" : m === "front" ? "Front" : "Back"}
                   </Button>
                 ))}
-                {viewMode !== "front" && (
-                  <div className="flex items-center gap-1 ml-2 border rounded-md px-2 py-1">
-                    <span className="text-xs text-muted-foreground mr-1">Back font</span>
+              </div>
+
+              {viewMode !== "front" && (
+                <div className="max-w-md mx-auto mb-4 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground shrink-0">Back font</span>
+                    <Slider
+                      value={[backFontScale]}
+                      min={BACK_FONT_SCALE.min}
+                      max={BACK_FONT_SCALE.max}
+                      step={BACK_FONT_SCALE.step}
+                      onValueChange={(v) => setBackFontScale(snapToStep(v[0] ?? BACK_FONT_SCALE.default))}
+                      aria-label="Back side font scale"
+                      className="flex-1"
+                    />
+                    <span className="text-xs font-mono w-12 text-right tabular-nums">{Math.round(backFontScale * 100)}%</span>
                     <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6"
-                      onClick={() => adjustBackFont(-BACK_FONT_SCALE.step)}
-                      disabled={backFontScale <= BACK_FONT_SCALE.min + 1e-6}
-                      aria-label="Decrease back font size"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      onClick={autoFitBack}
+                      title="Auto-fit to avoid clipping"
                     >
-                      <Minus className="w-3 h-3" />
-                    </Button>
-                    <span className="text-xs font-mono w-10 text-center">{Math.round(backFontScale * 100)}%</span>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6"
-                      onClick={() => adjustBackFont(BACK_FONT_SCALE.step)}
-                      disabled={backFontScale >= BACK_FONT_SCALE.max - 1e-6}
-                      aria-label="Increase back font size"
-                    >
-                      <Plus className="w-3 h-3" />
+                      <Wand2 className="w-3 h-3 mr-1" />Auto-fit
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-6 px-2 text-xs"
+                      className="h-7 px-2 text-xs"
                       onClick={() => setBackFontScale(BACK_FONT_SCALE.default)}
                       disabled={Math.abs(backFontScale - BACK_FONT_SCALE.default) < 1e-6}
                     >
                       Reset
                     </Button>
                   </div>
-                )}
-              </div>
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Limits: {Math.round(BACK_FONT_SCALE.min * 100)}%–{Math.round(BACK_FONT_SCALE.max * 100)}% · saved automatically
+                  </p>
+                  {backOverflow && (
+                    <Alert variant="destructive" className="py-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        Content overflows the back side at {Math.round(backFontScale * 100)}%. Reduce the scale or click <b>Auto-fit</b>.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
 
               <div className="flex flex-wrap justify-center gap-8">
                 {/* FRONT — 340×539 preview = exact CR80 (54×85.6mm) at ~6.3 px/mm */}
