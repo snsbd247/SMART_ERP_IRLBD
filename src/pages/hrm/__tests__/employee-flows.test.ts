@@ -121,7 +121,7 @@ describe("HRM employee flows (Laravel/VPS mode)", () => {
     });
 
     const [url, init] = fetchSpy.mock.calls[0] as any;
-    expect(url).toBe("https://erp.example.com/v1/employees");
+    expect(url).toBe("https://erp.example.com/api/v1/employees");
     expect(init.method).toBe("POST");
     const sent = JSON.parse(init.body as string);
     // The three critical login fields must ride along in the SAME request.
