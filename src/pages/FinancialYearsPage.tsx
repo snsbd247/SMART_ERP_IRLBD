@@ -11,6 +11,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Check, Pencil, Trash2 } from "lucide-react";
 
 interface FY { id: string; name: string; start_date: string; end_date: string; is_active: boolean; }
@@ -19,7 +20,7 @@ const FinancialYearsPage = () => {
   const [years, setYears] = useState<FY[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<FY | null>(null);
-  const [form, setForm] = useState({ name: "", start_date: "", end_date: "" });
+  const [form, setForm] = useState({ name: "", start_date: "", end_date: "", is_active: false });
   const [deleteTarget, setDeleteTarget] = useState<FY | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
@@ -33,13 +34,13 @@ const FinancialYearsPage = () => {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: "", start_date: "", end_date: "" });
+    setForm({ name: "", start_date: "", end_date: "", is_active: false });
     setOpen(true);
   };
 
   const openEdit = (y: FY) => {
     setEditing(y);
-    setForm({ name: y.name, start_date: y.start_date, end_date: y.end_date });
+    setForm({ name: y.name, start_date: y.start_date, end_date: y.end_date, is_active: y.is_active });
     setOpen(true);
   };
 
@@ -49,17 +50,24 @@ const FinancialYearsPage = () => {
       return;
     }
     if (editing) {
+      // If turning this year active, deactivate others first.
+      if (form.is_active && !editing.is_active) {
+        await supabase.from("financial_years").update({ is_active: false }).neq("id", editing.id);
+      }
       const { error } = await supabase.from("financial_years").update({ ...form }).eq("id", editing.id);
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Financial year updated" });
     } else {
+      if (form.is_active) {
+        await supabase.from("financial_years").update({ is_active: false }).neq("id", "00000000-0000-0000-0000-000000000000");
+      }
       const { error } = await supabase.from("financial_years").insert({ ...form });
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Financial year created" });
     }
     setOpen(false);
     setEditing(null);
-    setForm({ name: "", start_date: "", end_date: "" });
+    setForm({ name: "", start_date: "", end_date: "", is_active: false });
     load();
   };
 
@@ -117,6 +125,13 @@ const FinancialYearsPage = () => {
               <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="FY 2026-27" /></div>
               <div><Label>Start Date</Label><Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} /></div>
               <div><Label>End Date</Label><Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} /></div>
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div>
+                  <Label className="cursor-pointer">Active</Label>
+                  <p className="text-xs text-muted-foreground">Only active years appear in voucher posting.</p>
+                </div>
+                <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+              </div>
               <Button onClick={save} className="w-full">{editing ? "Update" : "Save"}</Button>
             </div>
           </DialogContent>
