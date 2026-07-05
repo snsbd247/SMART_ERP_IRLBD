@@ -19,6 +19,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   delete (globalThis as any).__FORCE_LARAVEL_FALLBACK__;
   try { sessionStorage.removeItem("force_laravel_fallback"); } catch { /* ignore */ }
 });
