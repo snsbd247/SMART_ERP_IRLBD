@@ -78,4 +78,111 @@ class AttendanceController extends BaseController
         $att->update($request->only('status', 'check_in', 'check_out', 'notes'));
         return $this->success($att);
     }
+
+    /**
+     * Self check-in/out from portal. Enforces branch geofence.
+     */
+    public function selfCheckIn(Request $request)
+    {
+        $data = $request->validate([
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'action' => 'required|in:check_in,check_out',
+        ]);
+
+        $user = $request->user();
+        if (!$user || !$user->employee_id) {
+            return response()->json(['success' => false, 'message' => 'No employee profile linked to this account.'], 403);
+        }
+
+        $employee = Employee::with('branch')->find($user->employee_id);
+        if (!$employee) {
+            return response()->json(['success' => false, 'message' => 'Employee not found.'], 404);
+        }
+
+        $branch = $employee->branch;
+        if (!$branch || $branch->latitude === null || $branch->longitude === null) {
+            return response()->json(['success' => false, 'message' => 'Branch location not configured. Contact admin.'], 422);
+        }
+
+        $radius = (int) ($branch->geofence_radius_m ?? 10);
+        $distance = $this->haversineMeters(
+            (float) $branch->latitude, (float) $branch->longitude,
+            (float) $data['latitude'], (float) $data['longitude']
+        );
+
+        if ($distance > $radius) {
+            return response()->json([
+                'success' => false,
+                'message' => "You are " . round($distance) . "m away from branch. Must be within {$radius}m.",
+                'distance_m' => round($distance, 2),
+                'allowed_radius_m' => $radius,
+            ], 422);
+        }
+
+        $today = Carbon::today()->toDateString();
+        $now = Carbon::now()->format('H:i:s');
+
+        $att = Attendance::firstOrNew(['employee_id' => $employee->id, 'date' => $today]);
+
+        if ($data['action'] === 'check_in') {
+            if ($att->check_in) {
+                return response()->json(['success' => false, 'message' => 'Already checked in today at ' . $att->check_in], 422);
+            }
+            $att->check_in = $now;
+            $att->check_in_lat = $data['latitude'];
+            $att->check_in_lng = $data['longitude'];
+            $att->status = $att->status ?: 'present';
+            $att->source = 'portal_geo';
+        } else {
+            if (!$att->check_in) {
+                return response()->json(['success' => false, 'message' => 'Please check in first.'], 422);
+            }
+            if ($att->check_out) {
+                return response()->json(['success' => false, 'message' => 'Already checked out today at ' . $att->check_out], 422);
+            }
+            $att->check_out = $now;
+            $att->check_out_lat = $data['latitude'];
+            $att->check_out_lng = $data['longitude'];
+        }
+
+        $att->save();
+
+        return response()->json([
+            'success' => true,
+            'data' => $att,
+            'distance_m' => round($distance, 2),
+        ]);
+    }
+
+    public function selfToday(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || !$user->employee_id) {
+            return response()->json(['success' => true, 'data' => null]);
+        }
+        $employee = Employee::with('branch')->find($user->employee_id);
+        $today = Carbon::today()->toDateString();
+        $att = Attendance::where('employee_id', $user->employee_id)->where('date', $today)->first();
+        return response()->json([
+            'success' => true,
+            'data' => $att,
+            'branch' => $employee && $employee->branch ? [
+                'id' => $employee->branch->id,
+                'name' => $employee->branch->name,
+                'latitude' => $employee->branch->latitude,
+                'longitude' => $employee->branch->longitude,
+                'geofence_radius_m' => $employee->branch->geofence_radius_m ?? 10,
+            ] : null,
+        ]);
+    }
+
+    private function haversineMeters(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $earth = 6371000.0;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) ** 2;
+        return $earth * 2 * atan2(sqrt($a), sqrt(1 - $a));
+    }
 }
