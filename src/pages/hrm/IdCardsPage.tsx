@@ -246,12 +246,13 @@ export default function IdCardsPage() {
       const W = 53.98, H = 85.6;
       const pdf = new jsPDF({ unit: "mm", format: [W, H], orientation: "portrait" });
 
-      const [logoData, photoData, barcodeData] = await Promise.all([
+      const [logoData, photoData] = await Promise.all([
         companyLogo ? fetchAsDataUrl(companyLogo) : Promise.resolve(null),
         emp.photo_url ? fetchAsDataUrl(emp.photo_url) : Promise.resolve(null),
-        fetchAsDataUrl(barcodeUrl),
       ]);
+      const barcodeData = getBarcodeDataUrl();
       const qrData = getQrDataUrl();
+
 
       // ===== FRONT =====
       pdf.setFillColor(239, 122, 26);
