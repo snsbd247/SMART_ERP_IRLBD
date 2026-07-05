@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { QRCodeCanvas } from "qrcode.react";
+import JsBarcode from "jsbarcode";
 import { CreditCard, Printer, Download, MapPin } from "lucide-react";
 
 interface Employee {
