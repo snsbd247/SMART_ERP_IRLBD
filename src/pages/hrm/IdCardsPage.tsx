@@ -199,7 +199,7 @@ export default function IdCardsPage() {
     </style></head><body>
       <div class="card front">
         <div class="top">
-          <div class="brand">${logoHtml}<div class="brand-en">${companyName}</div></div>
+          <div class="brand">${brandInner}</div>
           <div class="photo-wrap">${photoHtml}</div>
         </div>
         <div class="bottom">
