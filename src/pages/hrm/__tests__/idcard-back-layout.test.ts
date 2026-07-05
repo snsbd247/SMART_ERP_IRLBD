@@ -1,29 +1,46 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import {
+  BACK_QR,
+  BACK_COLORS,
+  CARD_MM,
+  PRINT_PAGE,
+  backCssBlock,
+  pageFrameCss,
+} from "../idCardLayout";
 
-// Regression guard for the ID-card BACK-side layout so that any accidental
-// drift from the reference sample (navy body text, red phone/email highlights,
-// bottom-left QR with margin-top:auto, and rounded black sidebar) is caught.
-const source = readFileSync(
-  resolve(__dirname, "../IdCardsPage.tsx"),
-  "utf8",
-);
+const source = readFileSync(resolve(__dirname, "../IdCardsPage.tsx"), "utf8");
+const back = backCssBlock();
+const page = pageFrameCss();
 
+// Sample-alignment regression for the ID-card BACK side. All values come from
+// idCardLayout.ts so any drift in the shared constants is caught in one place.
 describe("ID card back side — sample alignment", () => {
-  it("keeps navy body text and red highlight tokens in print CSS", () => {
-    expect(source).toContain(".back .sb");
-    expect(source).toMatch(/\.back \.sb\s*{[^}]*color:\s*#1e3a8a/);
-    expect(source).toMatch(/\.back \.sb \.hl\s*{[^}]*color:\s*#dc2626/);
+  it("uses shared layout constants (no hardcoded values in the page)", () => {
+    expect(source).toContain('import { BACK_QR, backCssBlock, pageFrameCss } from "./idCardLayout"');
+    expect(source).toContain("size={BACK_QR.onScreenPx}");
+    expect(source).toContain("${backCssBlock()}");
+    expect(source).toContain("${pageFrameCss()}");
   });
 
-  it("anchors QR to the bottom of the back main column", () => {
-    expect(source).toMatch(/\.back \.qr\s*{[^}]*margin-top:\s*auto/);
-    expect(source).toMatch(/\.back \.qr img\s*{[^}]*width:\s*22mm[^}]*height:\s*22mm/);
+  it("keeps navy body text + red highlight tokens", () => {
+    expect(BACK_COLORS.body.toLowerCase()).toBe("#1e3a8a");
+    expect(BACK_COLORS.highlight.toLowerCase()).toBe("#dc2626");
+    expect(back).toContain(`color: ${BACK_COLORS.body}`);
+    expect(back).toContain(`color: ${BACK_COLORS.highlight}`);
+  });
+
+  it("anchors the QR to the bottom-left of the main column", () => {
+    expect(back).toMatch(/\.back \.qr\s*{[^}]*margin-top:\s*auto/);
+    expect(back).toContain(
+      `padding: ${BACK_QR.padMm.top}mm ${BACK_QR.padMm.right}mm ${BACK_QR.padMm.bottom}mm ${BACK_QR.padMm.left}mm`,
+    );
+    expect(back).toContain(`width: ${BACK_QR.sizeMm}mm; height: ${BACK_QR.sizeMm}mm`);
   });
 
   it("renders the black sidebar strip with rounded inside corners", () => {
-    expect(source).toMatch(/\.back \.side\s*{[^}]*border-radius:\s*1mm 0 0 1mm/);
+    expect(back).toMatch(/\.back \.side\s*{[^}]*border-radius:\s*1mm 0 0 1mm/);
     expect(source).toContain("rounded-l-md");
   });
 
@@ -32,7 +49,9 @@ describe("ID card back side — sample alignment", () => {
     expect(source).toContain('Email: <span class="hl">${companyEmail}</span>');
   });
 
-  it("preserves the CR80 print page size for the back card", () => {
-    expect(source).toMatch(/@page\s*{\s*size:\s*54mm\s+85\.6mm/);
+  it("locks CR80 page geometry with zero device margin", () => {
+    expect(PRINT_PAGE.sizeCss).toBe(`${CARD_MM.width}mm ${CARD_MM.height}mm`);
+    expect(PRINT_PAGE.marginCss).toBe("0");
+    expect(page).toContain(`@page { size: ${PRINT_PAGE.sizeCss}; margin: 0`);
   });
 });
