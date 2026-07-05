@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { isLaravelMode, getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
-import { Calendar, CheckCircle2, XCircle, AlertCircle, CalendarDays, MapPin, LogIn, LogOut } from "lucide-react";
+import { Calendar, CheckCircle2, XCircle, AlertCircle, CalendarDays, MapPin, LogIn, LogOut, RefreshCw } from "lucide-react";
 
 async function callPortalApi(path: string, init: RequestInit = {}) {
   const base = getApiBaseUrl();
