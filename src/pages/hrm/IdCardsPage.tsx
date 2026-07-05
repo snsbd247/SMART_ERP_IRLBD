@@ -336,13 +336,12 @@ export default function IdCardsPage() {
                   <div ref={frontCardRef} className="w-[340px] h-[539px] overflow-hidden bg-white shadow-lg relative">
 
                     <div className="bg-[#ef7a1a] px-4 pt-3 pb-4 h-[340px]">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center justify-center mb-2 h-12">
                         {companyLogo ? (
-                          <img src={companyLogo} alt="Logo" className="h-10 w-10 object-contain" />
+                          <img src={companyLogo} alt="Logo" className="max-h-12 w-auto object-contain" />
                         ) : (
-                          <div className="h-10 w-10 flex items-center justify-center text-white font-extrabold text-xl">{companyName[0]}</div>
+                          <div className="text-[22px] font-black italic text-black tracking-wide leading-none uppercase text-center">{companyName}</div>
                         )}
-                        <div className="text-[30px] font-black italic text-black tracking-wide leading-none uppercase">{companyName}</div>
                       </div>
                       <div className="flex justify-center mt-2">
                         {emp.photo_url ? (
