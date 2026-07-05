@@ -18,6 +18,9 @@ interface Branch {
   address: string | null;
   phone: string | null;
   status: string;
+  latitude: number | null;
+  longitude: number | null;
+  geofence_radius_m: number | null;
 }
 
 const BranchesPage = () => {
@@ -31,13 +34,16 @@ const BranchesPage = () => {
   const [formAddress, setFormAddress] = useState("");
   const [formPhone, setFormPhone] = useState("");
   const [formStatus, setFormStatus] = useState("active");
+  const [formLat, setFormLat] = useState("");
+  const [formLng, setFormLng] = useState("");
+  const [formRadius, setFormRadius] = useState("10");
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   const fetchBranches = async () => {
     setLoading(true);
     const { data } = await supabase.from("branches").select("*").order("name");
-    setBranches((data || []) as Branch[]);
+    setBranches(((data || []) as unknown as Branch[]));
     setLoading(false);
   };
 
@@ -46,12 +52,16 @@ const BranchesPage = () => {
   const openCreate = () => {
     setEditBranch(null);
     setFormName(""); setFormCode(""); setFormAddress(""); setFormPhone(""); setFormStatus("active");
+    setFormLat(""); setFormLng(""); setFormRadius("10");
     setDialogOpen(true);
   };
 
   const openEdit = (b: Branch) => {
     setEditBranch(b);
     setFormName(b.name); setFormCode(b.code); setFormAddress(b.address || ""); setFormPhone(b.phone || ""); setFormStatus(b.status);
+    setFormLat(b.latitude != null ? String(b.latitude) : "");
+    setFormLng(b.longitude != null ? String(b.longitude) : "");
+    setFormRadius(b.geofence_radius_m != null ? String(b.geofence_radius_m) : "10");
     setDialogOpen(true);
   };
 
@@ -59,15 +69,17 @@ const BranchesPage = () => {
     if (!formName.trim() || !formCode.trim()) return;
     setSaving(true);
     try {
+      const payload: any = {
+        name: formName, code: formCode, address: formAddress, phone: formPhone, status: formStatus,
+        latitude: formLat.trim() === "" ? null : Number(formLat),
+        longitude: formLng.trim() === "" ? null : Number(formLng),
+        geofence_radius_m: formRadius.trim() === "" ? 10 : Number(formRadius),
+      };
       if (editBranch) {
-        const { error } = await supabase.from("branches").update({
-          name: formName, code: formCode, address: formAddress, phone: formPhone, status: formStatus,
-        }).eq("id", editBranch.id);
+        const { error } = await supabase.from("branches").update(payload).eq("id", editBranch.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("branches").insert({
-          name: formName, code: formCode, address: formAddress, phone: formPhone, status: formStatus,
-        });
+        const { error } = await supabase.from("branches").insert(payload);
         if (error) throw error;
       }
       toast({ title: editBranch ? "Branch updated" : "Branch created" });
@@ -177,6 +189,44 @@ const BranchesPage = () => {
                     <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+            <div className="border-t pt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">Geo-Fence Attendance</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    if (!navigator.geolocation) return;
+                    navigator.geolocation.getCurrentPosition(
+                      (pos) => {
+                        setFormLat(pos.coords.latitude.toFixed(7));
+                        setFormLng(pos.coords.longitude.toFixed(7));
+                      },
+                      () => toast({ title: "Unable to get current location", variant: "destructive" }),
+                      { enableHighAccuracy: true }
+                    );
+                  }}
+                >
+                  Use my current location
+                </Button>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Latitude</Label>
+                  <Input value={formLat} onChange={(e) => setFormLat(e.target.value)} placeholder="23.7808" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Longitude</Label>
+                  <Input value={formLng} onChange={(e) => setFormLng(e.target.value)} placeholder="90.2792" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Radius (m)</Label>
+                  <Input type="number" min={1} value={formRadius} onChange={(e) => setFormRadius(e.target.value)} />
+                </div>
               </div>
             </div>
           </div>
