@@ -430,15 +430,16 @@ export default function IdCardsPage() {
                   <p className="text-xs font-semibold text-muted-foreground text-center mb-2 uppercase tracking-wider">Front Side</p>
                   <div ref={frontCardRef} className="w-[340px] h-[539px] overflow-hidden bg-white shadow-lg relative">
 
-                    <div className="bg-[#ef7a1a] px-4 pt-3 pb-4 h-[340px]">
-                      <div className="flex items-center justify-center mb-2 h-12">
+                    <div className="bg-[#ef7a1a] px-4 pt-6 pb-4 h-[340px]">
+                      <div className="flex items-center justify-center mb-6 h-12">
                         {companyLogo ? (
                           <img src={companyLogo} alt="Logo" className="max-h-12 w-auto object-contain" />
                         ) : (
                           <div className="text-[22px] font-black italic text-black tracking-wide leading-none uppercase text-center">{companyName}</div>
                         )}
                       </div>
-                      <div className="flex justify-center mt-2">
+                      <div className="flex justify-center">
+
                         {emp.photo_url ? (
                           <img src={emp.photo_url} alt="Photo" className="w-44 h-[210px] object-cover border-[3px] border-[#2f6bd6] bg-white" />
                         ) : (
