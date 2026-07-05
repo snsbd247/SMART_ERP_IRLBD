@@ -191,6 +191,44 @@ const BranchesPage = () => {
                 </Select>
               </div>
             </div>
+            <div className="border-t pt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">Geo-Fence Attendance</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    if (!navigator.geolocation) return;
+                    navigator.geolocation.getCurrentPosition(
+                      (pos) => {
+                        setFormLat(pos.coords.latitude.toFixed(7));
+                        setFormLng(pos.coords.longitude.toFixed(7));
+                      },
+                      () => toast({ title: "Unable to get current location", variant: "destructive" }),
+                      { enableHighAccuracy: true }
+                    );
+                  }}
+                >
+                  Use my current location
+                </Button>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Latitude</Label>
+                  <Input value={formLat} onChange={(e) => setFormLat(e.target.value)} placeholder="23.7808" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Longitude</Label>
+                  <Input value={formLng} onChange={(e) => setFormLng(e.target.value)} placeholder="90.2792" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Radius (m)</Label>
+                  <Input type="number" min={1} value={formRadius} onChange={(e) => setFormRadius(e.target.value)} />
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} size="sm">Cancel</Button>
