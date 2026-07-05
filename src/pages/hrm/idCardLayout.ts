@@ -4,14 +4,15 @@
 
 export const CARD_MM = { width: 54, height: 85.6 } as const;
 
-// Back-side QR is anchored to the bottom-left of the main column.
+// Back-side QR is centered horizontally at the bottom of the main column.
 export const BACK_QR = {
-  sizeMm: 22,
-  padMm: { top: 0, right: 0, bottom: 1, left: 1 },
-  // Preview canvas size (px) chosen to match ~22mm at the on-screen scale
+  sizeMm: 26,
+  padMm: { top: 1, right: 0, bottom: 2, left: 0 },
+  // Preview canvas size (px) chosen to match ~26mm at the on-screen scale
   // of 340px = 54mm (≈ 6.3 px/mm).
-  onScreenPx: 138,
+  onScreenPx: 164,
 } as const;
+
 
 // Text-color palette matching the reference sample.
 export const BACK_COLORS = {
