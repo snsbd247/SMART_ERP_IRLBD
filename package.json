@@ -53,6 +53,7 @@
     "dompurify": "^3.4.11",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.36.0",
+    "html2canvas": "^1.4.1",
     "input-otp": "^1.4.2",
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.2.1",
