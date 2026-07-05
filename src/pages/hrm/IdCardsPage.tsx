@@ -15,6 +15,28 @@ interface Employee {
 interface Dept { id: string; name: string; }
 interface Desig { id: string; name: string; }
 
+// Split company address into Factory + Head Office when the user separates them with
+// blank line, "|", or literal "Factory:"/"Head Office:" tags. Falls back to a single block.
+function splitAddresses(raw: string | null | undefined): { factory: string; head: string } {
+  const text = (raw || "").trim();
+  if (!text) return { factory: "", head: "" };
+  const tagged = /factory\s*:/i.test(text) && /head\s*office\s*:/i.test(text);
+  if (tagged) {
+    const [f, h] = text.split(/head\s*office\s*:/i);
+    return {
+      factory: f.replace(/factory\s*:/i, "").trim(),
+      head: (h || "").trim(),
+    };
+  }
+  if (text.includes("|")) {
+    const [f, h] = text.split("|");
+    return { factory: (f || "").trim(), head: (h || "").trim() };
+  }
+  const parts = text.split(/\n\s*\n/);
+  if (parts.length >= 2) return { factory: parts[0].trim(), head: parts.slice(1).join("\n").trim() };
+  return { factory: "", head: text };
+}
+
 export default function IdCardsPage() {
   const { settings } = useCompanySettings();
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -35,97 +57,125 @@ export default function IdCardsPage() {
     })();
   }, []);
 
-  const emp = employees.find(e => e.id === selectedEmp);
-  const desigName = emp ? designations.find(d => d.id === emp.designation_id)?.name || "-" : "";
+  const emp = employees.find((e) => e.id === selectedEmp);
+  const desigName = emp ? designations.find((d) => d.id === emp.designation_id)?.name || "-" : "";
   const companyName = settings?.company_name || "Company";
-  const companyAddress = settings?.address || "";
   const companyPhone = settings?.phone || "";
   const companyEmail = settings?.email || "";
   const companyWebsite = settings?.website || "";
   const companyLogo = settings?.company_logo_url || "";
+  const { factory: factoryAddr, head: headOfficeAddr } = splitAddresses(settings?.address);
   const verifyUrl = emp ? `${window.location.origin}/employee/verify/${emp.employee_code}` : "";
-  const qrUrl = emp ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verifyUrl)}` : "";
+  const qrUrl = emp
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(verifyUrl)}`
+    : "";
   const barcodeUrl = emp ? `https://barcodeapi.org/api/code128/${emp.employee_code}` : "";
+
+  const sidebarText = (companyWebsite || `www.${companyName}.com`)
+    .replace(/^https?:\/\//i, "")
+    .toUpperCase();
+
+  const contactLines: string[] = [];
+  if (companyPhone) contactLines.push(`Phone: ${companyPhone}`);
+  if (companyEmail) contactLines.push(`Email: ${companyEmail}`);
 
   const handlePrint = () => {
     const win = window.open("", "_blank");
     if (!win || !emp) return;
     const photoHtml = emp.photo_url
       ? `<img src="${emp.photo_url}" class="photo" />`
-      : `<div class="photo-placeholder">${emp.first_name[0]}${emp.last_name[0]}</div>`;
+      : `<div class="photo ph">${emp.first_name[0]}${emp.last_name[0]}</div>`;
     const logoHtml = companyLogo
       ? `<img src="${companyLogo}" class="logo" />`
-      : `<div class="logo-placeholder">${companyName[0]}</div>`;
+      : `<div class="logo lp">${companyName[0]}</div>`;
+
+    const factoryHtml = factoryAddr
+      ? `<div class="sec">
+           <div class="sec-title"><span>Factory:</span></div>
+           <p class="sec-body">${factoryAddr.replace(/\n/g, "<br/>")}${
+          companyPhone ? `<br/>Phone: ${companyPhone}` : ""
+        }${companyEmail ? `<br/>Email: ${companyEmail}` : ""}</p>
+         </div>`
+      : "";
+    const headHtml = headOfficeAddr
+      ? `<div class="sec">
+           <div class="sec-title"><span>Head Office</span></div>
+           <p class="sec-body">${headOfficeAddr.replace(/\n/g, "<br/>")}${
+          !factoryAddr && companyPhone ? `<br/>Phone: ${companyPhone}` : ""
+        }${!factoryAddr && companyEmail ? `<br/>Email: ${companyEmail}` : ""}</p>
+         </div>`
+      : "";
 
     win.document.write(`<html><head><title>ID Card - ${emp.employee_code}</title><style>
       @page { size: landscape; margin: 10mm; }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f0f0; gap: 30px; flex-wrap: wrap; }
-      .card-side { width: 340px; height: 540px; border: 2px solid #222; border-radius: 8px; overflow: hidden; background: #fff; position: relative; }
+      body { font-family: Arial, Helvetica, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f0f0; gap: 30px; flex-wrap: wrap; }
+      .card { width: 340px; height: 540px; border-radius: 6px; overflow: hidden; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.15); position: relative; }
 
-      /* ---- FRONT ---- */
-      .front .header { background: #fff; padding: 16px 20px 10px; display: flex; align-items: center; gap: 12px; border-bottom: 3px solid #e67e22; }
-      .front .logo { height: 45px; object-fit: contain; }
-      .front .logo-placeholder { width: 45px; height: 45px; background: #e67e22; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; border-radius: 6px; }
-      .front .company-name { font-size: 18px; font-weight: 800; color: #1a1a1a; letter-spacing: 1px; }
-      .front .photo-section { text-align: center; padding: 24px 0 12px; }
-      .front .photo { width: 150px; height: 180px; object-fit: cover; border: 3px solid #333; display: block; margin: 0 auto; }
-      .front .photo-placeholder { width: 150px; height: 180px; background: #e2e8f0; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 48px; color: #475569; border: 3px solid #333; font-weight: bold; }
-      .front .emp-name { font-size: 20px; font-weight: 800; text-align: center; margin-top: 16px; color: #1a1a1a; }
-      .front .emp-desig { font-size: 13px; text-align: center; color: #555; margin-top: 2px; }
-      .front .barcode-section { text-align: center; margin-top: 18px; }
-      .front .barcode-section img { height: 50px; }
-      .front .barcode-section p { font-size: 13px; font-weight: 600; letter-spacing: 2px; margin-top: 2px; color: #333; }
+      /* ---------- FRONT ---------- */
+      .front .top { background: #ef7a1a; padding: 14px 16px 20px; height: 340px; position: relative; }
+      .front .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+      .front .logo { height: 42px; width: 42px; object-fit: contain; background: #fff; padding: 2px; border-radius: 4px; }
+      .front .logo.lp { display:flex; align-items:center; justify-content:center; font-weight:800; color:#ef7a1a; font-size:20px; }
+      .front .brand-text { line-height: 1.05; }
+      .front .brand-en { font-size: 22px; font-weight: 800; color: #111; letter-spacing: 0.5px; font-style: italic; }
+      .front .brand-bn { font-size: 12px; color: #111; margin-top: 2px; }
+      .front .brand-tag { font-size: 9px; color: #111; margin-top: 3px; font-style: italic; text-align: right; }
+      .front .photo-wrap { display: flex; justify-content: center; margin-top: 6px; }
+      .front .photo { width: 160px; height: 190px; object-fit: cover; border: 3px solid #2f6bd6; background: #fff; }
+      .front .photo.ph { display:flex; align-items:center; justify-content:center; font-size:48px; font-weight:700; color:#475569; }
+      .front .bottom { padding: 18px 12px 14px; text-align: center; }
+      .front .emp-name { font-size: 18px; font-weight: 800; color: #111; }
+      .front .emp-desig { font-size: 12px; color: #333; margin-top: 2px; }
+      .front .barcode { margin-top: 14px; }
+      .front .barcode img { height: 46px; }
+      .front .barcode p { font-size: 12px; font-weight: 700; letter-spacing: 1px; margin-top: 2px; color: #111; }
 
-      /* ---- BACK ---- */
+      /* ---------- BACK ---------- */
       .back { display: flex; flex-direction: row; }
-      .back-content { flex: 1; padding: 20px 16px; display: flex; flex-direction: column; justify-content: space-between; }
-      .back-content .section-title { font-size: 12px; font-weight: 800; text-transform: uppercase; border-bottom: 2px solid #333; padding-bottom: 3px; margin-bottom: 8px; margin-top: 16px; color: #1a1a1a; }
-      .back-content .section-title:first-child { margin-top: 0; }
-      .back-content .info-text { font-size: 11px; line-height: 1.6; color: #333; text-align: center; }
-      .back .qr-section { text-align: center; margin-top: auto; padding-top: 14px; }
-      .back .qr-section img { width: 110px; height: 110px; }
-      .back .sidebar { width: 48px; background: #e67e22; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; text-orientation: mixed; }
-      .back .sidebar span { color: #fff; font-size: 16px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; transform: rotate(180deg); }
+      .back .main { flex: 1; padding: 18px 14px 14px; display: flex; flex-direction: column; }
+      .back .sec { margin-bottom: 10px; }
+      .back .sec-title { display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+      .back .sec-title span { font-size: 12px; font-weight: 800; color: #111; padding: 0 10px; position: relative; }
+      .back .sec-title span::before, .back .sec-title span::after { content: ""; position: absolute; top: 50%; width: 42px; height: 2px; background: #111; }
+      .back .sec-title span::before { right: 100%; }
+      .back .sec-title span::after { left: 100%; }
+      .back .sec-body { font-size: 11px; line-height: 1.55; color: #111; text-align: center; }
+      .back .qr { text-align: center; margin-top: auto; padding-top: 10px; }
+      .back .qr img { width: 120px; height: 120px; }
+      .back .side { width: 34px; background: #111; display: flex; align-items: center; justify-content: center; }
+      .back .side span { color: #fff; font-size: 14px; font-weight: 700; letter-spacing: 3px; writing-mode: vertical-rl; transform: rotate(180deg); }
 
-      @media print {
-        body { background: #fff; }
-        .card-side { border: 2px solid #222; page-break-inside: avoid; }
-      }
+      @media print { body { background: #fff; } .card { box-shadow: none; } }
     </style></head><body>
-      <div class="card-side front">
-        <div class="header">
-          ${logoHtml}
-          <span class="company-name">${companyName}</span>
+      <div class="card front">
+        <div class="top">
+          <div class="brand">
+            ${logoHtml}
+            <div class="brand-text">
+              <div class="brand-en">${companyName}</div>
+              ${settings?.bin_number ? "" : ""}
+            </div>
+          </div>
+          <div class="photo-wrap">${photoHtml}</div>
         </div>
-        <div class="photo-section">${photoHtml}</div>
-        <p class="emp-name">${emp.first_name} ${emp.last_name}</p>
-        <p class="emp-desig">${desigName}</p>
-        <div class="barcode-section">
-          <img src="${barcodeUrl}" alt="Barcode" />
-          <p>${emp.employee_code}</p>
+        <div class="bottom">
+          <p class="emp-name">${emp.first_name} ${emp.last_name}</p>
+          <p class="emp-desig">${desigName}</p>
+          <div class="barcode">
+            <img src="${barcodeUrl}" alt="Barcode" />
+            <p>${emp.employee_code}</p>
+          </div>
         </div>
       </div>
 
-      <div class="card-side back">
-        <div class="back-content">
-          <div>
-            <div class="section-title">Address</div>
-            <p class="info-text">${companyAddress || "Company Address"}</p>
-
-            <div class="section-title">Contact</div>
-            <p class="info-text">
-              ${companyPhone ? "Phone: " + companyPhone + "<br/>" : ""}
-              ${companyEmail ? "Email: " + companyEmail + "<br/>" : ""}
-              ${companyWebsite ? companyWebsite : ""}
-            </p>
-          </div>
-          <div class="qr-section">
-            <img src="${qrUrl}" alt="QR Code" />
-            <p style="font-size:9px;color:#666;margin-top:4px;">Scan to verify employee</p>
-          </div>
+      <div class="card back">
+        <div class="main">
+          ${factoryHtml}
+          ${headHtml}
+          <div class="qr"><img src="${qrUrl}" alt="QR" /></div>
         </div>
-        <div class="sidebar"><span>${companyWebsite || companyName}</span></div>
+        <div class="side"><span>${sidebarText}</span></div>
       </div>
     </body></html>`);
     win.document.close();
@@ -140,14 +190,20 @@ export default function IdCardsPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><CreditCard className="w-5 h-5" />ID Card Generator</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><CreditCard className="w-5 h-5" />ID Card Generator</CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="flex items-end gap-4 mb-8">
             <div className="w-80">
               <Label>Select Employee</Label>
               <Select value={selectedEmp} onValueChange={setSelectedEmp}>
                 <SelectTrigger><SelectValue placeholder="Choose employee" /></SelectTrigger>
-                <SelectContent>{employees.map(e => <SelectItem key={e.id} value={e.id}>{e.first_name} {e.last_name} ({e.employee_code})</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {employees.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{e.first_name} {e.last_name} ({e.employee_code})</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             {emp && <Button onClick={handlePrint}><Printer className="w-4 h-4 mr-2" />Print ID Card</Button>}
@@ -155,67 +211,94 @@ export default function IdCardsPage() {
 
           {emp && (
             <div className="flex flex-wrap justify-center gap-8">
-              {/* ===== FRONT SIDE ===== */}
+              {/* ===== FRONT ===== */}
               <div>
                 <p className="text-xs font-semibold text-muted-foreground text-center mb-2 uppercase tracking-wider">Front Side</p>
-                <div className="w-[340px] h-[540px] rounded-lg border-2 border-border overflow-hidden bg-card shadow-lg relative">
-                  {/* Header */}
-                  <div className="flex items-center gap-3 px-5 pt-4 pb-3 border-b-[3px] border-orange-500">
-                    {companyLogo ? (
-                      <img src={companyLogo} alt="Logo" className="h-11 object-contain" />
-                    ) : (
-                      <div className="w-11 h-11 rounded-md bg-orange-500 text-white flex items-center justify-center text-xl font-bold">{companyName[0]}</div>
-                    )}
-                    <span className="text-lg font-extrabold text-foreground tracking-wide">{companyName}</span>
-                  </div>
-                  {/* Photo */}
-                  <div className="flex justify-center pt-6">
-                    {emp.photo_url ? (
-                      <img src={emp.photo_url} alt="Photo" className="w-[150px] h-[180px] object-cover border-[3px] border-foreground/80" />
-                    ) : (
-                      <div className="w-[150px] h-[180px] bg-muted flex items-center justify-center text-4xl font-bold text-muted-foreground border-[3px] border-foreground/80">
-                        {emp.first_name[0]}{emp.last_name[0]}
+                <div className="w-[340px] h-[540px] rounded-md overflow-hidden bg-white shadow-lg relative">
+                  {/* Orange top block */}
+                  <div className="bg-[#ef7a1a] px-4 pt-4 pb-5 h-[340px]">
+                    <div className="flex items-center gap-2.5 mb-3">
+                      {companyLogo ? (
+                        <img src={companyLogo} alt="Logo" className="h-11 w-11 object-contain bg-white p-0.5 rounded" />
+                      ) : (
+                        <div className="h-11 w-11 rounded bg-white flex items-center justify-center text-[#ef7a1a] font-extrabold text-xl">{companyName[0]}</div>
+                      )}
+                      <div className="leading-none">
+                        <div className="text-[22px] font-extrabold italic text-black tracking-wide">{companyName}</div>
                       </div>
-                    )}
+                    </div>
+                    <div className="flex justify-center mt-1">
+                      {emp.photo_url ? (
+                        <img src={emp.photo_url} alt="Photo" className="w-40 h-[190px] object-cover border-[3px] border-[#2f6bd6] bg-white" />
+                      ) : (
+                        <div className="w-40 h-[190px] border-[3px] border-[#2f6bd6] bg-white flex items-center justify-center text-4xl font-bold text-slate-600">
+                          {emp.first_name[0]}{emp.last_name[0]}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {/* Name & Designation */}
-                  <p className="text-xl font-extrabold text-foreground text-center mt-4">{emp.first_name} {emp.last_name}</p>
-                  <p className="text-sm text-muted-foreground text-center">{desigName}</p>
-                  {/* Barcode */}
-                  <div className="text-center mt-5">
-                    <img src={barcodeUrl} alt="Barcode" className="h-[50px] mx-auto" />
-                    <p className="text-sm font-semibold tracking-[3px] text-foreground mt-1">{emp.employee_code}</p>
+                  {/* White bottom */}
+                  <div className="px-3 pt-4 pb-3 text-center">
+                    <p className="text-lg font-extrabold text-black">{emp.first_name} {emp.last_name}</p>
+                    <p className="text-xs text-neutral-700 mt-0.5">{desigName}</p>
+                    <div className="mt-3">
+                      <img src={barcodeUrl} alt="Barcode" className="h-[46px] mx-auto" />
+                      <p className="text-xs font-bold tracking-wider text-black mt-0.5">{emp.employee_code}</p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* ===== BACK SIDE ===== */}
+              {/* ===== BACK ===== */}
               <div>
                 <p className="text-xs font-semibold text-muted-foreground text-center mb-2 uppercase tracking-wider">Back Side</p>
-                <div className="w-[340px] h-[540px] rounded-lg border-2 border-border overflow-hidden bg-card shadow-lg flex flex-row">
-                  {/* Content area */}
-                  <div className="flex-1 p-5 flex flex-col justify-between">
-                    <div>
-                      <h4 className="text-xs font-extrabold uppercase border-b-2 border-foreground pb-1 mb-2 text-foreground">Address</h4>
-                      <p className="text-[11px] leading-relaxed text-muted-foreground text-center">{companyAddress || "Company Address"}</p>
-
-                      <h4 className="text-xs font-extrabold uppercase border-b-2 border-foreground pb-1 mb-2 mt-5 text-foreground">Contact</h4>
-                      <div className="text-[11px] leading-relaxed text-muted-foreground text-center space-y-0.5">
-                        {companyPhone && <p>Phone: {companyPhone}</p>}
-                        {companyEmail && <p>Email: {companyEmail}</p>}
-                        {companyWebsite && <p>{companyWebsite}</p>}
+                <div className="w-[340px] h-[540px] rounded-md overflow-hidden bg-white shadow-lg flex flex-row">
+                  <div className="flex-1 px-3.5 pt-4 pb-3 flex flex-col">
+                    {factoryAddr && (
+                      <div className="mb-2.5">
+                        <div className="flex items-center justify-center mb-1.5">
+                          <span className="relative px-2.5 text-xs font-extrabold text-black
+                            before:content-[''] before:absolute before:top-1/2 before:right-full before:w-10 before:h-[2px] before:bg-black
+                            after:content-[''] after:absolute after:top-1/2 after:left-full after:w-10 after:h-[2px] after:bg-black">
+                            Factory:
+                          </span>
+                        </div>
+                        <p className="text-[11px] leading-snug text-black text-center whitespace-pre-line">
+                          {factoryAddr}
+                          {companyPhone && <><br />Phone: {companyPhone}</>}
+                          {companyEmail && <><br />Email: {companyEmail}</>}
+                        </p>
                       </div>
-                    </div>
-
-                    <div className="text-center pt-4">
-                      <img src={qrUrl} alt="QR Code" className="w-[110px] h-[110px] mx-auto" />
-                      <p className="text-[9px] text-muted-foreground mt-1">Scan to verify employee</p>
+                    )}
+                    {headOfficeAddr && (
+                      <div className="mb-2">
+                        <div className="flex items-center justify-center mb-1.5">
+                          <span className="relative px-2.5 text-xs font-extrabold text-black
+                            before:content-[''] before:absolute before:top-1/2 before:right-full before:w-10 before:h-[2px] before:bg-black
+                            after:content-[''] after:absolute after:top-1/2 after:left-full after:w-10 after:h-[2px] after:bg-black">
+                            Head Office
+                          </span>
+                        </div>
+                        <p className="text-[11px] leading-snug text-black text-center whitespace-pre-line">
+                          {headOfficeAddr}
+                          {!factoryAddr && companyPhone && <><br />Phone: {companyPhone}</>}
+                          {!factoryAddr && companyEmail && <><br />Email: {companyEmail}</>}
+                        </p>
+                      </div>
+                    )}
+                    {!factoryAddr && !headOfficeAddr && contactLines.length > 0 && (
+                      <p className="text-[11px] text-center text-black">{contactLines.join(" · ")}</p>
+                    )}
+                    <div className="mt-auto text-center pt-2">
+                      <img src={qrUrl} alt="QR" className="w-[120px] h-[120px] mx-auto" />
                     </div>
                   </div>
-                  {/* Orange sidebar */}
-                  <div className="w-12 bg-orange-500 flex items-center justify-center">
-                    <span className="text-white font-extrabold text-base tracking-[3px] uppercase" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
-                      {companyWebsite || companyName}
+                  <div className="w-8 bg-black flex items-center justify-center">
+                    <span
+                      className="text-white font-bold text-sm tracking-[3px]"
+                      style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+                    >
+                      {sidebarText}
                     </span>
                   </div>
                 </div>
