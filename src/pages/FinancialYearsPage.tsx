@@ -50,10 +50,17 @@ const FinancialYearsPage = () => {
       return;
     }
     if (editing) {
+      // If turning this year active, deactivate others first.
+      if (form.is_active && !editing.is_active) {
+        await supabase.from("financial_years").update({ is_active: false }).neq("id", editing.id);
+      }
       const { error } = await supabase.from("financial_years").update({ ...form }).eq("id", editing.id);
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Financial year updated" });
     } else {
+      if (form.is_active) {
+        await supabase.from("financial_years").update({ is_active: false }).neq("id", "00000000-0000-0000-0000-000000000000");
+      }
       const { error } = await supabase.from("financial_years").insert({ ...form });
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Financial year created" });
