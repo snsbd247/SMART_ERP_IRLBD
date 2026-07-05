@@ -162,9 +162,9 @@ export default function IdCardsPage() {
     const photoHtml = emp?.photo_url
       ? `<img src="${emp.photo_url}" class="photo" crossorigin="anonymous" />`
       : `<div class="photo ph">${emp!.first_name[0]}${emp!.last_name[0]}</div>`;
-    const logoHtml = companyLogo
+    const brandInner = companyLogo
       ? `<img src="${companyLogo}" class="logo" crossorigin="anonymous" />`
-      : `<div class="logo lp">${companyName[0]}</div>`;
+      : `<div class="brand-en">${companyName}</div>`;
     const factoryHtml = factoryAddr
       ? `<div class="sec"><div class="st"><span>Factory:</span></div><p class="sb">${factoryAddr.replace(/\n/g, "<br/>")}${companyPhone ? `<br/>Phone: <span class="hl">${companyPhone}</span>` : ""}${companyEmail ? `<br/>Email: <span class="hl">${companyEmail}</span>` : ""}</p></div>` : "";
     const headHtml = headOfficeAddr
