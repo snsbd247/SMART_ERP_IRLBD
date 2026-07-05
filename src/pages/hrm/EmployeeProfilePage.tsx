@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
@@ -296,6 +297,27 @@ export default function EmployeeProfilePage() {
 
     setUploadingPhoto(true);
     try {
+      // Laravel/VPS mode: use the dedicated employees/{id}/upload-photo endpoint
+      // which persists photo_url atomically and generates a hash filename
+      // (avoiding Str::slug filename mismatches from the generic storage bridge).
+      if (isLaravelMode()) {
+        const base = getApiBaseUrl();
+        const fd = new FormData();
+        fd.append("photo", file);
+        const res = await fetch(`${base}/v1/employees/${id}/upload-photo`, {
+          method: "POST",
+          headers: { ...getLaravelAuthHeaders() },
+          body: fd,
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json?.success === false) {
+          throw new Error(json?.message || `Upload failed (${res.status})`);
+        }
+        toast.success("Photo uploaded successfully");
+        fetchAll();
+        return;
+      }
+
       const ext = file.name.split('.').pop();
       const filePath = `${id}/photo_${Date.now()}.${ext}`;
 
@@ -307,15 +329,18 @@ export default function EmployeeProfilePage() {
         }
       }
 
-      const { error: uploadError } = await supabase.storage
+      const { data: upData, error: uploadError } = await supabase.storage
         .from('employee-photos')
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
+      // Use the path returned by the server so we don't drift from any
+      // server-side name sanitisation (e.g. Laravel Str::slug on the bridge).
+      const storedPath = upData?.path || filePath;
       const { data: urlData } = supabase.storage
         .from('employee-photos')
-        .getPublicUrl(filePath);
+        .getPublicUrl(storedPath);
 
       await supabase
         .from("employees" as any)
