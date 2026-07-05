@@ -75,6 +75,16 @@ export default function IdCardsPage() {
   const frontCardRef = useRef<HTMLDivElement | null>(null);
   const backCardRef = useRef<HTMLDivElement | null>(null);
   const [viewMode, setViewMode] = useState<"both" | "front" | "back">("both");
+  const [backFontScale, setBackFontScale] = useState<number>(BACK_FONT_SCALE.default);
+  const adjustBackFont = (delta: number) => {
+    setBackFontScale((prev) => {
+      const next = Math.round((prev + delta) * 100) / 100;
+      return Math.min(BACK_FONT_SCALE.max, Math.max(BACK_FONT_SCALE.min, next));
+    });
+  };
+  // Preview base sizes in px (matched to the CR80 preview scale).
+  const backBodyPx = (10.5 * backFontScale).toFixed(2);
+  const backHeaderPx = (13 * backFontScale).toFixed(2);
 
 
 
