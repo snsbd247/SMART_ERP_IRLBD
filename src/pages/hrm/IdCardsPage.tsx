@@ -394,35 +394,36 @@ export default function IdCardsPage() {
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground text-center mb-2 uppercase tracking-wider">Front Side</p>
                   <div className="w-[340px] h-[540px] rounded-md overflow-hidden bg-white shadow-lg relative">
-                    <div className="bg-[#ef7a1a] px-4 pt-4 pb-5 h-[340px]">
-                      <div className="flex items-center gap-2.5 mb-3">
+                    <div className="bg-[#ef7a1a] px-4 pt-3 pb-4 h-[340px]">
+                      <div className="flex items-center gap-2 mb-2">
                         {companyLogo ? (
-                          <img src={companyLogo} alt="Logo" className="h-11 w-11 object-contain bg-white p-0.5 rounded" />
+                          <img src={companyLogo} alt="Logo" className="h-10 w-10 object-contain bg-white p-0.5 rounded-sm" />
                         ) : (
-                          <div className="h-11 w-11 rounded bg-white flex items-center justify-center text-[#ef7a1a] font-extrabold text-xl">{companyName[0]}</div>
+                          <div className="h-10 w-10 rounded-sm bg-white flex items-center justify-center text-[#ef7a1a] font-extrabold text-xl">{companyName[0]}</div>
                         )}
-                        <div className="text-[22px] font-extrabold italic text-black tracking-wide leading-none">{companyName}</div>
+                        <div className="text-[30px] font-black italic text-black tracking-wide leading-none uppercase">{companyName}</div>
                       </div>
-                      <div className="flex justify-center mt-1">
+                      <div className="flex justify-center mt-2">
                         {emp.photo_url ? (
-                          <img src={emp.photo_url} alt="Photo" className="w-40 h-[190px] object-cover border-[3px] border-[#2f6bd6] bg-white" />
+                          <img src={emp.photo_url} alt="Photo" className="w-44 h-[210px] object-cover border-[3px] border-[#2f6bd6] bg-white" />
                         ) : (
-                          <div className="w-40 h-[190px] border-[3px] border-[#2f6bd6] bg-white flex items-center justify-center text-4xl font-bold text-slate-600">
+                          <div className="w-44 h-[210px] border-[3px] border-[#2f6bd6] bg-white flex items-center justify-center text-4xl font-bold text-slate-600">
                             {emp.first_name[0]}{emp.last_name[0]}
                           </div>
                         )}
                       </div>
                     </div>
                     <div className="px-3 pt-4 pb-3 text-center">
-                      <p className="text-lg font-extrabold text-black">{emp.first_name} {emp.last_name}</p>
-                      <p className="text-xs text-neutral-700 mt-0.5">{desigName}</p>
-                      <div className="mt-3">
-                        <img src={barcodeUrl} alt="Barcode" className="h-[55px] w-[220px] object-fill mx-auto" />
-                        <p className="text-sm font-bold tracking-[6px] text-black mt-1">{emp.employee_code}</p>
+                      <p className="text-lg font-extrabold" style={{ color: "#000" }}>{emp.first_name} {emp.last_name}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#000" }}>{desigName}</p>
+                      <div className="mt-3 flex flex-col items-center">
+                        <canvas ref={barcodeRef} className="h-[55px] w-[220px]" />
+                        <p className="text-sm font-bold tracking-[4px] mt-1" style={{ color: "#000" }}>{emp.employee_code}</p>
                       </div>
                     </div>
                   </div>
                 </div>
+
 
                 {/* BACK */}
                 <div>
