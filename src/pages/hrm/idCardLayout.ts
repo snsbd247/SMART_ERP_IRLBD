@@ -28,16 +28,28 @@ export const PRINT_PAGE = {
   marginCss: "0",
 } as const;
 
-/** Emit the shared BACK-side CSS used by the print/PDF template. */
-export const backCssBlock = (): string => `
+/** Back-side font scale bounds — used by the UI +/- adjuster and print CSS. */
+export const BACK_FONT_SCALE = { min: 0.7, max: 1.5, step: 0.05, default: 1 } as const;
+
+const clampScale = (s: number): number =>
+  Math.min(BACK_FONT_SCALE.max, Math.max(BACK_FONT_SCALE.min, Number.isFinite(s) ? s : 1));
+
+/** Emit the shared BACK-side CSS used by the print/PDF template.
+ *  `scale` multiplies the section-header and body font sizes so preview,
+ *  print, and PDF all honor the user's +/- adjustment. */
+export const backCssBlock = (scale: number = 1): string => {
+  const s = clampScale(scale);
+  const headerMm = (2.6 * s).toFixed(3);
+  const bodyMm = (2.2 * s).toFixed(3);
+  return `
   .back { display: flex; }
   .back .main { flex: 1; padding: 3mm 2.5mm 2mm; display: flex; flex-direction: column; }
   .back .sec { margin-bottom: 1.5mm; }
   .back .st { display:flex; justify-content:center; margin-bottom: 0.8mm; }
-  .back .st span { position: relative; font-size: 2.6mm; font-weight: 800; color: ${BACK_COLORS.header}; padding: 0 2mm; }
+  .back .st span { position: relative; font-size: ${headerMm}mm; font-weight: 800; color: ${BACK_COLORS.header}; padding: 0 2mm; }
   .back .st span::before, .back .st span::after { content:""; position:absolute; top:50%; width: 7mm; height: 0.3mm; background: ${BACK_COLORS.header}; }
   .back .st span::before { right: 100%; } .back .st span::after { left: 100%; }
-  .back .sb { font-size: 2.2mm; line-height: 1.35; color: ${BACK_COLORS.body}; text-align: center; margin: 0; }
+  .back .sb { font-size: ${bodyMm}mm; line-height: 1.35; color: ${BACK_COLORS.body}; text-align: center; margin: 0; }
   .back .sb .hl { color: ${BACK_COLORS.highlight}; }
   .back .qr { margin-top: auto; display: flex; justify-content: center; padding: ${BACK_QR.padMm.top}mm ${BACK_QR.padMm.right}mm ${BACK_QR.padMm.bottom}mm ${BACK_QR.padMm.left}mm; }
   .back .qr img { width: ${BACK_QR.sizeMm}mm; height: ${BACK_QR.sizeMm}mm; display: block; }
@@ -45,6 +57,7 @@ export const backCssBlock = (): string => `
   .back .side span { color:#fff; font-size: 2.6mm; font-weight: 700; letter-spacing: 1mm; writing-mode: vertical-rl; transform: rotate(180deg); }
 
 `;
+};
 
 /** Emit the shared @page + card frame CSS. */
 export const pageFrameCss = (): string => `
