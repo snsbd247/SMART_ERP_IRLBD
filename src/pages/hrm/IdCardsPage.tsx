@@ -465,7 +465,7 @@ export default function IdCardsPage() {
                   <p className="text-xs font-semibold text-muted-foreground text-center mb-2 uppercase tracking-wider">Back Side</p>
                   <div ref={backCardRef} className="w-[340px] h-[539px] overflow-hidden bg-white shadow-lg flex flex-row">
 
-                    <div className="flex-1 px-3 pt-4 pb-3 flex flex-col">
+                    <div ref={backContentRef} className="flex-1 px-3 pt-4 pb-3 flex flex-col overflow-hidden">
                       {factoryAddr && (
                         <div className="mb-2">
                           <div className="flex items-center justify-center mb-1">
