@@ -14,8 +14,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // Force Laravel/VPS mode for the whole file BEFORE importing modules that
 // snapshot the runtime mode at import time.
 beforeEach(() => {
-  // @ts-expect-error - test hook
-  (globalThis as any).window = globalThis;
   (globalThis as any).__FORCE_LARAVEL_FALLBACK__ = true;
   try { sessionStorage.setItem("force_laravel_fallback", "1"); } catch { /* jsdom */ }
 });
