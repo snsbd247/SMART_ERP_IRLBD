@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { isLaravelMode, getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
-import { Calendar, CheckCircle2, XCircle, AlertCircle, CalendarDays, MapPin, LogIn, LogOut } from "lucide-react";
+import { Calendar, CheckCircle2, XCircle, AlertCircle, CalendarDays, MapPin, LogIn, LogOut, RefreshCw } from "lucide-react";
 
 async function callPortalApi(path: string, init: RequestInit = {}) {
   const base = getApiBaseUrl();
@@ -55,14 +55,36 @@ export default function MyAttendancePage() {
 
   useEffect(() => { loadToday(); }, [loadToday]);
 
-  const handlePunch = async (action: "check_in" | "check_out") => {
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [lastAction, setLastAction] = useState<"check_in" | "check_out" | null>(null);
+
+  const logGeoPermission = useCallback(
+    async (status: "granted" | "denied" | "timeout" | "unavailable" | "error", message?: string) => {
+      if (!laravel) return;
+      try {
+        await callPortalApi("/api/v1/portal/attendance/geo-permission", {
+          method: "POST",
+          body: JSON.stringify({ status, context: "check_in", message: message ?? null }),
+        });
+      } catch { /* best-effort audit */ }
+    },
+    [laravel],
+  );
+
+  const handlePunch = useCallback(async (action: "check_in" | "check_out") => {
+    setLastAction(action);
+    setGeoError(null);
     if (!navigator.geolocation) {
-      toast({ title: "Geolocation not supported by this browser", variant: "destructive" });
+      const msg = "Geolocation not supported by this browser";
+      setGeoError(msg);
+      await logGeoPermission("unavailable", msg);
+      toast({ title: msg, variant: "destructive" });
       return;
     }
     setChecking(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        await logGeoPermission("granted");
         try {
           const res = await callPortalApi("/api/v1/portal/attendance/self", {
             method: "POST",
@@ -72,24 +94,39 @@ export default function MyAttendancePage() {
               longitude: pos.coords.longitude,
             }),
           });
+          const src = res.branch_source ? ` · via ${res.branch_source} branch` : "";
           toast({
             title: action === "check_in" ? "Checked in" : "Checked out",
-            description: `Distance: ${res.distance_m}m from branch`,
+            description: `Distance: ${res.distance_m}m from branch${src}`,
           });
+          setGeoError(null);
           await loadToday();
         } catch (e: any) {
+          setGeoError(e.message);
           toast({ title: "Attendance failed", description: e.message, variant: "destructive" });
         } finally {
           setChecking(false);
         }
       },
-      (err) => {
+      async (err) => {
         setChecking(false);
-        toast({ title: "Location required", description: err.message, variant: "destructive" });
+        const status =
+          err.code === err.PERMISSION_DENIED ? "denied" :
+          err.code === err.TIMEOUT ? "timeout" :
+          err.code === err.POSITION_UNAVAILABLE ? "unavailable" : "error";
+        const msg =
+          status === "denied"
+            ? "Location permission was denied. Enable location for this site in your browser settings and click Retry."
+            : status === "timeout"
+              ? "Location request timed out. Move to a spot with better GPS/Wi-Fi and click Retry."
+              : err.message || "Unable to get your location. Click Retry.";
+        setGeoError(msg);
+        await logGeoPermission(status, err.message);
+        toast({ title: "Location required", description: msg, variant: "destructive" });
       },
       { enableHighAccuracy: true, timeout: 15000 }
     );
-  };
+  }, [loadToday, logGeoPermission, toast]);
 
   if (loading) return <div className="text-center py-16 text-muted-foreground">Loading...</div>;
   if (!employee) return <div className="text-center py-16 text-muted-foreground">No employee profile linked.</div>;
@@ -168,6 +205,22 @@ export default function MyAttendancePage() {
                       disabled={checking || !today?.check_in || !!today?.check_out}
                     >
                       <LogOut className="w-4 h-4 mr-1" /> Check Out
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {branchConfigured && geoError && (
+                <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <p>{geoError}</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePunch(lastAction ?? "check_in")}
+                      disabled={checking}
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 mr-1" /> Retry {lastAction === "check_out" ? "Check Out" : "Check In"}
                     </Button>
                   </div>
                 </div>

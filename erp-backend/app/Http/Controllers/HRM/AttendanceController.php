@@ -84,29 +84,65 @@ class AttendanceController extends BaseController
      * Self check-in/out from portal. Enforces branch geofence.
      */
     /**
-     * Resolve the geo-fence branch for a user. Falls back through:
-     *  1. Employee's assigned branch
-     *  2. User's own branch_id
-     *  3. Any single active branch that has lat/lng configured
+     * Resolve the geo-fence branch for a user. Returns [Branch|null, source].
+     * Fallback order: employee → user → single-configured.
      */
-    private function resolveGeoBranch($user): ?Branch
+    private function resolveGeoBranchWithSource($user): array
     {
         $employee = $user->employee_id ? Employee::with('branch')->find($user->employee_id) : null;
 
         $candidate = $employee?->branch;
         if ($candidate && $candidate->latitude !== null && $candidate->longitude !== null) {
-            return $candidate;
+            return [$candidate, 'employee'];
         }
 
         if ($user->branch_id) {
             $b = Branch::find($user->branch_id);
-            if ($b && $b->latitude !== null && $b->longitude !== null) return $b;
+            if ($b && $b->latitude !== null && $b->longitude !== null) return [$b, 'user'];
         }
 
         $configured = Branch::whereNotNull('latitude')->whereNotNull('longitude')->get();
-        if ($configured->count() === 1) return $configured->first();
+        if ($configured->count() === 1) return [$configured->first(), 'single'];
 
-        return $candidate; // may still be null / unconfigured
+        return [$candidate, 'none'];
+    }
+
+    private function resolveGeoBranch($user): ?Branch
+    {
+        [$b] = $this->resolveGeoBranchWithSource($user);
+        return $b;
+    }
+
+    private function writeAudit(Request $request, string $action, array $details): void
+    {
+        try {
+            \App\Models\AuditLog::create([
+                'user_id' => optional($request->user())->id,
+                'user_name' => optional($request->user())->name,
+                'module' => 'hrm.attendance',
+                'action' => $action,
+                'details' => json_encode($details),
+                'ip_address' => $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 255),
+            ]);
+        } catch (\Throwable) { /* audit is best-effort */ }
+    }
+
+    /**
+     * Portal endpoint: log a geolocation permission event (granted / denied / timeout / unavailable).
+     */
+    public function logGeoPermission(Request $request)
+    {
+        $data = $request->validate([
+            'status' => 'required|in:granted,denied,timeout,unavailable,error',
+            'context' => 'nullable|string|max:50',
+            'message' => 'nullable|string|max:255',
+        ]);
+        $this->writeAudit($request, 'geo_permission.' . $data['status'], [
+            'context' => $data['context'] ?? 'check_in',
+            'message' => $data['message'] ?? null,
+        ]);
+        return response()->json(['success' => true]);
     }
 
     public function selfCheckIn(Request $request)
@@ -127,7 +163,7 @@ class AttendanceController extends BaseController
             return response()->json(['success' => false, 'message' => 'Employee not found.'], 404);
         }
 
-        $branch = $this->resolveGeoBranch($user);
+        [$branch, $source] = $this->resolveGeoBranchWithSource($user);
         if (!$branch || $branch->latitude === null || $branch->longitude === null) {
             return response()->json(['success' => false, 'message' => 'Branch location not configured. Contact admin.'], 422);
         }
@@ -139,6 +175,10 @@ class AttendanceController extends BaseController
         );
 
         if ($distance > $radius) {
+            $this->writeAudit($request, 'check_in.out_of_range', [
+                'branch_id' => $branch->id, 'branch_source' => $source,
+                'distance_m' => round($distance, 2), 'allowed_radius_m' => $radius,
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => "You are " . round($distance) . "m away from branch. Must be within {$radius}m.",
@@ -175,10 +215,17 @@ class AttendanceController extends BaseController
 
         $att->save();
 
+        $this->writeAudit($request, $data['action'] . '.success', [
+            'branch_id' => $branch->id,
+            'branch_source' => $source,
+            'distance_m' => round($distance, 2),
+        ]);
+
         return response()->json([
             'success' => true,
             'data' => $att,
             'distance_m' => round($distance, 2),
+            'branch_source' => $source,
         ]);
     }
 
@@ -190,16 +237,18 @@ class AttendanceController extends BaseController
         }
         $today = Carbon::today()->toDateString();
         $att = Attendance::where('employee_id', $user->employee_id)->where('date', $today)->first();
-        $branch = $this->resolveGeoBranch($user);
+        [$branch, $source] = $this->resolveGeoBranchWithSource($user);
         return response()->json([
             'success' => true,
             'data' => $att,
+            'branch_source' => $source,
             'branch' => $branch ? [
                 'id' => $branch->id,
                 'name' => $branch->name,
                 'latitude' => $branch->latitude,
                 'longitude' => $branch->longitude,
                 'geofence_radius_m' => $branch->geofence_radius_m ?? 10,
+                'source' => $source,
             ] : null,
         ]);
     }
