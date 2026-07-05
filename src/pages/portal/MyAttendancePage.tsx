@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePortalEmployee } from "@/hooks/usePortalEmployee";
 import { PortalEmployeeSelector } from "@/components/portal/PortalEmployeeSelector";
@@ -6,12 +6,32 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, CheckCircle2, XCircle, AlertCircle, CalendarDays } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { isLaravelMode, getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
+import { Calendar, CheckCircle2, XCircle, AlertCircle, CalendarDays, MapPin, LogIn, LogOut } from "lucide-react";
+
+async function callPortalApi(path: string, init: RequestInit = {}) {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error("Laravel API not configured");
+  const res = await fetch(`${base}${path}`, {
+    ...init,
+    headers: { ...getLaravelAuthHeaders(true), ...(init.headers as any) },
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((json as any)?.message || `HTTP ${res.status}`);
+  return json;
+}
 
 export default function MyAttendancePage() {
   const { employee, loading, isHrAdmin, allEmployees, selectedEmployeeId, selectEmployee } = usePortalEmployee();
   const [attendance, setAttendance] = useState<any[]>([]);
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [today, setToday] = useState<any>(null);
+  const [branchGeo, setBranchGeo] = useState<any>(null);
+  const [checking, setChecking] = useState(false);
+  const { toast } = useToast();
+  const laravel = isLaravelMode();
 
   useEffect(() => {
     if (!employee) return;
@@ -23,6 +43,53 @@ export default function MyAttendancePage() {
       if (data) setAttendance(data as any);
     })();
   }, [employee, month]);
+
+  const loadToday = useCallback(async () => {
+    if (!laravel) return;
+    try {
+      const res = await callPortalApi("/api/v1/portal/attendance/today");
+      setToday(res.data);
+      setBranchGeo(res.branch);
+    } catch { /* ignore */ }
+  }, [laravel]);
+
+  useEffect(() => { loadToday(); }, [loadToday]);
+
+  const handlePunch = async (action: "check_in" | "check_out") => {
+    if (!navigator.geolocation) {
+      toast({ title: "Geolocation not supported by this browser", variant: "destructive" });
+      return;
+    }
+    setChecking(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const res = await callPortalApi("/api/v1/portal/attendance/self", {
+            method: "POST",
+            body: JSON.stringify({
+              action,
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+            }),
+          });
+          toast({
+            title: action === "check_in" ? "Checked in" : "Checked out",
+            description: `Distance: ${res.distance_m}m from branch`,
+          });
+          await loadToday();
+        } catch (e: any) {
+          toast({ title: "Attendance failed", description: e.message, variant: "destructive" });
+        } finally {
+          setChecking(false);
+        }
+      },
+      (err) => {
+        setChecking(false);
+        toast({ title: "Location required", description: err.message, variant: "destructive" });
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  };
 
   if (loading) return <div className="text-center py-16 text-muted-foreground">Loading...</div>;
   if (!employee) return <div className="text-center py-16 text-muted-foreground">No employee profile linked.</div>;
@@ -44,6 +111,9 @@ export default function MyAttendancePage() {
     { label: "Leave", count: leave, icon: CalendarDays, color: "text-blue-500", bg: "bg-blue-500/10" },
   ];
 
+  const canPunch = laravel && !isHrAdmin;
+  const branchConfigured = branchGeo && branchGeo.latitude != null && branchGeo.longitude != null;
+
   return (
     <div className="space-y-0">
       {isHrAdmin && (
@@ -54,6 +124,51 @@ export default function MyAttendancePage() {
           <div><h1 className="text-2xl font-bold text-foreground">My Attendance</h1></div>
           <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-muted-foreground" /><Input type="month" value={month} onChange={e => setMonth(e.target.value)} className="w-44" /></div>
         </div>
+
+        {canPunch && (
+          <Card>
+            <CardContent className="pt-6 space-y-3">
+              <div className="flex items-center gap-2 text-sm">
+                <MapPin className="w-4 h-4 text-primary" />
+                <span className="font-medium">Geo-Fence Attendance</span>
+                {branchGeo && (
+                  <span className="text-xs text-muted-foreground">
+                    {branchGeo.name} · radius {branchGeo.geofence_radius_m}m
+                  </span>
+                )}
+              </div>
+              {!branchConfigured ? (
+                <p className="text-xs text-destructive">
+                  Branch location is not configured yet. Please contact admin.
+                </p>
+              ) : (
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="text-xs text-muted-foreground">
+                    Today: {today?.check_in ? <>In <b>{today.check_in}</b></> : "not checked in"}
+                    {today?.check_out ? <> · Out <b>{today.check_out}</b></> : null}
+                  </div>
+                  <div className="flex gap-2 ml-auto">
+                    <Button
+                      size="sm"
+                      onClick={() => handlePunch("check_in")}
+                      disabled={checking || !!today?.check_in}
+                    >
+                      <LogIn className="w-4 h-4 mr-1" /> Check In
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePunch("check_out")}
+                      disabled={checking || !today?.check_in || !!today?.check_out}
+                    >
+                      <LogOut className="w-4 h-4 mr-1" /> Check Out
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
