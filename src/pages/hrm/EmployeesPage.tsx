@@ -187,6 +187,41 @@ export default function EmployeesPage() {
 
 
     try {
+      // Laravel/VPS mode: send the entire payload (including login fields)
+      // to the EmployeeController endpoint so user + employee are created
+      // atomically in one transaction. The generic /v1/db/employees path
+      // does not know about `create_login`/`username`/`password`, which is
+      // why the login account was silently skipped before.
+      if (isLaravelMode()) {
+        const base = getApiBaseUrl();
+        const laravelPayload: any = {
+          ...payload,
+          create_login: !!form.create_login,
+        };
+        if (form.create_login) {
+          laravelPayload.username = form.username;
+          if (form.password) laravelPayload.password = form.password;
+        }
+        const url = editId ? `${base}/v1/employees/${editId}` : `${base}/v1/employees`;
+        const res = await fetch(url, {
+          method: editId ? "PUT" : "POST",
+          headers: { ...getLaravelAuthHeaders(true) },
+          body: JSON.stringify(laravelPayload),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json?.success === false) {
+          const msg = json?.message || (json?.errors ? Object.values(json.errors).flat().join(", ") : `Save failed (${res.status})`);
+          toast.error(msg);
+          setLoading(false);
+          return;
+        }
+        toast.success(editId ? "Employee updated" : "Employee created");
+        setDialogOpen(false);
+        fetchAll();
+        setLoading(false);
+        return;
+      }
+
       if (editId) {
         const { error } = await supabase.from("employees" as any).update(payload).eq("id", editId);
         if (error) { toast.error(error.message); setLoading(false); return; }
