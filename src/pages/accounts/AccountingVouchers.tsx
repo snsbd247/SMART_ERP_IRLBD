@@ -983,6 +983,22 @@ const AccountingVouchers = () => {
                           />
                         </TableCell>
                         <TableCell className="font-geist-mono text-xs font-medium">{v.voucher_number}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            const vt = VOUCHER_TYPES.find((t) => t.id === v.voucher_type);
+                            const styles: Record<string, string> = {
+                              journal: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200",
+                              payment: "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200",
+                              receipt: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
+                              contra: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
+                            };
+                            return (
+                              <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${styles[v.voucher_type] || "bg-muted text-muted-foreground"}`} title={vt?.label || v.voucher_type}>
+                                {vt?.prefix || v.voucher_type}
+                              </span>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell className="text-sm">{formatDateDMY(v.voucher_date)}</TableCell>
                         <TableCell className="text-sm">{(voucherAccountsMap[v.id] || []).length > 0 ? (voucherAccountsMap[v.id] || []).join(", ") : <span className="text-muted-foreground italic">No ledger entries</span>}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{v.description || "—"}</TableCell>
