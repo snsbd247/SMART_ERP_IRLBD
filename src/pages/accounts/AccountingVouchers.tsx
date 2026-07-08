@@ -882,19 +882,26 @@ const AccountingVouchers = () => {
       {!dialogOpen && (allowedTypes.length === 0 ? (
         <div className="text-center text-muted-foreground py-12">You do not have permission to view any voucher types.</div>
       ) : (
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          {allowedTypes.map((vt) => (
-            <TabsTrigger key={vt.id} value={vt.id}>{vt.label}</TabsTrigger>
-          ))}
-        </TabsList>
-
-        {VOUCHER_TYPES.map((vt) => {
-          // Server already applied search/date/branch filters.
+      <div>
+        {(() => {
+          // Server (single-type) or client (all) already returned filtered data.
           const filteredVouchers = vouchers;
           const q = debouncedSearch.trim();
           return (
-          <TabsContent key={vt.id} value={vt.id}>
+          <div>
+            <div className="mb-3 flex flex-wrap items-end gap-2">
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">Voucher Type</Label>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Vouchers</SelectItem>
+                    {allowedTypes.map((vt) => (
+                      <SelectItem key={vt.id} value={vt.id}>{vt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             <div className="mb-3 flex flex-wrap items-end gap-2">
               <div className="flex flex-col gap-1">
                 <Label className="text-xs text-muted-foreground">Search</Label>
