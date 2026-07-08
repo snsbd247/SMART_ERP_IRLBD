@@ -1366,34 +1366,84 @@ const AccountingVouchers = () => {
       </Card>
       )}
 
-      {/* New Voucher Type Picker */}
-      <Dialog open={newTypePickerOpen} onOpenChange={setNewTypePickerOpen}>
+      {/* New Voucher Type Picker (2-step: choose → preview → approve) */}
+      <Dialog
+        open={newTypePickerOpen}
+        onOpenChange={(open) => {
+          setNewTypePickerOpen(open);
+          if (!open) setPickerPreviewType(null);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Select Voucher Type</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 py-2">
-            {VOUCHER_TYPES.filter((t) => canCreateForType(t.id)).map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => {
-                  setNewVoucherType(t.id);
-                  setNewTypePickerOpen(false);
-                  openCreate();
-                }}
-                className="flex flex-col items-start gap-1 rounded-md border p-4 text-left transition-colors hover:bg-accent hover:border-primary/50"
-              >
-                <span className="text-xs font-mono font-semibold text-primary">{t.prefix}</span>
-                <span className="font-medium">{t.label}</span>
-              </button>
-            ))}
-            {VOUCHER_TYPES.filter((t) => canCreateForType(t.id)).length === 0 && (
-              <div className="col-span-2 text-center text-muted-foreground text-sm py-4">
-                You do not have permission to create any voucher type.
-              </div>
-            )}
-          </div>
+          {(() => {
+            const creatable = VOUCHER_TYPES.filter((t) => canCreateForType(t.id));
+            const TYPE_DESCRIPTIONS: Record<string, string> = {
+              journal: "Non-cash adjustment. Post debit/credit across any ledger accounts (accruals, transfers, corrections).",
+              payment: "Records outgoing cash/bank payment to a supplier, expense, or other party.",
+              receipt: "Records incoming cash/bank receipt from a customer or other source.",
+              contra: "Internal transfer between cash and bank (or bank to bank) accounts.",
+            };
+            if (pickerPreviewType) {
+              const t = VOUCHER_TYPES.find((x) => x.id === pickerPreviewType);
+              return (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>Confirm New {t?.label}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3 py-2">
+                    <div className="rounded-md border bg-muted/40 p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-mono font-semibold bg-primary/10 text-primary">{t?.prefix}</span>
+                        <span className="font-medium">{t?.label}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{TYPE_DESCRIPTIONS[pickerPreviewType]}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Approving will open a blank {t?.label.toLowerCase()} entry form. Nothing is posted until you save.
+                    </p>
+                  </div>
+                  <DialogFooter className="gap-2">
+                    <Button variant="outline" onClick={() => setPickerPreviewType(null)}>Back</Button>
+                    <Button
+                      onClick={() => {
+                        setNewVoucherType(pickerPreviewType);
+                        setPickerPreviewType(null);
+                        setNewTypePickerOpen(false);
+                        openCreate();
+                      }}
+                    >
+                      <Check className="w-4 h-4 mr-1" /> Approve &amp; Continue
+                    </Button>
+                  </DialogFooter>
+                </>
+              );
+            }
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Select Voucher Type</DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-2 gap-3 py-2">
+                  {creatable.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setPickerPreviewType(t.id)}
+                      className="flex flex-col items-start gap-1 rounded-md border p-4 text-left transition-colors hover:bg-accent hover:border-primary/50"
+                    >
+                      <span className="text-xs font-mono font-semibold text-primary">{t.prefix}</span>
+                      <span className="font-medium">{t.label}</span>
+                    </button>
+                  ))}
+                  {creatable.length === 0 && (
+                    <div className="col-span-2 text-center text-muted-foreground text-sm py-4">
+                      You do not have permission to create any voucher type.
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
