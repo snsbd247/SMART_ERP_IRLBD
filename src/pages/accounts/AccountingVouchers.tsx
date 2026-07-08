@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { voucherApi } from "@/lib/voucher-api";
 import { Button } from "@/components/ui/button";
@@ -90,20 +91,38 @@ const AccountingVouchers = () => {
 
   const allowedTypes = VOUCHER_TYPES.filter((vt) => voucherPermMap[vt.id]);
   const TYPE_FILTER_KEY = "accountingVouchers.typeFilter";
-  const [typeFilter, setTypeFilter] = useState<string>(() => {
+  const LAST_NEW_TYPE_KEY = "accountingVouchers.lastNewType";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const validType = (v: string | null | undefined) =>
+    !!v && (v === "all" || VOUCHER_TYPES.some((t) => t.id === v));
+  const [typeFilter, setTypeFilterState] = useState<string>(() => {
+    const url = searchParams.get("type");
+    if (validType(url)) return url as string;
     try {
       const stored = localStorage.getItem(TYPE_FILTER_KEY);
-      if (stored && (stored === "all" || VOUCHER_TYPES.some((t) => t.id === stored))) return stored;
+      if (validType(stored)) return stored as string;
     } catch { /* ignore */ }
     return "all";
   });
+  const setTypeFilter = (v: string) => {
+    setTypeFilterState(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("type"); else next.set("type", v);
+    setSearchParams(next, { replace: true });
+  };
   useEffect(() => {
     try { localStorage.setItem(TYPE_FILTER_KEY, typeFilter); } catch { /* ignore */ }
   }, [typeFilter]);
   const [newTypePickerOpen, setNewTypePickerOpen] = useState(false);
   // 2-step picker: null = choose type, string = preview selected type
   const [pickerPreviewType, setPickerPreviewType] = useState<string | null>(null);
-  const [newVoucherType, setNewVoucherType] = useState<string>(allowedTypes[0]?.id || "journal");
+  const [newVoucherType, setNewVoucherType] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem(LAST_NEW_TYPE_KEY);
+      if (stored && VOUCHER_TYPES.some((t) => t.id === stored)) return stored;
+    } catch { /* ignore */ }
+    return allowedTypes[0]?.id || "journal";
+  });
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -886,7 +905,15 @@ const AccountingVouchers = () => {
             </Button>
           )}
           {allowedTypes.length > 0 && (
-            <Button onClick={() => setNewTypePickerOpen(true)} size="sm"><Plus className="w-4 h-4 mr-1" />New Voucher</Button>
+            <Button onClick={() => {
+              // Preselect last chosen type if user still has permission.
+              if (newVoucherType && canCreateForType(newVoucherType)) {
+                setPickerPreviewType(newVoucherType);
+              } else {
+                setPickerPreviewType(null);
+              }
+              setNewTypePickerOpen(true);
+            }} size="sm"><Plus className="w-4 h-4 mr-1" />New Voucher</Button>
           )}
         </div>
       </div>
@@ -1402,18 +1429,55 @@ const AccountingVouchers = () => {
                       Approving will open a blank {t?.label.toLowerCase()} entry form. Nothing is posted until you save.
                     </p>
                   </div>
-                  <DialogFooter className="gap-2">
-                    <Button variant="outline" onClick={() => setPickerPreviewType(null)}>Back</Button>
+                  <DialogFooter className="gap-2 sm:justify-between">
                     <Button
-                      onClick={() => {
-                        setNewVoucherType(pickerPreviewType);
-                        setPickerPreviewType(null);
-                        setNewTypePickerOpen(false);
-                        openCreate();
-                      }}
+                      variant="ghost"
+                      onClick={() => { setNewTypePickerOpen(false); setPickerPreviewType(null); }}
                     >
-                      <Check className="w-4 h-4 mr-1" /> Approve &amp; Continue
+                      Cancel
                     </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setPickerPreviewType(null)}>Back</Button>
+                      <Button
+                        onClick={async () => {
+                          // Final permission check — role may have changed since dialog opened.
+                          const type = pickerPreviewType;
+                          if (!type || !VOUCHER_TYPES.some((v) => v.id === type)) {
+                            toast({ title: "Invalid voucher type", description: "Please pick a valid type.", variant: "destructive" });
+                            setPickerPreviewType(null);
+                            return;
+                          }
+                          const check = evalPerm(type, "create");
+                          if (!check.allowed) {
+                            toast({
+                              title: "Permission denied",
+                              description: `${check.reason} (ref: ${check.correlationId})`,
+                              variant: "destructive",
+                            });
+                            setPickerPreviewType(null);
+                            setNewTypePickerOpen(false);
+                            return;
+                          }
+                          // Persist last chosen type.
+                          setNewVoucherType(type);
+                          try { localStorage.setItem(LAST_NEW_TYPE_KEY, type); } catch { /* ignore */ }
+                          // Audit log the approval decision.
+                          try {
+                            await logAudit({
+                              userId: user?.id,
+                              module: "accounting",
+                              action: "voucher_type_approved",
+                              newData: { voucher_type: type, approved_at: new Date().toISOString() },
+                            });
+                          } catch { /* audit failures must never block */ }
+                          setPickerPreviewType(null);
+                          setNewTypePickerOpen(false);
+                          openCreate();
+                        }}
+                      >
+                        <Check className="w-4 h-4 mr-1" /> Approve &amp; Continue
+                      </Button>
+                    </div>
                   </DialogFooter>
                 </>
               );
@@ -1424,17 +1488,21 @@ const AccountingVouchers = () => {
                   <DialogTitle>Select Voucher Type</DialogTitle>
                 </DialogHeader>
                 <div className="grid grid-cols-2 gap-3 py-2">
-                  {creatable.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setPickerPreviewType(t.id)}
-                      className="flex flex-col items-start gap-1 rounded-md border p-4 text-left transition-colors hover:bg-accent hover:border-primary/50"
-                    >
-                      <span className="text-xs font-mono font-semibold text-primary">{t.prefix}</span>
-                      <span className="font-medium">{t.label}</span>
-                    </button>
-                  ))}
+                  {creatable.map((t) => {
+                    const isLast = t.id === newVoucherType;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setPickerPreviewType(t.id)}
+                        className={`flex flex-col items-start gap-1 rounded-md border p-4 text-left transition-colors hover:bg-accent hover:border-primary/50 ${isLast ? "border-primary/60 bg-primary/5" : ""}`}
+                      >
+                        <span className="text-xs font-mono font-semibold text-primary">{t.prefix}</span>
+                        <span className="font-medium">{t.label}</span>
+                        {isLast && <span className="text-[10px] text-muted-foreground">Last used</span>}
+                      </button>
+                    );
+                  })}
                   {creatable.length === 0 && (
                     <div className="col-span-2 text-center text-muted-foreground text-sm py-4">
                       You do not have permission to create any voucher type.
