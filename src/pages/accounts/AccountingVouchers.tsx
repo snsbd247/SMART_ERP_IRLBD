@@ -883,12 +883,6 @@ const AccountingVouchers = () => {
         <div className="text-center text-muted-foreground py-12">You do not have permission to view any voucher types.</div>
       ) : (
       <div>
-        {(() => {
-          // Server (single-type) or client (all) already returned filtered data.
-          const filteredVouchers = vouchers;
-          const q = debouncedSearch.trim();
-          return (
-          <div>
             <div className="mb-3 flex flex-wrap items-end gap-2">
               <div className="flex flex-col gap-1">
                 <Label className="text-xs text-muted-foreground">Voucher Type</Label>
