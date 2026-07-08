@@ -91,20 +91,38 @@ const AccountingVouchers = () => {
 
   const allowedTypes = VOUCHER_TYPES.filter((vt) => voucherPermMap[vt.id]);
   const TYPE_FILTER_KEY = "accountingVouchers.typeFilter";
-  const [typeFilter, setTypeFilter] = useState<string>(() => {
+  const LAST_NEW_TYPE_KEY = "accountingVouchers.lastNewType";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const validType = (v: string | null | undefined) =>
+    !!v && (v === "all" || VOUCHER_TYPES.some((t) => t.id === v));
+  const [typeFilter, setTypeFilterState] = useState<string>(() => {
+    const url = searchParams.get("type");
+    if (validType(url)) return url as string;
     try {
       const stored = localStorage.getItem(TYPE_FILTER_KEY);
-      if (stored && (stored === "all" || VOUCHER_TYPES.some((t) => t.id === stored))) return stored;
+      if (validType(stored)) return stored as string;
     } catch { /* ignore */ }
     return "all";
   });
+  const setTypeFilter = (v: string) => {
+    setTypeFilterState(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("type"); else next.set("type", v);
+    setSearchParams(next, { replace: true });
+  };
   useEffect(() => {
     try { localStorage.setItem(TYPE_FILTER_KEY, typeFilter); } catch { /* ignore */ }
   }, [typeFilter]);
   const [newTypePickerOpen, setNewTypePickerOpen] = useState(false);
   // 2-step picker: null = choose type, string = preview selected type
   const [pickerPreviewType, setPickerPreviewType] = useState<string | null>(null);
-  const [newVoucherType, setNewVoucherType] = useState<string>(allowedTypes[0]?.id || "journal");
+  const [newVoucherType, setNewVoucherType] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem(LAST_NEW_TYPE_KEY);
+      if (stored && VOUCHER_TYPES.some((t) => t.id === stored)) return stored;
+    } catch { /* ignore */ }
+    return allowedTypes[0]?.id || "journal";
+  });
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [accounts, setAccounts] = useState<Account[]>([]);
