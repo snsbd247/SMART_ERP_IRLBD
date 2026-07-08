@@ -437,14 +437,14 @@ const AccountingVouchers = () => {
   };
 
   const canEditVoucher = (v: Voucher) => {
-    if (v.status === "draft" || v.status === "rejected" || v.status === "approved") return canEditForType(v.voucher_type || activeTab);
+    if (v.status === "draft" || v.status === "rejected" || v.status === "approved") return canEditForType(v.voucher_type);
     return false;
   };
 
   const canDeleteVoucher = (v: Voucher) => {
     // Super Admin can permanently delete a voucher in ANY status.
     if (isSuperAdmin) return true;
-    if (v.status === "draft" || v.status === "rejected") return canDeleteForType(activeTab);
+    if (v.status === "draft" || v.status === "rejected") return canDeleteForType(v.voucher_type);
     return false;
   };
 
