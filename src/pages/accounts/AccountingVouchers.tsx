@@ -514,7 +514,7 @@ const AccountingVouchers = () => {
     try {
       if (editingVoucher) {
         // Editing existing voucher
-        if (editingVoucher.status === "approved" && isSuperAdmin && !canEditForType(editingVoucher.voucher_type || activeTab)) {
+        if (editingVoucher.status === "approved" && isSuperAdmin && !canEditForType(editingVoucher.voucher_type)) {
           await voucherApi.editApproved({
             id: editingVoucher.id,
             voucher_date: formDate,
