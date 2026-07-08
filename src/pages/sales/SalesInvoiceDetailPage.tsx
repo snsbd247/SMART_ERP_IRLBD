@@ -87,9 +87,9 @@ const SalesInvoiceDetailPage = () => {
         vat_rate: item.vat_rate ?? DEFAULT_VAT_RATE,
       })));
     }
-    const allocs = ((allocRes.data as any[]) || []);
+    const allocs = ((allocRes.data as any[]) || []).filter((a: any) => a.payment && !a.payment.deleted_at);
     setPaidAmount(allocs.reduce((s: number, a: any) => s + Number(a.allocated_amount || 0), 0));
-    setPayments(allocs.filter(a => a.payment).map(a => ({ ...a.payment, allocation_id: a.id, allocated_amount: Number(a.allocated_amount || 0) })));
+    setPayments(allocs.map(a => ({ ...a.payment, allocation_id: a.id, allocated_amount: Number(a.allocated_amount || 0) })));
     setLoading(false);
   };
 
