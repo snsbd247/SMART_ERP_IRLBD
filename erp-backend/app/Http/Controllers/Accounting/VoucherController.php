@@ -420,11 +420,8 @@ class VoucherController extends BaseController
     {
         $voucher = AccVoucher::findOrFail($id);
         $user = $request->user();
-        // Soft delete is Super-Admin-only across every status, matching the
-        // Supabase edge function behaviour (see supabase/functions/voucher-api).
-        if (!$user->isSuperAdmin()) {
-            return $this->error('Only Super Admin can delete vouchers', 403);
-        }
+        // Permission enforced by route middleware (permission:accounts.delete).
+        // Any role granted delete on accounts/vouchers/<type> can soft-delete.
         if ($voucher->deleted_at) {
             return $this->error('Voucher already deleted', 422);
         }
@@ -440,9 +437,7 @@ class VoucherController extends BaseController
     public function restore(Request $request, string $id)
     {
         $user = $request->user();
-        if (!$user->isSuperAdmin()) {
-            return $this->error('Only Super Admin can restore vouchers', 403);
-        }
+        // Permission enforced by route middleware (permission:accounts.edit).
         $voucher = AccVoucher::findOrFail($id);
         if (!$voucher->deleted_at) {
             return $this->error('Voucher is not deleted', 422);
