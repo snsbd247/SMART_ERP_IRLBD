@@ -1119,8 +1119,6 @@ const AccountingVouchers = () => {
               </div>
             </div>
           </div>
-          );
-        })()}
       </div>
       ))}
 
