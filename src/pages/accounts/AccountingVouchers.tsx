@@ -176,26 +176,59 @@ const AccountingVouchers = () => {
   }, [searchQuery]);
 
   // Reset to page 1 whenever filters change.
-  useEffect(() => { setPage(1); }, [debouncedSearch, filterFrom, filterTo, activeTab, showDeleted]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, filterFrom, filterTo, typeFilter, showDeleted]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [vRes, aRes, bRes, fRes] = await Promise.all([
-        voucherApi.list(activeTab, showDeleted, {
-          search: debouncedSearch || undefined,
-          from: filterFrom || undefined,
-          to: filterTo || undefined,
-          page,
-          per_page: perPage,
-        }),
+      const listParams = {
+        search: debouncedSearch || undefined,
+        from: filterFrom || undefined,
+        to: filterTo || undefined,
+      };
+      // "all" — fetch each allowed type in parallel and merge client-side.
+      // Otherwise use existing per-type paginated call.
+      const typesToFetch = typeFilter === "all"
+        ? allowedTypes.map((t) => t.id)
+        : [typeFilter];
+
+      let vList: Voucher[] = [];
+      let totalAcrossTypes = 0;
+
+      if (typeFilter === "all") {
+        const results = await Promise.all(
+          typesToFetch.map((t) =>
+            voucherApi.list(t, showDeleted, { ...listParams, page: 1, per_page: 500 })
+          )
+        );
+        results.forEach((r) => {
+          vList = vList.concat((r.data || []) as Voucher[]);
+          totalAcrossTypes += Number((r as any).total ?? (r.data || []).length) || 0;
+        });
+        // sort by date desc, then created_at desc
+        vList.sort((a, b) => {
+          const d = (b.voucher_date || "").localeCompare(a.voucher_date || "");
+          if (d !== 0) return d;
+          return (b.created_at || "").localeCompare(a.created_at || "");
+        });
+        // client-side pagination for merged view
+        const start = (page - 1) * perPage;
+        const paged = vList.slice(start, start + perPage);
+        setVouchers(paged);
+        setTotalCount(totalAcrossTypes);
+        vList = paged;
+      } else {
+        const vRes = await voucherApi.list(typeFilter, showDeleted, { ...listParams, page, per_page: perPage });
+        vList = (vRes.data || []) as Voucher[];
+        setVouchers(vList);
+        setTotalCount(Number((vRes as any).total ?? vList.length) || 0);
+      }
+
+      const [aRes, bRes, fRes] = await Promise.all([
         voucherApi.listAccounts(),
         voucherApi.listBranches(),
         voucherApi.listFinancialYears(),
       ]);
-      const vList = (vRes.data || []) as Voucher[];
-      setVouchers(vList);
-      setTotalCount(Number((vRes as any).total ?? vList.length) || 0);
       setAccounts((aRes.data || []) as Account[]);
       setBranches((bRes.data || []) as Branch[]);
       setFinYears((fRes.data || []) as FinYear[]);
@@ -213,7 +246,8 @@ const AccountingVouchers = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, showDeleted, debouncedSearch, filterFrom, filterTo, page, perPage, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeFilter, showDeleted, debouncedSearch, filterFrom, filterTo, page, perPage, toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
