@@ -475,8 +475,11 @@ const AccountingVouchers = () => {
   const canDeleteVoucher = (v: Voucher) => {
     // Super Admin can permanently delete a voucher in ANY status.
     if (isSuperAdmin) return true;
-    if (v.status === "draft" || v.status === "rejected") return canDeleteForType(v.voucher_type);
-    return false;
+    // Any role with delete permission for this voucher type (per-type,
+    // vouchers.* umbrella, or accounts.* module-wide) can delete regardless
+    // of status. Approved vouchers move to trash and can be restored by
+    // a Super Admin — same audit trail as before.
+    return canDeleteForType(v.voucher_type);
   };
 
   const handleSave = async (submitForApproval: boolean, resetForNew: boolean = false) => {
