@@ -25,15 +25,19 @@ class CheckPermission
             return $next($request);
         }
 
-        if (!$user->hasPermission($permission)) {
-            Log::warning("Permission denied: {$permission} for user {$user->id} ({$user->name})");
-            return response()->json([
-                'success' => false,
-                'message' => "Permission denied: {$permission}",
-            ], 403);
+        // Support pipe-separated OR list, e.g. "accounts.delete|vouchers.delete|journal.delete"
+        $candidates = array_filter(array_map('trim', explode('|', $permission)));
+        foreach ($candidates as $perm) {
+            if ($user->hasPermission($perm)) {
+                Log::debug("Permission granted: {$perm} for user {$user->id}");
+                return $next($request);
+            }
         }
 
-        Log::debug("Permission granted: {$permission} for user {$user->id}");
-        return $next($request);
+        Log::warning("Permission denied: {$permission} for user {$user->id} ({$user->name})");
+        return response()->json([
+            'success' => false,
+            'message' => "Permission denied: {$permission}",
+        ], 403);
     }
 }
