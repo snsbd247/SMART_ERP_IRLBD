@@ -48,10 +48,30 @@ class VoucherRepository extends BaseRepository
 
     protected function applySearch(Builder $query, string $search): Builder
     {
-        $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], trim($search)) . '%';
-        return $query->where(function (Builder $q) use ($term) {
+        $raw = trim($search);
+        $term = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $raw) . '%';
+        // Extract a numeric amount if the search string looks like a number
+        // (supports "1,000.50" and "1000.5"). Matches against total_amount.
+        $numeric = null;
+        $numClean = str_replace(',', '', $raw);
+        if (is_numeric($numClean)) {
+            $numeric = (float) $numClean;
+        }
+        return $query->where(function (Builder $q) use ($term, $numeric) {
             $q->where('voucher_number', 'like', $term)
-              ->orWhere('description', 'like', $term);
+              ->orWhere('description', 'like', $term)
+              // Ledger name / code via voucher_entries → chart_of_accounts
+              ->orWhereHas('entries.account', function (Builder $a) use ($term) {
+                  $a->where('account_name', 'like', $term)
+                    ->orWhere('account_code', 'like', $term);
+              });
+            if ($numeric !== null) {
+                // Exact amount match, plus per-entry debit/credit amount match.
+                $q->orWhere('total_amount', $numeric)
+                  ->orWhereHas('entries', function (Builder $e) use ($numeric) {
+                      $e->where('debit', $numeric)->orWhere('credit', $numeric);
+                  });
+            }
         });
     }
 
