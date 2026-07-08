@@ -1429,18 +1429,55 @@ const AccountingVouchers = () => {
                       Approving will open a blank {t?.label.toLowerCase()} entry form. Nothing is posted until you save.
                     </p>
                   </div>
-                  <DialogFooter className="gap-2">
-                    <Button variant="outline" onClick={() => setPickerPreviewType(null)}>Back</Button>
+                  <DialogFooter className="gap-2 sm:justify-between">
                     <Button
-                      onClick={() => {
-                        setNewVoucherType(pickerPreviewType);
-                        setPickerPreviewType(null);
-                        setNewTypePickerOpen(false);
-                        openCreate();
-                      }}
+                      variant="ghost"
+                      onClick={() => { setNewTypePickerOpen(false); setPickerPreviewType(null); }}
                     >
-                      <Check className="w-4 h-4 mr-1" /> Approve &amp; Continue
+                      Cancel
                     </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setPickerPreviewType(null)}>Back</Button>
+                      <Button
+                        onClick={async () => {
+                          // Final permission check — role may have changed since dialog opened.
+                          const type = pickerPreviewType;
+                          if (!type || !VOUCHER_TYPES.some((v) => v.id === type)) {
+                            toast({ title: "Invalid voucher type", description: "Please pick a valid type.", variant: "destructive" });
+                            setPickerPreviewType(null);
+                            return;
+                          }
+                          const check = evalPerm(type, "create");
+                          if (!check.allowed) {
+                            toast({
+                              title: "Permission denied",
+                              description: `${check.reason} (ref: ${check.correlationId})`,
+                              variant: "destructive",
+                            });
+                            setPickerPreviewType(null);
+                            setNewTypePickerOpen(false);
+                            return;
+                          }
+                          // Persist last chosen type.
+                          setNewVoucherType(type);
+                          try { localStorage.setItem(LAST_NEW_TYPE_KEY, type); } catch { /* ignore */ }
+                          // Audit log the approval decision.
+                          try {
+                            await logAudit({
+                              userId: user?.id,
+                              module: "accounting",
+                              action: "voucher_type_approved",
+                              newData: { voucher_type: type, approved_at: new Date().toISOString() },
+                            });
+                          } catch { /* audit failures must never block */ }
+                          setPickerPreviewType(null);
+                          setNewTypePickerOpen(false);
+                          openCreate();
+                        }}
+                      >
+                        <Check className="w-4 h-4 mr-1" /> Approve &amp; Continue
+                      </Button>
+                    </div>
                   </DialogFooter>
                 </>
               );
