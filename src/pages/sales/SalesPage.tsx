@@ -212,7 +212,7 @@ const SalesPage = () => {
   const openPrint = async (inv: SalesInvoice) => {
     const [itemsRes, allocRes] = await Promise.all([
       supabase.from("sales_invoice_items").select("*").eq("sales_invoice_id", inv.id),
-      supabase.from("payment_allocations" as any).select("allocated_amount").eq("invoice_id", inv.id).eq("invoice_type", "sales_invoice"),
+      supabase.from("payment_allocations" as any).select("allocated_amount, payment:party_payments!inner(deleted_at)").eq("invoice_id", inv.id).eq("invoice_type", "sales_invoice").is("payment.deleted_at", null),
     ]);
     const enriched = (itemsRes.data || []).map((d: any) => {
       const prod = products.find((p) => p.id === d.product_id);
