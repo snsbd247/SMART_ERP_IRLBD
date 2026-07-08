@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import { AccountCombobox } from "@/components/accounts/AccountCombobox";
 import { useAccountBalances } from "@/hooks/useAccountBalances";
@@ -89,8 +89,9 @@ const AccountingVouchers = () => {
   const canDeleteForType = (type: string) => evalPerm(type, "delete").allowed;
 
   const allowedTypes = VOUCHER_TYPES.filter((vt) => voucherPermMap[vt.id]);
-  const defaultTab = allowedTypes.length > 0 ? allowedTypes[0].id : "journal";
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [newTypePickerOpen, setNewTypePickerOpen] = useState(false);
+  const [newVoucherType, setNewVoucherType] = useState<string>(allowedTypes[0]?.id || "journal");
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -175,26 +176,59 @@ const AccountingVouchers = () => {
   }, [searchQuery]);
 
   // Reset to page 1 whenever filters change.
-  useEffect(() => { setPage(1); }, [debouncedSearch, filterFrom, filterTo, activeTab, showDeleted]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, filterFrom, filterTo, typeFilter, showDeleted]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [vRes, aRes, bRes, fRes] = await Promise.all([
-        voucherApi.list(activeTab, showDeleted, {
-          search: debouncedSearch || undefined,
-          from: filterFrom || undefined,
-          to: filterTo || undefined,
-          page,
-          per_page: perPage,
-        }),
+      const listParams = {
+        search: debouncedSearch || undefined,
+        from: filterFrom || undefined,
+        to: filterTo || undefined,
+      };
+      // "all" — fetch each allowed type in parallel and merge client-side.
+      // Otherwise use existing per-type paginated call.
+      const typesToFetch = typeFilter === "all"
+        ? allowedTypes.map((t) => t.id)
+        : [typeFilter];
+
+      let vList: Voucher[] = [];
+      let totalAcrossTypes = 0;
+
+      if (typeFilter === "all") {
+        const results = await Promise.all(
+          typesToFetch.map((t) =>
+            voucherApi.list(t, showDeleted, { ...listParams, page: 1, per_page: 500 })
+          )
+        );
+        results.forEach((r) => {
+          vList = vList.concat((r.data || []) as Voucher[]);
+          totalAcrossTypes += Number((r as any).total ?? (r.data || []).length) || 0;
+        });
+        // sort by date desc, then created_at desc
+        vList.sort((a, b) => {
+          const d = (b.voucher_date || "").localeCompare(a.voucher_date || "");
+          if (d !== 0) return d;
+          return (b.created_at || "").localeCompare(a.created_at || "");
+        });
+        // client-side pagination for merged view
+        const start = (page - 1) * perPage;
+        const paged = vList.slice(start, start + perPage);
+        setVouchers(paged);
+        setTotalCount(totalAcrossTypes);
+        vList = paged;
+      } else {
+        const vRes = await voucherApi.list(typeFilter, showDeleted, { ...listParams, page, per_page: perPage });
+        vList = (vRes.data || []) as Voucher[];
+        setVouchers(vList);
+        setTotalCount(Number((vRes as any).total ?? vList.length) || 0);
+      }
+
+      const [aRes, bRes, fRes] = await Promise.all([
         voucherApi.listAccounts(),
         voucherApi.listBranches(),
         voucherApi.listFinancialYears(),
       ]);
-      const vList = (vRes.data || []) as Voucher[];
-      setVouchers(vList);
-      setTotalCount(Number((vRes as any).total ?? vList.length) || 0);
       setAccounts((aRes.data || []) as Account[]);
       setBranches((bRes.data || []) as Branch[]);
       setFinYears((fRes.data || []) as FinYear[]);
@@ -212,7 +246,8 @@ const AccountingVouchers = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, showDeleted, debouncedSearch, filterFrom, filterTo, page, perPage, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeFilter, showDeleted, debouncedSearch, filterFrom, filterTo, page, perPage, toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -402,14 +437,14 @@ const AccountingVouchers = () => {
   };
 
   const canEditVoucher = (v: Voucher) => {
-    if (v.status === "draft" || v.status === "rejected" || v.status === "approved") return canEditForType(v.voucher_type || activeTab);
+    if (v.status === "draft" || v.status === "rejected" || v.status === "approved") return canEditForType(v.voucher_type);
     return false;
   };
 
   const canDeleteVoucher = (v: Voucher) => {
     // Super Admin can permanently delete a voucher in ANY status.
     if (isSuperAdmin) return true;
-    if (v.status === "draft" || v.status === "rejected") return canDeleteForType(activeTab);
+    if (v.status === "draft" || v.status === "rejected") return canDeleteForType(v.voucher_type);
     return false;
   };
 
@@ -479,7 +514,7 @@ const AccountingVouchers = () => {
     try {
       if (editingVoucher) {
         // Editing existing voucher
-        if (editingVoucher.status === "approved" && isSuperAdmin && !canEditForType(editingVoucher.voucher_type || activeTab)) {
+        if (editingVoucher.status === "approved" && isSuperAdmin && !canEditForType(editingVoucher.voucher_type)) {
           await voucherApi.editApproved({
             id: editingVoucher.id,
             voucher_date: formDate,
@@ -513,7 +548,7 @@ const AccountingVouchers = () => {
         }
       } else {
         await voucherApi.create({
-          voucher_type: activeTab,
+          voucher_type: newVoucherType,
           voucher_date: formDate,
           branch_id: formBranch || undefined,
           financial_year_id: resolvedFinancialYearId || undefined,
@@ -552,7 +587,7 @@ const AccountingVouchers = () => {
           action: editingVoucher ? "voucher_edit_balance_impact" : "voucher_create_balance_impact",
           recordId: editingVoucher?.id,
           newData: {
-            voucher_type: activeTab,
+            voucher_type: editingVoucher?.voucher_type || newVoucherType,
             voucher_date: formDate,
             total_debit: totalDebit,
             total_credit: totalCredit,
@@ -719,7 +754,7 @@ const AccountingVouchers = () => {
 
   // ============ Bulk actions ============
   // Clear selection whenever the list changes (tab / filters / page / trash toggle).
-  useEffect(() => { setSelectedIds(new Set()); }, [activeTab, showDeleted, debouncedSearch, filterFrom, filterTo, page, perPage]);
+  useEffect(() => { setSelectedIds(new Set()); }, [typeFilter, showDeleted, debouncedSearch, filterFrom, filterTo, page, perPage]);
 
   const isBulkDeletable = (v: Voucher) => canDeleteVoucher(v) && !(v as any).deleted_at;
   const isBulkTransferable = (v: Voucher) =>
@@ -838,8 +873,8 @@ const AccountingVouchers = () => {
               {showDeleted ? "Showing Trash" : "Show Deleted"}
             </Button>
           )}
-          {canCreateForType(activeTab) && (
-            <Button onClick={openCreate} size="sm"><Plus className="w-4 h-4 mr-1" />New Voucher</Button>
+          {allowedTypes.length > 0 && (
+            <Button onClick={() => setNewTypePickerOpen(true)} size="sm"><Plus className="w-4 h-4 mr-1" />New Voucher</Button>
           )}
         </div>
       </div>
@@ -847,19 +882,20 @@ const AccountingVouchers = () => {
       {!dialogOpen && (allowedTypes.length === 0 ? (
         <div className="text-center text-muted-foreground py-12">You do not have permission to view any voucher types.</div>
       ) : (
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          {allowedTypes.map((vt) => (
-            <TabsTrigger key={vt.id} value={vt.id}>{vt.label}</TabsTrigger>
-          ))}
-        </TabsList>
-
-        {VOUCHER_TYPES.map((vt) => {
-          // Server already applied search/date/branch filters.
-          const filteredVouchers = vouchers;
-          const q = debouncedSearch.trim();
-          return (
-          <TabsContent key={vt.id} value={vt.id}>
+      <div>
+            <div className="mb-3 flex flex-wrap items-end gap-2">
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">Voucher Type</Label>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Vouchers</SelectItem>
+                    {allowedTypes.map((vt) => (
+                      <SelectItem key={vt.id} value={vt.id}>{vt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             <div className="mb-3 flex flex-wrap items-end gap-2">
               <div className="flex flex-col gap-1">
                 <Label className="text-xs text-muted-foreground">Search</Label>
@@ -878,7 +914,7 @@ const AccountingVouchers = () => {
                 <Label className="text-xs text-muted-foreground">To</Label>
                 <DateInput value={filterTo} onChange={(v) => setFilterTo(v)} />
               </div>
-              {(filterFrom || filterTo || q) && (
+              {(filterFrom || filterTo || debouncedSearch.trim()) && (
                 <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearchQuery(""); setFilterFrom(""); setFilterTo(""); }}>
                   Clear
                 </Button>
@@ -922,6 +958,7 @@ const AccountingVouchers = () => {
                         />
                       </TableHead>
                       <TableHead>Voucher #</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Ledger / Accounts</TableHead>
                       <TableHead>Description</TableHead>
@@ -933,10 +970,10 @@ const AccountingVouchers = () => {
                   </TableHeader>
                   <TableBody>
                     {loading ? (
-                      <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
-                    ) : filteredVouchers.length === 0 ? (
-                      <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">{q || filterFrom || filterTo ? "No vouchers match your filters" : "No vouchers yet"}</TableCell></TableRow>
-                    ) : filteredVouchers.map((v) => (
+                      <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
+                    ) : vouchers.length === 0 ? (
+                      <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">{debouncedSearch.trim() || filterFrom || filterTo ? "No vouchers match your filters" : "No vouchers yet"}</TableCell></TableRow>
+                    ) : vouchers.map((v) => (
                       <TableRow key={v.id} data-state={selectedIds.has(v.id) ? "selected" : undefined}>
                         <TableCell>
                           <Checkbox
@@ -946,6 +983,22 @@ const AccountingVouchers = () => {
                           />
                         </TableCell>
                         <TableCell className="font-geist-mono text-xs font-medium">{v.voucher_number}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            const vt = VOUCHER_TYPES.find((t) => t.id === v.voucher_type);
+                            const styles: Record<string, string> = {
+                              journal: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200",
+                              payment: "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200",
+                              receipt: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
+                              contra: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
+                            };
+                            return (
+                              <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${styles[v.voucher_type] || "bg-muted text-muted-foreground"}`} title={vt?.label || v.voucher_type}>
+                                {vt?.prefix || v.voucher_type}
+                              </span>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell className="text-sm">{formatDateDMY(v.voucher_date)}</TableCell>
                         <TableCell className="text-sm">{(voucherAccountsMap[v.id] || []).length > 0 ? (voucherAccountsMap[v.id] || []).join(", ") : <span className="text-muted-foreground italic">No ledger entries</span>}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{v.description || "—"}</TableCell>
@@ -1052,7 +1105,7 @@ const AccountingVouchers = () => {
                               </Button>
                             )}
                             {/* Admin: Approve/Reject pending */}
-                            {v.status === "pending" && canEditForType(activeTab) && (
+                            {v.status === "pending" && canEditForType(v.voucher_type) && (
                               <>
                                 <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Approve voucher" onClick={() => handleApprove(v)} title="Approve">
                                   <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -1082,10 +1135,8 @@ const AccountingVouchers = () => {
                 <Button variant="outline" size="sm" className="h-8" disabled={page >= totalPages || loading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
               </div>
             </div>
-          </TabsContent>
-          );
-        })}
-      </Tabs>
+          </div>
+      </div>
       ))}
 
       {/* Create/Edit Voucher Page */}
@@ -1093,7 +1144,7 @@ const AccountingVouchers = () => {
       <Card className="border-primary/20">
         <CardHeader className="py-3 px-4 border-b flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">
-            {editingVoucher ? `Edit ${VOUCHER_TYPES.find((v) => v.id === editingVoucher.voucher_type)?.label || "Voucher"} — ${editingVoucher.voucher_number}` : `New ${VOUCHER_TYPES.find((v) => v.id === activeTab)?.label}`}
+            {editingVoucher ? `Edit ${VOUCHER_TYPES.find((v) => v.id === editingVoucher.voucher_type)?.label || "Voucher"} — ${editingVoucher.voucher_number}` : `New ${VOUCHER_TYPES.find((v) => v.id === newVoucherType)?.label}`}
             {editingVoucher?.status === "approved" && isSuperAdmin && <Badge variant="outline" className="ml-2 text-xs">Super Admin Override</Badge>}
           </CardTitle>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setDialogOpen(false); setEditingVoucher(null); }}>
@@ -1302,6 +1353,37 @@ const AccountingVouchers = () => {
         </CardContent>
       </Card>
       )}
+
+      {/* New Voucher Type Picker */}
+      <Dialog open={newTypePickerOpen} onOpenChange={setNewTypePickerOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Voucher Type</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 py-2">
+            {VOUCHER_TYPES.filter((t) => canCreateForType(t.id)).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setNewVoucherType(t.id);
+                  setNewTypePickerOpen(false);
+                  openCreate();
+                }}
+                className="flex flex-col items-start gap-1 rounded-md border p-4 text-left transition-colors hover:bg-accent hover:border-primary/50"
+              >
+                <span className="text-xs font-mono font-semibold text-primary">{t.prefix}</span>
+                <span className="font-medium">{t.label}</span>
+              </button>
+            ))}
+            {VOUCHER_TYPES.filter((t) => canCreateForType(t.id)).length === 0 && (
+              <div className="col-span-2 text-center text-muted-foreground text-sm py-4">
+                You do not have permission to create any voucher type.
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Super Admin Confirmation Dialog */}
       <AlertDialog open={!!superAdminAction} onOpenChange={() => setSuperAdminAction(null)}>
