@@ -873,8 +873,8 @@ const AccountingVouchers = () => {
               {showDeleted ? "Showing Trash" : "Show Deleted"}
             </Button>
           )}
-          {canCreateForType(activeTab) && (
-            <Button onClick={openCreate} size="sm"><Plus className="w-4 h-4 mr-1" />New Voucher</Button>
+          {allowedTypes.length > 0 && (
+            <Button onClick={() => setNewTypePickerOpen(true)} size="sm"><Plus className="w-4 h-4 mr-1" />New Voucher</Button>
           )}
         </div>
       </div>
