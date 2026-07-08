@@ -1488,17 +1488,21 @@ const AccountingVouchers = () => {
                   <DialogTitle>Select Voucher Type</DialogTitle>
                 </DialogHeader>
                 <div className="grid grid-cols-2 gap-3 py-2">
-                  {creatable.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setPickerPreviewType(t.id)}
-                      className="flex flex-col items-start gap-1 rounded-md border p-4 text-left transition-colors hover:bg-accent hover:border-primary/50"
-                    >
-                      <span className="text-xs font-mono font-semibold text-primary">{t.prefix}</span>
-                      <span className="font-medium">{t.label}</span>
-                    </button>
-                  ))}
+                  {creatable.map((t) => {
+                    const isLast = t.id === newVoucherType;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setPickerPreviewType(t.id)}
+                        className={`flex flex-col items-start gap-1 rounded-md border p-4 text-left transition-colors hover:bg-accent hover:border-primary/50 ${isLast ? "border-primary/60 bg-primary/5" : ""}`}
+                      >
+                        <span className="text-xs font-mono font-semibold text-primary">{t.prefix}</span>
+                        <span className="font-medium">{t.label}</span>
+                        {isLast && <span className="text-[10px] text-muted-foreground">Last used</span>}
+                      </button>
+                    );
+                  })}
                   {creatable.length === 0 && (
                     <div className="col-span-2 text-center text-muted-foreground text-sm py-4">
                       You do not have permission to create any voucher type.
