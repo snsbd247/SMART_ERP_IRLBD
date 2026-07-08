@@ -754,7 +754,7 @@ const AccountingVouchers = () => {
 
   // ============ Bulk actions ============
   // Clear selection whenever the list changes (tab / filters / page / trash toggle).
-  useEffect(() => { setSelectedIds(new Set()); }, [activeTab, showDeleted, debouncedSearch, filterFrom, filterTo, page, perPage]);
+  useEffect(() => { setSelectedIds(new Set()); }, [typeFilter, showDeleted, debouncedSearch, filterFrom, filterTo, page, perPage]);
 
   const isBulkDeletable = (v: Voucher) => canDeleteVoucher(v) && !(v as any).deleted_at;
   const isBulkTransferable = (v: Voucher) =>
