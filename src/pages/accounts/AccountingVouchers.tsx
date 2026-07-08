@@ -89,8 +89,9 @@ const AccountingVouchers = () => {
   const canDeleteForType = (type: string) => evalPerm(type, "delete").allowed;
 
   const allowedTypes = VOUCHER_TYPES.filter((vt) => voucherPermMap[vt.id]);
-  const defaultTab = allowedTypes.length > 0 ? allowedTypes[0].id : "journal";
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [newTypePickerOpen, setNewTypePickerOpen] = useState(false);
+  const [newVoucherType, setNewVoucherType] = useState<string>(allowedTypes[0]?.id || "journal");
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [accounts, setAccounts] = useState<Account[]>([]);
