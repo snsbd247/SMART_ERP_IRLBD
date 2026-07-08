@@ -970,9 +970,9 @@ const AccountingVouchers = () => {
                   <TableBody>
                     {loading ? (
                       <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
-                    ) : filteredVouchers.length === 0 ? (
-                      <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground">{q || filterFrom || filterTo ? "No vouchers match your filters" : "No vouchers yet"}</TableCell></TableRow>
-                    ) : filteredVouchers.map((v) => (
+                    ) : vouchers.length === 0 ? (
+                      <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground">{debouncedSearch.trim() || filterFrom || filterTo ? "No vouchers match your filters" : "No vouchers yet"}</TableCell></TableRow>
+                    ) : vouchers.map((v) => (
                       <TableRow key={v.id} data-state={selectedIds.has(v.id) ? "selected" : undefined}>
                         <TableCell>
                           <Checkbox
