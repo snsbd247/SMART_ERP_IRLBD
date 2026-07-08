@@ -1354,6 +1354,37 @@ const AccountingVouchers = () => {
       </Card>
       )}
 
+      {/* New Voucher Type Picker */}
+      <Dialog open={newTypePickerOpen} onOpenChange={setNewTypePickerOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Voucher Type</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 py-2">
+            {VOUCHER_TYPES.filter((t) => canCreateForType(t.id)).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setNewVoucherType(t.id);
+                  setNewTypePickerOpen(false);
+                  openCreate();
+                }}
+                className="flex flex-col items-start gap-1 rounded-md border p-4 text-left transition-colors hover:bg-accent hover:border-primary/50"
+              >
+                <span className="text-xs font-mono font-semibold text-primary">{t.prefix}</span>
+                <span className="font-medium">{t.label}</span>
+              </button>
+            ))}
+            {VOUCHER_TYPES.filter((t) => canCreateForType(t.id)).length === 0 && (
+              <div className="col-span-2 text-center text-muted-foreground text-sm py-4">
+                You do not have permission to create any voucher type.
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Super Admin Confirmation Dialog */}
       <AlertDialog open={!!superAdminAction} onOpenChange={() => setSuperAdminAction(null)}>
         <AlertDialogContent>
