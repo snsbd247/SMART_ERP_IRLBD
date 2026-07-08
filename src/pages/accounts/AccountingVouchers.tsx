@@ -548,7 +548,7 @@ const AccountingVouchers = () => {
         }
       } else {
         await voucherApi.create({
-          voucher_type: activeTab,
+          voucher_type: newVoucherType,
           voucher_date: formDate,
           branch_id: formBranch || undefined,
           financial_year_id: resolvedFinancialYearId || undefined,
