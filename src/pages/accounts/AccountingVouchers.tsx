@@ -1088,7 +1088,7 @@ const AccountingVouchers = () => {
                               </Button>
                             )}
                             {/* Admin: Approve/Reject pending */}
-                            {v.status === "pending" && canEditForType(activeTab) && (
+                            {v.status === "pending" && canEditForType(v.voucher_type) && (
                               <>
                                 <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Approve voucher" onClick={() => handleApprove(v)} title="Approve">
                                   <Check className="w-3.5 h-3.5 text-emerald-600" />
