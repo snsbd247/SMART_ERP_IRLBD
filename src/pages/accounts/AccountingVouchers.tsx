@@ -587,7 +587,7 @@ const AccountingVouchers = () => {
           action: editingVoucher ? "voucher_edit_balance_impact" : "voucher_create_balance_impact",
           recordId: editingVoucher?.id,
           newData: {
-            voucher_type: activeTab,
+            voucher_type: editingVoucher?.voucher_type || newVoucherType,
             voucher_date: formDate,
             total_debit: totalDebit,
             total_credit: totalCredit,
