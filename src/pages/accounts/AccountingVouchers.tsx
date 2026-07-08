@@ -89,8 +89,20 @@ const AccountingVouchers = () => {
   const canDeleteForType = (type: string) => evalPerm(type, "delete").allowed;
 
   const allowedTypes = VOUCHER_TYPES.filter((vt) => voucherPermMap[vt.id]);
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const TYPE_FILTER_KEY = "accountingVouchers.typeFilter";
+  const [typeFilter, setTypeFilter] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem(TYPE_FILTER_KEY);
+      if (stored && (stored === "all" || VOUCHER_TYPES.some((t) => t.id === stored))) return stored;
+    } catch { /* ignore */ }
+    return "all";
+  });
+  useEffect(() => {
+    try { localStorage.setItem(TYPE_FILTER_KEY, typeFilter); } catch { /* ignore */ }
+  }, [typeFilter]);
   const [newTypePickerOpen, setNewTypePickerOpen] = useState(false);
+  // 2-step picker: null = choose type, string = preview selected type
+  const [pickerPreviewType, setPickerPreviewType] = useState<string | null>(null);
   const [newVoucherType, setNewVoucherType] = useState<string>(allowedTypes[0]?.id || "journal");
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
