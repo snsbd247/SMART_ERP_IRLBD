@@ -905,7 +905,15 @@ const AccountingVouchers = () => {
             </Button>
           )}
           {allowedTypes.length > 0 && (
-            <Button onClick={() => setNewTypePickerOpen(true)} size="sm"><Plus className="w-4 h-4 mr-1" />New Voucher</Button>
+            <Button onClick={() => {
+              // Preselect last chosen type if user still has permission.
+              if (newVoucherType && canCreateForType(newVoucherType)) {
+                setPickerPreviewType(newVoucherType);
+              } else {
+                setPickerPreviewType(null);
+              }
+              setNewTypePickerOpen(true);
+            }} size="sm"><Plus className="w-4 h-4 mr-1" />New Voucher</Button>
           )}
         </div>
       </div>
