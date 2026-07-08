@@ -914,7 +914,7 @@ const AccountingVouchers = () => {
                 <Label className="text-xs text-muted-foreground">To</Label>
                 <DateInput value={filterTo} onChange={(v) => setFilterTo(v)} />
               </div>
-              {(filterFrom || filterTo || q) && (
+              {(filterFrom || filterTo || debouncedSearch.trim()) && (
                 <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearchQuery(""); setFilterFrom(""); setFilterTo(""); }}>
                   Clear
                 </Button>
