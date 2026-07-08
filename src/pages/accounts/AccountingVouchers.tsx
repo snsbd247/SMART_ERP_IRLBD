@@ -912,7 +912,7 @@ const AccountingVouchers = () => {
               <div className="flex flex-col gap-1">
                 <Label className="text-xs text-muted-foreground">Search</Label>
                 <Input
-                  placeholder="Voucher # or description"
+                  placeholder="Voucher #, ledger name, amount, or description"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-72 h-9"
