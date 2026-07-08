@@ -1124,10 +1124,10 @@ const AccountingVouchers = () => {
                 <Button variant="outline" size="sm" className="h-8" disabled={page >= totalPages || loading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
               </div>
             </div>
-          </TabsContent>
+          </div>
           );
-        })}
-      </Tabs>
+        })()}
+      </div>
       ))}
 
       {/* Create/Edit Voucher Page */}
