@@ -84,10 +84,30 @@ class NumberSequenceService
             }
 
             $seq->current_number = (int) $seq->current_number + 1;
-            $seq->save();
 
-            $num = str_pad((string) $seq->current_number, 5, '0', STR_PAD_LEFT);
-            return "{$seq->prefix}-{$seq->year}-{$num}";
+            // Collision guard: if a previous manual insert / import advanced the
+            // real table past current_number, skip forward until we find a free
+            // number. Prevents SQLSTATE[23000] duplicate voucher_number errors.
+            $collisionMap = [
+                'journal_voucher' => ['acc_vouchers', 'voucher_number'],
+                'payment_voucher' => ['acc_vouchers', 'voucher_number'],
+                'receipt_voucher' => ['acc_vouchers', 'voucher_number'],
+                'contra_voucher'  => ['acc_vouchers', 'voucher_number'],
+            ];
+            $candidate = sprintf('%s-%d-%s', $seq->prefix, $seq->year, str_pad((string) $seq->current_number, 5, '0', STR_PAD_LEFT));
+            if (isset($collisionMap[$sequenceId])) {
+                [$tbl, $col] = $collisionMap[$sequenceId];
+                if (Schema::hasTable($tbl)) {
+                    $guard = 0;
+                    while (DB::table($tbl)->where($col, $candidate)->exists() && $guard++ < 10000) {
+                        $seq->current_number = (int) $seq->current_number + 1;
+                        $candidate = sprintf('%s-%d-%s', $seq->prefix, $seq->year, str_pad((string) $seq->current_number, 5, '0', STR_PAD_LEFT));
+                    }
+                }
+            }
+
+            $seq->save();
+            return $candidate;
         });
     }
 
