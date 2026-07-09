@@ -1084,67 +1084,29 @@ const AccountingVouchers = () => {
                             };
 
                             return (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Voucher actions">
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuItem onClick={() => openView(v)}>
-                                    <Eye className="w-4 h-4 mr-2" /> View
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={onEdit} disabled={!editAllowed} data-permission-cid={editEval.correlationId}>
-                                    <Pencil className="w-4 h-4 mr-2" /> Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => openPrintVoucher(v)}>
-                                    <Printer className="w-4 h-4 mr-2" /> Print
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => { setAuditRecordId(v.id); setAuditOpen(true); }}>
-                                    <History className="w-4 h-4 mr-2" /> History
-                                  </DropdownMenuItem>
-
-                                  {(canApproveReject || canReverse || canChangeType) && <DropdownMenuSeparator />}
-                                  {canApproveReject && (
-                                    <>
-                                      <DropdownMenuItem onClick={() => handleApprove(v)}>
-                                        <Check className="w-4 h-4 mr-2 text-emerald-600" /> Approve
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleReject(v)}>
-                                        <X className="w-4 h-4 mr-2 text-destructive" /> Reject
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  {canReverse && (
-                                    <DropdownMenuItem onClick={() => openSuperAdminAction("reverse", v)}>
-                                      <ArrowLeftRight className="w-4 h-4 mr-2 text-primary" /> Reverse
-                                    </DropdownMenuItem>
-                                  )}
-                                  {canChangeType && (
-                                    <DropdownMenuItem onClick={() => openChangeType(v)}>
-                                      <Shuffle className="w-4 h-4 mr-2 text-amber-600" /> Change Type
-                                    </DropdownMenuItem>
-                                  )}
-
-                                  {(canDelete || canRestore || canPurge) && <DropdownMenuSeparator />}
-                                  {canRestore && (
-                                    <DropdownMenuItem onClick={() => openSuperAdminAction("restore", v)}>
-                                      <RotateCcw className="w-4 h-4 mr-2 text-emerald-600" /> Restore
-                                    </DropdownMenuItem>
-                                  )}
-                                  {canDelete && (
-                                    <DropdownMenuItem onClick={() => openSuperAdminAction("delete", v)} className="text-destructive focus:text-destructive">
-                                      <Trash2 className="w-4 h-4 mr-2" /> Delete
-                                    </DropdownMenuItem>
-                                  )}
-                                  {canPurge && (
-                                    <DropdownMenuItem onClick={() => openSuperAdminAction("purge", v)} className="text-destructive focus:text-destructive">
-                                      <Trash2 className="w-4 h-4 mr-2" /> Delete permanently
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <VoucherRowActions
+                                voucherNumber={v.voucher_number}
+                                canEdit={editAllowed}
+                                editDeniedReason={editAllowed ? undefined : `${editEval.reason} (ref: ${editEval.correlationId})`}
+                                editPermissionCid={editEval.correlationId}
+                                canReverse={canReverse}
+                                canChangeType={canChangeType}
+                                canApproveReject={canApproveReject}
+                                canDelete={canDelete}
+                                canRestore={canRestore}
+                                canPurge={canPurge}
+                                onView={() => openView(v)}
+                                onEdit={onEdit}
+                                onPrint={() => openPrintVoucher(v)}
+                                onHistory={() => { setAuditRecordId(v.id); setAuditOpen(true); }}
+                                onApprove={() => handleApprove(v)}
+                                onReject={() => handleReject(v)}
+                                onReverse={() => openSuperAdminAction("reverse", v)}
+                                onChangeType={() => openChangeType(v)}
+                                onDelete={() => openSuperAdminAction("delete", v)}
+                                onRestore={() => openSuperAdminAction("restore", v)}
+                                onPurge={() => openSuperAdminAction("purge", v)}
+                              />
                             );
                           })()}
                         </TableCell>
