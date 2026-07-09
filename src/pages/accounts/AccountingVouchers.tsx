@@ -1481,9 +1481,31 @@ const AccountingVouchers = () => {
               {superAdminAction && actionLabels[superAdminAction]?.desc}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {(superAdminAction === "delete" || superAdminAction === "purge") && (
+            <div
+              role="alert"
+              className="flex gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+            >
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+              <div className="space-y-1">
+                <div className="font-medium">
+                  {superAdminAction === "purge" ? "Permanent deletion — cannot be undone" : "This will move the voucher to trash"}
+                </div>
+                <div className="text-destructive/90">
+                  {superAdminAction === "purge"
+                    ? "The voucher and all its ledger entries will be erased from the database. Reports and audit trails will lose access to this record."
+                    : "The voucher will be hidden from reports and ledgers. A Super Admin can restore it later. The action is written to the audit log."}
+                  {actionVoucher && (
+                    <> Type: <strong>{actionVoucher.voucher_type}</strong> · Amount: <strong>{fc(actionVoucher.total_amount)}</strong>.</>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           <div className="space-y-2">
-            <Label>Reason (required)</Label>
+            <Label htmlFor="voucher-action-reason">Reason (required)</Label>
             <Textarea
+              id="voucher-action-reason"
               value={actionReason}
               onChange={(e) => setActionReason(e.target.value)}
               placeholder="Provide a reason for this action..."
