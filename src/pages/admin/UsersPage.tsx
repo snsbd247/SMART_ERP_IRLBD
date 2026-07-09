@@ -24,6 +24,7 @@ interface UserRow {
   status: string;
   roles: string[];
   branch_name?: string;
+  branch_ids: string[];
   custom_role_ids: string[];
 }
 
