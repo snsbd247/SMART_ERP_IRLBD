@@ -420,8 +420,18 @@ class VoucherController extends BaseController
     {
         $voucher = AccVoucher::findOrFail($id);
         $user = $request->user();
-        // Permission enforced by route middleware (permission:accounts.delete).
-        // Any role granted delete on accounts/vouchers/<type> can soft-delete.
+        // Route middleware can only check broad OR candidates because the
+        // voucher type is not known until this controller loads the row.
+        // Re-check the exact voucher type here so `journal.delete` cannot
+        // accidentally delete a payment/receipt/contra voucher, while
+        // `accounts.delete` / `vouchers.delete` still work as umbrella grants.
+        $auth = \App\Support\VoucherPermissions::authorize($user, $voucher->voucher_type, 'delete', $voucher->id, $request);
+        if (!$auth['allowed']) {
+            return $this->error('You do not have permission to delete this voucher.', 403, [
+                'correlation_id' => $auth['correlation_id'],
+                'required_any_of' => $auth['candidates'],
+            ]);
+        }
         if ($voucher->deleted_at) {
             return $this->error('Voucher already deleted', 422);
         }
