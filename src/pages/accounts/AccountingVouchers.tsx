@@ -922,9 +922,27 @@ const AccountingVouchers = () => {
                 {allowedTypes.map((t) => (
                   <DropdownMenuItem
                     key={t.id}
-                    onSelect={() => {
-                      setPickerPreviewType(t.id);
-                      setNewTypePickerOpen(true);
+                    onSelect={async () => {
+                      const check = evalPerm(t.id, "create");
+                      if (!check.allowed) {
+                        toast({
+                          title: "Permission denied",
+                          description: `${check.reason} (ref: ${check.correlationId})`,
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      setNewVoucherType(t.id);
+                      try { localStorage.setItem(LAST_NEW_TYPE_KEY, t.id); } catch { /* ignore */ }
+                      try {
+                        await logAudit({
+                          userId: user?.id,
+                          module: "accounting",
+                          action: "voucher_type_approved",
+                          newData: { voucher_type: t.id, approved_at: new Date().toISOString() },
+                        });
+                      } catch { /* ignore */ }
+                      openCreate();
                     }}
                   >
                     <span className="inline-flex items-center rounded px-1.5 py-0.5 mr-2 text-xs font-mono font-semibold bg-primary/10 text-primary">
