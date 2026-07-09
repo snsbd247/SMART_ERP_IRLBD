@@ -260,7 +260,7 @@ class GenericTableController extends BaseController
         if (!is_array($payload)) abort(400, 'Body must be JSON object or array');
 
         $rows = $this->isAssoc($payload) ? [$payload] : $payload;
-        $rows = array_map(fn ($r) => $this->stampTimestamps($table, $this->normalizeTemporalValues($this->rewriteBody($table, $r)), true), $rows);
+        $rows = array_map(fn ($r) => $this->stampTimestamps($table, $this->encodeJsonValues($this->normalizeTemporalValues($this->rewriteBody($table, $r))), true), $rows);
 
         $inserted = [];
         $pk = $this->primaryKey($table);
