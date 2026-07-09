@@ -315,7 +315,30 @@ const UsersPage = () => {
                     ))}
                     {u.custom_role_ids.length === 0 && <span className="text-muted-foreground">—</span>}
                   </TableCell>
-                  <TableCell className="text-sm">{u.branch_name || "—"}</TableCell>
+                  <TableCell className="text-sm">
+                    {u.roles.includes("super_admin") ? (
+                      <Badge variant="outline" className="text-xs">All branches</Badge>
+                    ) : u.branch_ids.length === 0 ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {u.branch_ids.map((bid) => {
+                          const name = branches.find((b) => b.id === bid)?.name || bid;
+                          const isPrimary = bid === u.branch_id;
+                          return (
+                            <Badge
+                              key={bid}
+                              variant={isPrimary ? "default" : "secondary"}
+                              className="text-xs"
+                              title={isPrimary ? "Primary branch" : "Assigned branch"}
+                            >
+                              {name}{isPrimary ? " ★" : ""}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={u.status === "active" ? "default" : "secondary"} className="text-xs">{u.status}</Badge>
                   </TableCell>
