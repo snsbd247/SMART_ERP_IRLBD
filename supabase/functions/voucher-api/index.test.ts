@@ -23,12 +23,12 @@ function mockAdmin(params: { roleIds?: string[]; grantedModules?: string[] }) {
         return {
           select() {
             return {
-              in(_column: string, values: string[]) {
+              in(_column: string, _roleIds: string[]) {
                 return {
-                  in() {
+                  in(_moduleColumn: string, modules: string[]) {
                     const granted = new Set(params.grantedModules || []);
                     return Promise.resolve({
-                      data: values
+                      data: modules
                         .filter((module) => granted.has(module))
                         .map((module) => ({ module, can_delete: true })),
                       error: null,
