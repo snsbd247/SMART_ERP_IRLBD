@@ -20,7 +20,7 @@ class NumberSequenceServiceTest extends TestCase
 
         DB::table('number_sequences')->updateOrInsert(
             ['id' => 'payment_voucher'],
-            ['prefix' => 'PV', 'description' => 'Payment', 'current_number' => 0, 'year' => $year, 'created_at' => now(), 'updated_at' => now()]
+            ['prefix' => 'PV', 'description' => 'Payment', 'current_number' => 0, 'year' => $year]
         );
 
         // Simulate drifted state: counter says 0, but a real voucher exists at 00287
@@ -47,7 +47,7 @@ class NumberSequenceServiceTest extends TestCase
 
         DB::table('number_sequences')->updateOrInsert(
             ['id' => 'payment_voucher'],
-            ['prefix' => 'PV', 'description' => 'Payment', 'current_number' => 10, 'year' => $year, 'created_at' => now(), 'updated_at' => now()]
+            ['prefix' => 'PV', 'description' => 'Payment', 'current_number' => 10, 'year' => $year]
         );
 
         foreach ([88, 289] as $serial) {
@@ -77,7 +77,7 @@ class NumberSequenceServiceTest extends TestCase
 
         DB::table('number_sequences')->updateOrInsert(
             ['id' => 'payment_voucher'],
-            ['prefix' => 'PV', 'description' => 'Payment', 'current_number' => 287, 'year' => $year, 'created_at' => now(), 'updated_at' => now()]
+            ['prefix' => 'PV', 'description' => 'Payment', 'current_number' => 287, 'year' => $year]
         );
 
         DB::table('acc_vouchers')->insert([
