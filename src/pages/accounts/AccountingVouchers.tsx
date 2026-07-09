@@ -119,6 +119,7 @@ const AccountingVouchers = () => {
   // 2-step picker: null = choose type, string = preview selected type
   const [pickerPreviewType, setPickerPreviewType] = useState<string | null>(null);
   const [newVoucherType, setNewVoucherType] = useState<string>(() => {
+  const [creatingType, setCreatingType] = useState<string | null>(null);
     try {
       const stored = localStorage.getItem(LAST_NEW_TYPE_KEY);
       if (stored && VOUCHER_TYPES.some((t) => t.id === stored)) return stored;
