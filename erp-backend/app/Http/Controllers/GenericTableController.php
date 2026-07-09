@@ -127,6 +127,21 @@ class GenericTableController extends BaseController
         return $row;
     }
 
+    /**
+     * MySQL JSON columns can't accept raw PHP arrays via the query builder —
+     * that produces "Array to string conversion" and a 500. Encode any
+     * array/object values to JSON strings before insert/update/upsert.
+     */
+    private function encodeJsonValues(array $row): array
+    {
+        foreach ($row as $key => $value) {
+            if (is_array($value) || is_object($value)) {
+                $row[$key] = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+        }
+        return $row;
+    }
+
     private function assertTable(string $table): void
     {
         if (!preg_match('/^[a-z_][a-z0-9_]*$/', $table)) {
@@ -245,7 +260,7 @@ class GenericTableController extends BaseController
         if (!is_array($payload)) abort(400, 'Body must be JSON object or array');
 
         $rows = $this->isAssoc($payload) ? [$payload] : $payload;
-        $rows = array_map(fn ($r) => $this->stampTimestamps($table, $this->normalizeTemporalValues($this->rewriteBody($table, $r)), true), $rows);
+        $rows = array_map(fn ($r) => $this->stampTimestamps($table, $this->encodeJsonValues($this->normalizeTemporalValues($this->rewriteBody($table, $r))), true), $rows);
 
         $inserted = [];
         $pk = $this->primaryKey($table);
@@ -305,7 +320,7 @@ class GenericTableController extends BaseController
             $applyFilters($q);
             $cols = Schema::getColumnListing($table);
             $clean = array_intersect_key(
-                $this->stampTimestamps($table, $this->normalizeTemporalValues($this->rewriteBody($table, $payload)), false),
+                $this->stampTimestamps($table, $this->encodeJsonValues($this->normalizeTemporalValues($this->rewriteBody($table, $payload))), false),
                 array_flip($cols)
             );
             // Normalize empty strings on UUID/nullable FK columns → NULL
@@ -345,7 +360,7 @@ class GenericTableController extends BaseController
         $cols = Schema::getColumnListing($table);
         $clean = array_map(
             fn ($r) => array_intersect_key(
-                $this->stampTimestamps($table, $this->normalizeTemporalValues($this->rewriteBody($table, $r)), true),
+                $this->stampTimestamps($table, $this->encodeJsonValues($this->normalizeTemporalValues($this->rewriteBody($table, $r))), true),
                 array_flip($cols)
             ),
             $rows
