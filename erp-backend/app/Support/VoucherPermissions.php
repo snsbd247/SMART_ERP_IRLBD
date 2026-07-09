@@ -5,6 +5,8 @@ namespace App\Support;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 /**
@@ -86,5 +88,33 @@ class VoucherPermissions
         }
 
         return ['allowed' => $allowed, 'correlation_id' => $cid, 'candidates' => $candidates];
+    }
+
+    public static function actorRoleNames(User $user): array
+    {
+        $roles = [];
+        if ($user->isSuperAdmin()) {
+            $roles[] = 'super_admin';
+        }
+
+        try {
+            $roles = array_merge($roles, $user->roles()->pluck('name')->map(fn ($v) => (string) $v)->all());
+        } catch (\Throwable) {
+            // Audit helper must not break the primary voucher action.
+        }
+
+        try {
+            if (Schema::hasTable('user_roles')) {
+                $roles = array_merge($roles, DB::table('user_roles')
+                    ->where('user_id', $user->id)
+                    ->pluck('role')
+                    ->map(fn ($v) => (string) $v)
+                    ->all());
+            }
+        } catch (\Throwable) {
+            // Legacy role table may not exist in every deployment/test path.
+        }
+
+        return array_values(array_unique(array_filter($roles))) ?: ['user'];
     }
 }

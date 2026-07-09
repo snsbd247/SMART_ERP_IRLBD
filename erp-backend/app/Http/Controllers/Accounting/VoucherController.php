@@ -9,6 +9,7 @@ use App\Repositories\VoucherRepository;
 use App\Services\AccountingService;
 use App\Services\AuditService;
 use App\Services\FinancialPeriodGuard;
+use App\Support\VoucherPermissions;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -425,7 +426,7 @@ class VoucherController extends BaseController
         // Re-check the exact voucher type here so `journal.delete` cannot
         // accidentally delete a payment/receipt/contra voucher, while
         // `accounts.delete` / `vouchers.delete` still work as umbrella grants.
-        $auth = \App\Support\VoucherPermissions::authorize($user, $voucher->voucher_type, 'delete', $voucher->id, $request);
+        $auth = VoucherPermissions::authorize($user, $voucher->voucher_type, 'delete', $voucher->id, $request);
         if (!$auth['allowed']) {
             return $this->error('You do not have permission to delete this voucher.', 403, [
                 'correlation_id' => $auth['correlation_id'],
@@ -435,12 +436,46 @@ class VoucherController extends BaseController
         if ($voucher->deleted_at) {
             return $this->error('Voucher already deleted', 422);
         }
+        $actorRoles = VoucherPermissions::actorRoleNames($user);
+        $deletedAt = now();
+        $oldData = [
+            'voucher_id' => $voucher->id,
+            'voucher_number' => $voucher->voucher_number,
+            'voucher_type' => $voucher->voucher_type,
+            'voucher_date' => (string) $voucher->voucher_date,
+            'total_amount' => (float) $voucher->total_amount,
+            'status' => $voucher->status,
+            'deleted_at' => $voucher->deleted_at,
+        ];
         $voucher->update([
             'prev_status' => $voucher->status,
             'status'      => 'deleted',
-            'deleted_at'  => now(),
+            'deleted_at'  => $deletedAt,
             'deleted_by'  => $user->id,
         ]);
+
+        $this->audit->log(
+            'accounting_vouchers',
+            'voucher_soft_deleted',
+            $voucher->id,
+            'Voucher deleted by ' . ($user->name ?? $user->email ?? $user->id) .
+                ' with roles [' . implode(', ', $actorRoles) . '] at ' . $deletedAt->toIso8601String() .
+                '. Affected voucher: ' . $voucher->voucher_number . ' (' . $voucher->voucher_type . '), amount ' . $voucher->total_amount .
+                '. Reason: ' . ($request->input('reason') ?: 'No reason provided'),
+            $request,
+            $oldData,
+            [
+                'voucher_id' => $voucher->id,
+                'voucher_number' => $voucher->voucher_number,
+                'voucher_type' => $voucher->voucher_type,
+                'status' => 'deleted',
+                'prev_status' => $oldData['status'],
+                'deleted_at' => $deletedAt->toIso8601String(),
+                'deleted_by' => $user->id,
+                'actor_roles' => $actorRoles,
+                'reason' => $request->input('reason') ?: null,
+            ]
+        );
         return $this->success(['deleted' => true, 'id' => $voucher->id]);
     }
 
