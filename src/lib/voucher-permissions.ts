@@ -79,6 +79,15 @@ export function evaluateVoucherPermission(
   };
 }
 
+export function canShowVoucherDeleteAction(params: {
+  isDeleted?: boolean | null;
+  voucherType: string;
+  evaluate: (type: string, action: "delete") => PermissionEvaluation;
+}): boolean {
+  if (params.isDeleted) return false;
+  return params.evaluate(params.voucherType, "delete").allowed;
+}
+
 /**
  * Log a denied attempt to the console with the same shape the backend audit_log uses.
  * Call this from onClick handlers / disabled-button tooltips so the user's browser
