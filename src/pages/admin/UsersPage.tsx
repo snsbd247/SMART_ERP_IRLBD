@@ -129,13 +129,26 @@ const UsersPage = () => {
   };
 
   const handleSave = async () => {
+    // Validate primary branch belongs to selected branches
+    if (formBranchIds.length > 0 && formBranch && !formBranchIds.includes(formBranch)) {
+      toast({ title: "Invalid primary branch", description: "Primary branch must be one of the selected allowed branches.", variant: "destructive" });
+      return;
+    }
+    const primaryBranch = formBranchIds[0] || formBranch || null;
+    const oldBranchIds = editUser?.branch_ids || [];
+    const oldPrimary = editUser?.branch_id || null;
+    const branchesChanged =
+      !editUser ||
+      oldPrimary !== primaryBranch ||
+      oldBranchIds.length !== formBranchIds.length ||
+      oldBranchIds.some((b) => !formBranchIds.includes(b));
+
     setCreating(true);
     try {
       if (isLaravelMode()) {
         const base = getApiBaseUrl();
         if (!base) throw new Error("Laravel API URL not configured");
         const headers = getLaravelAuthHeaders(true);
-        const primaryBranch = formBranchIds[0] || formBranch || null;
         const payload: any = {
           name: formName,
           username: formUsername,
