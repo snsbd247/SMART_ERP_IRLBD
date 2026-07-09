@@ -114,7 +114,7 @@ const UsersPage = () => {
   const openCreate = () => {
     setEditUser(null);
     setFormName(""); setFormUsername(""); setFormEmail(""); setFormPhone("");
-    setFormPassword(""); setFormRole("user"); setFormBranch(""); setFormStatus("active");
+    setFormPassword(""); setFormRole("user"); setFormBranch(""); setFormBranchIds([]); setFormStatus("active");
     setFormCustomRole("");
     setDialogOpen(true);
   };
@@ -123,7 +123,7 @@ const UsersPage = () => {
     setEditUser(u);
     setFormName(u.name); setFormUsername(u.username || ""); setFormEmail(u.email || "");
     setFormPhone(u.phone || ""); setFormPassword(""); setFormRole(u.roles.includes("super_admin") ? "super_admin" : "user");
-    setFormBranch(u.branch_id || ""); setFormStatus(u.status);
+    setFormBranch(u.branch_id || ""); setFormBranchIds(u.branch_ids || []); setFormStatus(u.status);
     setFormCustomRole(u.custom_role_ids[0] || "");
     setDialogOpen(true);
   };
