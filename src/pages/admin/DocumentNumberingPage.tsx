@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Hash, Save, RotateCcw } from "lucide-react";
+import { Hash, Save, RotateCcw, RefreshCw, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +30,81 @@ const DocumentNumberingPage = () => {
   const [editedPrefixes, setEditedPrefixes] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [resetDialog, setResetDialog] = useState<Sequence | null>(null);
+  const [resyncDialog, setResyncDialog] = useState<Sequence | null>(null);
+  const [resyncAllDialog, setResyncAllDialog] = useState(false);
   const { toast } = useToast();
+
+  // Sequences that mirror serials inside acc_vouchers.voucher_number
+  const ACC_VOUCHER_SEQS = new Set([
+    "journal_voucher",
+    "payment_voucher",
+    "receipt_voucher",
+    "contra_voucher",
+  ]);
+
+  const computeActualMax = async (seq: Sequence): Promise<number> => {
+    if (!ACC_VOUCHER_SEQS.has(seq.id)) return seq.current_number;
+    const like = `${seq.prefix}-${seq.year}-%`;
+    const { data, error } = await supabase
+      .from("acc_vouchers")
+      .select("voucher_number")
+      .like("voucher_number", like);
+    if (error) throw error;
+    let max = 0;
+    for (const row of (data as any[]) ?? []) {
+      const serial = parseInt(String(row.voucher_number).split("-").pop() || "0", 10);
+      if (!isNaN(serial) && serial > max) max = serial;
+    }
+    return max;
+  };
+
+  const resyncOne = async (seq: Sequence) => {
+    const actual = await computeActualMax(seq);
+    const target = Math.max(actual, seq.current_number);
+    if (target === seq.current_number) return { id: seq.id, changed: false, from: seq.current_number, to: target };
+    const { error } = await supabase
+      .from("number_sequences")
+      .update({ current_number: target } as any)
+      .eq("id", seq.id);
+    if (error) throw error;
+    return { id: seq.id, changed: true, from: seq.current_number, to: target };
+  };
+
+  const handleResyncOne = async () => {
+    if (!resyncDialog) return;
+    setSaving(true);
+    try {
+      const r = await resyncOne(resyncDialog);
+      toast({
+        title: r.changed ? `Counter bumped ${r.from} → ${r.to}` : "Already in sync",
+        description: `${resyncDialog.description || resyncDialog.id}`,
+      });
+      setResyncDialog(null);
+      fetchSequences();
+    } catch (err: any) {
+      toast({ title: "Re-sync failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResyncAll = async () => {
+    setSaving(true);
+    try {
+      let bumped = 0;
+      for (const seq of sequences.filter((s) => ACC_VOUCHER_SEQS.has(s.id))) {
+        const r = await resyncOne(seq);
+        if (r.changed) bumped++;
+      }
+      toast({ title: `Re-sync complete`, description: `${bumped} sequence(s) updated` });
+      setResyncAllDialog(false);
+      fetchSequences();
+    } catch (err: any) {
+      toast({ title: "Re-sync failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const fetchSequences = async () => {
     setLoading(true);
@@ -127,12 +201,18 @@ const DocumentNumberingPage = () => {
             <p className="text-sm text-muted-foreground">Configure automatic document number prefixes and sequences</p>
           </div>
         </div>
-        {hasChanges && (
-          <Button onClick={handleSaveAll} disabled={saving} size="sm">
-            <Save className="w-4 h-4 mr-1.5" />
-            {saving ? "Saving..." : "Save Changes"}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setResyncAllDialog(true)} disabled={saving}>
+            <RefreshCw className="w-4 h-4 mr-1.5" />
+            Re-sync from data
           </Button>
-        )}
+          {hasChanges && (
+            <Button onClick={handleSaveAll} disabled={saving} size="sm">
+              <Save className="w-4 h-4 mr-1.5" />
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -192,15 +272,28 @@ const DocumentNumberingPage = () => {
                       </code>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        title="Reset counter"
-                        onClick={() => setResetDialog(seq)}
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-0.5">
+                        {ACC_VOUCHER_SEQS.has(seq.id) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            title="Re-sync counter with actual data"
+                            onClick={() => setResyncDialog(seq)}
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          title="Reset counter"
+                          onClick={() => setResetDialog(seq)}
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -237,6 +330,53 @@ const DocumentNumberingPage = () => {
             <Button variant="outline" onClick={() => setResetDialog(null)}>Cancel</Button>
             <Button variant="destructive" onClick={handleResetCounter} disabled={saving}>
               {saving ? "Resetting..." : "Reset Counter"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Re-sync single */}
+      <Dialog open={!!resyncDialog} onOpenChange={() => setResyncDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              Re-sync counter with actual data
+            </DialogTitle>
+            <DialogDescription>
+              This will scan <strong>acc_vouchers</strong> for the highest existing serial matching
+              <code className="mx-1 px-1 bg-muted rounded font-mono text-xs">{resyncDialog?.prefix}-{resyncDialog?.year}-*</code>
+              and bump the counter for <strong>{resyncDialog?.description || resyncDialog?.id}</strong> so the next issued
+              number cannot collide. The counter is only moved forward — never backward.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResyncDialog(null)}>Cancel</Button>
+            <Button onClick={handleResyncOne} disabled={saving}>
+              {saving ? "Re-syncing..." : "Re-sync"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Re-sync all */}
+      <Dialog open={resyncAllDialog} onOpenChange={setResyncAllDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              Re-sync all voucher sequences
+            </DialogTitle>
+            <DialogDescription>
+              Scans <strong>acc_vouchers</strong> for Journal / Payment / Receipt / Contra sequences and advances each counter
+              to the highest existing serial. Safe to run — counters are never rolled back. Use this if you see
+              duplicate voucher-number errors after a restore or manual import.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResyncAllDialog(false)}>Cancel</Button>
+            <Button onClick={handleResyncAll} disabled={saving}>
+              {saving ? "Re-syncing..." : "Re-sync all"}
             </Button>
           </DialogFooter>
         </DialogContent>
