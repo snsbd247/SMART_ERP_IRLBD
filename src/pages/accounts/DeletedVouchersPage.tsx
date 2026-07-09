@@ -283,8 +283,17 @@ const DeletedVouchersPage = () => {
           </div>
 
           {filtered.length > 0 && (
-            <div className="flex items-center justify-between mt-4 gap-2 flex-wrap">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center justify-end mt-4 gap-3 flex-wrap text-sm">
+              <span className="text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              <div className="flex items-center gap-2 text-muted-foreground">
                 <span>Rows per page</span>
                 <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
                   <SelectTrigger className="w-20 h-8"><SelectValue /></SelectTrigger>
@@ -294,17 +303,6 @@ const DeletedVouchersPage = () => {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">
-                  Page {page} of {totalPages}
-                </span>
-                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
               </div>
             </div>
           )}
