@@ -44,6 +44,64 @@ function isAdminOrSuper(roles: string[]) {
   return roles.includes("admin") || roles.includes("super_admin");
 }
 
+const VOUCHER_TYPES = ["journal", "payment", "receipt", "contra"];
+const VOUCHER_UMBRELLA_MODULES = ["vouchers", "accounts"];
+
+function isProfileSuperAdmin(profile: any, roles: string[]) {
+  return isSuperAdmin(roles) || profile?.employee_id === null;
+}
+
+function voucherPermissionCandidates(voucherType: string, action: string): string[] {
+  const modules = VOUCHER_TYPES.includes(voucherType)
+    ? [voucherType, ...VOUCHER_UMBRELLA_MODULES]
+    : [...VOUCHER_UMBRELLA_MODULES];
+  return modules.map((module) => `${module}.${action}`);
+}
+
+function permissionColumn(action: string): "can_view" | "can_add" | "can_edit" | "can_delete" | null {
+  const map: Record<string, "can_view" | "can_add" | "can_edit" | "can_delete"> = {
+    view: "can_view",
+    create: "can_add",
+    add: "can_add",
+    edit: "can_edit",
+    update: "can_edit",
+    delete: "can_delete",
+  };
+  return map[action] ?? null;
+}
+
+async function hasVoucherPermission(
+  admin: any,
+  userId: string,
+  roles: string[],
+  profile: any,
+  voucherType: string,
+  action: string,
+): Promise<{ allowed: boolean; candidates: string[] }> {
+  const candidates = voucherPermissionCandidates(voucherType, action);
+  if (isProfileSuperAdmin(profile, roles)) return { allowed: true, candidates };
+
+  const col = permissionColumn(action);
+  if (!col) return { allowed: false, candidates };
+
+  const { data: roleLinks, error: roleErr } = await admin
+    .from("user_custom_roles")
+    .select("custom_role_id")
+    .eq("user_id", userId);
+  if (roleErr || !roleLinks?.length) return { allowed: false, candidates };
+
+  const roleIds = roleLinks.map((r: any) => r.custom_role_id).filter(Boolean);
+  const modules = candidates.map((candidate) => candidate.split(".")[0]);
+  const { data: perms, error: permErr } = await admin
+    .from("role_permissions")
+    .select(`module, ${col}`)
+    .in("custom_role_id", roleIds)
+    .in("module", modules);
+
+  if (permErr) return { allowed: false, candidates };
+  return { allowed: (perms || []).some((p: any) => Boolean(p[col])), candidates };
+}
+
 async function logAudit(
   admin: any,
   params: {
@@ -147,7 +205,7 @@ Deno.serve(async (req) => {
         // Branch scoping: Super Admin sees all branches; everyone else is
         // restricted to their assigned branch (profiles.branch_id). Mirrors
         // the BranchScope middleware on the Laravel side.
-        const superAdmin = isSuperAdmin(roles) || profile?.employee_id === null;
+        const superAdmin = isProfileSuperAdmin(profile, roles);
         const scopedBranchId = !superAdmin ? (profile?.branch_id || null) : null;
 
         // Build base filter once, then run it twice — count + page slice —
@@ -450,15 +508,19 @@ Deno.serve(async (req) => {
         return json({ success: true });
       }
 
-      // ============ SOFT-DELETE VOUCHER (SUPER ADMIN ONLY) ============
+      // ============ SOFT-DELETE VOUCHER (ROLE DELETE PERMISSION) ============
       case "delete_approved": {
-        if (!isSuperAdmin(roles)) {
-          return err("Only Super Admin can delete vouchers", 403);
-        }
         const { id, reason } = body;
 
         const { data: v } = await admin.from("acc_vouchers").select("*").eq("id", id).single();
         if (!v) return err("Voucher not found", 404);
+        const deleteAuth = await hasVoucherPermission(admin, user.id, roles, profile, v.voucher_type, "delete");
+        if (!deleteAuth.allowed) {
+          return json({
+            error: "You do not have permission to delete this voucher.",
+            required_any_of: deleteAuth.candidates,
+          }, 403);
+        }
         if (v.deleted_at) return err("Voucher already deleted", 400);
 
         // Soft delete: keep rows, mark deleted_at + remember prev_status so
