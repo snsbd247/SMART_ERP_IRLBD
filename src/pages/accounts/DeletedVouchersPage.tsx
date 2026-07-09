@@ -176,11 +176,16 @@ const DeletedVouchersPage = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              Clear ({selected.size})
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
             disabled={selected.size === 0 || busy}
-            onClick={() => setRestoreOpen(true)}
+            onClick={() => { setReason(""); setRestoreOpen(true); }}
           >
             <RotateCcw className="w-4 h-4 mr-1" /> Restore ({selected.size})
           </Button>
@@ -188,7 +193,7 @@ const DeletedVouchersPage = () => {
             variant="destructive"
             size="sm"
             disabled={selected.size === 0 || busy}
-            onClick={() => setPurgeOpen(true)}
+            onClick={() => { setReason(""); setPurgeOpen(true); }}
           >
             <Trash2 className="w-4 h-4 mr-1" /> Delete permanently ({selected.size})
           </Button>
@@ -196,17 +201,30 @@ const DeletedVouchersPage = () => {
       </div>
 
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-2">
+        <CardHeader className="pb-3 space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <CardTitle className="text-sm text-muted-foreground font-normal">
-              {loading ? "Loading…" : `${filtered.length} deleted voucher${filtered.length === 1 ? "" : "s"}`}
+              {loading ? "Loading…" : `${filtered.length} deleted voucher${filtered.length === 1 ? "" : "s"}${selected.size ? ` · ${selected.size} selected` : ""}`}
             </CardTitle>
-            <Input
-              placeholder="Search number, type, description, amount…"
-              className="w-72"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <div className="flex items-center gap-2 flex-wrap">
+              <Input
+                placeholder="Search voucher #, description, amount…"
+                className="w-64"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-36"><SelectValue placeholder="Type" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  {VOUCHER_TYPES.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input type="date" className="w-40" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="From date" />
+              <Input type="date" className="w-40" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="To date" />
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -216,9 +234,9 @@ const DeletedVouchersPage = () => {
                 <TableRow>
                   <TableHead className="w-10">
                     <Checkbox
-                      checked={allSelected}
+                      checked={allSelected ? true : someSelected ? "indeterminate" : false}
                       onCheckedChange={(c) => toggleAll(Boolean(c))}
-                      aria-label="Select all"
+                      aria-label="Select all on page"
                     />
                   </TableHead>
                   <TableHead>Voucher #</TableHead>
@@ -230,15 +248,15 @@ const DeletedVouchersPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 && !loading && (
+                {pageRows.length === 0 && !loading && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
-                      Trash is empty.
+                      {rows.length === 0 ? "Trash is empty." : "No vouchers match the current filters."}
                     </TableCell>
                   </TableRow>
                 )}
-                {filtered.map((v) => (
-                  <TableRow key={v.id}>
+                {pageRows.map((v) => (
+                  <TableRow key={v.id} data-state={selected.has(v.id) ? "selected" : undefined}>
                     <TableCell>
                       <Checkbox
                         checked={selected.has(v.id)}
@@ -263,6 +281,33 @@ const DeletedVouchersPage = () => {
               </TableBody>
             </Table>
           </div>
+
+          {filtered.length > 0 && (
+            <div className="flex items-center justify-between mt-4 gap-2 flex-wrap">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Rows per page</span>
+                <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                  <SelectTrigger className="w-20 h-8"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[10, 20, 50, 100].map((n) => (
+                      <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
