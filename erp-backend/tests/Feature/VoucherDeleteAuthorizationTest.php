@@ -165,4 +165,103 @@ class VoucherDeleteAuthorizationTest extends TestCase
         $this->assertSame('approved', $voucher->status);
         $this->assertNull($voucher->deleted_at);
     }
+
+    /**
+     * Role authorization matrix — Admin/Manager/Viewer against every voucher type.
+     * `accounts.delete` (Admin umbrella) grants delete on ALL types; edit-only
+     * (Manager) and view-only (Viewer) MUST be rejected with 403.
+     *
+     * @dataProvider roleMatrixProvider
+     */
+    public function test_role_matrix_delete_authorization(
+        string $roleLabel,
+        array $permissions,
+        string $voucherType,
+        bool $expectAllowed,
+    ): void {
+        $actor = $this->makeUser($roleLabel . ' Actor');
+        $this->giveRole($actor, $roleLabel, $permissions);
+        $voucher = $this->makeVoucher($voucherType);
+
+        Sanctum::actingAs($actor);
+        $response = $this->postJson(
+            "/api/v1/vouchers/{$voucher->id}/delete-approved",
+            ['reason' => "matrix:{$roleLabel}:{$voucherType}"]
+        );
+
+        if ($expectAllowed) {
+            $response->assertOk()->assertJsonPath('data.deleted', true);
+            $voucher->refresh();
+            $this->assertSame('deleted', $voucher->status, "{$roleLabel} should soft-delete {$voucherType}");
+            $this->assertSame($actor->id, $voucher->deleted_by);
+        } else {
+            $response->assertStatus(403);
+            $voucher->refresh();
+            $this->assertSame('approved', $voucher->status, "{$roleLabel} must NOT delete {$voucherType}");
+            $this->assertNull($voucher->deleted_at);
+        }
+    }
+
+    public static function roleMatrixProvider(): array
+    {
+        $admin   = ['accounts' => ['view' => true, 'create' => true, 'edit' => true, 'delete' => true]];
+        $manager = ['accounts' => ['view' => true, 'create' => true, 'edit' => true, 'delete' => false]];
+        $viewer  = ['accounts' => ['view' => true, 'create' => false, 'edit' => false, 'delete' => false]];
+        $rows = [];
+        foreach (['journal', 'payment', 'receipt', 'contra'] as $t) {
+            $rows["admin_can_delete_{$t}"]      = ['Admin',   $admin,   $t, true];
+            $rows["manager_cannot_delete_{$t}"] = ['Manager', $manager, $t, false];
+            $rows["viewer_cannot_delete_{$t}"]  = ['Viewer',  $viewer,  $t, false];
+        }
+        return $rows;
+    }
+
+    public function test_audit_log_fields_are_fully_populated_on_soft_delete(): void
+    {
+        $actor = $this->makeUser('Full Audit Admin');
+        $this->giveRole($actor, 'Admin Full', [
+            'accounts' => ['view' => true, 'create' => true, 'edit' => true, 'delete' => true],
+        ]);
+        $voucher = $this->makeVoucher('receipt');
+        $beforeDelete = now()->subSecond();
+
+        Sanctum::actingAs($actor);
+        $this->withHeaders(['User-Agent' => 'AuditTest/1.0'])
+            ->postJson("/api/v1/vouchers/{$voucher->id}/delete-approved", ['reason' => 'audit field check'])
+            ->assertOk();
+
+        $audit = DB::table('audit_log')
+            ->where('action', 'voucher_soft_deleted')
+            ->where('record_id', $voucher->id)
+            ->first();
+
+        $this->assertNotNull($audit, 'Audit row must exist.');
+        $this->assertSame($actor->id, $audit->user_id);
+        $this->assertSame($actor->name, $audit->user_name);
+        $this->assertSame('accounting_vouchers', $audit->module);
+        $this->assertNotNull($audit->created_at);
+        $this->assertGreaterThanOrEqual(
+            $beforeDelete->getTimestamp(),
+            \Carbon\Carbon::parse($audit->created_at)->getTimestamp(),
+        );
+
+        $this->assertStringContainsString($voucher->voucher_number, (string) $audit->details);
+        $this->assertStringContainsString($voucher->voucher_type, (string) $audit->details);
+        $this->assertStringContainsString('Admin Full', (string) $audit->details);
+        $this->assertStringContainsString('audit field check', (string) $audit->details);
+
+        $old = json_decode((string) $audit->old_data, true);
+        $new = json_decode((string) $audit->new_data, true);
+        $this->assertSame($voucher->id, $old['voucher_id']);
+        $this->assertSame('approved', $old['status']);
+        $this->assertSame($voucher->voucher_number, $new['voucher_number']);
+        $this->assertSame('receipt', $new['voucher_type']);
+        $this->assertSame('deleted', $new['status']);
+        $this->assertSame('approved', $new['prev_status']);
+        $this->assertSame($actor->id, $new['deleted_by']);
+        $this->assertNotEmpty($new['deleted_at']);
+        $this->assertSame('audit field check', $new['reason']);
+        $this->assertIsArray($new['actor_roles']);
+        $this->assertNotEmpty($new['actor_roles']);
+    }
 }
