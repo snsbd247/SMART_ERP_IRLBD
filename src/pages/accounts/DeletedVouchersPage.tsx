@@ -12,10 +12,11 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateDMY } from "@/lib/date-format";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { AlertTriangle, ArrowLeft, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, RotateCcw, Trash2 } from "lucide-react";
 
 const VOUCHER_TYPES = [
   { id: "journal", label: "Journal" },
