@@ -135,13 +135,14 @@ const UsersPage = () => {
         const base = getApiBaseUrl();
         if (!base) throw new Error("Laravel API URL not configured");
         const headers = getLaravelAuthHeaders(true);
+        const primaryBranch = formBranchIds[0] || formBranch || null;
         const payload: any = {
           name: formName,
           username: formUsername,
           email: formEmail || null,
           phone: formPhone || null,
-          branch_id: formBranch || null,
-          branch_ids: formBranch ? [formBranch] : [],
+          branch_id: primaryBranch,
+          branch_ids: formBranchIds,
           status: formStatus,
           system_role: formRole,
           role_ids: formCustomRole && formCustomRole !== "none" ? [formCustomRole] : [],
