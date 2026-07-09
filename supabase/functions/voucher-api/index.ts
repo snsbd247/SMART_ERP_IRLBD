@@ -152,21 +152,15 @@ async function logAudit(
 
 // ---------- next number (moved from DB function) ----------
 async function nextNumber(admin: any, seqId: string): Promise<string> {
-  // Read + increment atomically via update returning
-  const { data, error } = await admin
-    .from("number_sequences")
-    .select("prefix, current_number, year")
-    .eq("id", seqId)
-    .single();
-  if (error || !data) throw new Error(`Sequence ${seqId} not found`);
+  const { data, error } = await admin.rpc("reserve_voucher_number", {
+    _sequence_id: seqId,
+  });
 
-  const newNum = data.current_number + 1;
-  await admin
-    .from("number_sequences")
-    .update({ current_number: newNum })
-    .eq("id", seqId);
+  if (error || !data) {
+    throw new Error(`Failed to reserve voucher number for ${seqId}: ${error?.message || "No number returned"}`);
+  }
 
-  return `${data.prefix}-${data.year}-${String(newNum).padStart(4, "0")}`;
+  return String(data);
 }
 
 function voucherSequenceId(voucherType: string): string {

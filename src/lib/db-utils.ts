@@ -1,10 +1,29 @@
 import { supabase } from "@/integrations/supabase/client";
 
+const VOUCHER_SEQUENCES = new Set([
+  "journal_voucher",
+  "payment_voucher",
+  "receipt_voucher",
+  "contra_voucher",
+]);
+
 /**
  * Application-layer replacement for the dropped `next_number` database function.
  * Atomically increments the sequence and returns the formatted number.
  */
 export async function nextNumber(seqId: string, retries = 3): Promise<string> {
+  if (VOUCHER_SEQUENCES.has(seqId)) {
+    const { data, error } = await (supabase as any).rpc("reserve_voucher_number", {
+      _sequence_id: seqId,
+    });
+
+    if (error || !data) {
+      throw new Error(`Failed to reserve voucher number: ${error?.message || "No number returned"}`);
+    }
+
+    return String(data);
+  }
+
   for (let attempt = 0; attempt < retries; attempt++) {
     // Read current
     const { data: seq, error: readErr } = await supabase
