@@ -1052,111 +1052,101 @@ const AccountingVouchers = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-1">
-                            {/* View - always visible */}
-                            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View voucher" onClick={() => openView(v)} title="View">
-                              <Eye className="w-3.5 h-3.5" />
-                            </Button>
-                            {/* Edit — always rendered. Disabled with reason when denied. */}
-                            {(() => {
-                              const evalRes = evalPerm(v.voucher_type, "edit");
-                              // Edit permission alone is sufficient — approved status no longer
-                              // restricts edit to Super Admin (custom-role edit grant is honored).
-                              const allowed = evalRes.allowed;
-                              const reason = evalRes.reason;
-                              const onDenied = () => {
-                                logVoucherPermissionDenial({
-                                  userId: user?.id,
-                                  voucherType: v.voucher_type as VoucherType,
-                                  voucherId: v.id,
-                                  action: "edit",
-                                  evaluation: evalRes,
-                                });
-                                toast({
-                                  title: "Edit not allowed",
-                                  description: `${reason} (ref: ${evalRes.correlationId})`,
-                                  variant: "destructive",
-                                });
-                              };
-                              return (
-                                <TooltipProvider delayDuration={150}>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-7 w-7"
-                                          aria-label="Edit voucher"
-                                          aria-disabled={!allowed}
-                                          data-permission-cid={evalRes.correlationId}
-                                          onClick={allowed ? () => openEdit(v) : onDenied}
-                                        >
-                                          <Pencil className={`w-3.5 h-3.5 ${allowed ? "" : "opacity-40"}`} />
-                                        </Button>
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">
-                                      {allowed ? "Edit" : `${reason}\nref: ${evalRes.correlationId}`}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              );
-                            })()}
-                            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Print voucher" onClick={() => openPrintVoucher(v)} title="Print">
-                              <Printer className="w-3.5 h-3.5" />
-                            </Button>
-                            {/* Reverse - approved vouchers, super admin or admin */}
-                            {v.status === "approved" && isSuperAdmin && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Reverse voucher" onClick={() => openSuperAdminAction("reverse", v)} title="Reverse">
-                                <ArrowLeftRight className="w-3.5 h-3.5 text-primary" />
-                              </Button>
-                            )}
-                            {/* Change Type (Transfer) — non-deleted, non-auto-posted, user can edit source + create at least one other type */}
-                            {!(v as any).deleted_at
+                          {(() => {
+                            const editEval = evalPerm(v.voucher_type, "edit");
+                            const editAllowed = editEval.allowed;
+                            const isDeleted = Boolean((v as any).deleted_at);
+                            const canReverse = v.status === "approved" && isSuperAdmin;
+                            const canChangeType = !isDeleted
                               && v.status !== "transferred"
                               && !(v as any).source_module
-                              && evalPerm(v.voucher_type, "edit").allowed
-                              && VOUCHER_TYPES.some((t) => t.id !== v.voucher_type && canCreateForType(t.id)) && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Change voucher type" onClick={() => openChangeType(v)} title="Change Type (Transfer)">
-                                <Shuffle className="w-3.5 h-3.5 text-amber-600" />
-                              </Button>
-                            )}
+                              && editEval.allowed
+                              && VOUCHER_TYPES.some((t) => t.id !== v.voucher_type && canCreateForType(t.id));
+                            const canRestore = isSuperAdmin && isDeleted;
+                            const canPurge = isSuperAdmin && isDeleted;
+                            const canDelete = canDeleteVoucher(v) && !isDeleted;
+                            const canApproveReject = v.status === "pending" && canEditForType(v.voucher_type);
 
-                            {/* History */}
-                            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="View history" onClick={() => { setAuditRecordId(v.id); setAuditOpen(true); }} title="View history">
-                              <History className="w-3.5 h-3.5 text-muted-foreground" />
-                            </Button>
-                            {/* Restore - super admin only, deleted vouchers */}
-                            {isSuperAdmin && (v as any).deleted_at && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Restore voucher" onClick={() => openSuperAdminAction("restore", v)} title="Restore">
-                                <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
-                              </Button>
-                            )}
-                            {/* Permanent delete - super admin only, deleted vouchers */}
-                            {isSuperAdmin && (v as any).deleted_at && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Permanently delete voucher" onClick={() => openSuperAdminAction("purge", v)} title="Delete permanently">
-                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                              </Button>
-                            )}
-                            {/* Delete - based on role & status, not for already-deleted */}
-                            {canDeleteVoucher(v) && !(v as any).deleted_at && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Delete voucher" onClick={() => openSuperAdminAction("delete", v)} title="Delete">
-                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                              </Button>
-                            )}
-                            {/* Admin: Approve/Reject pending */}
-                            {v.status === "pending" && canEditForType(v.voucher_type) && (
-                              <>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Approve voucher" onClick={() => handleApprove(v)} title="Approve">
-                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Reject voucher" onClick={() => handleReject(v)} title="Reject">
-                                  <X className="w-3.5 h-3.5 text-destructive" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
+                            const onEdit = () => {
+                              if (editAllowed) return openEdit(v);
+                              logVoucherPermissionDenial({
+                                userId: user?.id,
+                                voucherType: v.voucher_type as VoucherType,
+                                voucherId: v.id,
+                                action: "edit",
+                                evaluation: editEval,
+                              });
+                              toast({
+                                title: "Edit not allowed",
+                                description: `${editEval.reason} (ref: ${editEval.correlationId})`,
+                                variant: "destructive",
+                              });
+                            };
+
+                            return (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Voucher actions">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuItem onClick={() => openView(v)}>
+                                    <Eye className="w-4 h-4 mr-2" /> View
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={onEdit} disabled={!editAllowed} data-permission-cid={editEval.correlationId}>
+                                    <Pencil className="w-4 h-4 mr-2" /> Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openPrintVoucher(v)}>
+                                    <Printer className="w-4 h-4 mr-2" /> Print
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => { setAuditRecordId(v.id); setAuditOpen(true); }}>
+                                    <History className="w-4 h-4 mr-2" /> History
+                                  </DropdownMenuItem>
+
+                                  {(canApproveReject || canReverse || canChangeType) && <DropdownMenuSeparator />}
+                                  {canApproveReject && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => handleApprove(v)}>
+                                        <Check className="w-4 h-4 mr-2 text-emerald-600" /> Approve
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleReject(v)}>
+                                        <X className="w-4 h-4 mr-2 text-destructive" /> Reject
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                  {canReverse && (
+                                    <DropdownMenuItem onClick={() => openSuperAdminAction("reverse", v)}>
+                                      <ArrowLeftRight className="w-4 h-4 mr-2 text-primary" /> Reverse
+                                    </DropdownMenuItem>
+                                  )}
+                                  {canChangeType && (
+                                    <DropdownMenuItem onClick={() => openChangeType(v)}>
+                                      <Shuffle className="w-4 h-4 mr-2 text-amber-600" /> Change Type
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  {(canDelete || canRestore || canPurge) && <DropdownMenuSeparator />}
+                                  {canRestore && (
+                                    <DropdownMenuItem onClick={() => openSuperAdminAction("restore", v)}>
+                                      <RotateCcw className="w-4 h-4 mr-2 text-emerald-600" /> Restore
+                                    </DropdownMenuItem>
+                                  )}
+                                  {canDelete && (
+                                    <DropdownMenuItem onClick={() => openSuperAdminAction("delete", v)} className="text-destructive focus:text-destructive">
+                                      <Trash2 className="w-4 h-4 mr-2" /> Delete
+                                    </DropdownMenuItem>
+                                  )}
+                                  {canPurge && (
+                                    <DropdownMenuItem onClick={() => openSuperAdminAction("purge", v)} className="text-destructive focus:text-destructive">
+                                      <Trash2 className="w-4 h-4 mr-2" /> Delete permanently
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            );
+                          })()}
                         </TableCell>
                       </TableRow>
                     ))}
