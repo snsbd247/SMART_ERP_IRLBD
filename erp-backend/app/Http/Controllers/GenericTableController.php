@@ -320,7 +320,7 @@ class GenericTableController extends BaseController
             $applyFilters($q);
             $cols = Schema::getColumnListing($table);
             $clean = array_intersect_key(
-                $this->stampTimestamps($table, $this->normalizeTemporalValues($this->rewriteBody($table, $payload)), false),
+                $this->stampTimestamps($table, $this->encodeJsonValues($this->normalizeTemporalValues($this->rewriteBody($table, $payload))), false),
                 array_flip($cols)
             );
             // Normalize empty strings on UUID/nullable FK columns → NULL
