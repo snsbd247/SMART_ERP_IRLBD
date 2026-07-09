@@ -21,8 +21,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Check, X, FileText, Trash2, RotateCcw, Pencil, ArrowLeftRight, Lock, Printer, Eye, PlusCircle, History, Shuffle, MoreHorizontal } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Plus, Check, X, FileText, Trash2, RotateCcw, Pencil, ArrowLeftRight, Lock, Printer, Eye, PlusCircle, History, Shuffle, MoreHorizontal, AlertTriangle } from "lucide-react";
+import { VoucherRowActions } from "@/components/accounts/VoucherRowActions";
 import { AuditLogViewer } from "@/components/AuditLogViewer";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { PrintLayout } from "@/components/PrintLayout";
@@ -1084,67 +1084,29 @@ const AccountingVouchers = () => {
                             };
 
                             return (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Voucher actions">
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuItem onClick={() => openView(v)}>
-                                    <Eye className="w-4 h-4 mr-2" /> View
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={onEdit} disabled={!editAllowed} data-permission-cid={editEval.correlationId}>
-                                    <Pencil className="w-4 h-4 mr-2" /> Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => openPrintVoucher(v)}>
-                                    <Printer className="w-4 h-4 mr-2" /> Print
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => { setAuditRecordId(v.id); setAuditOpen(true); }}>
-                                    <History className="w-4 h-4 mr-2" /> History
-                                  </DropdownMenuItem>
-
-                                  {(canApproveReject || canReverse || canChangeType) && <DropdownMenuSeparator />}
-                                  {canApproveReject && (
-                                    <>
-                                      <DropdownMenuItem onClick={() => handleApprove(v)}>
-                                        <Check className="w-4 h-4 mr-2 text-emerald-600" /> Approve
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleReject(v)}>
-                                        <X className="w-4 h-4 mr-2 text-destructive" /> Reject
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  {canReverse && (
-                                    <DropdownMenuItem onClick={() => openSuperAdminAction("reverse", v)}>
-                                      <ArrowLeftRight className="w-4 h-4 mr-2 text-primary" /> Reverse
-                                    </DropdownMenuItem>
-                                  )}
-                                  {canChangeType && (
-                                    <DropdownMenuItem onClick={() => openChangeType(v)}>
-                                      <Shuffle className="w-4 h-4 mr-2 text-amber-600" /> Change Type
-                                    </DropdownMenuItem>
-                                  )}
-
-                                  {(canDelete || canRestore || canPurge) && <DropdownMenuSeparator />}
-                                  {canRestore && (
-                                    <DropdownMenuItem onClick={() => openSuperAdminAction("restore", v)}>
-                                      <RotateCcw className="w-4 h-4 mr-2 text-emerald-600" /> Restore
-                                    </DropdownMenuItem>
-                                  )}
-                                  {canDelete && (
-                                    <DropdownMenuItem onClick={() => openSuperAdminAction("delete", v)} className="text-destructive focus:text-destructive">
-                                      <Trash2 className="w-4 h-4 mr-2" /> Delete
-                                    </DropdownMenuItem>
-                                  )}
-                                  {canPurge && (
-                                    <DropdownMenuItem onClick={() => openSuperAdminAction("purge", v)} className="text-destructive focus:text-destructive">
-                                      <Trash2 className="w-4 h-4 mr-2" /> Delete permanently
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <VoucherRowActions
+                                voucherNumber={v.voucher_number}
+                                canEdit={editAllowed}
+                                editDeniedReason={editAllowed ? undefined : `${editEval.reason} (ref: ${editEval.correlationId})`}
+                                editPermissionCid={editEval.correlationId}
+                                canReverse={canReverse}
+                                canChangeType={canChangeType}
+                                canApproveReject={canApproveReject}
+                                canDelete={canDelete}
+                                canRestore={canRestore}
+                                canPurge={canPurge}
+                                onView={() => openView(v)}
+                                onEdit={onEdit}
+                                onPrint={() => openPrintVoucher(v)}
+                                onHistory={() => { setAuditRecordId(v.id); setAuditOpen(true); }}
+                                onApprove={() => handleApprove(v)}
+                                onReject={() => handleReject(v)}
+                                onReverse={() => openSuperAdminAction("reverse", v)}
+                                onChangeType={() => openChangeType(v)}
+                                onDelete={() => openSuperAdminAction("delete", v)}
+                                onRestore={() => openSuperAdminAction("restore", v)}
+                                onPurge={() => openSuperAdminAction("purge", v)}
+                              />
                             );
                           })()}
                         </TableCell>
@@ -1519,9 +1481,31 @@ const AccountingVouchers = () => {
               {superAdminAction && actionLabels[superAdminAction]?.desc}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {(superAdminAction === "delete" || superAdminAction === "purge") && (
+            <div
+              role="alert"
+              className="flex gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+            >
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+              <div className="space-y-1">
+                <div className="font-medium">
+                  {superAdminAction === "purge" ? "Permanent deletion — cannot be undone" : "This will move the voucher to trash"}
+                </div>
+                <div className="text-destructive/90">
+                  {superAdminAction === "purge"
+                    ? "The voucher and all its ledger entries will be erased from the database. Reports and audit trails will lose access to this record."
+                    : "The voucher will be hidden from reports and ledgers. A Super Admin can restore it later. The action is written to the audit log."}
+                  {actionVoucher && (
+                    <> Type: <strong>{actionVoucher.voucher_type}</strong> · Amount: <strong>{fc(actionVoucher.total_amount)}</strong>.</>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           <div className="space-y-2">
-            <Label>Reason (required)</Label>
+            <Label htmlFor="voucher-action-reason">Reason (required)</Label>
             <Textarea
+              id="voucher-action-reason"
               value={actionReason}
               onChange={(e) => setActionReason(e.target.value)}
               placeholder="Provide a reason for this action..."
