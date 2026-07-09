@@ -228,6 +228,23 @@ const UsersPage = () => {
 
         toast({ title: "User created" });
       }
+      // Audit log: record branch permission changes (create/update/remove)
+      if (branchesChanged) {
+        try {
+          const action = !editUser
+            ? "branch_permissions_created"
+            : (formBranchIds.length === 0 ? "branch_permissions_removed" : "branch_permissions_updated");
+          await supabase.from("audit_log").insert({
+            user_id: currentUserId,
+            module: "user_management",
+            action,
+            record_id: editUser?.id || null,
+            details: `Branches for ${formName}: [${formBranchIds.join(", ") || "none"}] (primary: ${primaryBranch || "none"})`,
+            old_data: editUser ? { branch_id: oldPrimary, branch_ids: oldBranchIds } as any : null,
+            new_data: { branch_id: primaryBranch, branch_ids: formBranchIds } as any,
+          });
+        } catch { /* audit is best-effort */ }
+      }
       setDialogOpen(false);
       fetchData();
       // If the actor edited their own account (e.g. system_role change), refresh
