@@ -60,12 +60,13 @@ const UsersPage = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    const [profilesRes, rolesRes, branchesRes, customRolesRes, userCustomRolesRes] = await Promise.all([
+    const [profilesRes, rolesRes, branchesRes, customRolesRes, userCustomRolesRes, userBranchesRes] = await Promise.all([
       supabase.from("profiles").select("*").is("deleted_at", null).neq("status", "deleted"),
       supabase.from("user_roles").select("*"),
       supabase.from("branches").select("id, name"),
       supabase.from("custom_roles").select("id, name").order("name"),
       supabase.from("user_custom_roles").select("*"),
+      supabase.from("user_branches" as any).select("user_id, branch_id"),
     ]);
 
     const branchList = (branchesRes.data || []) as Branch[];
@@ -75,6 +76,7 @@ const UsersPage = () => {
     const profiles = profilesRes.data || [];
     const rolesList = rolesRes.data || [];
     const userCustomRolesList = userCustomRolesRes.data || [];
+    const userBranchesList = (userBranchesRes.data || []) as any[];
 
     // Filter out super admin users (employee_id IS NULL) for non-super-admin viewers
     const visibleProfiles = isSuperAdmin
@@ -86,10 +88,17 @@ const UsersPage = () => {
       const normalizedRoles = p.employee_id === null || p.employee_id === undefined
         ? ["super_admin", ...systemRoles.filter((r: string) => r !== "super_admin" && r !== "user" && r !== "staff" && r !== "admin")]
         : (systemRoles.includes("super_admin") ? ["super_admin"] : ["user"]);
+      const linkedBranchIds = userBranchesList
+        .filter((ub: any) => ub.user_id === p.id)
+        .map((ub: any) => ub.branch_id as string);
+      const branch_ids = linkedBranchIds.length > 0
+        ? linkedBranchIds
+        : (p.branch_id ? [p.branch_id] : []);
       return {
         ...p,
         roles: normalizedRoles,
         branch_name: branchList.find((b) => b.id === p.branch_id)?.name,
+        branch_ids,
         custom_role_ids: userCustomRolesList.filter((ucr: any) => ucr.user_id === p.id).map((ucr: any) => ucr.custom_role_id),
       };
     });
