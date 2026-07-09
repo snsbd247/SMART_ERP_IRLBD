@@ -1,10 +1,12 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { z } from "npm:zod";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+const DeleteVoucherBodySchema = z.object({
+  action: z.literal("delete_approved"),
+  id: z.string().uuid(),
+  reason: z.string().max(1000).optional().nullable(),
+});
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -47,11 +49,11 @@ function isAdminOrSuper(roles: string[]) {
 const VOUCHER_TYPES = ["journal", "payment", "receipt", "contra"];
 const VOUCHER_UMBRELLA_MODULES = ["vouchers", "accounts"];
 
-function isProfileSuperAdmin(profile: any, roles: string[]) {
+export function isProfileSuperAdmin(profile: any, roles: string[]) {
   return isSuperAdmin(roles) || profile?.employee_id === null;
 }
 
-function voucherPermissionCandidates(voucherType: string, action: string): string[] {
+export function voucherPermissionCandidates(voucherType: string, action: string): string[] {
   const modules = VOUCHER_TYPES.includes(voucherType)
     ? [voucherType, ...VOUCHER_UMBRELLA_MODULES]
     : [...VOUCHER_UMBRELLA_MODULES];
@@ -70,7 +72,7 @@ function permissionColumn(action: string): "can_view" | "can_add" | "can_edit" |
   return map[action] ?? null;
 }
 
-async function hasVoucherPermission(
+export async function hasVoucherPermission(
   admin: any,
   userId: string,
   roles: string[],
@@ -102,6 +104,23 @@ async function hasVoucherPermission(
   return { allowed: (perms || []).some((p: any) => Boolean(p[col])), candidates };
 }
 
+async function getUserCustomRoleNames(admin: any, userId: string): Promise<string[]> {
+  const { data } = await admin
+    .from("user_custom_roles")
+    .select("custom_role_id, role:custom_roles(name)")
+    .eq("user_id", userId);
+  return (data || []).map((r: any) => r.role?.name).filter(Boolean);
+}
+
+async function actorRoleNames(admin: any, userId: string, roles: string[], profile: any): Promise<string[]> {
+  const out = new Set<string>();
+  if (isProfileSuperAdmin(profile, roles)) out.add("super_admin");
+  roles.forEach((r) => out.add(String(r)));
+  (await getUserCustomRoleNames(admin, userId)).forEach((r) => out.add(String(r)));
+  const names = Array.from(out).filter(Boolean);
+  return names.length ? names : ["user"];
+}
+
 async function logAudit(
   admin: any,
   params: {
@@ -112,6 +131,9 @@ async function logAudit(
     recordId: string;
     details: string;
     ipAddress: string | null;
+    oldData?: unknown;
+    newData?: unknown;
+    userAgent?: string | null;
   }
 ) {
   await admin.from("audit_log").insert({
@@ -122,6 +144,9 @@ async function logAudit(
     record_id: params.recordId,
     details: params.details,
     ip_address: params.ipAddress,
+    old_data: params.oldData ?? null,
+    new_data: params.newData ?? null,
+    user_agent: params.userAgent ?? null,
   });
 }
 
