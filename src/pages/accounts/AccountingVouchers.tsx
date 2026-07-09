@@ -908,15 +908,33 @@ const AccountingVouchers = () => {
             </Button>
           )}
           {allowedTypes.length > 0 && (
-            <Button onClick={() => {
-              // Preselect last chosen type if user still has permission.
-              if (newVoucherType && canCreateForType(newVoucherType)) {
-                setPickerPreviewType(newVoucherType);
-              } else {
-                setPickerPreviewType(null);
-              }
-              setNewTypePickerOpen(true);
-            }} size="sm"><Plus className="w-4 h-4 mr-1" />New Voucher</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm">
+                  <Plus className="w-4 h-4 mr-1" />
+                  New Voucher
+                  <ChevronDown className="w-4 h-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Select Voucher Type</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {allowedTypes.map((t) => (
+                  <DropdownMenuItem
+                    key={t.id}
+                    onSelect={() => {
+                      setPickerPreviewType(t.id);
+                      setNewTypePickerOpen(true);
+                    }}
+                  >
+                    <span className="inline-flex items-center rounded px-1.5 py-0.5 mr-2 text-xs font-mono font-semibold bg-primary/10 text-primary">
+                      {t.prefix}
+                    </span>
+                    {t.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>
