@@ -898,13 +898,13 @@ const AccountingVouchers = () => {
           </Button>
           {isSuperAdmin && (
             <Button
-              variant={showDeleted ? "default" : "outline"}
+              variant="outline"
               size="sm"
-              onClick={() => setShowDeleted((v) => !v)}
-              title="Show soft-deleted vouchers"
+              onClick={() => { window.location.href = "/accounts/vouchers/trash"; }}
+              title="Open the deleted vouchers page (trash)"
             >
               <Trash2 className="w-4 h-4 mr-1" />
-              {showDeleted ? "Showing Trash" : "Show Deleted"}
+              Deleted Vouchers
             </Button>
           )}
           {allowedTypes.length > 0 && (
