@@ -913,19 +913,26 @@ const AccountingVouchers = () => {
                 <Button
                   size="sm"
                   variant="default"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 data-[state=open]:bg-primary data-[state=open]:text-primary-foreground"
+                  disabled={creatingType !== null}
+                  aria-label="Create new voucher"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[state=open]:bg-primary data-[state=open]:text-primary-foreground data-[state=open]:hover:bg-primary/90 disabled:opacity-70"
                 >
-                  <Plus className="w-4 h-4 mr-1" />
+                  {creatingType ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4 mr-1" />
+                  )}
                   New Voucher
                   <ChevronDown className="w-4 h-4 ml-1" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" sideOffset={6} collisionPadding={8} className="w-56">
                 <DropdownMenuLabel>Select Voucher Type</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {allowedTypes.map((t) => (
                   <DropdownMenuItem
                     key={t.id}
+                    disabled={creatingType !== null}
                     onSelect={async () => {
                       const check = evalPerm(t.id, "create");
                       if (!check.allowed) {
@@ -936,6 +943,7 @@ const AccountingVouchers = () => {
                         });
                         return;
                       }
+                      setCreatingType(t.id);
                       setNewVoucherType(t.id);
                       try { localStorage.setItem(LAST_NEW_TYPE_KEY, t.id); } catch { /* ignore */ }
                       try {
@@ -947,6 +955,7 @@ const AccountingVouchers = () => {
                         });
                       } catch { /* ignore */ }
                       openCreate();
+                      setTimeout(() => setCreatingType(null), 500);
                     }}
                   >
                     <span className="inline-flex items-center rounded px-1.5 py-0.5 mr-2 text-xs font-mono font-semibold bg-primary/10 text-primary">
