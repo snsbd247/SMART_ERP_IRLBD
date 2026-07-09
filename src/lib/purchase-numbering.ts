@@ -1,10 +1,29 @@
 import { supabase } from "@/integrations/supabase/client";
 
+const VOUCHER_PREFIX_TO_SEQUENCE: Record<string, string> = {
+  JV: "journal_voucher",
+  PV: "payment_voucher",
+  RV: "receipt_voucher",
+  CV: "contra_voucher",
+};
+
 /**
  * Compute next document number using purchase_settings prefix.
  * Format: PREFIX-YYYY-NNNN  (per-year sequence per prefix).
  */
 export async function nextDocNo(prefix: string, table: string, column: string): Promise<string> {
+  if (table === "acc_vouchers" && column === "voucher_number" && VOUCHER_PREFIX_TO_SEQUENCE[prefix]) {
+    const { data, error } = await (supabase as any).rpc("reserve_voucher_number", {
+      _sequence_id: VOUCHER_PREFIX_TO_SEQUENCE[prefix],
+    });
+
+    if (error || !data) {
+      throw new Error(`Failed to reserve voucher number: ${error?.message || "No number returned"}`);
+    }
+
+    return String(data);
+  }
+
   const year = new Date().getFullYear();
   const like = `${prefix}-${year}-%`;
   const { data } = await supabase

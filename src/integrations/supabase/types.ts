@@ -6163,6 +6163,10 @@ export type Database = {
     Functions: {
       get_email_by_username: { Args: { _username: string }; Returns: string }
       is_super_admin: { Args: { _uid: string }; Returns: boolean }
+      reserve_voucher_number: {
+        Args: { _sequence_id: string }
+        Returns: string
+      }
       suggest_account_code: {
         Args: { _parent_id: string; _type: string }
         Returns: string
