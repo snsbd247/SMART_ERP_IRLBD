@@ -360,7 +360,7 @@ class GenericTableController extends BaseController
         $cols = Schema::getColumnListing($table);
         $clean = array_map(
             fn ($r) => array_intersect_key(
-                $this->stampTimestamps($table, $this->normalizeTemporalValues($this->rewriteBody($table, $r)), true),
+                $this->stampTimestamps($table, $this->encodeJsonValues($this->normalizeTemporalValues($this->rewriteBody($table, $r))), true),
                 array_flip($cols)
             ),
             $rows
