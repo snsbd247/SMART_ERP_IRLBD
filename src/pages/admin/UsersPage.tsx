@@ -171,9 +171,10 @@ const UsersPage = () => {
           toast({ title: "User created" });
         }
       } else if (editUser) {
+        const primaryBranch = formBranchIds[0] || formBranch || null;
         const { error } = await supabase.from("profiles").update({
           name: formName, username: formUsername, email: formEmail, phone: formPhone,
-          branch_id: formBranch || null, status: formStatus,
+          branch_id: primaryBranch, status: formStatus,
           updated_at: new Date().toISOString(),
         }).eq("id", editUser.id);
         if (error) throw error;
