@@ -84,20 +84,34 @@ const DeletedVouchersPage = () => {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((v) =>
-      (v.voucher_number || "").toLowerCase().includes(q)
-      || (v.description || "").toLowerCase().includes(q)
-      || (v.voucher_type || "").toLowerCase().includes(q)
-      || String(v.total_amount ?? "").includes(q)
-    );
-  }, [rows, search]);
+    return rows.filter((v) => {
+      if (typeFilter !== "all" && v.voucher_type !== typeFilter) return false;
+      if (dateFrom && (v.voucher_date || "") < dateFrom) return false;
+      if (dateTo && (v.voucher_date || "") > dateTo) return false;
+      if (!q) return true;
+      return (
+        (v.voucher_number || "").toLowerCase().includes(q)
+        || (v.description || "").toLowerCase().includes(q)
+        || (v.voucher_type || "").toLowerCase().includes(q)
+        || String(v.total_amount ?? "").includes(q)
+      );
+    });
+  }, [rows, search, typeFilter, dateFrom, dateTo]);
 
-  const allSelected = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+  useEffect(() => { setPage(1); }, [search, typeFilter, dateFrom, dateTo, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageRows = useMemo(
+    () => filtered.slice((page - 1) * pageSize, page * pageSize),
+    [filtered, page, pageSize]
+  );
+
+  const allSelected = pageRows.length > 0 && pageRows.every((r) => selected.has(r.id));
+  const someSelected = pageRows.some((r) => selected.has(r.id)) && !allSelected;
   const toggleAll = (checked: boolean) => {
     const next = new Set(selected);
-    if (checked) filtered.forEach((r) => next.add(r.id));
-    else filtered.forEach((r) => next.delete(r.id));
+    if (checked) pageRows.forEach((r) => next.add(r.id));
+    else pageRows.forEach((r) => next.delete(r.id));
     setSelected(next);
   };
   const toggleRow = (id: string, checked: boolean) => {
@@ -105,6 +119,7 @@ const DeletedVouchersPage = () => {
     if (checked) next.add(id); else next.delete(id);
     setSelected(next);
   };
+  const clearSelection = () => setSelected(new Set());
 
   const runBulk = async (kind: "purge" | "restore") => {
     if (selected.size === 0) return;
