@@ -129,13 +129,26 @@ const UsersPage = () => {
   };
 
   const handleSave = async () => {
+    // Validate primary branch belongs to selected branches
+    if (formBranchIds.length > 0 && formBranch && !formBranchIds.includes(formBranch)) {
+      toast({ title: "Invalid primary branch", description: "Primary branch must be one of the selected allowed branches.", variant: "destructive" });
+      return;
+    }
+    const primaryBranch = formBranchIds[0] || formBranch || null;
+    const oldBranchIds = editUser?.branch_ids || [];
+    const oldPrimary = editUser?.branch_id || null;
+    const branchesChanged =
+      !editUser ||
+      oldPrimary !== primaryBranch ||
+      oldBranchIds.length !== formBranchIds.length ||
+      oldBranchIds.some((b) => !formBranchIds.includes(b));
+
     setCreating(true);
     try {
       if (isLaravelMode()) {
         const base = getApiBaseUrl();
         if (!base) throw new Error("Laravel API URL not configured");
         const headers = getLaravelAuthHeaders(true);
-        const primaryBranch = formBranchIds[0] || formBranch || null;
         const payload: any = {
           name: formName,
           username: formUsername,
@@ -214,6 +227,23 @@ const UsersPage = () => {
         if (errMsg) throw new Error(errMsg);
 
         toast({ title: "User created" });
+      }
+      // Audit log: record branch permission changes (create/update/remove)
+      if (branchesChanged) {
+        try {
+          const action = !editUser
+            ? "branch_permissions_created"
+            : (formBranchIds.length === 0 ? "branch_permissions_removed" : "branch_permissions_updated");
+          await supabase.from("audit_log").insert({
+            user_id: currentUserId,
+            module: "user_management",
+            action,
+            record_id: editUser?.id || null,
+            details: `Branches for ${formName}: [${formBranchIds.join(", ") || "none"}] (primary: ${primaryBranch || "none"})`,
+            old_data: editUser ? { branch_id: oldPrimary, branch_ids: oldBranchIds } as any : null,
+            new_data: { branch_id: primaryBranch, branch_ids: formBranchIds } as any,
+          });
+        } catch { /* audit is best-effort */ }
       }
       setDialogOpen(false);
       fetchData();
@@ -315,7 +345,30 @@ const UsersPage = () => {
                     ))}
                     {u.custom_role_ids.length === 0 && <span className="text-muted-foreground">—</span>}
                   </TableCell>
-                  <TableCell className="text-sm">{u.branch_name || "—"}</TableCell>
+                  <TableCell className="text-sm">
+                    {u.roles.includes("super_admin") ? (
+                      <Badge variant="outline" className="text-xs">All branches</Badge>
+                    ) : u.branch_ids.length === 0 ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {u.branch_ids.map((bid) => {
+                          const name = branches.find((b) => b.id === bid)?.name || bid;
+                          const isPrimary = bid === u.branch_id;
+                          return (
+                            <Badge
+                              key={bid}
+                              variant={isPrimary ? "default" : "secondary"}
+                              className="text-xs"
+                              title={isPrimary ? "Primary branch" : "Assigned branch"}
+                            >
+                              {name}{isPrimary ? " ★" : ""}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={u.status === "active" ? "default" : "secondary"} className="text-xs">{u.status}</Badge>
                   </TableCell>
