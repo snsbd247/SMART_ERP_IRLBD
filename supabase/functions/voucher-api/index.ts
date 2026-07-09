@@ -1,10 +1,12 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { z } from "npm:zod";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+const DeleteVoucherBodySchema = z.object({
+  action: z.literal("delete_approved"),
+  id: z.string().uuid(),
+  reason: z.string().max(1000).optional().nullable(),
+});
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -47,11 +49,11 @@ function isAdminOrSuper(roles: string[]) {
 const VOUCHER_TYPES = ["journal", "payment", "receipt", "contra"];
 const VOUCHER_UMBRELLA_MODULES = ["vouchers", "accounts"];
 
-function isProfileSuperAdmin(profile: any, roles: string[]) {
+export function isProfileSuperAdmin(profile: any, roles: string[]) {
   return isSuperAdmin(roles) || profile?.employee_id === null;
 }
 
-function voucherPermissionCandidates(voucherType: string, action: string): string[] {
+export function voucherPermissionCandidates(voucherType: string, action: string): string[] {
   const modules = VOUCHER_TYPES.includes(voucherType)
     ? [voucherType, ...VOUCHER_UMBRELLA_MODULES]
     : [...VOUCHER_UMBRELLA_MODULES];
@@ -70,7 +72,7 @@ function permissionColumn(action: string): "can_view" | "can_add" | "can_edit" |
   return map[action] ?? null;
 }
 
-async function hasVoucherPermission(
+export async function hasVoucherPermission(
   admin: any,
   userId: string,
   roles: string[],
@@ -102,6 +104,23 @@ async function hasVoucherPermission(
   return { allowed: (perms || []).some((p: any) => Boolean(p[col])), candidates };
 }
 
+async function getUserCustomRoleNames(admin: any, userId: string): Promise<string[]> {
+  const { data } = await admin
+    .from("user_custom_roles")
+    .select("custom_role_id, role:custom_roles(name)")
+    .eq("user_id", userId);
+  return (data || []).map((r: any) => r.role?.name).filter(Boolean);
+}
+
+async function actorRoleNames(admin: any, userId: string, roles: string[], profile: any): Promise<string[]> {
+  const out = new Set<string>();
+  if (isProfileSuperAdmin(profile, roles)) out.add("super_admin");
+  roles.forEach((r) => out.add(String(r)));
+  (await getUserCustomRoleNames(admin, userId)).forEach((r) => out.add(String(r)));
+  const names = Array.from(out).filter(Boolean);
+  return names.length ? names : ["user"];
+}
+
 async function logAudit(
   admin: any,
   params: {
@@ -112,6 +131,9 @@ async function logAudit(
     recordId: string;
     details: string;
     ipAddress: string | null;
+    oldData?: unknown;
+    newData?: unknown;
+    userAgent?: string | null;
   }
 ) {
   await admin.from("audit_log").insert({
@@ -122,6 +144,9 @@ async function logAudit(
     record_id: params.recordId,
     details: params.details,
     ip_address: params.ipAddress,
+    old_data: params.oldData ?? null,
+    new_data: params.newData ?? null,
+    user_agent: params.userAgent ?? null,
   });
 }
 
@@ -156,28 +181,28 @@ function voucherSequenceId(voucherType: string): string {
 
 // ---------- main handler ----------
 
-Deno.serve(async (req) => {
+export async function handler(req: Request) {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   // Auth
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return err("Missing authorization", 401);
+  if (!authHeader?.startsWith("Bearer ")) return err("Unauthorized", 401);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-  // Verify user token
+  // Verify user token in-code because managed functions deploy with verify_jwt=false.
   const userClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
   });
-  const {
-    data: { user },
-    error: authErr,
-  } = await userClient.auth.getUser();
-  if (authErr || !user) return err("Unauthorized", 401);
+  const token = authHeader.replace("Bearer ", "");
+  const { data: claimsData, error: authErr } = await userClient.auth.getClaims(token);
+  const claims = claimsData?.claims;
+  if (authErr || !claims?.sub) return err("Unauthorized", 401);
+  const user = { id: claims.sub, email: claims.email as string | undefined };
 
   // Admin client for service-level ops
   const admin = createClient(supabaseUrl, serviceKey);
@@ -510,7 +535,11 @@ Deno.serve(async (req) => {
 
       // ============ SOFT-DELETE VOUCHER (ROLE DELETE PERMISSION) ============
       case "delete_approved": {
-        const { id, reason } = body;
+        const parsed = DeleteVoucherBodySchema.safeParse(body);
+        if (!parsed.success) {
+          return json({ error: parsed.error.flatten().fieldErrors }, 400);
+        }
+        const { id, reason } = parsed.data;
 
         const { data: v } = await admin.from("acc_vouchers").select("*").eq("id", id).single();
         if (!v) return err("Voucher not found", 404);
@@ -522,15 +551,17 @@ Deno.serve(async (req) => {
           }, 403);
         }
         if (v.deleted_at) return err("Voucher already deleted", 400);
+        const actorRoles = await actorRoleNames(admin, user.id, roles, profile);
+        const deletedAt = new Date().toISOString();
 
         // Soft delete: keep rows, mark deleted_at + remember prev_status so
         // reports filtering by status='approved' automatically exclude it.
         await admin.from("acc_vouchers").update({
-          deleted_at: new Date().toISOString(),
+          deleted_at: deletedAt,
           deleted_by: user.id,
           prev_status: v.status,
           status: "deleted",
-          updated_at: new Date().toISOString(),
+          updated_at: deletedAt,
         }).eq("id", id);
 
         await logAudit(admin, {
@@ -539,12 +570,29 @@ Deno.serve(async (req) => {
           module: "accounting",
           action: "voucher_soft_deleted",
           recordId: id,
-          details: JSON.stringify({
-            voucher_number: v.voucher_number,
-            reason: reason || "No reason provided",
-            prev_status: v.status,
-          }),
+          details: `Voucher deleted by ${userName} with roles [${actorRoles.join(", ")}] at ${deletedAt}. Affected voucher: ${v.voucher_number} (${v.voucher_type}), amount ${v.total_amount}. Reason: ${reason || "No reason provided"}`,
           ipAddress,
+          userAgent: req.headers.get("user-agent"),
+          oldData: {
+            voucher_id: id,
+            voucher_number: v.voucher_number,
+            voucher_type: v.voucher_type,
+            voucher_date: v.voucher_date,
+            total_amount: v.total_amount,
+            status: v.status,
+            deleted_at: v.deleted_at,
+          },
+          newData: {
+            voucher_id: id,
+            voucher_number: v.voucher_number,
+            voucher_type: v.voucher_type,
+            status: "deleted",
+            prev_status: v.status,
+            deleted_at: deletedAt,
+            deleted_by: user.id,
+            actor_roles: actorRoles,
+            reason: reason || null,
+          },
         });
 
         return json({ success: true });
@@ -700,4 +748,8 @@ Deno.serve(async (req) => {
     console.error("voucher-api error:", e);
     return err(e.message || "Internal error", 500);
   }
-});
+}
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}
