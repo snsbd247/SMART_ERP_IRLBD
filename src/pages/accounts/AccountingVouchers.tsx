@@ -88,7 +88,6 @@ const AccountingVouchers = () => {
 
   const canCreateForType = (type: string) => evalPerm(type, "create").allowed;
   const canEditForType = (type: string) => evalPerm(type, "edit").allowed;
-  const canDeleteForType = (type: string) => evalPerm(type, "delete").allowed;
 
   const allowedTypes = VOUCHER_TYPES.filter((vt) => voucherPermMap[vt.id]);
   const TYPE_FILTER_KEY = "accountingVouchers.typeFilter";
