@@ -910,7 +910,11 @@ const AccountingVouchers = () => {
           {allowedTypes.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="sm">
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 data-[state=open]:bg-primary data-[state=open]:text-primary-foreground"
+                >
                   <Plus className="w-4 h-4 mr-1" />
                   New Voucher
                   <ChevronDown className="w-4 h-4 ml-1" />
