@@ -24,6 +24,7 @@ interface UserRow {
   status: string;
   roles: string[];
   branch_name?: string;
+  branch_ids: string[];
   custom_role_ids: string[];
 }
 
@@ -50,6 +51,7 @@ const UsersPage = () => {
   const [formPassword, setFormPassword] = useState("");
   const [formRole, setFormRole] = useState<string>("user");
   const [formBranch, setFormBranch] = useState<string>("");
+  const [formBranchIds, setFormBranchIds] = useState<string[]>([]);
   const [formStatus, setFormStatus] = useState<string>("active");
   const [formCustomRole, setFormCustomRole] = useState<string>("");
 
@@ -58,12 +60,13 @@ const UsersPage = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    const [profilesRes, rolesRes, branchesRes, customRolesRes, userCustomRolesRes] = await Promise.all([
+    const [profilesRes, rolesRes, branchesRes, customRolesRes, userCustomRolesRes, userBranchesRes] = await Promise.all([
       supabase.from("profiles").select("*").is("deleted_at", null).neq("status", "deleted"),
       supabase.from("user_roles").select("*"),
       supabase.from("branches").select("id, name"),
       supabase.from("custom_roles").select("id, name").order("name"),
       supabase.from("user_custom_roles").select("*"),
+      supabase.from("user_branches" as any).select("user_id, branch_id"),
     ]);
 
     const branchList = (branchesRes.data || []) as Branch[];
@@ -73,6 +76,7 @@ const UsersPage = () => {
     const profiles = profilesRes.data || [];
     const rolesList = rolesRes.data || [];
     const userCustomRolesList = userCustomRolesRes.data || [];
+    const userBranchesList = (userBranchesRes.data || []) as any[];
 
     // Filter out super admin users (employee_id IS NULL) for non-super-admin viewers
     const visibleProfiles = isSuperAdmin
@@ -84,10 +88,17 @@ const UsersPage = () => {
       const normalizedRoles = p.employee_id === null || p.employee_id === undefined
         ? ["super_admin", ...systemRoles.filter((r: string) => r !== "super_admin" && r !== "user" && r !== "staff" && r !== "admin")]
         : (systemRoles.includes("super_admin") ? ["super_admin"] : ["user"]);
+      const linkedBranchIds = userBranchesList
+        .filter((ub: any) => ub.user_id === p.id)
+        .map((ub: any) => ub.branch_id as string);
+      const branch_ids = linkedBranchIds.length > 0
+        ? linkedBranchIds
+        : (p.branch_id ? [p.branch_id] : []);
       return {
         ...p,
         roles: normalizedRoles,
         branch_name: branchList.find((b) => b.id === p.branch_id)?.name,
+        branch_ids,
         custom_role_ids: userCustomRolesList.filter((ucr: any) => ucr.user_id === p.id).map((ucr: any) => ucr.custom_role_id),
       };
     });
@@ -103,7 +114,7 @@ const UsersPage = () => {
   const openCreate = () => {
     setEditUser(null);
     setFormName(""); setFormUsername(""); setFormEmail(""); setFormPhone("");
-    setFormPassword(""); setFormRole("user"); setFormBranch(""); setFormStatus("active");
+    setFormPassword(""); setFormRole("user"); setFormBranch(""); setFormBranchIds([]); setFormStatus("active");
     setFormCustomRole("");
     setDialogOpen(true);
   };
@@ -112,7 +123,7 @@ const UsersPage = () => {
     setEditUser(u);
     setFormName(u.name); setFormUsername(u.username || ""); setFormEmail(u.email || "");
     setFormPhone(u.phone || ""); setFormPassword(""); setFormRole(u.roles.includes("super_admin") ? "super_admin" : "user");
-    setFormBranch(u.branch_id || ""); setFormStatus(u.status);
+    setFormBranch(u.branch_id || ""); setFormBranchIds(u.branch_ids || []); setFormStatus(u.status);
     setFormCustomRole(u.custom_role_ids[0] || "");
     setDialogOpen(true);
   };
@@ -124,13 +135,14 @@ const UsersPage = () => {
         const base = getApiBaseUrl();
         if (!base) throw new Error("Laravel API URL not configured");
         const headers = getLaravelAuthHeaders(true);
+        const primaryBranch = formBranchIds[0] || formBranch || null;
         const payload: any = {
           name: formName,
           username: formUsername,
           email: formEmail || null,
           phone: formPhone || null,
-          branch_id: formBranch || null,
-          branch_ids: formBranch ? [formBranch] : [],
+          branch_id: primaryBranch,
+          branch_ids: formBranchIds,
           status: formStatus,
           system_role: formRole,
           role_ids: formCustomRole && formCustomRole !== "none" ? [formCustomRole] : [],
@@ -159,9 +171,10 @@ const UsersPage = () => {
           toast({ title: "User created" });
         }
       } else if (editUser) {
+        const primaryBranch = formBranchIds[0] || formBranch || null;
         const { error } = await supabase.from("profiles").update({
           name: formName, username: formUsername, email: formEmail, phone: formPhone,
-          branch_id: formBranch || null, status: formStatus,
+          branch_id: primaryBranch, status: formStatus,
           updated_at: new Date().toISOString(),
         }).eq("id", editUser.id);
         if (error) throw error;
@@ -385,17 +398,6 @@ const UsersPage = () => {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">Branch</Label>
-                <Select value={formBranch} onValueChange={setFormBranch}>
-                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>
-                    {branches.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
                 <Label className="text-xs">Status</Label>
                 <Select value={formStatus} onValueChange={setFormStatus}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -405,6 +407,59 @@ const UsersPage = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Primary Branch</Label>
+                <Select
+                  value={formBranchIds[0] || ""}
+                  onValueChange={(v) => {
+                    setFormBranch(v);
+                    setFormBranchIds((prev) => prev.includes(v) ? [v, ...prev.filter((x) => x !== v)] : [v, ...prev]);
+                  }}
+                  disabled={formBranchIds.length === 0}
+                >
+                  <SelectTrigger><SelectValue placeholder={formBranchIds.length === 0 ? "Select branches below" : "Primary"} /></SelectTrigger>
+                  <SelectContent>
+                    {formBranchIds.map((id) => {
+                      const b = branches.find((x) => x.id === id);
+                      return b ? <SelectItem key={id} value={id}>{b.name}</SelectItem> : null;
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Allowed Branches (multi-select)</Label>
+              <div className="max-h-40 overflow-y-auto rounded-md border p-2 space-y-1">
+                {branches.length === 0 && <p className="text-xs text-muted-foreground">No branches available</p>}
+                {branches.map((b) => {
+                  const checked = formBranchIds.includes(b.id);
+                  return (
+                    <label key={b.id} className="flex items-center gap-2 text-sm cursor-pointer px-1 py-0.5 rounded hover:bg-accent">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={checked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormBranchIds((prev) => [...prev, b.id]);
+                            if (!formBranch) setFormBranch(b.id);
+                          } else {
+                            setFormBranchIds((prev) => {
+                              const next = prev.filter((x) => x !== b.id);
+                              if (formBranch === b.id) setFormBranch(next[0] || "");
+                              return next;
+                            });
+                          }
+                        }}
+                      />
+                      <span>{b.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                User will only see data from selected branches. Super Admins see all branches.
+              </p>
             </div>
           </div>
           <DialogFooter>
