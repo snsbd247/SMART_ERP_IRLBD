@@ -398,17 +398,6 @@ const UsersPage = () => {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">Branch</Label>
-                <Select value={formBranch} onValueChange={setFormBranch}>
-                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>
-                    {branches.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
                 <Label className="text-xs">Status</Label>
                 <Select value={formStatus} onValueChange={setFormStatus}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -418,6 +407,59 @@ const UsersPage = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Primary Branch</Label>
+                <Select
+                  value={formBranchIds[0] || ""}
+                  onValueChange={(v) => {
+                    setFormBranch(v);
+                    setFormBranchIds((prev) => prev.includes(v) ? [v, ...prev.filter((x) => x !== v)] : [v, ...prev]);
+                  }}
+                  disabled={formBranchIds.length === 0}
+                >
+                  <SelectTrigger><SelectValue placeholder={formBranchIds.length === 0 ? "Select branches below" : "Primary"} /></SelectTrigger>
+                  <SelectContent>
+                    {formBranchIds.map((id) => {
+                      const b = branches.find((x) => x.id === id);
+                      return b ? <SelectItem key={id} value={id}>{b.name}</SelectItem> : null;
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Allowed Branches (multi-select)</Label>
+              <div className="max-h-40 overflow-y-auto rounded-md border p-2 space-y-1">
+                {branches.length === 0 && <p className="text-xs text-muted-foreground">No branches available</p>}
+                {branches.map((b) => {
+                  const checked = formBranchIds.includes(b.id);
+                  return (
+                    <label key={b.id} className="flex items-center gap-2 text-sm cursor-pointer px-1 py-0.5 rounded hover:bg-accent">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={checked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormBranchIds((prev) => [...prev, b.id]);
+                            if (!formBranch) setFormBranch(b.id);
+                          } else {
+                            setFormBranchIds((prev) => {
+                              const next = prev.filter((x) => x !== b.id);
+                              if (formBranch === b.id) setFormBranch(next[0] || "");
+                              return next;
+                            });
+                          }
+                        }}
+                      />
+                      <span>{b.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                User will only see data from selected branches. Super Admins see all branches.
+              </p>
             </div>
           </div>
           <DialogFooter>
