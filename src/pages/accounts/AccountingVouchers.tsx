@@ -27,6 +27,7 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { PrintLayout } from "@/components/PrintLayout";
 import { formatDateDMY, toDateInputValue } from "@/lib/date-format";
 import {
+  canShowVoucherDeleteAction,
   evaluateVoucherPermission,
   logVoucherPermissionDenial,
   type VoucherType,
@@ -473,13 +474,11 @@ const AccountingVouchers = () => {
   };
 
   const canDeleteVoucher = (v: Voucher) => {
-    // Super Admin can permanently delete a voucher in ANY status.
-    if (isSuperAdmin) return true;
-    // Any role with delete permission for this voucher type (per-type,
-    // vouchers.* umbrella, or accounts.* module-wide) can delete regardless
-    // of status. Approved vouchers move to trash and can be restored by
-    // a Super Admin — same audit trail as before.
-    return canDeleteForType(v.voucher_type);
+    return canShowVoucherDeleteAction({
+      isDeleted: Boolean((v as any).deleted_at),
+      voucherType: v.voucher_type,
+      evaluate: (type) => evalPerm(type, "delete"),
+    });
   };
 
   const handleSave = async (submitForApproval: boolean, resetForNew: boolean = false) => {
@@ -727,7 +726,7 @@ const AccountingVouchers = () => {
       switch (superAdminAction) {
         case "delete":
           await voucherApi.deleteApproved(actionVoucher.id, actionReason);
-          toast({ title: "Voucher moved to trash", description: "Super Admin can restore it from the deleted list." });
+          toast({ title: "Voucher moved to trash", description: "A Super Admin can restore it from the deleted list." });
           break;
         case "restore":
           await voucherApi.restore(actionVoucher.id, actionReason);
