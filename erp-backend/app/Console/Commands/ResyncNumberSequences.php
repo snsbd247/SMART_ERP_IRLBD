@@ -56,7 +56,6 @@ class ResyncNumberSequences extends Command
             if (!$dry && $after > $before) {
                 DB::table('number_sequences')->where('id', $seqId)->update([
                     'current_number' => $after,
-                    'updated_at'     => now(),
                 ]);
             }
         }

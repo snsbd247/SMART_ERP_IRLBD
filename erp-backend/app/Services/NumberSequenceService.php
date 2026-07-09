@@ -36,6 +36,19 @@ class NumberSequenceService
     ];
 
     /**
+     * Sequences whose generated numbers must stay globally unique against a
+     * persisted document table/column. acc_vouchers has a UNIQUE constraint on
+     * voucher_number, including soft-deleted/transferred rows, so we must never
+     * re-issue a number that still exists there.
+     */
+    private const COLLISION_SOURCES = [
+        'journal_voucher' => ['acc_vouchers', 'voucher_number'],
+        'payment_voucher' => ['acc_vouchers', 'voucher_number'],
+        'receipt_voucher' => ['acc_vouchers', 'voucher_number'],
+        'contra_voucher'  => ['acc_vouchers', 'voucher_number'],
+    ];
+
+    /**
      * Get the next number for a sequence and increment atomically.
      * Auto-rolls the year and resets the serial when the calendar year changes.
      * Self-heals if the sequence row is missing.
@@ -43,18 +56,24 @@ class NumberSequenceService
     public function next(string $sequenceId): string
     {
         return DB::transaction(function () use ($sequenceId) {
-            // 1) Try to reuse a released number (free-list, FIFO). Safe: consumed_at is set
-            //    atomically inside the same transaction so concurrent callers cannot claim it.
+            // 1) Try to reuse a released number (free-list, FIFO), but only if
+            //    the target table no longer contains that number. Soft-deleted
+            //    vouchers still occupy acc_vouchers.voucher_number's UNIQUE key,
+            //    so stale free-list rows must be consumed/skipped, not returned.
             if (Schema::hasTable('number_sequence_free_list')) {
-                $freed = NumberSequenceFreeItem::where('sequence_id', $sequenceId)
+                $freedItems = NumberSequenceFreeItem::where('sequence_id', $sequenceId)
                     ->whereNull('consumed_at')
                     ->orderBy('released_at')
                     ->lockForUpdate()
-                    ->first();
-                if ($freed) {
+                    ->get();
+
+                foreach ($freedItems as $freed) {
                     $freed->consumed_at = now();
                     $freed->save();
-                    return $freed->number;
+
+                    if (!$this->documentNumberExists($sequenceId, $freed->number)) {
+                        return $freed->number;
+                    }
                 }
             }
 
@@ -83,20 +102,22 @@ class NumberSequenceService
                 $seq->current_number = 0;
             }
 
+            // Permanent drift repair: before issuing a new document number,
+            // bring the counter up to the actual maximum serial already present
+            // in the source table. This avoids long skip loops and keeps
+            // number_sequences.current_number transactionally consistent.
+            $actualMax = $this->actualMaxSerial($sequenceId, $seq->prefix, (int) $seq->year);
+            if ($actualMax > (int) $seq->current_number) {
+                $seq->current_number = $actualMax;
+            }
+
             $seq->current_number = (int) $seq->current_number + 1;
 
-            // Collision guard: if a previous manual insert / import advanced the
-            // real table past current_number, skip forward until we find a free
-            // number. Prevents SQLSTATE[23000] duplicate voucher_number errors.
-            $collisionMap = [
-                'journal_voucher' => ['acc_vouchers', 'voucher_number'],
-                'payment_voucher' => ['acc_vouchers', 'voucher_number'],
-                'receipt_voucher' => ['acc_vouchers', 'voucher_number'],
-                'contra_voucher'  => ['acc_vouchers', 'voucher_number'],
-            ];
+            // Final collision guard for malformed/manual imports or holes above
+            // the calculated max. Keep advancing until the candidate is free.
             $candidate = sprintf('%s-%d-%s', $seq->prefix, $seq->year, str_pad((string) $seq->current_number, 5, '0', STR_PAD_LEFT));
-            if (isset($collisionMap[$sequenceId])) {
-                [$tbl, $col] = $collisionMap[$sequenceId];
+            if (isset(self::COLLISION_SOURCES[$sequenceId])) {
+                [$tbl, $col] = self::COLLISION_SOURCES[$sequenceId];
                 if (Schema::hasTable($tbl)) {
                     $guard = 0;
                     while (DB::table($tbl)->where($col, $candidate)->exists() && $guard++ < 10000) {
@@ -119,11 +140,43 @@ class NumberSequenceService
     public function release(string $sequenceId, string $number, ?string $releasedBy = null): void
     {
         if (!Schema::hasTable('number_sequence_free_list')) return;
+
+        if ($this->documentNumberExists($sequenceId, $number)) return;
+
         NumberSequenceFreeItem::create([
             'sequence_id' => $sequenceId,
             'number'      => $number,
             'released_by' => $releasedBy,
             'released_at' => now(),
         ]);
+    }
+
+    private function documentNumberExists(string $sequenceId, string $number): bool
+    {
+        if (!isset(self::COLLISION_SOURCES[$sequenceId])) return false;
+
+        [$tbl, $col] = self::COLLISION_SOURCES[$sequenceId];
+        if (!Schema::hasTable($tbl)) return false;
+
+        return DB::table($tbl)->where($col, $number)->exists();
+    }
+
+    private function actualMaxSerial(string $sequenceId, string $prefix, int $year): int
+    {
+        if (!isset(self::COLLISION_SOURCES[$sequenceId])) return 0;
+
+        [$tbl, $col] = self::COLLISION_SOURCES[$sequenceId];
+        if (!Schema::hasTable($tbl)) return 0;
+
+        $pattern = sprintf('/^%s-%d-(\d+)$/', preg_quote($prefix, '/'), $year);
+
+        return DB::table($tbl)
+            ->where($col, 'like', "{$prefix}-{$year}-%")
+            ->pluck($col)
+            ->reduce(function (int $max, $value) use ($pattern) {
+                return preg_match($pattern, (string) $value, $m)
+                    ? max($max, (int) $m[1])
+                    : $max;
+            }, 0);
     }
 }

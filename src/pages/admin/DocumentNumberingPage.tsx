@@ -45,16 +45,29 @@ const DocumentNumberingPage = () => {
   const computeActualMax = async (seq: Sequence): Promise<number> => {
     if (!ACC_VOUCHER_SEQS.has(seq.id)) return seq.current_number;
     const like = `${seq.prefix}-${seq.year}-%`;
-    const { data, error } = await supabase
-      .from("acc_vouchers")
-      .select("voucher_number")
-      .like("voucher_number", like);
-    if (error) throw error;
+    const exactPattern = new RegExp(`^${seq.prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-${seq.year}-(\\d+)$`);
     let max = 0;
-    for (const row of (data as any[]) ?? []) {
-      const serial = parseInt(String(row.voucher_number).split("-").pop() || "0", 10);
-      if (!isNaN(serial) && serial > max) max = serial;
+
+    // Supabase/PostgREST returns 1,000 rows by default. Page through all rows
+    // so re-sync remains correct even after years of voucher data.
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase
+        .from("acc_vouchers")
+        .select("voucher_number")
+        .like("voucher_number", like)
+        .range(from, from + 999);
+      if (error) throw error;
+
+      const rows = (data as any[]) ?? [];
+      for (const row of rows) {
+        const match = String(row.voucher_number).match(exactPattern);
+        const serial = match ? parseInt(match[1], 10) : 0;
+        if (!isNaN(serial) && serial > max) max = serial;
+      }
+
+      if (rows.length < 1000) break;
     }
+
     return max;
   };
 
