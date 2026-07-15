@@ -50,6 +50,7 @@ export async function fetchAllVoucherEntries(opts: {
         "id, account_id, debit, credit, narration, voucher_id, acc_vouchers!inner(id, voucher_number, voucher_date, voucher_type, status, description, branch_id)"
       )
       .in("acc_vouchers.status", statuses)
+      .is("acc_vouchers.deleted_at", null)
       .gte("acc_vouchers.voucher_date", opts.dateFrom)
       .lte("acc_vouchers.voucher_date", opts.dateTo)
       .order("voucher_date", { foreignTable: "acc_vouchers", ascending: true })
