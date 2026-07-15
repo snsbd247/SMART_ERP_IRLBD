@@ -529,6 +529,24 @@ const AccountingVouchers = () => {
       toast({ title: "At least 2 entries required", variant: "destructive" });
       return;
     }
+    const duplicateAccountNames = Array.from(
+      validEntries
+        .map((entry) => entry.account_id)
+        .filter((accountId, index, accountIds) => accountIds.indexOf(accountId) !== index)
+        .reduce((names, accountId) => {
+          const account = accountsWithBal.find((item) => item.id === accountId);
+          names.add(account?.account_name || "Selected ledger");
+          return names;
+        }, new Set<string>()),
+    );
+    if (duplicateAccountNames.length > 0) {
+      toast({
+        title: "Duplicate ledger account",
+        description: `${duplicateAccountNames.join(", ")} is used more than once in this voucher. Merge it into one debit/credit line before saving.`,
+        variant: "destructive",
+      });
+      return;
+    }
     // Front-end debit/credit nature validation — blocks hard errors,
     // surfaces contra-side warnings as a non-blocking toast.
     const nature = validateEntryNature(
