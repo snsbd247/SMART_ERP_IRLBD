@@ -175,9 +175,10 @@ class VoucherController extends BaseController
             'entries.*.debit' => 'numeric|min:0',
             'entries.*.credit' => 'numeric|min:0',
         ]);
-        $this->assertUniqueLedgerAccounts($request->input('entries', []));
 
         try {
+            $this->assertUniqueLedgerAccounts($request->input('entries', []));
+
             // Reject if the client explicitly picked an inactive Financial Year.
             $requestedFyId = $request->input('financial_year_id');
             if ($requestedFyId) {
