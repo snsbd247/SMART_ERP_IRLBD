@@ -25,6 +25,7 @@ class AccountingService
         if (abs($totalDebit - $totalCredit) > 0.01) {
             throw new \InvalidArgumentException("Entries not balanced: D={$totalDebit} C={$totalCredit}");
         }
+        $this->assertUniqueLedgerAccounts($entries);
 
         $seqMap = ['journal' => 'journal_voucher', 'payment' => 'payment_voucher', 'receipt' => 'receipt_voucher', 'contra' => 'contra_voucher'];
         $seqId = $seqMap[$data['voucher_type']] ?? throw new \InvalidArgumentException("Unknown type: {$data['voucher_type']}");
@@ -186,6 +187,17 @@ class AccountingService
 
             return $new->fresh('entries');
         });
+    }
+
+    private function assertUniqueLedgerAccounts(array $entries): void
+    {
+        $accountIds = collect($entries)
+            ->filter(fn ($entry) => !empty($entry['account_id']) && (((float) ($entry['debit'] ?? 0)) > 0 || ((float) ($entry['credit'] ?? 0)) > 0))
+            ->pluck('account_id');
+
+        if ($accountIds->duplicates()->isNotEmpty()) {
+            throw new \InvalidArgumentException('Duplicate ledger account detected. Use each ledger account only once per voucher.');
+        }
     }
 
 

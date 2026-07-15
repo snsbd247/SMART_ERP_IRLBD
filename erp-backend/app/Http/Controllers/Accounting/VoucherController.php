@@ -42,6 +42,17 @@ class VoucherController extends BaseController
         }
     }
 
+    private function assertUniqueLedgerAccounts(array $entries): void
+    {
+        $accountIds = collect($entries)
+            ->filter(fn ($entry) => !empty($entry['account_id']) && (((float) ($entry['debit'] ?? 0)) > 0 || ((float) ($entry['credit'] ?? 0)) > 0))
+            ->pluck('account_id');
+
+        if ($accountIds->duplicates()->isNotEmpty()) {
+            throw new \InvalidArgumentException('Duplicate ledger account detected. Use each ledger account only once per voucher.');
+        }
+    }
+
     private function auditVoucherDateChange(AccVoucher $voucher, ?string $oldDate, string $newDate, Request $request, ?string $financialYearId): void
     {
         if (!$oldDate || $oldDate === $newDate || !Schema::hasTable('audit_log')) return;
@@ -164,6 +175,7 @@ class VoucherController extends BaseController
             'entries.*.debit' => 'numeric|min:0',
             'entries.*.credit' => 'numeric|min:0',
         ]);
+        $this->assertUniqueLedgerAccounts($request->input('entries', []));
 
         try {
             // Reject if the client explicitly picked an inactive Financial Year.
@@ -269,6 +281,7 @@ class VoucherController extends BaseController
                 'entries.*.credit' => 'numeric|min:0',
                 'entries.*.narration' => 'nullable|string',
             ]);
+            $this->assertUniqueLedgerAccounts($data['entries']);
 
             // Always resolve from the submitted voucher_date. If the next FY
             // does not exist yet, create it once; if it exists but is inactive,
@@ -373,6 +386,9 @@ class VoucherController extends BaseController
         ]);
 
         try {
+            if (!empty($data['entries'])) {
+                $this->assertUniqueLedgerAccounts($data['entries']);
+            }
             $resolvedFinancialYearId = null;
             if (!empty($data['voucher_date'])) {
                 $resolvedFinancialYearId = $this->period->resolveOrCreateId($data['voucher_date']);
