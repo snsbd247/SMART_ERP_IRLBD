@@ -106,6 +106,7 @@ async function fetchAllVoucherEntriesLaravel(opts: {
       `f%5Bvoucher_date%5D%5Bgte%5D=${encodeURIComponent(opts.dateFrom)}`,
       `f%5Bvoucher_date%5D%5Blte%5D=${encodeURIComponent(opts.dateTo)}`,
       `f%5Bstatus%5D%5Bin%5D=${encodeURIComponent(opts.statuses.join(","))}`,
+      `f%5Bdeleted_at%5D%5Bis%5D=null`,
       `order%5Bvoucher_date%5D=asc`,
       `limit=${opts.pageSize}`,
       `offset=${offset}`,
