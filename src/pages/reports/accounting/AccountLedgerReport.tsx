@@ -10,6 +10,7 @@ import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllVoucherEntries } from "@/lib/report-fetch";
 import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
+import { aggregateEntriesByVoucherAccount } from "@/lib/ledger-entry-aggregation";
 import { computeAccountPeriodOpening, type PriorEntry } from "@/lib/period-opening";
 import { OpeningDrilldownDialog } from "@/components/accounts/OpeningDrilldownDialog";
 import { downloadCSV } from "@/lib/csv-export";
@@ -47,9 +48,10 @@ const AccountLedgerReport = () => {
     setBaseOpening(open.baseOpening);
     setPriorEntries(open.priorEntries);
 
-    const entries = await fetchAllVoucherEntries({
+    const rawEntries = await fetchAllVoucherEntries({
       dateFrom, dateTo, branchId: branch, accountId: selectedAccount, statuses,
     });
+    const entries = aggregateEntriesByVoucherAccount(rawEntries as any[]);
     let runBal = open.opening;
 
     // Fetch counter-accounts (other ledger names in the same vouchers), chunked
