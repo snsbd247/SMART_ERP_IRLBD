@@ -1,2 +1,0 @@
-ALTER TABLE public.stock_movements ADD COLUMN IF NOT EXISTS stock_group_id uuid REFERENCES public.stock_groups(id) ON DELETE SET NULL;
-CREATE INDEX IF NOT EXISTS idx_stock_movements_stock_group ON public.stock_movements(stock_group_id);

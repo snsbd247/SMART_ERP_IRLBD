@@ -1,7 +1,7 @@
 # SmartERP — VPS One-Command Installer
 
 Self-hosted production deployment: **Laravel API + MySQL + React** behind Nginx on your own VPS.
-**Zero dependency on Cloud Supabase or Lovable** — on `erp.irlbd.com` the frontend talks only to the same-origin Laravel API (`/api`). Cloud Supabase is reserved for the Lovable preview domains (`accounting.syncsolutionbd.com`, `audit-treasure.lovable.app`).
+The frontend talks only to the same-origin Laravel API (`/api`) — there is no Supabase/Cloud dependency in the app itself.
 
 If an older VPS deploy shows `POST /api/auth/login 500` in the browser, run:
 

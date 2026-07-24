@@ -1,1 +1,0 @@
-ALTER TABLE public.company_settings ADD COLUMN IF NOT EXISTS public_employee_registration_enabled boolean NOT NULL DEFAULT false; NOTIFY pgrst, 'reload schema';

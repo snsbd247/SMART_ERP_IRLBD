@@ -1,4 +1,0 @@
-project_id = "ezwsrtsqiumhxukwgiou"
-
-[functions.verify-employee]
-verify_jwt = false

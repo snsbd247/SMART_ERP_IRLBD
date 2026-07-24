@@ -24,13 +24,15 @@ untouched.
 
 ---
 
-## 2. Supabase / Lovable Cloud deploy
+## 2. Import via the admin UI (any deploy)
 
-The `import-demo-config` edge function is auto-deployed. Trigger it from
+The config import (Chart of Accounts, roles/permissions, numbering, etc.) is
+served by Laravel's `POST /v1/admin/demo/import-config` route. Trigger it from
 **Admin → Backup → Import Demo Configuration** (Super Admin only).
 
-Optional cleanup of legacy roles (run once in Supabase SQL editor if you want
-to remove obsolete custom roles such as `Admin`, `Viewer`, `Inventory Clerk`):
+Optional cleanup of legacy roles (run once via `php artisan tinker` or any
+MySQL client if you want to remove obsolete custom roles such as `Admin`,
+`Viewer`, `Inventory Clerk`):
 
 ```sql
 -- Preview first
@@ -71,10 +73,10 @@ ORDER BY cr.name;
 
 -- B. Total view-permission counts per role (sanity)
 SELECT cr.name,
-       SUM(can_view::int)   AS v,
-       SUM(can_add::int)    AS a,
-       SUM(can_edit::int)   AS e,
-       SUM(can_delete::int) AS d
+       SUM(can_view)   AS v,
+       SUM(can_add)    AS a,
+       SUM(can_edit)   AS e,
+       SUM(can_delete) AS d
 FROM custom_roles cr
 JOIN role_permissions rp ON rp.custom_role_id = cr.id
 WHERE cr.name IN (

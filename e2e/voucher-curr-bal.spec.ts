@@ -10,8 +10,8 @@
  *   bunx playwright install chromium
  *   bunx playwright test e2e/voucher-curr-bal.spec.ts
  *
- * The script restores the Supabase session from LOVABLE_BROWSER_*
- * env vars if present (Lovable-managed auth).
+ * The script restores a stored auth session from E2E_AUTH_STORAGE_KEY /
+ * E2E_AUTH_SESSION_JSON env vars if present.
  */
 import { test, expect, type Route } from "@playwright/test";
 
@@ -54,8 +54,8 @@ async function stubApi(page: import("@playwright/test").Page) {
 
 test.describe("AccountingVouchers · Curr Bal signed convention", () => {
   test("negative balance renders with leading '-' and no Dr/Cr", async ({ page, context }) => {
-    const storageKey = process.env.LOVABLE_BROWSER_SUPABASE_STORAGE_KEY;
-    const session = process.env.LOVABLE_BROWSER_SUPABASE_SESSION_JSON;
+    const storageKey = process.env.E2E_AUTH_STORAGE_KEY;
+    const session = process.env.E2E_AUTH_SESSION_JSON;
 
     await stubApi(page);
     await page.goto(APP_URL);

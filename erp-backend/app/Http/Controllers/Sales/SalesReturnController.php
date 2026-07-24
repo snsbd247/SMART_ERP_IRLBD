@@ -171,6 +171,83 @@ class SalesReturnController extends BaseController
         return $this->success($ret->fresh('items'));
     }
 
+    /**
+     * Soft cancel. Mirrors VoucherController::deleteApproved()'s conservative
+     * "mark + audit log" pattern: if this return was already approved,
+     * approve() already reversed stock back in (+qty) and posted Dr Sales
+     * Return / Cr Accounts Receivable. Those stock/GL effects are NOT
+     * reversed here — no reversing-entry helper exists yet for sales
+     * returns. A manual reversing entry/stock adjustment must be created
+     * separately if that's needed.
+     */
+    public function cancel(Request $r, string $id)
+    {
+        $ret = SalesReturn::findOrFail($id);
+        if ($ret->status === 'cancelled') return $this->error('Already cancelled', 422);
+        if ($ret->status === 'deleted') return $this->error('Cannot cancel a deleted return', 422);
+
+        $oldStatus = $ret->status;
+        $ret->update(['status' => 'cancelled']);
+        $this->logAudit($r, 'cancel', $ret, [
+            'old_status' => $oldStatus,
+            'reason' => $r->input('reason'),
+        ]);
+        return $this->success($ret->fresh('items'));
+    }
+
+    /**
+     * Super-Admin-only re-edit of an already-approved return's header
+     * fields. Items/quantities are intentionally left untouched — they are
+     * tied to the stock (+qty) and GL entries already posted by approve();
+     * recalculating those needs reversal logic that doesn't exist elsewhere
+     * in this codebase.
+     */
+    public function editApproved(Request $r, string $id)
+    {
+        if (!$r->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admin can edit an approved return', 403);
+        }
+        $ret = SalesReturn::findOrFail($id);
+        if ($ret->status !== 'approved') {
+            return $this->error('Return is not approved', 422);
+        }
+
+        $data = $r->validate([
+            'return_date'  => 'nullable|date',
+            'reason'       => 'nullable|string',
+            'branch_id'    => 'nullable|exists:branches,id',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
+        ]);
+
+        return DB::transaction(function () use ($r, $ret, $data) {
+            $ret->update($data);
+            $this->logAudit($r, 'edit_approved', $ret);
+            return $this->success($ret->fresh('items'));
+        });
+    }
+
+    /**
+     * Soft "delete" of a return. sales_returns has no
+     * deleted_at/deleted_by/prev_status columns (unlike acc_vouchers), so —
+     * same spirit as VoucherController::deleteApproved() — the previous
+     * status and who/when/why is captured in audit_log rather than
+     * dedicated columns. Stock/GL effects from approve() (if any) are NOT
+     * reversed automatically.
+     */
+    public function deleteApproved(Request $r, string $id)
+    {
+        $ret = SalesReturn::findOrFail($id);
+        if ($ret->status === 'deleted') return $this->error('Return already deleted', 422);
+
+        $oldStatus = $ret->status;
+        $ret->update(['status' => 'deleted']);
+        $this->logAudit($r, 'delete_approved', $ret, [
+            'old_status' => $oldStatus,
+            'reason' => $r->input('reason'),
+        ]);
+        return $this->success(['deleted' => true, 'id' => $ret->id]);
+    }
+
     private function logAudit(Request $r, string $action, SalesReturn $ret, array $details = []): void
     {
         try {
@@ -181,7 +258,7 @@ class SalesReturnController extends BaseController
                 'action'     => $action,
                 'record_id'  => $ret->id,
                 'details'    => json_encode(array_merge(['return_id' => $ret->id, 'sales_invoice_id' => $ret->sales_invoice_id], $details)),
-                'new_data'   => $action === 'approve' ? ['status' => 'approved'] : null,
+                'new_data'   => in_array($action, ['approve', 'cancel', 'edit_approved', 'delete_approved'], true) ? ['status' => $ret->status] : null,
                 'ip_address' => $r->ip(),
                 'user_agent' => substr((string) $r->userAgent(), 0, 250),
             ]);

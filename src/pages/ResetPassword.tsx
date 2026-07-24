@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { isLaravelMode } from "@/lib/laravel-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,27 @@ const ResetPassword = () => {
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // This page handles Supabase's email-link reset flow only. In Laravel mode,
+  // password reset is a single-page SMS-OTP flow on the Login page instead.
+  if (isLaravelMode()) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md shadow-elevated border-border/50">
+          <CardHeader className="text-center pb-2">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <KeyRound className="w-5 h-5 text-primary" />
+            </div>
+            <CardTitle className="text-xl font-bold text-foreground">Reset Password</CardTitle>
+            <CardDescription className="text-sm">Use "Forgot password?" on the login page to reset your password with an SMS code.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button className="w-full h-10" onClick={() => navigate("/login")}>Go to Login</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();

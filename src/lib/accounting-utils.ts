@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { nextNumber } from "@/lib/db-utils";
+import { isLaravelMode, getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 
 interface AccountingEntry {
   account_id: string;
@@ -44,6 +45,45 @@ export async function autoPostAccounting(params: AutoPostParams) {
     throw new Error(`Accounting entries not balanced: Debit=${totalDebit}, Credit=${totalCredit}`);
   }
 
+  // Laravel mode: go through the real voucher endpoint so numbering,
+  // financial-year resolution, and posting all run through the same
+  // server-side logic as manually-created vouchers (no separate
+  // number-reservation RPC needed — Laravel assigns the number itself).
+  if (isLaravelMode()) {
+    const base = getApiBaseUrl();
+    if (!base) throw new Error("Laravel API URL not configured");
+    const res = await fetch(`${base}/v1/vouchers/${voucher_type}`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...getLaravelAuthHeaders(),
+      },
+      body: JSON.stringify({
+        voucher_type,
+        voucher_date,
+        description,
+        branch_id: branch_id || null,
+        financial_year_id: financial_year_id || null,
+        entries: entries.map((e) => ({
+          account_id: e.account_id,
+          debit: e.debit || 0,
+          credit: e.credit || 0,
+          narration: e.narration || description,
+        })),
+        submit: true,
+      }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = json?.message || json?.error || `Failed to auto-post voucher (HTTP ${res.status})`;
+      throw new Error(msg);
+    }
+    const voucher = json?.data?.voucher ?? json?.voucher ?? json?.data ?? json;
+    return { voucherNumber: voucher?.voucher_number, voucherId: voucher?.id };
+  }
+
+  // ─── Supabase-mode (legacy) path ─────────────────────────────────────
   // Map voucher_type to sequence id
   const seqMap: Record<string, string> = {
     journal: "journal_voucher",

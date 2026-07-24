@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-import { nextDocNo, logAudit } from "@/lib/purchase-numbering";
+import { nextDocNo, logAudit, createVoucherLaravel } from "@/lib/purchase-numbering";
+import { isLaravelMode } from "@/lib/laravel-auth";
 
 /**
  * Post a GRN to inventory + accounting.
@@ -49,27 +50,41 @@ export async function postGrn(grn: any, lines: any[], po: any | null, userId?: s
     const m = mapping as any;
     if (m?.inventory_account_id && m?.grn_clearing_account_id) {
       const total = Number(grn.grand_total || 0);
-      const voucherNo = await nextDocNo("JV", "acc_vouchers", "voucher_number");
-      const { data: v, error: ve } = await supabase
-        .from("acc_vouchers")
-        .insert({
-          voucher_number: voucherNo,
-          voucher_type: "journal",
+      if (isLaravelMode()) {
+        const created = await createVoucherLaravel({
+          prefix: "JV",
           voucher_date: grn.grn_date,
           branch_id: grn.branch_id,
           description: `Auto-posted from GRN ${grn.grn_no}`,
-          total_amount: total,
-          status: "posted",
-          created_by: userId,
-        } as any)
-        .select("id")
-        .single();
-      if (!ve && v) {
-        voucherId = (v as any).id;
-        await supabase.from("voucher_entries").insert([
-          { voucher_id: voucherId, account_id: m.inventory_account_id, debit: total, credit: 0, sort_order: 1, narration: `GRN ${grn.grn_no}` },
-          { voucher_id: voucherId, account_id: m.grn_clearing_account_id, debit: 0, credit: total, sort_order: 2, narration: `GRN ${grn.grn_no}` },
-        ] as any);
+          entries: [
+            { account_id: m.inventory_account_id, debit: total, credit: 0, narration: `GRN ${grn.grn_no}` },
+            { account_id: m.grn_clearing_account_id, debit: 0, credit: total, narration: `GRN ${grn.grn_no}` },
+          ],
+        });
+        voucherId = created.voucherId;
+      } else {
+        const voucherNo = await nextDocNo("JV", "acc_vouchers", "voucher_number");
+        const { data: v, error: ve } = await supabase
+          .from("acc_vouchers")
+          .insert({
+            voucher_number: voucherNo,
+            voucher_type: "journal",
+            voucher_date: grn.grn_date,
+            branch_id: grn.branch_id,
+            description: `Auto-posted from GRN ${grn.grn_no}`,
+            total_amount: total,
+            status: "posted",
+            created_by: userId,
+          } as any)
+          .select("id")
+          .single();
+        if (!ve && v) {
+          voucherId = (v as any).id;
+          await supabase.from("voucher_entries").insert([
+            { voucher_id: voucherId, account_id: m.inventory_account_id, debit: total, credit: 0, sort_order: 1, narration: `GRN ${grn.grn_no}` },
+            { voucher_id: voucherId, account_id: m.grn_clearing_account_id, debit: 0, credit: total, sort_order: 2, narration: `GRN ${grn.grn_no}` },
+          ] as any);
+        }
       }
     }
   }

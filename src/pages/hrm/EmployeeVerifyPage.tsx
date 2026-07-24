@@ -202,18 +202,12 @@ export default function EmployeeVerifyPage() {
     if (!employee || signature) return;
     setSigLoading(true);
     try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || "ezwsrtsqiumhxukwgiou";
-      const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/verify-employee/${employee.employee_code}/signature`,
-        {
-          headers: {
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
-          },
-        }
-      );
+      const base = getApiBaseUrl();
+      if (!base) return;
+      const res = await fetch(`${base}/v1/public/employee-verify/${encodeURIComponent(employee.employee_code)}/signature`);
       const json = await res.json();
-      if (json.success && json.data?.digital_signature) {
-        setSignature(json.data.digital_signature);
+      if (json.success && json.data) {
+        setSignature(json.data);
       }
     } catch (err) {
       console.error("Signature fetch failed:", err);

@@ -2,7 +2,7 @@ import { PrintMushak63, Mushak63Body, MushakStyles } from "@/components/sales-wo
 
 /**
  * Mock-data preview for visual QA — renders the Mushak 6.3 body inline
- * (in Lovable preview) plus a Print/PDF button to verify output.
+ * plus a Print/PDF button to verify output.
  * Route: /sales-workflow/vat-challan/preview
  */
 const MOCK_CHALLAN = {

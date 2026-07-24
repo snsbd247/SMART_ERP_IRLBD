@@ -1,6 +1,7 @@
 /**
- * Laravel (Sanctum) auth client. Active when VITE_API_BASE_URL or VITE_API_URL is set.
- * Falls back silently when not configured so Supabase mode keeps working.
+ * Laravel (Sanctum) auth client. Active when VITE_API_BASE_URL or VITE_API_URL is set,
+ * or (as a fallback) whenever the app is served from a non-local origin — in which case
+ * it defaults to the same-origin Laravel API.
  */
 
 const TOKEN_KEY = "laravel_auth_token";
@@ -13,10 +14,6 @@ export function getApiBaseUrl(): string | null {
     null;
   if (!url && typeof window !== "undefined") {
     const host = window.location.hostname;
-    // VPS / custom production domains use the same-origin Laravel API.
-    // Lovable preview/published domains stay in Cloud Supabase mode unless an
-    // explicit VITE_API_BASE_URL is provided at build time.
-    const isLovableHost = /(^|\.)lovable(project)?\.(app|dev|com)$/.test(host) || host.endsWith(".lovable.app") || host.endsWith(".lovable.dev") || host.endsWith(".lovableproject.com");
     // If a Laravel auth token is already stored in this browser, the user is
     // signed into the Laravel backend on the current origin — keep using it.
     let hasLaravelToken = false;
@@ -26,7 +23,7 @@ export function getApiBaseUrl(): string | null {
         sessionStorage.getItem("laravel_auth_token") || sessionStorage.getItem("auth_token")
       );
     } catch { /* ignore */ }
-    if (!isLovableHost && (hasLaravelToken || (host !== "localhost" && host !== "127.0.0.1"))) {
+    if (hasLaravelToken || (host !== "localhost" && host !== "127.0.0.1")) {
       return `${window.location.origin}/api`;
     }
   }

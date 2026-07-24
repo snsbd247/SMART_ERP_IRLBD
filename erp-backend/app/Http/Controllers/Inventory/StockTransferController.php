@@ -243,4 +243,90 @@ class StockTransferController extends BaseController
 
         return $this->success(DB::table('stock_transfers')->where('id', $id)->first());
     }
+
+    /**
+     * Super-Admin-only re-edit of an already-approved/posted transfer.
+     * Only header fields (transfer_date, notes) are editable — the
+     * from/to warehouse and line quantities are intentionally left
+     * untouched because approve() already posted stock_ledger +
+     * warehouse_stock movements for the original lines; changing them here
+     * would need reversal/reapply logic that doesn't exist yet.
+     */
+    public function editApproved(Request $r, string $id)
+    {
+        if (!$r->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admin can edit an approved stock transfer', 403);
+        }
+        $row = DB::table('stock_transfers')->where('id', $id)->first();
+        if (!$row) return $this->error('Not found', 404);
+        if (!in_array($row->status, ['approved', 'posted'], true)) {
+            return $this->error('Stock transfer is not approved', 422);
+        }
+
+        $data = $r->validate([
+            'transfer_date' => 'nullable|date',
+            'notes'         => 'nullable|string',
+        ]);
+
+        return DB::transaction(function () use ($id, $data, $r, $row) {
+            $update = ['updated_at' => now()];
+            if (array_key_exists('transfer_date', $data) && $data['transfer_date'] !== null) {
+                $update['transfer_date'] = $data['transfer_date'];
+            }
+            if (array_key_exists('notes', $data) && $data['notes'] !== null) {
+                $update['notes'] = $data['notes'];
+            }
+            DB::table('stock_transfers')->where('id', $id)->update($update);
+
+            $u = $r->user();
+            AuditLog::create([
+                'user_id'    => optional($u)->id,
+                'user_name'  => optional($u)->name,
+                'module'     => 'inventory',
+                'action'     => 'stock_transfer.edit_approved',
+                'record_id'  => $id,
+                'details'    => "Edited approved transfer {$row->transfer_number} header fields",
+                'new_data'   => $update,
+                'ip_address' => $r->ip(),
+                'user_agent' => substr((string) $r->userAgent(), 0, 255),
+            ]);
+
+            return $this->success(DB::table('stock_transfers')->where('id', $id)->first());
+        });
+    }
+
+    /**
+     * Soft "delete" of a transfer. stock_transfers has no
+     * deleted_at/deleted_by/prev_status columns (unlike acc_vouchers), so —
+     * same spirit as VoucherController::deleteApproved() — the previous
+     * status and who/when/why is captured in audit_log rather than
+     * dedicated columns. Stock movements already posted by approve() (if
+     * the transfer was approved) are NOT reversed automatically.
+     */
+    public function deleteApproved(Request $r, string $id)
+    {
+        $row = DB::table('stock_transfers')->where('id', $id)->first();
+        if (!$row) return $this->error('Not found', 404);
+        if ($row->status === 'deleted') return $this->error('Transfer already deleted', 422);
+
+        DB::table('stock_transfers')->where('id', $id)->update([
+            'status' => 'deleted', 'updated_at' => now(),
+        ]);
+
+        $u = $r->user();
+        AuditLog::create([
+            'user_id'    => optional($u)->id,
+            'user_name'  => optional($u)->name,
+            'module'     => 'inventory',
+            'action'     => 'stock_transfer.delete_approved',
+            'record_id'  => $id,
+            'details'    => "Deleted {$row->transfer_number} (was {$row->status})" . ($r->reason ? " — reason: {$r->reason}" : ''),
+            'old_data'   => ['status' => $row->status],
+            'new_data'   => ['status' => 'deleted', 'reason' => $r->reason],
+            'ip_address' => $r->ip(),
+            'user_agent' => substr((string) $r->userAgent(), 0, 255),
+        ]);
+
+        return $this->success(['deleted' => true, 'id' => $id]);
+    }
 }

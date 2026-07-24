@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 
 const VOUCHER_PREFIX_TO_SEQUENCE: Record<string, string> = {
   JV: "journal_voucher",
@@ -6,6 +7,58 @@ const VOUCHER_PREFIX_TO_SEQUENCE: Record<string, string> = {
   RV: "receipt_voucher",
   CV: "contra_voucher",
 };
+
+const VOUCHER_PREFIX_TO_TYPE: Record<string, "journal" | "payment" | "receipt" | "contra"> = {
+  JV: "journal",
+  PV: "payment",
+  RV: "receipt",
+  CV: "contra",
+};
+
+/**
+ * Create + auto-approve an accounting voucher via the real Laravel voucher
+ * endpoint (numbering, financial-year resolution, and posting all run
+ * server-side — no separate number-reservation RPC needed). Used by the
+ * purchase module's auto-post helpers (bills, payments, GRNs, returns).
+ */
+export async function createVoucherLaravel(params: {
+  prefix: "JV" | "PV" | "RV" | "CV";
+  voucher_date: string;
+  branch_id?: string | null;
+  description: string;
+  entries: Array<{ account_id: string; debit: number; credit: number; narration?: string }>;
+}): Promise<{ voucherId: string; voucherNumber: string }> {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error("Laravel API URL not configured");
+  const voucher_type = VOUCHER_PREFIX_TO_TYPE[params.prefix];
+  const res = await fetch(`${base}/v1/vouchers/${voucher_type}`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...getLaravelAuthHeaders(),
+    },
+    body: JSON.stringify({
+      voucher_type,
+      voucher_date: params.voucher_date,
+      branch_id: params.branch_id || null,
+      description: params.description,
+      entries: params.entries.map((e) => ({
+        account_id: e.account_id,
+        debit: e.debit || 0,
+        credit: e.credit || 0,
+        narration: e.narration || params.description,
+      })),
+      submit: true,
+    }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(json?.message || json?.error || `Failed to post voucher (HTTP ${res.status})`);
+  }
+  const voucher = json?.data?.voucher ?? json?.voucher ?? json?.data ?? json;
+  return { voucherId: voucher?.id, voucherNumber: voucher?.voucher_number };
+}
 
 /**
  * Compute next document number using purchase_settings prefix.

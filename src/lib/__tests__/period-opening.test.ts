@@ -21,6 +21,7 @@ function makeBuilder(table: string) {
     select: () => builder,
     eq: (col: string, val: any) => { filters.push(r => getPath(r, col) === val); return builder; },
     in: (col: string, vals: any[]) => { filters.push(r => vals.includes(getPath(r, col))); return builder; },
+    is: (col: string, val: any) => { filters.push(r => (val === null ? getPath(r, col) == null : getPath(r, col) === val)); return builder; },
     gte: (col: string, val: any) => { filters.push(r => getPath(r, col) >= val); return builder; },
     lte: (col: string, val: any) => { filters.push(r => getPath(r, col) <= val); return builder; },
     order: () => builder,
