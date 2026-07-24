@@ -1174,7 +1174,7 @@ const AccountingVouchers = () => {
                 </Table>
               </CardContent>
             </Card>
-            <div className="flex items-center justify-between mt-3 text-sm text-muted-foreground">
+            <div className="flex items-end justify-between mt-3 text-sm text-muted-foreground">
               <div className="flex flex-col gap-1">
                 <Label className="text-xs text-muted-foreground">Page size</Label>
                 <Select value={String(perPage)} onValueChange={(v) => setPerPage(Number(v))}>
