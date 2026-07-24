@@ -1029,17 +1029,6 @@ const AccountingVouchers = () => {
                   Clear
                 </Button>
               )}
-              <div className="ml-auto flex items-end gap-2">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs text-muted-foreground">Page size</Label>
-                  <Select value={String(perPage)} onValueChange={(v) => setPerPage(Number(v))}>
-                    <SelectTrigger className="w-24 h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {[25, 50, 100, 200].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
             </div>
             {selectedIds.size > 0 && (
               <div className="mb-2 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
@@ -1186,12 +1175,21 @@ const AccountingVouchers = () => {
               </CardContent>
             </Card>
             <div className="flex items-center justify-between mt-3 text-sm text-muted-foreground">
-              <div>
-                {totalCount === 0
-                  ? "0 results"
-                  : `Showing ${(page - 1) * perPage + 1}–${Math.min(page * perPage, totalCount)} of ${totalCount}`}
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">Page size</Label>
+                <Select value={String(perPage)} onValueChange={(v) => setPerPage(Number(v))}>
+                  <SelectTrigger className="w-24 h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[25, 50, 100, 200].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex items-center gap-2">
+                <div>
+                  {totalCount === 0
+                    ? "0 results"
+                    : `Showing ${(page - 1) * perPage + 1}–${Math.min(page * perPage, totalCount)} of ${totalCount}`}
+                </div>
                 <Button variant="outline" size="sm" className="h-8" disabled={page <= 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
                 <span className="tabular-nums">Page {page} of {totalPages}</span>
                 <Button variant="outline" size="sm" className="h-8" disabled={page >= totalPages || loading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
