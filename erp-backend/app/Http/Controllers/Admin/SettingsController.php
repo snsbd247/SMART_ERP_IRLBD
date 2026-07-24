@@ -66,6 +66,17 @@ class SettingsController extends BaseController
             ]));
             DB::table('company_settings')->updateOrInsert(['id' => self::SINGLETON_ID], $payload);
             DB::table('company_settings')->where('id', '!=', self::SINGLETON_ID)->delete();
+
+            // Keep the login page / sidebar (which read the logo from
+            // system_settings, not company_settings) in sync with the one
+            // logo-upload control users actually see in General Settings.
+            if (array_key_exists('company_logo_url', $data)) {
+                DB::table('system_settings')->updateOrInsert(
+                    ['setting_key' => 'company_logo_url'],
+                    ['setting_value' => (string) ($data['company_logo_url'] ?? ''), 'updated_at' => now()]
+                );
+            }
+
             return CompanySetting::where('id', self::SINGLETON_ID)->first();
         });
 
