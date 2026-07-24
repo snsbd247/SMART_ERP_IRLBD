@@ -1,1 +1,0 @@
-INSERT INTO public.company_settings (id, company_name) VALUES ('default', 'My Company') ON CONFLICT (id) DO NOTHING;

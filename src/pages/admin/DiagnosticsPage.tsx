@@ -207,8 +207,19 @@ const DiagnosticsPage = () => {
   const runBackupNow = async () => {
     setRunning(true);
     try {
-      const { error } = await supabase.functions.invoke("create-backup", { body: { format: "json" } });
-      if (error) throw error;
+      if (isLaravelMode()) {
+        const base = getApiBaseUrl() || "";
+        const res = await fetch(`${base}/v1/backups/create`, {
+          method: "POST",
+          headers: { ...getLaravelAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ format: "json" }),
+        });
+        const result = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+        if (!res.ok || !result.success) throw new Error(result.message || result.error || `HTTP ${res.status}`);
+      } else {
+        const { error } = await supabase.functions.invoke("create-backup", { body: { format: "json" } });
+        if (error) throw error;
+      }
       toast.success("Backup completed");
       await loadBackup();
     } catch (e: any) {

@@ -50,6 +50,23 @@ Route::get('v1/public/employee-verify/{code}', function (string $code) {
     ]]);
 });
 
+// Public digital signature for the employee verification certificate
+// (HMAC proof-of-authenticity shown on the printable certificate + QR result).
+Route::get('v1/public/employee-verify/{code}/signature', function (string $code) {
+    $emp = \App\Models\Employee::where('employee_code', $code)->first();
+    if (!$emp) {
+        return response()->json(['success' => false, 'message' => 'Employee not found'], 404);
+    }
+    $issuedAt = now()->toIso8601String();
+    $hash = hash_hmac('sha256', $code . '|' . $issuedAt, config('app.key'));
+    return response()->json(['success' => true, 'data' => [
+        'hash' => $hash,
+        'hash_short' => substr($hash, 0, 12),
+        'issued_at' => $issuedAt,
+        'algorithm' => 'HMAC-SHA256',
+    ]]);
+});
+
 // Protected routes
 Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App\Http\Middleware\UpdateLastSeen::class])->group(function () {
 
@@ -157,6 +174,10 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         });
         Route::middleware('permission:sales.edit')->put('sales-invoices/{id}', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'update']);
         Route::middleware('permission:sales.delete')->delete('sales-invoices/{id}', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'destroy']);
+        Route::middleware('permission:sales.edit')->post('sales-invoices/{id}/approve', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'approve']);
+        Route::middleware('permission:sales.edit')->post('sales-invoices/{id}/cancel', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'cancel']);
+        Route::middleware('permission:sales.edit')->post('sales-invoices/{id}/edit-approved', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'editApproved']);
+        Route::middleware('permission:sales.delete')->post('sales-invoices/{id}/delete-approved', [\App\Http\Controllers\Sales\SalesInvoiceController::class, 'deleteApproved']);
 
         // Sales Returns
         Route::middleware('permission:sales_returns.view')->group(function () {
@@ -166,7 +187,10 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:sales_returns.create')->post('sales-returns', [\App\Http\Controllers\Sales\SalesReturnController::class, 'store']);
         Route::middleware('permission:sales_returns.edit')->put('sales-returns/{id}', [\App\Http\Controllers\Sales\SalesReturnController::class, 'update']);
         Route::middleware('permission:sales_returns.edit')->post('sales-returns/{id}/approve', [\App\Http\Controllers\Sales\SalesReturnController::class, 'approve']);
+        Route::middleware('permission:sales_returns.edit')->post('sales-returns/{id}/cancel', [\App\Http\Controllers\Sales\SalesReturnController::class, 'cancel']);
+        Route::middleware('permission:sales_returns.edit')->post('sales-returns/{id}/edit-approved', [\App\Http\Controllers\Sales\SalesReturnController::class, 'editApproved']);
         Route::middleware('permission:sales_returns.delete')->delete('sales-returns/{id}', [\App\Http\Controllers\Sales\SalesReturnController::class, 'destroy']);
+        Route::middleware('permission:sales_returns.delete')->post('sales-returns/{id}/delete-approved', [\App\Http\Controllers\Sales\SalesReturnController::class, 'deleteApproved']);
 
         // Purchase Returns
         Route::middleware('permission:purchase_returns.view')->group(function () {
@@ -197,7 +221,9 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:inventory.create')->post('stock-transfers', [\App\Http\Controllers\Inventory\StockTransferController::class, 'store']);
         Route::middleware('permission:inventory.edit')->post('stock-transfers/{id}/approve', [\App\Http\Controllers\Inventory\StockTransferController::class, 'approve']);
         Route::middleware('permission:inventory.edit')->post('stock-transfers/{id}/cancel', [\App\Http\Controllers\Inventory\StockTransferController::class, 'cancel']);
+        Route::middleware('permission:inventory.edit')->post('stock-transfers/{id}/edit-approved', [\App\Http\Controllers\Inventory\StockTransferController::class, 'editApproved']);
         Route::middleware('permission:inventory.delete')->delete('stock-transfers/{id}', [\App\Http\Controllers\Inventory\StockTransferController::class, 'destroy']);
+        Route::middleware('permission:inventory.delete')->post('stock-transfers/{id}/delete-approved', [\App\Http\Controllers\Inventory\StockTransferController::class, 'deleteApproved']);
 
         // ─── Customers (separate permission key) ────────────────
         Route::middleware('permission:customers.view')->group(function () {
@@ -256,10 +282,13 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:manufacturing.edit')->group(function () {
             Route::put('bom/{id}', [\App\Http\Controllers\Manufacturing\BomController::class, 'update']);
             Route::post('production/{id}/complete', [\App\Http\Controllers\Manufacturing\ProductionController::class, 'complete']);
+            Route::post('production/{id}/cancel', [\App\Http\Controllers\Manufacturing\ProductionController::class, 'cancel']);
+            Route::post('production/{id}/edit-approved', [\App\Http\Controllers\Manufacturing\ProductionController::class, 'editApproved']);
         });
         Route::middleware('permission:manufacturing.delete')->group(function () {
             Route::delete('bom/{id}', [\App\Http\Controllers\Manufacturing\BomController::class, 'destroy']);
             Route::delete('production/{id}', [\App\Http\Controllers\Manufacturing\ProductionController::class, 'destroy']);
+            Route::post('production/{id}/delete-approved', [\App\Http\Controllers\Manufacturing\ProductionController::class, 'deleteApproved']);
         });
 
         // ─── HRM ────────────────────────────────────────────────
@@ -413,6 +442,9 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::post('gdrive/test', [\App\Http\Controllers\Admin\BackupController::class, 'gdriveTest']);
         });
 
+        // ─── SMS (Super Admin only) ──────────────────────────────
+        Route::post('sms/send', [\App\Http\Controllers\Admin\SmsController::class, 'send']);
+
         // ─── Demo Data Seeder (Super Admin only) ─────────────────
         Route::post('admin/demo/seed', [\App\Http\Controllers\Admin\DemoSeedController::class, 'run']);
         Route::get ('admin/demo/audit-tables', [\App\Http\Controllers\Admin\DemoSeedController::class, 'auditTables']);
@@ -486,6 +518,9 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::get('statement', [\App\Http\Controllers\Print\PrintController::class, 'statementPrint']);
             Route::get('statement/pdf', [\App\Http\Controllers\Print\PrintController::class, 'statementPdf']);
         });
+
+        // ─── Document Email (printed documents sent via PrintLayout) ────
+        Route::post('documents/email', [\App\Http\Controllers\DocumentMailController::class, 'send']);
 
         // ─── Payments & Ledger ──────────────────────────────────
         Route::prefix('payments')->group(function () {

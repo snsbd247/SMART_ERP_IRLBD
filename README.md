@@ -1,15 +1,16 @@
 # SmartERP — Intelligent Business Management Suite
 
-SmartERP is a full-stack ERP solution for accounting, inventory, HRM, manufacturing, sales/purchase workflow, and Bangladesh VAT compliance. Built with **React 18 + Vite**, **Laravel 10/11 (PHP 8.2)**, and **Supabase** (Postgres + Auth + Realtime + Storage).
+SmartERP is a full-stack ERP solution for accounting, inventory, HRM, manufacturing, sales/purchase workflow, and Bangladesh VAT compliance. Built with **React 18 + Vite** and **Laravel 10/11 (PHP 8.2)** + MySQL.
 
 ## Architecture
 
 | Layer | Tech | Purpose |
 |-------|------|---------|
 | Frontend | React 18 + Vite + Tailwind + shadcn/ui | SPA dashboard & forms |
-| Backend API | Laravel + Sanctum | Business logic, MySQL primary DB |
-| Auth & Realtime | Supabase (self-hosted or cloud) | JWT auth, Postgres, storage, edge functions |
+| Backend API | Laravel + Sanctum | Business logic, auth, MySQL primary DB, storage |
 | Reports / Prints | Laravel Blade + dompdf | PDF invoices, ledgers, statements |
+
+> The frontend's internal data client (`src/integrations/supabase/`) is named for historical reasons but talks only to the Laravel REST API — there is no Supabase/Cloud dependency in the app itself.
 
 ## Quick Start — VPS Deployment (Recommended)
 
@@ -79,13 +80,10 @@ npm install --legacy-peer-deps
 npm ci --legacy-peer-deps
 ```
 
-Create a local `.env` (the Lovable preview auto-injects Supabase env vars, but for local Laravel mode you need):
+Create a local `.env`:
 
 ```bash
 # .env.local
-VITE_SUPABASE_URL=https://<your-supabase-project>.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=<anon-key>
-VITE_SUPABASE_PROJECT_ID=<project-ref>
 VITE_API_BASE_URL=http://localhost:8000/api
 ```
 
@@ -167,9 +165,6 @@ smart_accounting/
 │   ├── database/migrations/    # All module migrations
 │   ├── database/seeders/       # Default + demo seeders
 │   └── routes/api.php          # API routes
-├── supabase/                     # Supabase config & edge functions
-│   ├── config.toml             # Supabase CLI config
-│   └── functions/              # Edge functions (voucher-api, reset-and-seed-demo, etc.)
 ├── deploy/                       # Deployment assets
 │   ├── vps/install.sh          # One-command VPS installer
 │   └── .htaccess               # Shared hosting rewrite rules

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, Building2, Eye, EyeOff, Mail, UserPlus } from "lucide-react";
-import { getApiBaseUrl } from "@/lib/laravel-auth";
+import { getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 import { useEffect as useEffectReact } from "react";
 
 const Login = () => {
@@ -21,6 +21,11 @@ const Login = () => {
   const [submitting, setSubmitting] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
+  // Laravel mode: SMS-OTP based reset — step 1 requests a code, step 2 verifies + sets new password.
+  const [forgotStep, setForgotStep] = useState<"request" | "verify">("request");
+  const [otpCode, setOtpCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [publicRegEnabled, setPublicRegEnabled] = useState(false);
   const { signIn } = useAuth();
 
@@ -73,7 +78,17 @@ const Login = () => {
     setSubmitting(true);
     try {
       if (isLaravelMode()) {
-        throw new Error("Password reset is managed by the VPS Laravel backend. Please ask an admin to reset your password.");
+        const base = getApiBaseUrl();
+        const res = await fetch(`${base}/auth/forgot-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...getLaravelAuthHeaders() },
+          body: JSON.stringify({ username: forgotEmail }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
+        toast({ title: "Code Sent", description: json?.message || "If the account exists, a reset code has been sent to the registered mobile number." });
+        setForgotStep("verify");
+        return;
       }
       const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
         redirectTo: `${window.location.origin}/reset-password`,
@@ -81,6 +96,40 @@ const Login = () => {
       if (error) throw error;
       toast({ title: "Email Sent", description: "Check your email for a password reset link." });
       setForgotMode(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResetWithOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmNewPassword) {
+      toast({ title: "Passwords don't match", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const base = getApiBaseUrl();
+      const res = await fetch(`${base}/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getLaravelAuthHeaders() },
+        body: JSON.stringify({
+          username: forgotEmail,
+          code: otpCode,
+          new_password: newPassword,
+          new_password_confirmation: confirmNewPassword,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
+      toast({ title: "Password Reset", description: json?.message || "Password has been reset. You can now log in." });
+      setForgotMode(false);
+      setForgotStep("request");
+      setOtpCode("");
+      setNewPassword("");
+      setConfirmNewPassword("");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -114,25 +163,54 @@ const Login = () => {
             );
           })()}
           <CardDescription className="text-sm">
-            {forgotMode ? "Enter your email to receive a reset link" : "Sign in to your account"}
+            {forgotMode
+              ? (isLaravelMode()
+                  ? (forgotStep === "request" ? "Enter your username to receive a reset code by SMS" : "Enter the code sent to your phone and choose a new password")
+                  : "Enter your email to receive a reset link")
+              : "Sign in to your account"}
           </CardDescription>
         </CardHeader>
         <CardContent className="pb-8">
           {forgotMode ? (
-            <form onSubmit={handleForgotPassword} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="forgotEmail" className="text-xs font-medium">Email Address</Label>
-                <Input id="forgotEmail" type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="user@company.com" required className="h-10" />
-              </div>
-              <Button type="submit" className="w-full h-10" disabled={submitting}>
-                {submitting ? "Sending..." : <><Mail className="w-4 h-4 mr-2" />Send Reset Link</>}
-              </Button>
-              <div className="text-center">
-                <button type="button" className="text-xs text-primary hover:underline" onClick={() => setForgotMode(false)}>
-                  Back to login
-                </button>
-              </div>
-            </form>
+            isLaravelMode() && forgotStep === "verify" ? (
+              <form onSubmit={handleResetWithOtp} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="otpCode" className="text-xs font-medium">Reset Code</Label>
+                  <Input id="otpCode" value={otpCode} onChange={(e) => setOtpCode(e.target.value)} placeholder="6-digit code" required maxLength={6} className="h-10" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="newPassword" className="text-xs font-medium">New Password</Label>
+                  <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" required minLength={8} className="h-10" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmNewPassword" className="text-xs font-medium">Confirm New Password</Label>
+                  <Input id="confirmNewPassword" type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} placeholder="••••••••" required minLength={8} className="h-10" />
+                </div>
+                <Button type="submit" className="w-full h-10" disabled={submitting}>
+                  {submitting ? "Resetting..." : "Reset Password"}
+                </Button>
+                <div className="text-center">
+                  <button type="button" className="text-xs text-primary hover:underline" onClick={() => setForgotStep("request")}>
+                    Didn't get a code? Try again
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="forgotEmail" className="text-xs font-medium">{isLaravelMode() ? "Username" : "Email Address"}</Label>
+                  <Input id="forgotEmail" type={isLaravelMode() ? "text" : "email"} value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder={isLaravelMode() ? "Enter your username" : "user@company.com"} required className="h-10" />
+                </div>
+                <Button type="submit" className="w-full h-10" disabled={submitting}>
+                  {submitting ? "Sending..." : <><Mail className="w-4 h-4 mr-2" />{isLaravelMode() ? "Send Reset Code" : "Send Reset Link"}</>}
+                </Button>
+                <div className="text-center">
+                  <button type="button" className="text-xs text-primary hover:underline" onClick={() => { setForgotMode(false); setForgotStep("request"); }}>
+                    Back to login
+                  </button>
+                </div>
+              </form>
+            )
           ) : (
             <>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -167,11 +245,9 @@ const Login = () => {
                 </Button>
               </form>
               <div className="mt-4 flex items-center justify-between">
-                {!isLaravelMode() ? (
-                  <button type="button" className="text-xs text-primary hover:underline" onClick={() => setForgotMode(true)}>
-                    Forgot password?
-                  </button>
-                ) : <span />}
+                <button type="button" className="text-xs text-primary hover:underline" onClick={() => setForgotMode(true)}>
+                  Forgot password?
+                </button>
                 <a href="/employee/verify" className="text-xs text-primary hover:underline">
                   Verify Employee
                 </a>

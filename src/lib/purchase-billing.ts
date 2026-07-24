@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-import { nextDocNo, logAudit } from "@/lib/purchase-numbering";
+import { nextDocNo, logAudit, createVoucherLaravel } from "@/lib/purchase-numbering";
+import { isLaravelMode } from "@/lib/laravel-auth";
 
 /**
  * Post supplier bill to GL: Dr GRN Clearing (or Expense) / Cr Payable, plus VAT/AIT splits.
@@ -24,32 +25,52 @@ export async function postSupplierBill(bill: any, supplierTypeId?: string | null
   const other = Number(bill.other_charges || 0);
   const total = Number(bill.grand_total || 0);
 
-  const voucherNo = await nextDocNo("JV", "acc_vouchers", "voucher_number");
-  const { data: v, error: ve } = await supabase
-    .from("acc_vouchers")
-    .insert({
-      voucher_number: voucherNo,
-      voucher_type: "journal",
+  let voucherId: string;
+  let voucherNo: string;
+  if (isLaravelMode()) {
+    const entries: Array<{ account_id: string; debit: number; credit: number; narration?: string }> = [
+      { account_id: drAcct, debit: sub + other, credit: 0, narration: `Bill ${bill.bill_no}` },
+    ];
+    if (vat > 0 && m.vat_account_id) entries.push({ account_id: m.vat_account_id, debit: vat, credit: 0, narration: "VAT" });
+    entries.push({ account_id: m.payable_account_id, debit: 0, credit: total + ait, narration: `Payable to supplier` });
+    const created = await createVoucherLaravel({
+      prefix: "JV",
       voucher_date: bill.bill_date,
       branch_id: bill.branch_id,
       description: `Supplier Bill ${bill.bill_no}`,
-      total_amount: total,
-      status: "posted",
-      created_by: userId,
-    } as any)
-    .select("id")
-    .single();
-  if (ve || !v) return null;
-  const voucherId = (v as any).id;
+      entries,
+    });
+    voucherId = created.voucherId;
+    voucherNo = created.voucherNumber;
+  } else {
+    voucherNo = await nextDocNo("JV", "acc_vouchers", "voucher_number");
+    const { data: v, error: ve } = await supabase
+      .from("acc_vouchers")
+      .insert({
+        voucher_number: voucherNo,
+        voucher_type: "journal",
+        voucher_date: bill.bill_date,
+        branch_id: bill.branch_id,
+        description: `Supplier Bill ${bill.bill_no}`,
+        total_amount: total,
+        status: "posted",
+        created_by: userId,
+      } as any)
+      .select("id")
+      .single();
+    if (ve || !v) return null;
+    voucherId = (v as any).id;
 
-  const entries: any[] = [
-    { voucher_id: voucherId, account_id: drAcct, debit: sub + other, credit: 0, sort_order: 1, narration: `Bill ${bill.bill_no}` },
-  ];
-  if (vat > 0 && m.vat_account_id) entries.push({ voucher_id: voucherId, account_id: m.vat_account_id, debit: vat, credit: 0, sort_order: 2, narration: "VAT" });
-  entries.push({ voucher_id: voucherId, account_id: m.payable_account_id, debit: 0, credit: total + ait, sort_order: 3, narration: `Payable to supplier` });
-  if (ait > 0 && m.ait_account_id) entries.push({ voucher_id: voucherId, account_id: m.ait_account_id, debit: 0, credit: 0, sort_order: 4, narration: "AIT (info)" });
+    const entries: any[] = [
+      { voucher_id: voucherId, account_id: drAcct, debit: sub + other, credit: 0, sort_order: 1, narration: `Bill ${bill.bill_no}` },
+    ];
+    if (vat > 0 && m.vat_account_id) entries.push({ voucher_id: voucherId, account_id: m.vat_account_id, debit: vat, credit: 0, sort_order: 2, narration: "VAT" });
+    entries.push({ voucher_id: voucherId, account_id: m.payable_account_id, debit: 0, credit: total + ait, sort_order: 3, narration: `Payable to supplier` });
+    if (ait > 0 && m.ait_account_id) entries.push({ voucher_id: voucherId, account_id: m.ait_account_id, debit: 0, credit: 0, sort_order: 4, narration: "AIT (info)" });
 
-  await supabase.from("voucher_entries").insert(entries as any);
+    await supabase.from("voucher_entries").insert(entries as any);
+  }
+
   await supabase.from("supplier_bills_v2" as any).update({ voucher_id: voucherId, status: "posted" }).eq("id", bill.id);
   await logAudit({ document_type: "BILL", document_id: bill.id, document_no: bill.bill_no, action: "posted", notes: `JV ${voucherNo}`, performed_by: userId });
   return voucherId;
@@ -72,28 +93,45 @@ export async function postSupplierPayment(payment: any, userId?: string) {
   if (!m?.payable_account_id || !crAcct) return null;
 
   const total = Number(payment.amount || 0);
-  const voucherNo = await nextDocNo("PV", "acc_vouchers", "voucher_number");
-  const { data: v, error: ve } = await supabase
-    .from("acc_vouchers")
-    .insert({
-      voucher_number: voucherNo,
-      voucher_type: "payment",
+  let voucherId: string;
+  let voucherNo: string;
+  if (isLaravelMode()) {
+    const created = await createVoucherLaravel({
+      prefix: "PV",
       voucher_date: payment.payment_date,
       branch_id: payment.branch_id,
       description: `Supplier Payment ${payment.payment_no}`,
-      total_amount: total,
-      status: "posted",
-      created_by: userId,
-    } as any)
-    .select("id")
-    .single();
-  if (ve || !v) return null;
-  const voucherId = (v as any).id;
+      entries: [
+        { account_id: m.payable_account_id, debit: total, credit: 0, narration: `Payment ${payment.payment_no}` },
+        { account_id: crAcct, debit: 0, credit: total, narration: payment.payment_method },
+      ],
+    });
+    voucherId = created.voucherId;
+    voucherNo = created.voucherNumber;
+  } else {
+    voucherNo = await nextDocNo("PV", "acc_vouchers", "voucher_number");
+    const { data: v, error: ve } = await supabase
+      .from("acc_vouchers")
+      .insert({
+        voucher_number: voucherNo,
+        voucher_type: "payment",
+        voucher_date: payment.payment_date,
+        branch_id: payment.branch_id,
+        description: `Supplier Payment ${payment.payment_no}`,
+        total_amount: total,
+        status: "posted",
+        created_by: userId,
+      } as any)
+      .select("id")
+      .single();
+    if (ve || !v) return null;
+    voucherId = (v as any).id;
 
-  await supabase.from("voucher_entries").insert([
-    { voucher_id: voucherId, account_id: m.payable_account_id, debit: total, credit: 0, sort_order: 1, narration: `Payment ${payment.payment_no}` },
-    { voucher_id: voucherId, account_id: crAcct, debit: 0, credit: total, sort_order: 2, narration: payment.payment_method },
-  ] as any);
+    await supabase.from("voucher_entries").insert([
+      { voucher_id: voucherId, account_id: m.payable_account_id, debit: total, credit: 0, sort_order: 1, narration: `Payment ${payment.payment_no}` },
+      { voucher_id: voucherId, account_id: crAcct, debit: 0, credit: total, sort_order: 2, narration: payment.payment_method },
+    ] as any);
+  }
 
   await supabase.from("supplier_payments_v2" as any).update({ voucher_id: voucherId, status: "posted" }).eq("id", payment.id);
   await logAudit({ document_type: "PAYMENT", document_id: payment.id, document_no: payment.payment_no, action: "posted", notes: `PV ${voucherNo}`, performed_by: userId });

@@ -1,11 +1,27 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { useState as useReactState } from "react";
 import { DatePickerInput } from "./date-picker-input";
 
 describe("DatePickerInput", () => {
   it("opens the calendar on the month of the manually typed date, not today", async () => {
     const onValueChange = vi.fn();
-    render(<DatePickerInput onValueChange={onValueChange} />);
+    // DatePickerInput is a controlled component (its calendar month follows
+    // the `value` prop, not its own internal typed text) — mirror how real
+    // callers use it: feed the emitted value back in as `value`.
+    function Controlled() {
+      const [value, setValue] = useReactState("");
+      return (
+        <DatePickerInput
+          value={value}
+          onValueChange={(iso) => {
+            onValueChange(iso);
+            setValue(iso);
+          }}
+        />
+      );
+    }
+    render(<Controlled />);
 
     const input = screen.getByPlaceholderText("DD-MM-YYYY") as HTMLInputElement;
     // Type a date far from the current month so a "today"-defaulted calendar

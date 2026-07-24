@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,11 +82,22 @@ export default function SmsSettingsPage() {
     if (!testPhone || !testMessage) { toast.error("Phone and message required"); return; }
     setSending(true);
     try {
-      // Call edge function
-      const { data, error } = await supabase.functions.invoke("send-sms", {
-        body: { phone: testPhone, message: testMessage, event_type: "test" },
-      });
-      if (error) throw error;
+      if (isLaravelMode()) {
+        const base = getApiBaseUrl() || "";
+        const res = await fetch(`${base}/v1/sms/send`, {
+          method: "POST",
+          headers: { ...getLaravelAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: testPhone, message: testMessage, event_type: "test" }),
+        });
+        const result = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+        if (!res.ok || !result.success) throw new Error(result.message || `HTTP ${res.status}`);
+      } else {
+        // Call edge function
+        const { data, error } = await supabase.functions.invoke("send-sms", {
+          body: { phone: testPhone, message: testMessage, event_type: "test" },
+        });
+        if (error) throw error;
+      }
       toast.success("Test SMS sent successfully");
       setTestDialog(false);
       // Refresh logs

@@ -8,6 +8,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 
 interface PrintLayoutProps {
   open: boolean;
@@ -93,16 +94,33 @@ export const PrintLayout = ({
     setSending(true);
     try {
       const html = getHtmlContent();
-      const { error } = await supabase.functions.invoke("send-document-email", {
-        body: {
-          to: emailTo,
-          subject: emailSubject,
-          body: emailBody,
-          documentHtml: html,
-          documentTitle: `${title}_${docNumber}`,
-        },
-      });
-      if (error) throw error;
+      if (isLaravelMode()) {
+        const base = getApiBaseUrl() || "";
+        const res = await fetch(`${base}/v1/documents/email`, {
+          method: "POST",
+          headers: { ...getLaravelAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: emailTo,
+            subject: emailSubject,
+            body: emailBody,
+            document_html: html,
+            document_title: `${title}_${docNumber}`,
+          }),
+        });
+        const result = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+        if (!res.ok || !result.success) throw new Error(result.message || `HTTP ${res.status}`);
+      } else {
+        const { error } = await supabase.functions.invoke("send-document-email", {
+          body: {
+            to: emailTo,
+            subject: emailSubject,
+            body: emailBody,
+            documentHtml: html,
+            documentTitle: `${title}_${docNumber}`,
+          },
+        });
+        if (error) throw error;
+      }
       toast({ title: "Email sent", description: `Document sent to ${emailTo}` });
       setEmailDialogOpen(false);
     } catch (err: any) {

@@ -2,11 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Build a chainable query mock that captures filter calls and returns rows.
 function makeQueryMock(rows: any[]) {
-  const calls: Record<string, any[]> = { in: [], eq: [], gte: [], lte: [], order: [], range: [] };
+  const calls: Record<string, any[]> = { in: [], is: [], eq: [], gte: [], lte: [], order: [], range: [] };
   const q: any = {};
   const chain = (key: string) => (...args: any[]) => { calls[key]?.push(args); return q; };
   q.select = chain("select");
   q.in = chain("in");
+  q.is = chain("is");
   q.eq = chain("eq");
   q.gte = chain("gte");
   q.lte = chain("lte");

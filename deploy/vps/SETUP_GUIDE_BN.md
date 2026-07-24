@@ -9,10 +9,9 @@
 
 | Environment | Domain | Backend | Database |
 |---|---|---|---|
-| **Lovable Preview / Demo** | `accounting.syncsolutionbd.com`, `audit-treasure.lovable.app` | Cloud Supabase | Cloud Supabase Postgres |
 | **VPS Production** | `erp.irlbd.com` | Laravel API (same-origin `/api`) | VPS MySQL (`smarterp`) |
 
-Frontend (`src/lib/laravel-auth.ts`) নিজে থেকেই hostname + token দেখে সঠিক backend বেছে নেয়। **VPS-এ কখনো Cloud Supabase call হয় না।**
+Frontend (`src/lib/laravel-auth.ts`) সবসময় same-origin Laravel API ব্যবহার করে — কোনো Cloud/Supabase dependency নেই।
 
 ---
 

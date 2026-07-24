@@ -1,3 +1,0 @@
-REVOKE EXECUTE ON FUNCTION public.is_super_admin(uuid) FROM anon;
-REVOKE EXECUTE ON FUNCTION public.is_super_admin(uuid) FROM public;
-GRANT EXECUTE ON FUNCTION public.is_super_admin(uuid) TO authenticated;
