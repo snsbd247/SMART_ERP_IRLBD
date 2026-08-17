@@ -142,7 +142,6 @@ import MyDocumentsPage from "./pages/portal/MyDocumentsPage";
 import TrialBalanceReport from "./pages/reports/accounting/TrialBalanceReport";
 import ProfitLossReport from "./pages/reports/accounting/ProfitLossReport";
 import BalanceSheetReport from "./pages/reports/accounting/BalanceSheetReport";
-import GeneralLedgerReport from "./pages/reports/accounting/GeneralLedgerReport";
 import AccountLedgerReport from "./pages/reports/accounting/AccountLedgerReport";
 import PartyLedgerReport from "./pages/reports/accounting/PartyLedgerReport";
 import CashBookReport from "./pages/reports/accounting/CashBookReport";
@@ -345,7 +344,6 @@ const App = () => (
                 <Route path="/admin/ifrs-mapping" element={<P perm="accounts.view"><IFRSMappingPage /></P>} />
                 <Route path="/reports/profit-loss" element={<P perm="accounts.view"><ProfitLossReport /></P>} />
                 <Route path="/reports/balance-sheet" element={<P perm="accounts.view"><BalanceSheetReport /></P>} />
-                <Route path="/reports/general-ledger" element={<P perm="accounts.view"><GeneralLedgerReport /></P>} />
                 <Route path="/reports/account-ledger" element={<P perm="accounts.view"><AccountLedgerReport /></P>} />
                 <Route path="/reports/party-ledger" element={<P perm="reports.view"><PartyLedgerReport /></P>} />
                 <Route path="/reports/cash-book" element={<P perm="bank.view"><CashBookReport /></P>} />

@@ -15,7 +15,6 @@ const reportGroups = [
       { to: "/reports/trial-balance", label: "Trial Balance", icon: FileText, desc: "Debit & credit balances of all accounts" },
       { to: "/reports/profit-loss", label: "Profit & Loss", icon: TrendingUp, desc: "Income vs expenses summary" },
       { to: "/reports/balance-sheet", label: "Balance Sheet", icon: Scale, desc: "Assets, liabilities & equity" },
-      { to: "/reports/general-ledger", label: "General Ledger", icon: BookOpen, desc: "All transactions across accounts" },
       { to: "/reports/account-ledger", label: "Account Ledger", icon: ScrollText, desc: "Ledger for a specific account" },
       { to: "/reports/party-ledger", label: "Party Ledger", icon: Users, desc: "Customer & supplier ledger" },
     ],
