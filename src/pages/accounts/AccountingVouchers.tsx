@@ -862,10 +862,17 @@ const AccountingVouchers = () => {
   };
 
   const statusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      draft: "outline", pending: "secondary", approved: "default", rejected: "destructive",
+    const styles: Record<string, string> = {
+      approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+      draft: "bg-muted text-muted-foreground",
+      pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+      rejected: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
     };
-    return <Badge variant={variants[status] || "outline"}>{status}</Badge>;
+    return (
+      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${styles[status] || styles.draft}`}>
+        {status}
+      </span>
+    );
   };
 
   const branchMap = new Map(branches.map((b) => [b.id, b.name]));
@@ -881,9 +888,14 @@ const AccountingVouchers = () => {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-primary" />
-          <h1 className="text-xl font-semibold text-foreground">Accounting Vouchers</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10">
+            <FileText className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-foreground leading-tight">Accounting Vouchers</h1>
+            <p className="text-xs text-muted-foreground">Manage and track all accounting transactions</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -1024,11 +1036,11 @@ const AccountingVouchers = () => {
                 </div>
               </div>
             )}
-            <Card>
+            <Card className="rounded-xl border-border/60 shadow-sm overflow-hidden">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
                       <TableHead className="w-10">
                         <Checkbox
                           checked={vouchers.length > 0 && selectedIds.size === vouchers.length}
