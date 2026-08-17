@@ -13,7 +13,7 @@ import { aggregateEntriesByVoucherAccount } from "@/lib/ledger-entry-aggregation
 import { computeAccountPeriodOpening, type PriorEntry } from "@/lib/period-opening";
 import { OpeningDrilldownDialog } from "@/components/accounts/OpeningDrilldownDialog";
 import { downloadCSV } from "@/lib/csv-export";
-import { ScrollText, FileDown, Info } from "lucide-react";
+import { ScrollText, FileDown } from "lucide-react";
 
 const AccountLedgerReport = () => {
   const { accounts, branches, loading, setLoading, fc, printRef, dateFrom, setDateFrom, dateTo, setDateTo, branch, setBranch, handlePrint, handleExportExcel, handleExportPDF } = useReportData();
@@ -189,11 +189,10 @@ const AccountLedgerReport = () => {
                         <button
                           type="button"
                           onClick={() => setDrilldownOpen(true)}
-                          className="inline-flex items-center gap-1 hover:underline print:no-underline"
+                          className="bg-transparent border-0 p-0 m-0 appearance-none hover:underline print:no-underline"
                           title="See prior-period transactions"
                         >
                           Opening Balance
-                          <Info className="w-3 h-3 text-muted-foreground print:hidden" />
                         </button>
                       </TableCell>
                       <TableCell className="text-muted-foreground">Brought forward</TableCell>
