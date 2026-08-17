@@ -177,7 +177,10 @@ const Dashboard = () => {
     const now = new Date();
     const curMonth = now.getMonth();
     const curYear = now.getFullYear();
-    const inMonth = (d: string) => { const dt = new Date(d); return dt.getMonth() === curMonth && dt.getFullYear() === curYear; };
+    // Parse the "YYYY-MM-DD" string's own components rather than new Date(d),
+    // which reads it as UTC midnight — comparing that against a local-time
+    // "now" can shift the date to the wrong day/month near month boundaries.
+    const inMonth = (d: string) => { const [y, m] = d.split("-").map(Number); return m - 1 === curMonth && y === curYear; };
     const monthPaymentIds = new Set<string>(paymentVouchers.filter((v: any) => v.voucher_date && inMonth(v.voucher_date)).map((v: any) => v.id));
     let paymentEntries: any[] = [];
     if (monthPaymentIds.size > 0) {
@@ -202,7 +205,7 @@ const Dashboard = () => {
     // Monthly series for the current calendar year (sales, purchases, income, expense, cash in/out).
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const monthlyData: MonthPoint[] = months.map((m, i) => {
-      const inM = (d: string) => { const dt = new Date(d); return dt.getMonth() === i && dt.getFullYear() === curYear; };
+      const inM = (d: string) => { const [y, m] = d.split("-").map(Number); return m - 1 === i && y === curYear; };
       const mSales = sales.filter((s) => s.date && inM(s.date)).reduce((a, b) => a + b.amount, 0);
       const mPurchases = purchases.filter((p) => p.date && inM(p.date)).reduce((a, b) => a + b.amount, 0);
       const mReceipts = receiptVouchers.filter((v: any) => v.voucher_date && inM(v.voucher_date)).reduce((a, v: any) => a + Number(v.total_amount || 0), 0);
