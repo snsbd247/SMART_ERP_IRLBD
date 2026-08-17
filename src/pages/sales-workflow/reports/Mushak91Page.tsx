@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Download, Printer } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { exportCsv } from "@/lib/sales-workflow-reports";
+import { ReportPrintFooter } from "@/components/reports/ReportPrintFooter";
 
 /**
  * Mushak 9.1 — Monthly VAT Return (Bangladesh, NBR)
@@ -182,6 +183,7 @@ export default function Mushak91Page() {
           </p>
         </Card>
       </div>
+      <ReportPrintFooter />
     </div>
   );
 }

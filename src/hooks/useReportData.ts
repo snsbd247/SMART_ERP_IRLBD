@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useAuth } from "@/contexts/AuthContext";
 import { exportToExcel, printReport, type ReportColumn } from "@/lib/report-utils";
 
 interface Account {
@@ -25,6 +26,7 @@ export function useReportData() {
   const [loading, setLoading] = useState(false);
   const { fc } = useCurrency();
   const { settings } = useCompanySettings();
+  const { profile } = useAuth();
   const printRef = useRef<HTMLDivElement>(null);
 
   // Default date range: the current running month, so a report opens already
@@ -55,9 +57,11 @@ export function useReportData() {
         address: settings?.address || undefined,
         phone: settings?.phone || undefined,
         email: settings?.email || undefined,
+      }, {
+        dateFrom, dateTo, printedUser: profile?.name || undefined,
       });
     },
-    [settings]
+    [settings, dateFrom, dateTo, profile]
   );
 
   const handleExportExcel = useCallback(

@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { BarChart3, Printer } from "lucide-react";
+import { ReportPrintFooter } from "@/components/reports/ReportPrintFooter";
 
 const PurchaseReportsPage = () => {
   const today = new Date().toISOString().slice(0, 10);
@@ -225,6 +226,7 @@ const PurchaseReportsPage = () => {
           </Table></CardContent></Card>
         </TabsContent>
       </Tabs>
+      <ReportPrintFooter />
     </div>
   );
 };

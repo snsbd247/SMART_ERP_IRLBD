@@ -5,6 +5,7 @@ import { formatSignedBalance } from "@/lib/balance-format";
 import { computeCustomerPeriodOpening, type CustomerPriorRow } from "@/lib/period-opening";
 import { OpeningDrilldownDialog } from "@/components/accounts/OpeningDrilldownDialog";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useAuth } from "@/contexts/AuthContext";
 import { printReport } from "@/lib/report-utils";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +38,7 @@ interface LedgerEntry {
 const CustomerStatementPage = () => {
   const { fc } = useCurrency();
   const { settings } = useCompanySettings();
+  const { profile } = useAuth();
   const printRef = useRef<HTMLDivElement>(null);
 
   const now = new Date();
@@ -135,6 +137,8 @@ const CustomerStatementPage = () => {
       address: settings?.address || undefined,
       phone: settings?.phone || undefined,
       email: settings?.email || undefined,
+    }, {
+      dateFrom, dateTo, printedUser: profile?.name || undefined,
     });
   };
 
@@ -266,11 +270,7 @@ const CustomerStatementPage = () => {
           </div>
 
           {/* Footer */}
-          <div className="mt-6 flex justify-between items-end">
-            <div className="text-xs text-muted-foreground">
-              <p>Generated: {new Date().toLocaleString()}</p>
-              <p>This is a system-generated statement.</p>
-            </div>
+          <div className="mt-6 flex justify-end items-end">
             <div className="text-center">
               <div className="w-40 border-t border-foreground/30 mt-8 pt-1">
                 <p className="text-xs text-muted-foreground">Authorized Signature</p>

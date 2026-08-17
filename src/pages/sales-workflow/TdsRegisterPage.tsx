@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { Eye, Trash2 } from "lucide-react";
+import { ReportPrintFooter } from "@/components/reports/ReportPrintFooter";
 
 export default function TdsRegisterPage() {
   const [rows, setRows] = useState<any[]>([]);
@@ -58,6 +59,7 @@ export default function TdsRegisterPage() {
         </Table>
         <div className="p-4 text-right font-bold">Total TDS: {total.toFixed(2)}</div>
       </Card>
+      <ReportPrintFooter />
     </div>
   );
 }

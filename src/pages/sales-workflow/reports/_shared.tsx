@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Download, Printer } from "lucide-react";
+import { ReportPrintFooter } from "@/components/reports/ReportPrintFooter";
 
 export function ReportShell({
   title, filters, children, onExport, showCustomer = true, showStatus = false, statusOptions = [],
@@ -26,6 +27,7 @@ export function ReportShell({
         </div>
       </div>
       {children}
+      <ReportPrintFooter />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { BarChart3, AlertTriangle, Printer } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { ReportPrintFooter } from "@/components/reports/ReportPrintFooter";
 
 interface WH { id: string; warehouse_name: string; warehouse_code: string; branch_id: string | null; }
 interface Item { id: string; item_code: string; item_name: string; item_type: string; min_stock_level: number; }
@@ -285,6 +286,7 @@ const StockReportsPage = () => {
           )}
         </TabsContent>
       </Tabs>
+      <ReportPrintFooter />
     </div>
   );
 };
