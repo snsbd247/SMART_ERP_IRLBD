@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ReportHeader } from "@/components/ReportHeader";
 import {
   FileText, BookOpen, TrendingUp, Scale, ScrollText, Users,
   PiggyBank, Landmark, GitCompare, CreditCard, Receipt,
@@ -61,7 +60,6 @@ const reportGroups = [
 const FinancialReports = () => {
   return (
     <div className="p-4 lg:p-6 space-y-6 max-w-[1600px] mx-auto">
-      <ReportHeader reportTitle="Accounting Reports" />
       <div className="flex items-center gap-2">
         <BarChart3 className="w-5 h-5 text-primary" />
         <h1 className="text-xl font-semibold text-foreground">Accounting Reports</h1>

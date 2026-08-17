@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { ReportHeader } from "@/components/ReportHeader";
 import { DollarSign, TrendingUp, TrendingDown, PiggyBank, Landmark, BarChart3 } from "lucide-react";
 import { signedOpeningBalance } from "@/lib/balance-format";
 
@@ -58,7 +57,6 @@ const FinancialSummaryDashboard = () => {
 
   return (
     <div className="p-4 lg:p-6 space-y-6 max-w-[1600px] mx-auto">
-      <ReportHeader reportTitle="Financial Summary" />
       <div className="flex items-center gap-2">
         <BarChart3 className="w-5 h-5 text-primary" />
         <h1 className="text-xl font-semibold text-foreground">Financial Summary Dashboard</h1>

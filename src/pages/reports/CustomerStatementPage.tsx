@@ -6,7 +6,6 @@ import { computeCustomerPeriodOpening, type CustomerPriorRow } from "@/lib/perio
 import { OpeningDrilldownDialog } from "@/components/accounts/OpeningDrilldownDialog";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { printReport } from "@/lib/report-utils";
-import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -153,7 +152,6 @@ const CustomerStatementPage = () => {
 
   return (
     <div className="p-4 lg:p-6 space-y-4 max-w-[1600px] mx-auto">
-      <ReportHeader reportTitle="Customer Statement" />
       <div className="flex items-center gap-2">
         <FileText className="w-5 h-5 text-primary" />
         <h1 className="text-xl font-semibold text-foreground">Customer Statement</h1>

@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ReportHeader } from "@/components/ReportHeader";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { signedOpeningBalance } from "@/lib/balance-format";
@@ -717,16 +716,6 @@ const IFRSFinancialStatements = () => {
           </div>
 
           <div ref={el => { (printRef as any).current = el; }} className="mt-3">
-            <ReportHeader
-              reportTitle={
-                activeTab === "pl" ? "Statement of Profit or Loss and Other Comprehensive Income"
-                : activeTab === "bs" ? "Statement of Financial Position"
-                : activeTab === "equity" ? "Statement of Changes in Equity"
-                : activeTab === "cf" ? "Statement of Cash Flows"
-                : "Notes to the Financial Statements"
-              }
-              subtitle={`For the period ${curFrom} to ${curTo}`}
-            />
             <Card><CardContent className="p-4">
               <TabsContent value="pl">{renderPL()}</TabsContent>
               <TabsContent value="bs">{renderBS()}</TabsContent>

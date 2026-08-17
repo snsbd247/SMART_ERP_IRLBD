@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
-import { ReportHeader } from "@/components/ReportHeader";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
 import { GitCompare, Printer, Download, FileSpreadsheet } from "lucide-react";
@@ -39,7 +38,6 @@ const BankReconciliationReport = () => {
 
   return (
     <div className="p-4 lg:p-6 space-y-4 max-w-[1600px] mx-auto">
-      <ReportHeader reportTitle="Bank Reconciliation" />
       <div className="flex items-center gap-2">
         <GitCompare className="w-5 h-5 text-primary" />
         <h1 className="text-xl font-semibold text-foreground">Bank Reconciliation</h1>

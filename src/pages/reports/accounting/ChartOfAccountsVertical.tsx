@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { signedOpeningBalance } from "@/lib/balance-format";
@@ -141,7 +140,6 @@ const ChartOfAccountsVertical = () => {
 
   return (
     <div className="p-4 lg:p-6 space-y-4 max-w-[1200px] mx-auto">
-      <ReportHeader reportTitle="Chart of Accounts — Vertical" subtitle={`${dateFrom} to ${dateTo}`} />
       <div className="flex items-center gap-2">
         <ListTree className="w-5 h-5 text-primary" />
         <h1 className="text-xl font-semibold text-foreground">Chart of Accounts (Vertical / Hierarchical)</h1>
