@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Receipt, Printer, Search } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { ReportPrintFooter } from "@/components/reports/ReportPrintFooter";
 
 interface SalesRow {
   id: string;
@@ -153,6 +154,7 @@ export default function SalesReport() {
           </Table>
         </CardContent>
       </Card>
+      <ReportPrintFooter />
     </div>
   );
 }

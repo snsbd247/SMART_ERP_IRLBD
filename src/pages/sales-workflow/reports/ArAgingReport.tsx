@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download, Printer } from "lucide-react";
+import { ReportPrintFooter } from "@/components/reports/ReportPrintFooter";
 
 export default function ArAgingReport() {
   const [rows, setRows] = useState<any[]>([]);
@@ -48,6 +49,7 @@ export default function ArAgingReport() {
           </TableBody>
         </Table>
       </Card>
+      <ReportPrintFooter />
     </div>
   );
 }

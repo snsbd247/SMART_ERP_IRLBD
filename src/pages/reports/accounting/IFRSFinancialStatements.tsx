@@ -8,6 +8,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { signedOpeningBalance } from "@/lib/balance-format";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +36,7 @@ const fmt = (n: number) => {
 
 const IFRSFinancialStatements = () => {
   const { settings } = useCompanySettings();
+  const { profile } = useAuth();
   const { fc } = useCurrency();
 
   // Two periods (current + previous) for comparative IFRS view
@@ -251,6 +253,8 @@ const IFRSFinancialStatements = () => {
   const handlePrint = (title: string) => {
     printReport({ current: printRef.current } as any, title, settings?.company_name, {
       address: settings?.address || undefined, phone: settings?.phone || undefined, email: settings?.email || undefined,
+    }, {
+      dateFrom: curFrom, dateTo: curTo, printedUser: profile?.name || undefined,
     });
   };
 
