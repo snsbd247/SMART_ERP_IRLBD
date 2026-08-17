@@ -12,9 +12,28 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Check, Pencil, Trash2 } from "lucide-react";
+import { Plus, Check, X, Pencil, Trash2 } from "lucide-react";
 
 interface FY { id: string; name: string; start_date: string; end_date: string; is_active: boolean; }
+
+/** Two [start,end] date ranges (inclusive, "YYYY-MM-DD" strings) overlap unless one ends before the other begins. */
+function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+  return aStart <= bEnd && bStart <= aEnd;
+}
+
+/**
+ * Multiple financial years may be active at once (voucher posting picks the
+ * right one by date), but two *active* years must never cover the same date
+ * — otherwise which one applies is ambiguous. Returns the conflicting year,
+ * or null if the candidate range is safe to activate.
+ */
+function findActiveOverlap(candidate: { id?: string; start_date: string; end_date: string }, years: FY[]): FY | null {
+  return years.find((y) =>
+    y.id !== candidate.id &&
+    y.is_active &&
+    rangesOverlap(candidate.start_date, candidate.end_date, y.start_date, y.end_date)
+  ) || null;
+}
 
 const FinancialYearsPage = () => {
   const [years, setYears] = useState<FY[]>([]);
@@ -49,18 +68,26 @@ const FinancialYearsPage = () => {
       toast({ title: "All fields are required", variant: "destructive" });
       return;
     }
-    if (editing) {
-      // If turning this year active, deactivate others first.
-      if (form.is_active && !editing.is_active) {
-        await supabase.from("financial_years").update({ is_active: false }).neq("id", editing.id);
+    if (form.end_date < form.start_date) {
+      toast({ title: "Invalid dates", description: "End date must be after start date.", variant: "destructive" });
+      return;
+    }
+    if (form.is_active) {
+      const conflict = findActiveOverlap({ id: editing?.id, start_date: form.start_date, end_date: form.end_date }, years);
+      if (conflict) {
+        toast({
+          title: "Dates overlap an active year",
+          description: `${conflict.name} (${conflict.start_date} to ${conflict.end_date}) is already active and covers some of these dates. Deactivate it first, or adjust the dates.`,
+          variant: "destructive",
+        });
+        return;
       }
+    }
+    if (editing) {
       const { error } = await supabase.from("financial_years").update({ ...form }).eq("id", editing.id);
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Financial year updated" });
     } else {
-      if (form.is_active) {
-        await supabase.from("financial_years").update({ is_active: false }).neq("id", "00000000-0000-0000-0000-000000000000");
-      }
       const { error } = await supabase.from("financial_years").insert({ ...form });
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Financial year created" });
@@ -71,10 +98,32 @@ const FinancialYearsPage = () => {
     load();
   };
 
+  // Multiple years can be active at the same time — voucher posting picks the
+  // right one by date automatically. We only block turning one on if its
+  // dates overlap another year that's already active (see findActiveOverlap).
   const setActive = async (id: string) => {
-    await supabase.from("financial_years").update({ is_active: false }).neq("id", id);
-    await supabase.from("financial_years").update({ is_active: true }).eq("id", id);
-    toast({ title: "Active year updated" });
+    const y = years.find((x) => x.id === id);
+    if (!y) return;
+    const conflict = findActiveOverlap(y, years);
+    if (conflict) {
+      toast({
+        title: "Dates overlap an active year",
+        description: `${conflict.name} (${conflict.start_date} to ${conflict.end_date}) is already active and covers some of these dates. Deactivate it first.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    const { error } = await supabase.from("financial_years").update({ is_active: true }).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    toast({ title: `${y.name} activated` });
+    load();
+  };
+
+  const deactivate = async (id: string) => {
+    const y = years.find((x) => x.id === id);
+    const { error } = await supabase.from("financial_years").update({ is_active: false }).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    toast({ title: `${y?.name ?? "Year"} deactivated` });
     load();
   };
 
@@ -128,7 +177,10 @@ const FinancialYearsPage = () => {
               <div className="flex items-center justify-between rounded-md border p-3">
                 <div>
                   <Label className="cursor-pointer">Active</Label>
-                  <p className="text-xs text-muted-foreground">Only active years appear in voucher posting.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Multiple years can be active at once — vouchers automatically post to whichever
+                    active year contains the voucher date. Active years can't have overlapping dates.
+                  </p>
                 </div>
                 <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
               </div>
@@ -164,9 +216,13 @@ const FinancialYearsPage = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      {!y.is_active && (
+                      {y.is_active ? (
+                        <Button size="sm" variant="outline" onClick={() => deactivate(y.id)}>
+                          <X className="w-3 h-3 mr-1" />Deactivate
+                        </Button>
+                      ) : (
                         <Button size="sm" variant="outline" onClick={() => setActive(y.id)}>
-                          <Check className="w-3 h-3 mr-1" />Set Active
+                          <Check className="w-3 h-3 mr-1" />Activate
                         </Button>
                       )}
                       <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(y)} title="Edit">
