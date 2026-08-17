@@ -4,7 +4,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,7 +72,6 @@ const PartyLedgerReport = () => {
 
   return (
     <div className="p-4 lg:p-6 space-y-4 max-w-[1600px] mx-auto">
-      <ReportHeader reportTitle={title} subtitle={`${dateFrom} to ${dateTo}`} />
       <div className="flex items-center gap-2">
         <Users className="w-5 h-5 text-primary" />
         <h1 className="text-xl font-semibold text-foreground">Party Ledger</h1>

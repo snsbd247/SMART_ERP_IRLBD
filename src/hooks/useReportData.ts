@@ -19,11 +19,6 @@ interface Branch {
   name: string;
 }
 
-interface FinancialYear {
-  start_date: string;
-  end_date: string;
-}
-
 export function useReportData() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -32,42 +27,24 @@ export function useReportData() {
   const { settings } = useCompanySettings();
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Default date range: current financial year or current month
+  // Default date range: the current running month, so a report opens already
+  // scoped to "this month" instead of an empty or all-time range.
+  const pad = (n: number) => String(n).padStart(2, "0");
   const now = new Date();
-  const [dateFrom, setDateFrom] = useState(`${now.getFullYear()}-01-01`);
-  const [dateTo, setDateTo] = useState(now.toISOString().slice(0, 10));
+  const monthStart = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+  const monthEnd = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate())}`;
+  const [dateFrom, setDateFrom] = useState(monthStart);
+  const [dateTo, setDateTo] = useState(monthEnd);
   const [branch, setBranch] = useState("all");
 
   useEffect(() => {
     const init = async () => {
-      const [aRes, bRes, fyRes] = await Promise.all([
+      const [aRes, bRes] = await Promise.all([
         supabase.from("chart_of_accounts").select("*").order("account_code"),
         supabase.from("branches").select("id, name"),
-        // Fetch ALL active FYs — multiple can coexist (e.g. after auto-provisioning
-        // a new year). Pick the one containing today so the default range shows
-        // the period the user is actually operating in.
-        supabase.from("financial_years").select("start_date, end_date").eq("is_active", true),
       ]);
       setAccounts((aRes.data || []) as Account[]);
       setBranches((bRes.data || []) as Branch[]);
-      const activeYears = (fyRes.data || []) as FinancialYear[];
-      const today = new Date().toISOString().slice(0, 10);
-      const sortedByStart = [...activeYears].sort((a, b) =>
-        (a.start_date || "").localeCompare(b.start_date || ""),
-      );
-      const containsToday = sortedByStart.find(
-        (fy) => fy.start_date && fy.end_date && fy.start_date <= today && fy.end_date >= today,
-      );
-      // Default range: from the earliest active FY start to the end of the FY
-      // that contains today (or the latest active FY). Covers users who keep
-      // last year still active while the new year is running so the report
-      // isn't empty on first open.
-      const from = sortedByStart[0]?.start_date;
-      const latestEnd = (containsToday ?? sortedByStart[sortedByStart.length - 1])?.end_date;
-      if (from && latestEnd) {
-        setDateFrom(from);
-        setDateTo(latestEnd);
-      }
     };
     init();
   }, []);

@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { BarChart3, AlertTriangle, Printer } from "lucide-react";
-import { ReportHeader } from "@/components/ReportHeader";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
 interface WH { id: string; warehouse_name: string; warehouse_code: string; branch_id: string | null; }
@@ -112,7 +111,6 @@ const StockReportsPage = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <ReportHeader reportTitle="Inventory Reports" />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2"><BarChart3 className="w-5 h-5 text-primary" /><h1 className="text-xl font-semibold text-foreground">Stock Reports</h1></div>
         <Button variant="outline" size="sm" onClick={handlePrint}><Printer className="w-4 h-4 mr-1" />Print</Button>

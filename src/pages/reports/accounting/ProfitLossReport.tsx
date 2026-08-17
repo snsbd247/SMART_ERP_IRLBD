@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ReportHeader } from "@/components/ReportHeader";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { fetchAllVoucherEntries, num } from "@/lib/report-fetch";
@@ -50,7 +49,6 @@ const ProfitLossReport = () => {
 
   return (
     <div className="p-4 lg:p-6 space-y-4 max-w-[1600px] mx-auto">
-      <ReportHeader reportTitle="Profit & Loss Statement" subtitle={`${dateFrom} to ${dateTo}`} />
       <div className="flex items-center gap-2">
         <TrendingUp className="w-5 h-5 text-primary" />
         <h1 className="text-xl font-semibold text-foreground">Profit & Loss Statement</h1>
