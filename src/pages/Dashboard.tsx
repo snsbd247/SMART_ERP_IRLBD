@@ -184,7 +184,7 @@ const Dashboard = () => {
     const monthPaymentIds = new Set<string>(paymentVouchers.filter((v: any) => v.voucher_date && inMonth(v.voucher_date)).map((v: any) => v.id));
     let paymentEntries: any[] = [];
     if (monthPaymentIds.size > 0) {
-      const peRes = await settle(supabase.from("voucher_entries").select("account_id, debit, voucher_id").in("voucher_id", Array.from(monthPaymentIds)), "voucher_entries (top expenses)");
+      const peRes = await settle(supabase.from("voucher_entries").select("account_id, debit, credit, voucher_id").in("voucher_id", Array.from(monthPaymentIds)), "voucher_entries (top expenses)");
       paymentEntries = (peRes as any)?.data || [];
     }
     const coaNameMap = new Map<string, string>(coa.map((a: any) => [a.id, a.account_name]));
@@ -192,7 +192,9 @@ const Dashboard = () => {
     const expenseTotals = new Map<string, number>();
     paymentEntries.forEach((e: any) => {
       if (cashBankSet.has(e.account_id)) return;
-      const amt = Number(e.debit || 0);
+      // This system posts payment vouchers as Dr Cash/Bank, Cr the expense
+      // account — so the expense side is the credit leg, not the debit leg.
+      const amt = Number(e.credit || 0) || Number(e.debit || 0);
       if (amt <= 0) return;
       expenseTotals.set(e.account_id, (expenseTotals.get(e.account_id) || 0) + amt);
     });
