@@ -239,8 +239,8 @@ const Dashboard = () => {
 
     // Third batch: bottom stat strip (customers/suppliers/products/low-stock).
     const [customersRes, suppliersRes, itemsRes, movementsRes] = await Promise.all([
-      settle(supabase.from("customers").select("id", { count: "exact", head: true }), "customers count"),
-      settle(supabase.from("suppliers").select("id", { count: "exact", head: true }), "suppliers count"),
+      settle(supabase.from("customers").select("id"), "customers count"),
+      settle(supabase.from("suppliers").select("id"), "suppliers count"),
       settle(supabase.from("item_master").select("id, min_stock_level").eq("status", "active"), "item_master"),
       settle(supabase.from("stock_movements").select("product_id, quantity"), "stock_movements"),
     ]);
@@ -252,8 +252,8 @@ const Dashboard = () => {
     const lowStock = items.filter((p: any) => (stockMap[p.id] || 0) <= Number(p.min_stock_level || 0)).length;
 
     setCounts({
-      customers: (customersRes as any)?.count || 0,
-      suppliers: (suppliersRes as any)?.count || 0,
+      customers: ((customersRes as any)?.data || []).length,
+      suppliers: ((suppliersRes as any)?.data || []).length,
       products: items.length,
       lowStock,
     });
