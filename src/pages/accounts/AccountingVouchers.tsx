@@ -195,9 +195,19 @@ const AccountingVouchers = () => {
   const [auditOpen, setAuditOpen] = useState(false);
   const [auditRecordId, setAuditRecordId] = useState<string | undefined>(undefined);
 
-  // Server-side filters + pagination state
-  const [filterFrom, setFilterFrom] = useState<string>("");
-  const [filterTo, setFilterTo] = useState<string>("");
+  // Server-side filters + pagination state — default to the current running
+  // month so the list opens already scoped instead of showing everything.
+  const currentMonthRange = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const start = `${y}-${pad(m + 1)}-01`;
+    const end = `${y}-${pad(m + 1)}-${pad(new Date(y, m + 1, 0).getDate())}`;
+    return { start, end };
+  };
+  const [filterFrom, setFilterFrom] = useState<string>(() => currentMonthRange().start);
+  const [filterTo, setFilterTo] = useState<string>(() => currentMonthRange().end);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(50);
   const [totalCount, setTotalCount] = useState(0);
@@ -985,11 +995,11 @@ const AccountingVouchers = () => {
         <div className="text-center text-muted-foreground py-12">You do not have permission to view any voucher types.</div>
       ) : (
       <div>
-            <div className="mb-3 flex flex-wrap items-end gap-2">
+            <div className="mb-3 flex flex-wrap items-end gap-3 rounded-xl border border-border/60 bg-muted/30 p-3">
               <div className="flex flex-col gap-1">
                 <Label className="text-xs text-muted-foreground">Voucher Type</Label>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-48 h-9 bg-background"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Vouchers</SelectItem>
                     {allowedTypes.map((vt) => (
@@ -998,23 +1008,22 @@ const AccountingVouchers = () => {
                   </SelectContent>
                 </Select>
               </div>
-            <div className="mb-3 flex flex-wrap items-end gap-2">
               <div className="flex flex-col gap-1">
                 <Label className="text-xs text-muted-foreground">Search</Label>
                 <Input
                   placeholder="Voucher #, ledger name, amount, or description"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-72 h-9"
+                  className="w-72 h-9 bg-background"
                 />
               </div>
               <div className="flex flex-col gap-1">
                 <Label className="text-xs text-muted-foreground">From</Label>
-                <DateInput value={filterFrom} onChange={(v) => setFilterFrom(v)} />
+                <DateInput value={filterFrom} onChange={(v) => setFilterFrom(v)} className="bg-background" />
               </div>
               <div className="flex flex-col gap-1">
                 <Label className="text-xs text-muted-foreground">To</Label>
-                <DateInput value={filterTo} onChange={(v) => setFilterTo(v)} />
+                <DateInput value={filterTo} onChange={(v) => setFilterTo(v)} className="bg-background" />
               </div>
               {(filterFrom || filterTo || debouncedSearch.trim()) && (
                 <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearchQuery(""); setFilterFrom(""); setFilterTo(""); }}>
@@ -1184,7 +1193,6 @@ const AccountingVouchers = () => {
               </div>
             </div>
           </div>
-      </div>
       ))}
 
       {/* Create/Edit Voucher Page */}
