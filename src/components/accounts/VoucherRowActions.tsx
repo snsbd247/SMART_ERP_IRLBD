@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   ArrowLeftRight,
-  Check,
   Eye,
   History,
   MoreHorizontal,
@@ -18,7 +17,6 @@ import {
   RotateCcw,
   Shuffle,
   Trash2,
-  X,
 } from "lucide-react";
 
 export interface VoucherRowActionsProps {
@@ -28,7 +26,6 @@ export interface VoucherRowActionsProps {
   editDeniedReason?: string;
   canReverse?: boolean;
   canChangeType?: boolean;
-  canApproveReject?: boolean;
   canDelete?: boolean;
   canRestore?: boolean;
   canPurge?: boolean;
@@ -37,8 +34,6 @@ export interface VoucherRowActionsProps {
   onEdit: () => void;
   onPrint: () => void;
   onHistory: () => void;
-  onApprove?: () => void;
-  onReject?: () => void;
   onReverse?: () => void;
   onChangeType?: () => void;
   onDelete?: () => void;
@@ -67,7 +62,6 @@ export function VoucherRowActions(props: VoucherRowActionsProps) {
     editDeniedReason,
     canReverse,
     canChangeType,
-    canApproveReject,
     canDelete,
     canRestore,
     canPurge,
@@ -75,8 +69,6 @@ export function VoucherRowActions(props: VoucherRowActionsProps) {
     onEdit,
     onPrint,
     onHistory,
-    onApprove,
-    onReject,
     onReverse,
     onChangeType,
     onDelete,
@@ -86,7 +78,7 @@ export function VoucherRowActions(props: VoucherRowActionsProps) {
   } = props;
 
   const label = voucherNumber ? `Actions for voucher ${voucherNumber}` : "Row actions";
-  const showMiddle = canApproveReject || canReverse || canChangeType;
+  const showMiddle = canReverse || canChangeType;
   const showDanger = canDelete || canRestore || canPurge;
 
   return (
@@ -123,16 +115,6 @@ export function VoucherRowActions(props: VoucherRowActionsProps) {
         </DropdownMenuItem>
 
         {showMiddle && <DropdownMenuSeparator />}
-        {canApproveReject && (
-          <>
-            <DropdownMenuItem onClick={onApprove}>
-              <Check className="w-4 h-4 mr-2 text-emerald-600" aria-hidden="true" /> Approve
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onReject}>
-              <X className="w-4 h-4 mr-2 text-destructive" aria-hidden="true" /> Reject
-            </DropdownMenuItem>
-          </>
-        )}
         {canReverse && (
           <DropdownMenuItem onClick={onReverse}>
             <ArrowLeftRight className="w-4 h-4 mr-2 text-primary" aria-hidden="true" /> Reverse

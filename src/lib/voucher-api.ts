@@ -167,11 +167,6 @@ export const voucherApi = {
     return invokeEdge<{ voucher: any }>({ action: "create", ...params });
   },
 
-  approve: async (id: string) => {
-    if (isLaravelMode()) return laravelFetch(`vouchers/${id}/approve`, { method: "POST" });
-    return invokeEdge({ action: "approve", id });
-  },
-
   update: async (params: {
     id: string;
     voucher_date: string;
@@ -205,16 +200,6 @@ export const voucherApi = {
     const { error: insertError } = await supabase.from("voucher_entries").insert(body.entries.map((e, i) => ({ ...e, voucher_id: id, sort_order: i })));
     if (insertError) throw insertError;
     return { voucher: { id } };
-  },
-
-  reject: async (id: string, reason?: string) => {
-    if (isLaravelMode()) {
-      return laravelFetch(`vouchers/${id}/reject`, {
-        method: "POST",
-        body: JSON.stringify({ reason }),
-      });
-    }
-    return invokeEdge({ action: "reject", id, reason });
   },
 
   editApproved: async (params: {

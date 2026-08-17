@@ -714,26 +714,6 @@ const AccountingVouchers = () => {
     }
   };
 
-  const handleApprove = async (v: Voucher) => {
-    try {
-      await voucherApi.approve(v.id);
-      toast({ title: "Voucher approved" });
-      fetchData();
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    }
-  };
-
-  const handleReject = async (v: Voucher) => {
-    try {
-      await voucherApi.reject(v.id);
-      toast({ title: "Voucher rejected" });
-      fetchData();
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    }
-  };
-
   const openSuperAdminAction = (action: SuperAdminAction, voucher: Voucher) => {
     setSuperAdminAction(action);
     setActionVoucher(voucher);
@@ -1123,7 +1103,6 @@ const AccountingVouchers = () => {
                             const canRestore = isSuperAdmin && isDeleted;
                             const canPurge = isSuperAdmin && isDeleted;
                             const canDelete = canDeleteVoucher(v) && !isDeleted;
-                            const canApproveReject = v.status === "pending" && canEditForType(v.voucher_type);
 
                             const onEdit = () => {
                               if (editAllowed) return openEdit(v);
@@ -1149,7 +1128,6 @@ const AccountingVouchers = () => {
                                 editPermissionCid={editEval.correlationId}
                                 canReverse={canReverse}
                                 canChangeType={canChangeType}
-                                canApproveReject={canApproveReject}
                                 canDelete={canDelete}
                                 canRestore={canRestore}
                                 canPurge={canPurge}
@@ -1157,8 +1135,6 @@ const AccountingVouchers = () => {
                                 onEdit={onEdit}
                                 onPrint={() => openPrintVoucher(v)}
                                 onHistory={() => { setAuditRecordId(v.id); setAuditOpen(true); }}
-                                onApprove={() => handleApprove(v)}
-                                onReject={() => handleReject(v)}
                                 onReverse={() => openSuperAdminAction("reverse", v)}
                                 onChangeType={() => openChangeType(v)}
                                 onDelete={() => openSuperAdminAction("delete", v)}
@@ -1404,8 +1380,8 @@ const AccountingVouchers = () => {
               ) : (
                 <>
                   <Button variant="outline" className="border-amber-500 bg-amber-100 text-amber-900 hover:bg-amber-200 hover:text-amber-900 dark:bg-amber-500/20 dark:text-amber-100 dark:border-amber-400/60 dark:hover:bg-amber-500/30" onClick={() => handleSave(false)} disabled={saving || !isBalanced}>Save as Draft</Button>
-                  <Button onClick={() => handleSave(true)} disabled={postDisabled} title={postTitle}>Submit for Approval</Button>
-                  <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleSave(true, true)} disabled={postDisabled} title={postTitle}>Submit &amp; New</Button>
+                  <Button onClick={() => handleSave(true)} disabled={postDisabled} title={postTitle}>Post Voucher</Button>
+                  <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleSave(true, true)} disabled={postDisabled} title={postTitle}>Post &amp; New</Button>
                 </>
               );
             })()}
