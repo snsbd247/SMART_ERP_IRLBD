@@ -217,7 +217,19 @@ const AccountLedgerReport = () => {
                     {fc(e.running_balance)}
                   </TableCell>
                 </TableRow>
-              ))}</>)}
+              ))}
+              {(() => {
+                const totalDebit = data.reduce((s, e) => s + (Number(e.debit) || 0), 0);
+                const totalCredit = data.reduce((s, e) => s + (Number(e.credit) || 0), 0);
+                return (
+                  <TableRow className="bg-muted/40 font-semibold border-t-2">
+                    <TableCell colSpan={4} className="text-right">Total</TableCell>
+                    <TableCell className="text-right tabular-nums">{fc(totalDebit)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{fc(totalCredit)}</TableCell>
+                    <TableCell />
+                  </TableRow>
+                );
+              })()}</>)}
             </TableBody>
           </Table>
         </CardContent></Card>
