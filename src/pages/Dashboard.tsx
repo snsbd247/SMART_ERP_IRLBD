@@ -115,30 +115,34 @@ const Dashboard = () => {
   useEffect(() => { loadDashboardData(); }, []);
 
   const loadDashboardData = async () => {
-    const [
-      salesV1Res, salesV2Res, billsV2Res, auditRes,
-      voucherRes, coaRes, recentVoucherRes,
-      customersRes, suppliersRes, itemsRes, movementsRes,
-    ] = await Promise.all([
-      supabase.from("sales_invoices").select("total_amount, net_amount, invoice_date"),
-      supabase.from("sales_invoices_v2").select("grand_total, invoice_date"),
-      supabase.from("supplier_bills_v2").select("grand_total, bill_date"),
-      supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(6),
-      supabase.from("acc_vouchers").select("id, voucher_type, voucher_date, total_amount, status").neq("status", "cancelled"),
-      supabase.from("chart_of_accounts").select("id, account_name, account_type, opening_balance, opening_balance_type"),
-      supabase.from("acc_vouchers").select("id, voucher_number, voucher_type, voucher_date, description, total_amount, status").order("created_at", { ascending: false }).limit(5),
-      supabase.from("customers").select("id", { count: "exact", head: true }),
-      supabase.from("suppliers").select("id", { count: "exact", head: true }),
-      supabase.from("item_master").select("id", { count: "exact", head: true }).eq("status", "active"),
-      supabase.from("stock_movements").select("product_id, quantity"),
+    // Fired as a handful of small, staged batches rather than one big burst —
+    // the shared host's PHP-FPM pool intermittently drops/empties responses
+    // when 10+ requests land at once. Each promise is settled independently
+    // so one slow/failed query degrades gracefully instead of blanking the
+    // whole dashboard.
+    const settle = async <T,>(p: PromiseLike<T>, label: string): Promise<T | null> => {
+      try {
+        return await p;
+      } catch (err) {
+        console.error(`[dashboard] ${label} failed`, err);
+        return null;
+      }
+    };
+
+    const [salesV1Res, salesV2Res, billsV2Res, voucherRes, coaRes] = await Promise.all([
+      settle(supabase.from("sales_invoices").select("total_amount, net_amount, invoice_date"), "sales_invoices"),
+      settle(supabase.from("sales_invoices_v2").select("grand_total, invoice_date"), "sales_invoices_v2"),
+      settle(supabase.from("supplier_bills_v2").select("grand_total, bill_date"), "supplier_bills_v2"),
+      settle(supabase.from("acc_vouchers").select("id, voucher_type, voucher_date, total_amount, status").neq("status", "cancelled"), "acc_vouchers"),
+      settle(supabase.from("chart_of_accounts").select("id, account_name, account_type, opening_balance, opening_balance_type"), "chart_of_accounts"),
     ]);
 
-    const salesV1 = (salesV1Res.data || []).map((s: any) => ({ amount: Number(s.net_amount ?? s.total_amount ?? 0), date: s.invoice_date }));
-    const salesV2 = (salesV2Res.data || []).map((s: any) => ({ amount: Number(s.grand_total ?? 0), date: s.invoice_date }));
+    const salesV1 = ((salesV1Res as any)?.data || []).map((s: any) => ({ amount: Number(s.net_amount ?? s.total_amount ?? 0), date: s.invoice_date }));
+    const salesV2 = ((salesV2Res as any)?.data || []).map((s: any) => ({ amount: Number(s.grand_total ?? 0), date: s.invoice_date }));
     const sales = [...salesV1, ...salesV2];
-    const purchases = (billsV2Res.data || []).map((b: any) => ({ amount: Number(b.grand_total) || 0, date: b.bill_date }));
-    const vouchers = voucherRes.data || [];
-    const coa = coaRes.data || [];
+    const purchases = ((billsV2Res as any)?.data || []).map((b: any) => ({ amount: Number(b.grand_total) || 0, date: b.bill_date }));
+    const vouchers = (voucherRes as any)?.data || [];
+    const coa = (coaRes as any)?.data || [];
 
     const totalSales = sales.reduce((s, r) => s + r.amount, 0);
     const totalPurchases = purchases.reduce((s, r) => s + r.amount, 0);
@@ -159,8 +163,8 @@ const Dashboard = () => {
     let entries: any[] = [];
     if (accountIds.length > 0) {
       const validVoucherIds = new Set(vouchers.map((v: any) => v.id));
-      const { data: entryRows } = await supabase.from("voucher_entries").select("account_id, debit, credit, voucher_id").in("account_id", accountIds);
-      entries = (entryRows || []).filter((e: any) => validVoucherIds.has(e.voucher_id));
+      const entryRes = await settle(supabase.from("voucher_entries").select("account_id, debit, credit, voucher_id").in("account_id", accountIds), "voucher_entries (cash/bank)");
+      entries = ((entryRes as any)?.data || []).filter((e: any) => validVoucherIds.has(e.voucher_id));
       const sumFor = (ids: string[]) => entries.filter((e: any) => ids.includes(e.account_id)).reduce((s: number, e: any) => s + (Number(e.debit || 0) - Number(e.credit || 0)), 0);
       const openingFor = (ids: string[]) => coa.filter((a: any) => ids.includes(a.id)).reduce((s: number, a: any) => s + signedOpeningBalance(a.opening_balance, a.opening_balance_type), 0);
       cashBalance = openingFor(cashAccountIds) + sumFor(cashAccountIds);
@@ -174,13 +178,13 @@ const Dashboard = () => {
     const curMonth = now.getMonth();
     const curYear = now.getFullYear();
     const inMonth = (d: string) => { const dt = new Date(d); return dt.getMonth() === curMonth && dt.getFullYear() === curYear; };
-    const monthPaymentIds = new Set(paymentVouchers.filter((v: any) => v.voucher_date && inMonth(v.voucher_date)).map((v: any) => v.id));
+    const monthPaymentIds = new Set<string>(paymentVouchers.filter((v: any) => v.voucher_date && inMonth(v.voucher_date)).map((v: any) => v.id));
     let paymentEntries: any[] = [];
     if (monthPaymentIds.size > 0) {
-      const { data: peRows } = await supabase.from("voucher_entries").select("account_id, debit, voucher_id").in("voucher_id", Array.from(monthPaymentIds));
-      paymentEntries = peRows || [];
+      const peRes = await settle(supabase.from("voucher_entries").select("account_id, debit, voucher_id").in("voucher_id", Array.from(monthPaymentIds)), "voucher_entries (top expenses)");
+      paymentEntries = (peRes as any)?.data || [];
     }
-    const coaNameMap = new Map(coa.map((a: any) => [a.id, a.account_name]));
+    const coaNameMap = new Map<string, string>(coa.map((a: any) => [a.id, a.account_name]));
     const cashBankSet = new Set(accountIds);
     const expenseTotals = new Map<string, number>();
     paymentEntries.forEach((e: any) => {
@@ -213,29 +217,44 @@ const Dashboard = () => {
       totalReceivable: 0, totalPayable: 0,
     });
 
+    // Second batch: recent lists, shown below the fold, staged after the
+    // first batch finishes so we never hold 10+ requests open at once.
+    const [auditRes, recentVoucherRes, paymentRowsRes] = await Promise.all([
+      settle(supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(6), "audit_log"),
+      settle(supabase.from("acc_vouchers").select("id, voucher_number, voucher_type, voucher_date, description, total_amount, status").order("created_at", { ascending: false }).limit(5), "recent acc_vouchers"),
+      settle(supabase.from("party_payments").select("amount, party_type"), "party_payments"),
+    ]);
+    setRecentActivities((auditRes as any)?.data || []);
+    setRecentVouchers((recentVoucherRes as any)?.data || []);
+
     // Receivable/payable: sales/purchases not yet covered by customer/supplier payments.
-    const { data: paymentRows } = await supabase.from("party_payments").select("amount, party_type");
-    const customerPayments = (paymentRows || []).filter((p: any) => p.party_type === "customer").reduce((s: number, p: any) => s + Number(p.amount), 0);
-    const supplierPayments = (paymentRows || []).filter((p: any) => p.party_type === "supplier").reduce((s: number, p: any) => s + Number(p.amount), 0);
+    const paymentRows = (paymentRowsRes as any)?.data || [];
+    const customerPayments = paymentRows.filter((p: any) => p.party_type === "customer").reduce((s: number, p: any) => s + Number(p.amount), 0);
+    const supplierPayments = paymentRows.filter((p: any) => p.party_type === "supplier").reduce((s: number, p: any) => s + Number(p.amount), 0);
     setStats((prev) => ({
       ...prev,
       totalReceivable: Math.max(0, totalSales - customerPayments),
       totalPayable: Math.max(0, totalPurchases - supplierPayments),
     }));
 
-    setRecentActivities(auditRes.data || []);
-    setRecentVouchers(recentVoucherRes.data || []);
+    // Third batch: bottom stat strip (customers/suppliers/products/low-stock).
+    const [customersRes, suppliersRes, itemsRes, movementsRes] = await Promise.all([
+      settle(supabase.from("customers").select("id", { count: "exact", head: true }), "customers count"),
+      settle(supabase.from("suppliers").select("id", { count: "exact", head: true }), "suppliers count"),
+      settle(supabase.from("item_master").select("id, min_stock_level").eq("status", "active"), "item_master"),
+      settle(supabase.from("stock_movements").select("product_id, quantity"), "stock_movements"),
+    ]);
 
-    // Active/low-stock product count (mirrors LowStockPage's logic).
+    // Low-stock count mirrors LowStockPage's logic (current qty <= min_stock_level).
     const stockMap: Record<string, number> = {};
-    (movementsRes.data || []).forEach((m: any) => { stockMap[m.product_id] = (stockMap[m.product_id] || 0) + Number(m.quantity); });
-    const { data: itemsWithThreshold } = await supabase.from("item_master").select("id, min_stock_level").eq("status", "active");
-    const lowStock = (itemsWithThreshold || []).filter((p: any) => (stockMap[p.id] || 0) <= Number(p.min_stock_level || 0)).length;
+    ((movementsRes as any)?.data || []).forEach((m: any) => { stockMap[m.product_id] = (stockMap[m.product_id] || 0) + Number(m.quantity); });
+    const items = (itemsRes as any)?.data || [];
+    const lowStock = items.filter((p: any) => (stockMap[p.id] || 0) <= Number(p.min_stock_level || 0)).length;
 
     setCounts({
-      customers: customersRes.count || 0,
-      suppliers: suppliersRes.count || 0,
-      products: itemsRes.count || 0,
+      customers: (customersRes as any)?.count || 0,
+      suppliers: (suppliersRes as any)?.count || 0,
+      products: items.length,
       lowStock,
     });
   };
@@ -310,7 +329,7 @@ const Dashboard = () => {
               <div className={`flex items-center justify-center w-9 h-9 rounded-lg ${card.bg} mb-3`}>
                 <card.icon className={`w-4.5 h-4.5 ${card.color}`} />
               </div>
-              <p className="text-lg sm:text-xl font-bold text-foreground tabular-nums truncate">{fc(card.value)}</p>
+              <p className="text-base sm:text-lg font-bold text-foreground tabular-nums leading-tight break-words" title={fc(card.value)}>{fc(card.value)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{card.label}</p>
               <div className="mt-1.5"><ChangeBadge pct={card.pct} /></div>
               {card.spark && spark6.length > 1 && (
@@ -538,7 +557,7 @@ const Dashboard = () => {
                 <s.icon className={`w-4.5 h-4.5 ${s.color}`} />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground tabular-nums truncate">{s.money ? fc(s.value) : s.value.toLocaleString()}</p>
+                <p className="text-sm font-bold text-foreground tabular-nums break-words leading-tight" title={s.money ? fc(s.value) : String(s.value)}>{s.money ? fc(s.value) : s.value.toLocaleString()}</p>
                 <p className="text-[10px] text-muted-foreground truncate">{s.label}</p>
               </div>
             </CardContent>
