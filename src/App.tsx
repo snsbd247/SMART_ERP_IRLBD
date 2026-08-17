@@ -34,7 +34,6 @@ import AccountingVouchers from "./pages/accounts/AccountingVouchers";
 import DeletedVouchersPage from "./pages/accounts/DeletedVouchersPage";
 import AccountingAuditLogPage from "./pages/accounts/AccountingAuditLogPage";
 import TreasuryInformationPage from "./pages/accounts/TreasuryInformationPage";
-import VoucherApprovalDashboard from "./pages/accounts/VoucherApprovalDashboard";
 import PermissionMatrixPage from "./pages/admin/PermissionMatrixPage";
 
 import SalesPage from "./pages/sales/SalesPage";
@@ -230,7 +229,6 @@ const App = () => (
                 <Route path="/accounts/vouchers" element={<AccountingVouchers />} />
                 <Route path="/accounts/vouchers/trash" element={<DeletedVouchersPage />} />
                 <Route path="/accounts/audit-log" element={<AccountingAuditLogPage />} />
-                <Route path="/accounts/approvals" element={<P perm="accounts.view"><VoucherApprovalDashboard /></P>} />
                 <Route path="/accounts/treasury" element={<P perm="accounts.view"><TreasuryInformationPage /></P>} />
                 <Route path="/admin/permission-matrix" element={<P perm="roles.view"><PermissionMatrixPage /></P>} />
 
