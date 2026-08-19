@@ -122,23 +122,25 @@ const IFRSFinancialStatements = () => {
       moveMap.set(a.id, 0);
     });
 
-    // All entries up to "to" (for balance)
-    const { data: balRows } = await supabase
-      .from("voucher_entries")
-      .select("account_id, debit, credit, acc_vouchers!inner(status, voucher_date)")
-      .eq("acc_vouchers.status", "approved")
-      .lte("acc_vouchers.voucher_date", to);
+    // Balance-to-date and in-period movement are independent queries — fetch
+    // both concurrently instead of one after another.
+    const [{ data: balRows }, { data: mvRows }] = await Promise.all([
+      // All entries up to "to" (for balance)
+      supabase
+        .from("voucher_entries")
+        .select("account_id, debit, credit, acc_vouchers!inner(status, voucher_date)")
+        .eq("acc_vouchers.status", "approved")
+        .lte("acc_vouchers.voucher_date", to),
+      // Entries during period (for P&L movement)
+      supabase
+        .from("voucher_entries")
+        .select("account_id, debit, credit, acc_vouchers!inner(status, voucher_date)")
+        .gte("acc_vouchers.voucher_date", from)
+        .lte("acc_vouchers.voucher_date", to),
+    ]);
     (balRows || []).forEach((e: any) => {
       balMap.set(e.account_id, (balMap.get(e.account_id) || 0) + Number(e.debit) - Number(e.credit));
     });
-
-    // Entries during period (for P&L movement)
-    const { data: mvRows } = await supabase
-      .from("voucher_entries")
-      .select("account_id, debit, credit, acc_vouchers!inner(status, voucher_date)")
-      .eq("acc_vouchers.status", "approved")
-      .gte("acc_vouchers.voucher_date", from)
-      .lte("acc_vouchers.voucher_date", to);
     (mvRows || []).forEach((e: any) => {
       moveMap.set(e.account_id, (moveMap.get(e.account_id) || 0) + Number(e.debit) - Number(e.credit));
     });

@@ -13,7 +13,7 @@
  */
 
 import { getApiBaseUrl, getLaravelAuthHeaders, getLaravelToken } from "@/lib/laravel-auth";
-import { chunkIds, getInChunkSize, isUrlTooLargeError, logChunkMetrics } from "@/lib/in-chunk";
+import { getInChunkSize, isUrlTooLargeError, logChunkMetrics, runChunkedParallel } from "@/lib/in-chunk";
 
 type Result<T> = { data: T | null; error: { message: string; code?: string } | null };
 
@@ -343,7 +343,9 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
 
     // If a filter carries a very large IN list (typically injected by the
     // relation-filter emulation above), chunk the main SELECT so we don't
-    // exceed Apache's LimitRequestLine (8KB) and get a 414.
+    // exceed Apache's LimitRequestLine (8KB) and get a 414. Chunks are fetched
+    // concurrently — network round-trip latency, not server processing, is
+    // what makes sequential chunk-by-chunk fetching slow.
     let res: Result<any>;
     const largeInIdx = this._mode === "select"
       ? this._filters.findIndex((f) => f.op === "in" && Array.isArray(f.val) && f.val.length > getInChunkSize())
@@ -351,38 +353,31 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
     if (largeInIdx >= 0) {
       const largeIn = this._filters[largeInIdx];
       const otherFilters = this._filters.filter((_, i) => i !== largeInIdx);
-      let chunkSize = getInChunkSize();
-      const chunks = chunkIds((largeIn.val as any[]).map(String), chunkSize);
-      const collected: any[] = [];
-      for (let ci = 0; ci < chunks.length; ci++) {
-        let slice = chunks[ci];
-        let attempts = 0;
-        while (attempts < 4) {
-          const cqs = buildQS({
-            select: this._select,
-            filters: [...otherFilters, { col: largeIn.col, op: "in", val: slice }],
-            orders: this._orders,
-            limit: this._limit,
-            offset: this._offset,
-            onConflict: this._onConflict,
-          });
-          const r = await call<any>("GET", `/v1/db/${this.table}${cqs}`);
-          if (r.error) {
-            if (isUrlTooLargeError(r.error) && slice.length > 10) {
-              const half = Math.max(10, Math.floor(slice.length / 2));
-              chunks.splice(ci + 1, 0, slice.slice(half));
-              slice = slice.slice(0, half);
-              chunkSize = half;
-              attempts++;
-              continue;
-            }
-            return r as Result<T>;
-          }
-          collected.push(...unwrapLaravelRows(r.data));
-          break;
+      const chunkSize = getInChunkSize();
+      let chunkError: Result<any>["error"] = null;
+      const collected = await runChunkedParallel(largeIn.val as any[], async (slice) => {
+        const cqs = buildQS({
+          select: this._select,
+          filters: [...otherFilters, { col: largeIn.col, op: "in", val: slice }],
+          orders: this._orders,
+          limit: this._limit,
+          offset: this._offset,
+          onConflict: this._onConflict,
+        });
+        const r = await call<any>("GET", `/v1/db/${this.table}${cqs}`);
+        if (r.error) {
+          if (isUrlTooLargeError(r.error) && slice.length > 10) return { tooLarge: true };
+          chunkError = r.error;
+          return { rows: [] };
         }
-      }
-      logChunkMetrics(`laravel-bridge/main/${this.table}`, { totalIds: (largeIn.val as any[]).length, chunkSize, chunkCount: chunks.length });
+        return { rows: unwrapLaravelRows(r.data) };
+      }, { chunkSize });
+      if (chunkError) return { data: null, error: chunkError } as Result<T>;
+      logChunkMetrics(`laravel-bridge/main/${this.table}`, {
+        totalIds: (largeIn.val as any[]).length,
+        chunkSize,
+        chunkCount: Math.ceil((largeIn.val as any[]).length / chunkSize),
+      });
       res = { data: collected, error: null };
     } else {
       const qs = buildQS({
@@ -422,44 +417,36 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
     const rows = Array.isArray(data) ? data : data ? [data] : [];
     if (rows.length === 0) return data;
 
-    for (const rel of this._relationEmbeds) {
+    // Relations are independent of each other, and each relation's ID chunks
+    // are independent too — fetch everything concurrently instead of one
+    // relation/chunk at a time. Network round-trip latency (not server
+    // processing) is what makes sequential fetching slow here.
+    await Promise.all(this._relationEmbeds.map(async (rel) => {
       const fk = rel.fk || relationForeignKey(rel.table);
-      if (!fk) continue;
+      if (!fk) return;
       const ids = Array.from(new Set(rows.map((r: any) => r?.[fk]).filter(Boolean).map(String)));
       if (ids.length === 0) {
         rows.forEach((r: any) => { r[rel.alias] = null; });
-        continue;
+        return;
       }
+
+      const cols = rel.columns.includes("*") ? undefined : Array.from(new Set(["id", ...rel.columns])).join(",");
+      const chunkSize = getInChunkSize();
+      const related = await runChunkedParallel(ids, async (slice) => {
+        const qs = buildQS({ select: cols, filters: [{ col: "id", op: "in", val: slice }], orders: [], limit: slice.length });
+        const relRes = await call<any>("GET", `/v1/db/${rel.table}${qs}`);
+        if (relRes.error) {
+          if (isUrlTooLargeError(relRes.error) && slice.length > 10) return { tooLarge: true };
+          return { rows: [] };
+        }
+        return { rows: unwrapLaravelRows(relRes.data) };
+      }, { chunkSize });
+      logChunkMetrics(`laravel-bridge/${rel.table}`, { totalIds: ids.length, chunkSize, chunkCount: Math.ceil(ids.length / chunkSize) });
 
       const relatedById = new Map<string, any>();
-      let chunkSize = getInChunkSize();
-      const chunks = chunkIds(ids, chunkSize);
-      for (let ci = 0; ci < chunks.length; ci++) {
-        let slice = chunks[ci];
-        let attempts = 0;
-        while (attempts < 4) {
-          const cols = rel.columns.includes("*") ? undefined : Array.from(new Set(["id", ...rel.columns])).join(",");
-          const qs = buildQS({ select: cols, filters: [{ col: "id", op: "in", val: slice }], orders: [], limit: slice.length });
-          const relRes = await call<any>("GET", `/v1/db/${rel.table}${qs}`);
-          if (relRes.error) {
-            if (isUrlTooLargeError(relRes.error) && slice.length > 10) {
-              const half = Math.max(10, Math.floor(slice.length / 2));
-              chunks.splice(ci + 1, 0, slice.slice(half));
-              slice = slice.slice(0, half);
-              chunkSize = half;
-              attempts++;
-              continue;
-            }
-            break;
-          }
-          for (const related of unwrapLaravelRows(relRes.data)) relatedById.set(String(related.id), related);
-          break;
-        }
-      }
-      logChunkMetrics(`laravel-bridge/${rel.table}`, { totalIds: ids.length, chunkSize, chunkCount: chunks.length });
-
+      for (const r of related) relatedById.set(String(r.id), r);
       rows.forEach((r: any) => { r[rel.alias] = relatedById.get(String(r?.[fk])) ?? null; });
-    }
+    }));
 
     return Array.isArray(data) ? rows : rows[0] ?? null;
   }

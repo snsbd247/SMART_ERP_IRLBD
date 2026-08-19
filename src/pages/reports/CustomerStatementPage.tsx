@@ -66,39 +66,35 @@ const CustomerStatementPage = () => {
     const cust = customers.find(c => c.id === selectedCustomer) || null;
     setCustomer(cust);
 
-    // Carry-forward opening from all prior-period transactions.
-    const open = await computeCustomerPeriodOpening({ customerId: selectedCustomer, dateFrom });
+    // Opening balance (prior-period) and this period's invoices/payments/returns
+    // are all independent — fetch concurrently instead of one after another.
+    const [open, { data: invoices }, { data: payments }, { data: returns }] = await Promise.all([
+      computeCustomerPeriodOpening({ customerId: selectedCustomer, dateFrom }),
+      supabase
+        .from("sales_invoices")
+        .select("id, invoice_number, invoice_date, net_amount, total_amount, discount")
+        .eq("customer_id", selectedCustomer)
+        .gte("invoice_date", dateFrom)
+        .lte("invoice_date", dateTo)
+        .order("invoice_date"),
+      supabase
+        .from("party_payments")
+        .select("id, payment_date, amount, payment_method, reference")
+        .eq("party_id", selectedCustomer)
+        .eq("party_type", "customer")
+        .gte("payment_date", dateFrom)
+        .lte("payment_date", dateTo)
+        .order("payment_date"),
+      supabase
+        .from("sales_returns")
+        .select("id, return_number, return_date, total_amount")
+        .eq("customer_id", selectedCustomer)
+        .gte("return_date", dateFrom)
+        .lte("return_date", dateTo)
+        .order("return_date"),
+    ]);
     setPeriodOpening(open.opening);
     setPriorRows(open.priorRows);
-
-
-    // Fetch invoices
-    const { data: invoices } = await supabase
-      .from("sales_invoices")
-      .select("id, invoice_number, invoice_date, net_amount, total_amount, discount")
-      .eq("customer_id", selectedCustomer)
-      .gte("invoice_date", dateFrom)
-      .lte("invoice_date", dateTo)
-      .order("invoice_date");
-
-    // Fetch payments
-    const { data: payments } = await supabase
-      .from("party_payments")
-      .select("id, payment_date, amount, payment_method, reference")
-      .eq("party_id", selectedCustomer)
-      .eq("party_type", "customer")
-      .gte("payment_date", dateFrom)
-      .lte("payment_date", dateTo)
-      .order("payment_date");
-
-    // Fetch sales returns
-    const { data: returns } = await supabase
-      .from("sales_returns")
-      .select("id, return_number, return_date, total_amount")
-      .eq("customer_id", selectedCustomer)
-      .gte("return_date", dateFrom)
-      .lte("return_date", dateTo)
-      .order("return_date");
 
     // Combine and sort by date
     const all: { date: string; type: string; ref: string; desc: string; debit: number; credit: number; id: string }[] = [];

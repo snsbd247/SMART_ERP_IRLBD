@@ -36,20 +36,23 @@ const AccountLedgerReport = () => {
     const statuses = statusFilter === "both" ? [...BALANCE_VOUCHER_STATUSES] : [statusFilter];
     const acc = accounts.find((a) => a.id === selectedAccount);
 
-    // Single source of truth: opening = base opening + every prior-period entry.
-    const open = await computeAccountPeriodOpening({
-      accountId: selectedAccount,
-      dateFrom,
-      branchId: branch,
-      statuses,
-      account: acc as any,
-    });
+    // Opening balance (prior-period entries) and this period's entries cover
+    // disjoint date ranges — fetch them concurrently instead of one after
+    // another.
+    const [open, rawEntries] = await Promise.all([
+      computeAccountPeriodOpening({
+        accountId: selectedAccount,
+        dateFrom,
+        branchId: branch,
+        statuses,
+        account: acc as any,
+      }),
+      fetchAllVoucherEntries({
+        dateFrom, dateTo, branchId: branch, accountId: selectedAccount, statuses,
+      }),
+    ]);
     setBaseOpening(open.baseOpening);
     setPriorEntries(open.priorEntries);
-
-    const rawEntries = await fetchAllVoucherEntries({
-      dateFrom, dateTo, branchId: branch, accountId: selectedAccount, statuses,
-    });
     const entries = aggregateEntriesByVoucherAccount(rawEntries as any[]);
     let runBal = open.opening;
 
@@ -61,11 +64,10 @@ const AccountLedgerReport = () => {
       const { chunkIds, getInChunkSize, logChunkMetrics } = await import("@/lib/in-chunk");
       const chunkSize = getInChunkSize();
       const chunks = chunkIds(voucherIds as string[], chunkSize);
-      for (const slice of chunks) {
-        const { data: allEntries } = await supabase
-          .from("voucher_entries")
-          .select("voucher_id, account_id")
-          .in("voucher_id", slice as any);
+      const chunkResults = await Promise.all(chunks.map((slice) =>
+        supabase.from("voucher_entries").select("voucher_id, account_id").in("voucher_id", slice as any)
+      ));
+      for (const { data: allEntries } of chunkResults) {
         (allEntries || []).forEach((r: any) => {
           if (r.account_id === selectedAccount) return;
           const name = accNameMap.get(r.account_id);

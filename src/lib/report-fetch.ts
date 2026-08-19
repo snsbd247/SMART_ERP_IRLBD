@@ -1,11 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { isLaravelMode, getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 import {
-  chunkIds,
   getInChunkSize,
   isUrlTooLargeError,
   logChunkMetrics,
   estimateInClauseUrlLength,
+  runChunkedParallel,
 } from "@/lib/in-chunk";
 import { toast } from "sonner";
 
@@ -132,13 +132,14 @@ async function fetchAllVoucherEntriesLaravel(opts: {
   const voucherById = new Map<string, any>(vouchers.map((v) => [String(v.id), v]));
   const voucherIds = vouchers.map((v) => String(v.id));
 
-  // 2) Fetch voucher_entries in chunks of IDs. Optionally filter by account.
-  //    Chunk size is configurable via VITE_IN_CHUNK_SIZE (see lib/in-chunk.ts).
-  //    On a 414 response we halve the chunk size and retry until success or a
-  //    minimum, so a mis-tuned deployment degrades to more (smaller) requests
-  //    instead of returning an empty report.
-  const entries: any[] = [];
-  let chunkSize = getInChunkSize();
+  // 2) Fetch voucher_entries in chunks of IDs, concurrently — network round-trip
+  //    latency (not server/DB time) dominates report load time, so chunks are
+  //    fired in parallel instead of awaited one-at-a-time. Chunk size is
+  //    configurable via VITE_IN_CHUNK_SIZE (see lib/in-chunk.ts). On a 414
+  //    response a chunk is recursively halved and retried (still in parallel)
+  //    so a mis-tuned deployment degrades to more, smaller requests instead of
+  //    returning an empty report.
+  const chunkSize = getInChunkSize();
   let maxUrl = 0;
   let toastedFallback = false;
   const buildPath = (slice: string[]): string => {
@@ -151,49 +152,37 @@ async function fetchAllVoucherEntriesLaravel(opts: {
     return `db/voucher_entries?${parts.join("&")}`;
   };
 
-  const chunks = chunkIds(voucherIds, chunkSize);
-  for (let ci = 0; ci < chunks.length; ci++) {
-    let slice = chunks[ci];
-    let attempts = 0;
-    while (attempts < 4) {
-      const path = buildPath(slice);
-      maxUrl = Math.max(maxUrl, estimateInClauseUrlLength(path, []));
-      try {
-        const json = await laravelGet(path);
-        for (const e of unwrapList(json)) {
-          const v = voucherById.get(String(e.voucher_id));
-          if (!v) continue;
-          entries.push({ ...e, acc_vouchers: v });
-        }
-        break;
-      } catch (err) {
-        if (isUrlTooLargeError(err) && slice.length > 10) {
-          if (!toastedFallback) {
-            toastedFallback = true;
-            toast.warning(
-              "Report request exceeded server URL limit — falling back to smaller batches.",
-            );
-            console.warn("[report-fetch] 414 fallback engaged", { chunkSize, sliceLen: slice.length });
-          }
-          const half = Math.max(10, Math.floor(slice.length / 2));
-          // Re-insert the remainder as smaller chunks at the current position.
-          const first = slice.slice(0, half);
-          const rest = slice.slice(half);
-          chunks.splice(ci + 1, 0, rest);
-          slice = first;
-          chunkSize = half;
-          attempts++;
-          continue;
-        }
-        console.error("[report-fetch] laravel entries page error", err);
-        break;
+  const entries = await runChunkedParallel(voucherIds, async (slice) => {
+    const path = buildPath(slice);
+    maxUrl = Math.max(maxUrl, estimateInClauseUrlLength(path, []));
+    try {
+      const json = await laravelGet(path);
+      const rows: any[] = [];
+      for (const e of unwrapList(json)) {
+        const v = voucherById.get(String(e.voucher_id));
+        if (!v) continue;
+        rows.push({ ...e, acc_vouchers: v });
       }
+      return { rows };
+    } catch (err) {
+      if (isUrlTooLargeError(err) && slice.length > 10) {
+        if (!toastedFallback) {
+          toastedFallback = true;
+          toast.warning(
+            "Report request exceeded server URL limit — falling back to smaller batches.",
+          );
+          console.warn("[report-fetch] 414 fallback engaged", { sliceLen: slice.length });
+        }
+        return { tooLarge: true };
+      }
+      console.error("[report-fetch] laravel entries page error", err);
+      return { rows: [] };
     }
-  }
+  }, { chunkSize });
   logChunkMetrics("report-fetch/voucher_entries", {
     totalIds: voucherIds.length,
     chunkSize,
-    chunkCount: chunks.length,
+    chunkCount: Math.ceil(voucherIds.length / chunkSize) || 0,
     maxUrlBytes: maxUrl,
   });
 
