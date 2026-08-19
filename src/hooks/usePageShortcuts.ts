@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -14,35 +14,48 @@ export interface PageShortcut {
 const RECENT_PAGES_KEY = "erp_recent_pages";
 const MAX_RECENT = 8;
 
+/**
+ * Shared query keys — both TopNavbar and CommandPalette mount this hook
+ * simultaneously on every page, so a plain useState/useEffect fetch here
+ * used to double every page load's request count AND left each component
+ * with its own drifting copy of `favorites` (toggling a favorite in one
+ * didn't update the other). Same query key + queryClient mutation for both
+ * fixes both problems at once.
+ */
+const SHORTCUTS_QUERY_KEY = ["page-shortcuts"] as const;
+const favoritesQueryKey = (userId: string | undefined) => ["user-favorite-pages", userId] as const;
+
+async function fetchShortcutsList(): Promise<PageShortcut[]> {
+  const { data } = await supabase
+    .from("page_shortcuts")
+    .select("*")
+    .eq("is_active", true)
+    .order("shortcut_code");
+  return (data as PageShortcut[]) || [];
+}
+
+async function fetchFavoritesList(userId: string): Promise<string[]> {
+  const { data } = await supabase.from("user_favorite_pages").select("page_url").eq("user_id", userId);
+  return (data || []).map((d: any) => d.page_url);
+}
+
 export function usePageShortcuts() {
-  const [shortcuts, setShortcuts] = useState<PageShortcut[]>([]);
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
   const { user, isSuperAdmin, hasPermission } = useAuth();
+  const queryClient = useQueryClient();
 
-  const fetchShortcuts = useCallback(async () => {
-    const { data } = await supabase
-      .from("page_shortcuts")
-      .select("*")
-      .eq("is_active", true)
-      .order("shortcut_code");
-    if (data) setShortcuts(data as PageShortcut[]);
-    setLoading(false);
-  }, []);
+  const { data: shortcuts = [], isLoading: loading, refetch } = useQuery({
+    queryKey: SHORTCUTS_QUERY_KEY,
+    queryFn: fetchShortcutsList,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const fetchFavorites = useCallback(async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("user_favorite_pages")
-      .select("page_url")
-      .eq("user_id", user.id);
-    if (data) setFavorites(data.map((d: any) => d.page_url));
-  }, [user]);
-
-  useEffect(() => {
-    fetchShortcuts();
-    fetchFavorites();
-  }, [fetchShortcuts, fetchFavorites]);
+  const favKey = favoritesQueryKey(user?.id);
+  const { data: favorites = [] } = useQuery({
+    queryKey: favKey,
+    queryFn: () => fetchFavoritesList(user!.id),
+    enabled: !!user,
+    staleTime: 60 * 1000,
+  });
 
   // Filter by permissions
   const adminPaths = ["/admin/"];
@@ -78,12 +91,12 @@ export function usePageShortcuts() {
         .delete()
         .eq("user_id", user.id)
         .eq("page_url", pageUrl);
-      setFavorites((prev) => prev.filter((f) => f !== pageUrl));
+      queryClient.setQueryData(favKey, (prev: string[] = []) => prev.filter((f) => f !== pageUrl));
     } else {
       await supabase
         .from("user_favorite_pages")
         .insert({ user_id: user.id, page_url: pageUrl });
-      setFavorites((prev) => [...prev, pageUrl]);
+      queryClient.setQueryData(favKey, (prev: string[] = []) => [...prev, pageUrl]);
     }
   };
 
@@ -118,6 +131,6 @@ export function usePageShortcuts() {
     toggleFavorite,
     isFavorite,
     favorites,
-    refetch: fetchShortcuts,
+    refetch,
   };
 }
