@@ -93,6 +93,44 @@ export function isUrlTooLargeError(err: unknown): boolean {
   );
 }
 
+/**
+ * Fetch chunks of `ids` concurrently instead of one-at-a-time. Network round-trip
+ * latency (not server/DB processing) dominates report load time on this hosting
+ * setup, so awaiting chunks sequentially in a `for` loop wastes ~150-200ms per
+ * chunk for no benefit — they're independent requests. `fetchSlice` resolves a
+ * single slice; return `{ tooLarge: true }` (no `rows`) on a 414-style failure
+ * and this will recursively halve+retry that slice (still in parallel) instead
+ * of giving up. Non-recoverable errors should be logged by `fetchSlice` itself
+ * and resolved as `{ rows: [] }`.
+ */
+export async function runChunkedParallel<T>(
+  ids: readonly (string | number)[],
+  fetchSlice: (slice: string[]) => Promise<{ rows: T[] } | { tooLarge: true }>,
+  opts?: { chunkSize?: number; minChunkSize?: number; maxSplitDepth?: number },
+): Promise<T[]> {
+  const chunkSize = opts?.chunkSize ?? getInChunkSize();
+  const minChunkSize = opts?.minChunkSize ?? 10;
+  const maxSplitDepth = opts?.maxSplitDepth ?? 4;
+
+  const runSlice = async (slice: string[], depth: number): Promise<T[]> => {
+    const res = await fetchSlice(slice);
+    if ("rows" in res) return res.rows;
+    if (slice.length > minChunkSize && depth < maxSplitDepth) {
+      const half = Math.max(minChunkSize, Math.floor(slice.length / 2));
+      const [a, b] = await Promise.all([
+        runSlice(slice.slice(0, half), depth + 1),
+        runSlice(slice.slice(half), depth + 1),
+      ]);
+      return [...a, ...b];
+    }
+    return [];
+  };
+
+  const chunks = chunkIds(ids.map(String), chunkSize);
+  const results = await Promise.all(chunks.map((slice) => runSlice(slice, 0)));
+  return results.flat();
+}
+
 /** Lightweight structured logger for chunk metrics. */
 export function logChunkMetrics(context: string, meta: {
   totalIds: number;

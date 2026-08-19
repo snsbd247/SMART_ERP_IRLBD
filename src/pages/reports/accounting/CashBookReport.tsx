@@ -36,8 +36,10 @@ const CashBookReport = () => {
     if (branch !== "all") query = query.eq("acc_vouchers.branch_id", branch);
     query = query.order("acc_vouchers(voucher_date)");
 
-    const { data: entries } = await query;
-    const opening = await computeAggregateAccountPeriodOpening({ accounts: cashAccounts as any, dateFrom, branchId: branch });
+    const [{ data: entries }, opening] = await Promise.all([
+      query,
+      computeAggregateAccountPeriodOpening({ accounts: cashAccounts as any, dateFrom, branchId: branch }),
+    ]);
     setOpeningBalance(opening);
     let runBal = opening;
 
