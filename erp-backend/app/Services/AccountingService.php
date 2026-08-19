@@ -336,6 +336,43 @@ class AccountingService
     }
 
     /**
+     * All Chart-of-Accounts rows with their debit/credit turnover for a
+     * period, in one query (LEFT JOIN + GROUP BY) instead of the client
+     * fetching every account, then every matching voucher, then every
+     * voucher_entries row (chunked) just to sum them per account. Used by
+     * useAccountBalances(), shared across Chart of Accounts, Accounting
+     * Vouchers, Customers and Suppliers pages.
+     */
+    public function accountBalances(?string $branchId, ?string $financialYearId, ?string $dateFrom, ?string $dateTo, array $statuses): array
+    {
+        $sums = VoucherEntry::query()
+            ->selectRaw('account_id, SUM(debit) as total_debit, SUM(credit) as total_credit')
+            ->whereHas('voucher', function ($q) use ($branchId, $financialYearId, $dateFrom, $dateTo, $statuses) {
+                $q->whereIn('status', $statuses)->whereNull('deleted_at');
+                if ($branchId) $q->where('branch_id', $branchId);
+                if ($financialYearId) $q->where('financial_year_id', $financialYearId);
+                if ($dateFrom) $q->where('voucher_date', '>=', $dateFrom);
+                if ($dateTo) $q->where('voucher_date', '<=', $dateTo);
+            })
+            ->groupBy('account_id')
+            ->get()
+            ->keyBy('account_id');
+
+        return DB::table('chart_of_accounts')
+            ->orderBy('account_code')
+            ->get()
+            ->map(function ($a) use ($sums) {
+                $sum = $sums->get($a->id);
+                $arr = (array) $a;
+                $arr['total_debit'] = $sum ? round((float) $sum->total_debit, 2) : 0;
+                $arr['total_credit'] = $sum ? round((float) $sum->total_credit, 2) : 0;
+                return $arr;
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * Trial Balance: sum debits/credits per account for a period.
      */
     public function trialBalance(string $from, string $to, ?string $branchId = null): array

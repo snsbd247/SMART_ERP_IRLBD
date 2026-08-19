@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 import { signedOpeningBalance } from "@/lib/balance-format";
 import { BALANCE_VOUCHER_STATUSES } from "@/lib/shared-balance";
-import { emitChunkRetry } from "@/lib/chunk-status";
 
 export interface AccountWithBalance {
   id: string;
@@ -52,6 +51,15 @@ async function laravelGetList(path: string): Promise<any[]> {
   return [];
 }
 
+async function laravelGetJson(path: string): Promise<any> {
+  const base = getApiBaseUrl();
+  if (!base) return null;
+  const res = await fetch(`${base}/v1/${path}`, { headers: getLaravelAuthHeaders() });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
+  return json?.data ?? json;
+}
+
 export function useAccountBalances(filters: Filters = {}) {
   const [accounts, setAccounts] = useState<AccountWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,65 +68,29 @@ export function useAccountBalances(filters: Filters = {}) {
     setLoading(true);
     if (isLaravelMode()) {
       try {
-        const accs = await laravelGetList("db/chart_of_accounts?order[account_code]=asc");
-        const voucherFilters = new URLSearchParams();
-        voucherFilters.set("select", "id");
-        // Shared with Account Ledger — see src/lib/shared-balance.ts.
-        voucherFilters.set("f[status][in]", BALANCE_VOUCHER_STATUSES.join(","));
-        if (filters.branchId) voucherFilters.set("f[branch_id][eq]", filters.branchId);
-        if (filters.financialYearId) voucherFilters.set("f[financial_year_id][eq]", filters.financialYearId);
-        if (filters.dateFrom) voucherFilters.set("f[voucher_date][gte]", filters.dateFrom);
-        if (filters.dateTo) voucherFilters.set("f[voucher_date][lte]", filters.dateTo);
-        const vouchers = await laravelGetList(`db/acc_vouchers?${voucherFilters.toString()}`);
-        const voucherIds = vouchers.map((v: any) => v.id);
-        const entries: VoucherEntryBalanceRow[] = [];
-        // Chunked to stay below Apache LimitRequestLine; see lib/in-chunk.ts.
-        const { chunkIds, getInChunkSize, isUrlTooLargeError, logChunkMetrics } = await import("@/lib/in-chunk");
-        const { toast } = await import("sonner");
-        let chunkSize = getInChunkSize();
-        let toasted = false;
-        const chunks = chunkIds(voucherIds, chunkSize);
-        for (let ci = 0; ci < chunks.length; ci++) {
-          let slice = chunks[ci];
-          let attempts = 0;
-          while (attempts < 4) {
-            try {
-              entries.push(...await laravelGetList(`db/voucher_entries?select=account_id,debit,credit&f[voucher_id][in]=${encodeURIComponent(slice.join(","))}`));
-              break;
-            } catch (err) {
-              if (isUrlTooLargeError(err) && slice.length > 10) {
-                if (!toasted) {
-                  toasted = true;
-                  toast.warning("Balances request exceeded server URL limit — falling back to smaller batches.");
-                }
-                const half = Math.max(10, Math.floor(slice.length / 2));
-                chunks.splice(ci + 1, 0, slice.slice(half));
-                slice = slice.slice(0, half);
-                chunkSize = half;
-                attempts++;
-                emitChunkRetry({ context: "useAccountBalances", phase: "retrying", chunkSize: half, retryCount: attempts, message: String((err as any)?.message ?? "") });
-                continue;
-              }
-              emitChunkRetry({ context: "useAccountBalances", phase: "failed", chunkSize, retryCount: attempts, message: String((err as any)?.message ?? "") });
-              throw err;
-            }
-          }
-        }
-        if (toasted) emitChunkRetry({ context: "useAccountBalances", phase: "success", chunkSize, retryCount: 0 });
-        logChunkMetrics("useAccountBalances/laravel", { totalIds: voucherIds.length, chunkSize, chunkCount: chunks.length });
-        const balMap = new Map<string, { debit: number; credit: number }>();
-        entries.forEach((e) => {
-          const cur = balMap.get(e.account_id) || { debit: 0, credit: 0 };
-          cur.debit += Number(e.debit) || 0;
-          cur.credit += Number(e.credit) || 0;
-          balMap.set(e.account_id, cur);
-        });
-        setAccounts((accs as AccountRow[]).map((a) => {
-          const txn = balMap.get(a.id) || { debit: 0, credit: 0 };
+        // Server-side aggregate (LEFT JOIN + GROUP BY) — one request instead
+        // of fetching every account, then every matching voucher, then every
+        // voucher_entries row (chunked) just to sum them per account.
+        const qs = new URLSearchParams();
+        qs.set("statuses", BALANCE_VOUCHER_STATUSES.join(","));
+        if (filters.branchId) qs.set("branch_id", filters.branchId);
+        if (filters.financialYearId) qs.set("financial_year_id", filters.financialYearId);
+        if (filters.dateFrom) qs.set("date_from", filters.dateFrom);
+        if (filters.dateTo) qs.set("date_to", filters.dateTo);
+        const payload = await laravelGetJson(`reports/account-balances?${qs.toString()}`);
+        const accs: any[] = Array.isArray(payload?.accounts) ? payload.accounts : [];
+        setAccounts((accs as (AccountRow & { total_debit: number; total_credit: number })[]).map((a) => {
           const opening = Number(a.opening_balance) || 0;
           const openSigned = signedOpeningBalance(opening, a.opening_balance_type);
-          const closing = openSigned + txn.credit - txn.debit;
-          return { ...a, total_debit: txn.debit, total_credit: txn.credit, closing_balance: Math.abs(closing), closing_balance_type: (closing >= 0 ? "debit" : "credit") as "debit" | "credit", signed_balance: closing };
+          const closing = openSigned + Number(a.total_credit || 0) - Number(a.total_debit || 0);
+          return {
+            ...a,
+            total_debit: Number(a.total_debit) || 0,
+            total_credit: Number(a.total_credit) || 0,
+            closing_balance: Math.abs(closing),
+            closing_balance_type: (closing >= 0 ? "debit" : "credit") as "debit" | "credit",
+            signed_balance: closing,
+          };
         }));
       } catch {
         setAccounts([]);

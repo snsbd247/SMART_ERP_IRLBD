@@ -35,7 +35,7 @@ export default function Mushak91Page() {
         .gte("invoice.invoice_date", from)
         .lte("invoice.invoice_date", to),
       supabase.from("invoice_payments")
-        .select("payment_number,payment_date,amount_received,tds_amount,total_settled,invoice:sales_invoices_v2(invoice_number,customer:customers(name))")
+        .select("payment_number,payment_date,amount_received,tds_amount,total_settled,invoice_id,invoice:sales_invoices_v2(invoice_number,customer:customers(name))")
         .gte("payment_date", from)
         .lte("payment_date", to),
     ]).then(([it, pay]) => {

@@ -72,6 +72,25 @@ class ReportController extends BaseController
         ));
     }
 
+    /**
+     * All accounts with debit/credit turnover for a period, aggregated
+     * server-side — powers useAccountBalances() (Chart of Accounts,
+     * Accounting Vouchers, Customers, Suppliers pages).
+     */
+    public function accountBalances(Request $request)
+    {
+        $statuses = $request->filled('statuses') ? explode(',', $request->string('statuses')) : ['approved', 'posted'];
+        return $this->success([
+            'accounts' => $this->service->accountBalances(
+                $request->query('branch_id'),
+                $request->query('financial_year_id'),
+                $request->query('date_from'),
+                $request->query('date_to'),
+                $statuses,
+            ),
+        ]);
+    }
+
     public function balanceSheet(Request $request)
     {
         $request->validate(['as_of' => 'required|date']);

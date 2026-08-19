@@ -101,6 +101,25 @@ function relationForeignKey(parent: string): string | null {
   return `${parent}_id`;
 }
 
+/**
+ * Ordered FK-column guesses for a relation embed, tried against the actual
+ * row shape in `attachRelationEmbeds`. Needed because the same parent table
+ * can be embedded under different foreign keys depending on the child table
+ * — e.g. `po:purchase_orders(...)` on purchase_order_items needs `po_id`,
+ * while `purchase_order:purchase_orders(...)` on vat_challans needs
+ * `purchase_order_id`. `relationForeignKey(parent)` alone can't tell these
+ * apart (it's keyed only by parent table name), but the embed's alias often
+ * matches the real column better than the table name does — so try the
+ * alias guess first, then the table guess, and let the caller pick whichever
+ * one actually exists as a key on the fetched rows.
+ */
+function relationForeignKeyCandidates(table: string, alias: string): string[] {
+  const guesses = [relationForeignKey(alias), relationForeignKey(table)].filter(
+    (v): v is string => !!v,
+  );
+  return Array.from(new Set(guesses));
+}
+
 function buildQS(params: {
   select?: string;
   filters: FilterEntry[];
@@ -421,8 +440,13 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
     // are independent too — fetch everything concurrently instead of one
     // relation/chunk at a time. Network round-trip latency (not server
     // processing) is what makes sequential fetching slow here.
+    const sampleRow = rows.find((r: any) => r && typeof r === "object");
     await Promise.all(this._relationEmbeds.map(async (rel) => {
-      const fk = rel.fk || relationForeignKey(rel.table);
+      const fk = rel.fk || (() => {
+        const candidates = relationForeignKeyCandidates(rel.table, rel.alias);
+        const present = sampleRow && candidates.find((c) => Object.prototype.hasOwnProperty.call(sampleRow, c));
+        return present || candidates[0] || null;
+      })();
       if (!fk) return;
       const ids = Array.from(new Set(rows.map((r: any) => r?.[fk]).filter(Boolean).map(String)));
       if (ids.length === 0) {
