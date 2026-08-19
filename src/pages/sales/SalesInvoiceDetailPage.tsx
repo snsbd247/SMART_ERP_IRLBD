@@ -60,7 +60,7 @@ const SalesInvoiceDetailPage = () => {
       supabase.from("sales_invoices").select("*").eq("id", id).single(),
       supabase.from("sales_invoice_items").select("*").eq("sales_invoice_id", id),
       supabase.from("payment_allocations" as any)
-        .select("id, allocated_amount, payment:party_payments!inner(id, payment_number, payment_date, amount, payment_method, reference, notes, deleted_at)")
+        .select("id, allocated_amount, payment_id, payment:party_payments!inner(id, payment_number, payment_date, amount, payment_method, reference, notes, deleted_at)")
         .eq("invoice_id", id).eq("invoice_type", "sales_invoice")
         .is("payment.deleted_at", null),
     ]);

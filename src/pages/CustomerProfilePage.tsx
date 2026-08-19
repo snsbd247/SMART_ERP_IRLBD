@@ -122,7 +122,7 @@ const CustomerProfilePage = () => {
     if (receivableAccountId) {
       const { data: vEntries, error: vErr } = await supabase
         .from("voucher_entries")
-        .select("id, debit, credit, narration, acc_vouchers!inner(id, voucher_number, voucher_date, voucher_type, description, status)")
+        .select("id, debit, credit, narration, voucher_id, acc_vouchers!inner(id, voucher_number, voucher_date, voucher_type, description, status)")
         .eq("account_id", receivableAccountId)
         .in("acc_vouchers.status", ["approved", "posted"])
         .order("voucher_date", { foreignTable: "acc_vouchers", ascending: true });

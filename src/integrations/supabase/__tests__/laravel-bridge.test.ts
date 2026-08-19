@@ -74,6 +74,35 @@ describe("laravelSupabaseBridge relation embeds", () => {
     expect(data?.[0]?.account).toEqual(expect.objectContaining({ account_name: "IFIC Bank", account_code: "1252" }));
   });
 
+  it("resolves the FK column from the alias when it differs from the table-name guess (po:purchase_orders → po_id, not purchase_order_id)", async () => {
+    // Regression test: purchase_order_items.po_id is the real FK column, but
+    // relationForeignKey("purchase_orders") alone guesses "purchase_order_id"
+    // (the correct FK for a *different* embed — vat_challans.purchase_order).
+    // attachRelationEmbeds must pick whichever candidate actually exists on
+    // the fetched rows, not the parent-table guess.
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/v1/db/purchase_order_items")) {
+        return new Response(JSON.stringify([
+          { id: "poi-1", po_id: "po-1", product_id: "item-1", qty_ordered: "10" },
+        ]), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (url.includes("/v1/db/purchase_orders")) {
+        return new Response(JSON.stringify([
+          { id: "po-1", po_number: "PO-0001", po_date: "2025-07-01", status: "open" },
+        ]), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify([]), { status: 404, headers: { "content-type": "application/json" } });
+    });
+
+    const { data, error } = await laravelSupabaseBridge
+      .from("purchase_order_items")
+      .select("*, po:purchase_orders!inner(po_number,po_date,status)");
+
+    expect(error).toBeNull();
+    expect(data?.[0]?.po).toEqual(expect.objectContaining({ po_number: "PO-0001", po_date: "2025-07-01" }));
+  });
+
   it("chunks oversized IN filters injected by relation-filter emulation and returns complete results", async () => {
     const voucherIds = Array.from({ length: 250 }, (_, i) => `v-${i.toString().padStart(4, "0")}`);
     const entries = voucherIds.map((vid, i) => ({

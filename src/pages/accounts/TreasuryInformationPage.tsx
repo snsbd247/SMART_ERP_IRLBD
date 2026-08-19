@@ -289,7 +289,7 @@ export default function TreasuryInformationPage() {
   async function loadParties() {
     const [emp, cus, sup] = await Promise.all([
       supabase.from("employees")
-        .select("id, first_name, last_name, employee_code, tin_no, designation:designations(name), branch:branches(name)")
+        .select("id, first_name, last_name, employee_code, tin_no, designation_id, branch_id, designation:designations(name), branch:branches(name)")
         .order("first_name"),
       supabase.from("customers").select("id, name, code, tin_no").order("name"),
       supabase.from("suppliers").select("id, name, code, tin_no").order("name"),

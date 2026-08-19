@@ -164,6 +164,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::get('balance-sheet', [\App\Http\Controllers\Accounting\ReportController::class, 'balanceSheet']);
             Route::get('account-opening-sum', [\App\Http\Controllers\Accounting\ReportController::class, 'accountOpeningSum']);
             Route::get('account-ledger-entries', [\App\Http\Controllers\Accounting\ReportController::class, 'accountLedgerEntries']);
+            Route::get('account-balances', [\App\Http\Controllers\Accounting\ReportController::class, 'accountBalances']);
         });
 
         // ─── Sales ──────────────────────────────────────────────
