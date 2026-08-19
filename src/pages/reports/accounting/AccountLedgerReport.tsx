@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllVoucherEntries } from "@/lib/report-fetch";
+import { fetchAllVoucherEntries, fetchAccountLedgerEntriesLaravel } from "@/lib/report-fetch";
 import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
 import { aggregateEntriesByVoucherAccount } from "@/lib/ledger-entry-aggregation";
 import { computeAccountPeriodOpening, fetchAccountPriorEntries, type PriorEntry } from "@/lib/period-opening";
@@ -56,10 +56,12 @@ const AccountLedgerReport = () => {
     const statuses = statusFilter === "both" ? [...BALANCE_VOUCHER_STATUSES] : [statusFilter];
     const acc = accounts.find((a) => a.id === selectedAccount);
 
-    // Opening balance (prior-period entries) and this period's entries cover
-    // disjoint date ranges — fetch them concurrently instead of one after
-    // another.
-    const [open, rawEntries] = await Promise.all([
+    // Opening balance (prior-period) and this period's entries+counter-accounts
+    // are fully independent — fetch concurrently. The ledger-entries call
+    // hits a dedicated server-side-join endpoint (one request) and only
+    // falls back to the old vouchers→entries→counter-accounts chain if that
+    // endpoint errors.
+    const [open, fast] = await Promise.all([
       computeAccountPeriodOpening({
         accountId: selectedAccount,
         dateFrom,
@@ -67,38 +69,45 @@ const AccountLedgerReport = () => {
         statuses,
         account: acc as any,
       }),
-      fetchAllVoucherEntries({
-        dateFrom, dateTo, branchId: branch, accountId: selectedAccount, statuses,
-      }),
+      fetchAccountLedgerEntriesLaravel({ accountId: selectedAccount, dateFrom, dateTo, branchId: branch, statuses }),
     ]);
     setBaseOpening(open.baseOpening);
     setPriorEntries([]); // invalidate lazy drilldown cache for the new selection
-    const entries = aggregateEntriesByVoucherAccount(rawEntries as any[]);
-    let runBal = open.opening;
 
-    // Fetch counter-accounts (other ledger names in the same vouchers), chunked
-    const voucherIds = Array.from(new Set(entries.map((e: any) => e.acc_vouchers?.id).filter(Boolean)));
-    const counterMap: Record<string, string[]> = {};
-    if (voucherIds.length > 0) {
-      const accNameMap = new Map(accounts.map((a: any) => [a.id, a.account_name]));
-      const { chunkIds, getInChunkSize, logChunkMetrics } = await import("@/lib/in-chunk");
-      const chunkSize = getInChunkSize();
-      const chunks = chunkIds(voucherIds as string[], chunkSize);
-      const chunkResults = await Promise.all(chunks.map((slice) =>
-        supabase.from("voucher_entries").select("voucher_id, account_id").in("voucher_id", slice as any)
-      ));
-      for (const { data: allEntries } of chunkResults) {
-        (allEntries || []).forEach((r: any) => {
-          if (r.account_id === selectedAccount) return;
-          const name = accNameMap.get(r.account_id);
-          if (!name) return;
-          if (!counterMap[r.voucher_id]) counterMap[r.voucher_id] = [];
-          if (!counterMap[r.voucher_id].includes(name)) counterMap[r.voucher_id].push(name);
-        });
+    let rawEntries: any[];
+    let counterMap: Record<string, string[]>;
+    if (fast) {
+      rawEntries = fast.entries;
+      counterMap = fast.counterAccounts;
+    } else {
+      rawEntries = await fetchAllVoucherEntries({
+        dateFrom, dateTo, branchId: branch, accountId: selectedAccount, statuses,
+      });
+      counterMap = {};
+      const voucherIdsForCounter = Array.from(new Set(rawEntries.map((e: any) => e.acc_vouchers?.id).filter(Boolean)));
+      if (voucherIdsForCounter.length > 0) {
+        const accNameMap = new Map(accounts.map((a: any) => [a.id, a.account_name]));
+        const { chunkIds, getInChunkSize, logChunkMetrics } = await import("@/lib/in-chunk");
+        const chunkSize = getInChunkSize();
+        const chunks = chunkIds(voucherIdsForCounter as string[], chunkSize);
+        const chunkResults = await Promise.all(chunks.map((slice) =>
+          supabase.from("voucher_entries").select("voucher_id, account_id").in("voucher_id", slice as any)
+        ));
+        for (const { data: allEntries } of chunkResults) {
+          (allEntries || []).forEach((r: any) => {
+            if (r.account_id === selectedAccount) return;
+            const name = accNameMap.get(r.account_id);
+            if (!name) return;
+            if (!counterMap[r.voucher_id]) counterMap[r.voucher_id] = [];
+            if (!counterMap[r.voucher_id].includes(name)) counterMap[r.voucher_id].push(name);
+          });
+        }
+        logChunkMetrics("AccountLedgerReport/counter-accounts", { totalIds: voucherIdsForCounter.length, chunkSize, chunkCount: chunks.length });
       }
-      logChunkMetrics("AccountLedgerReport/counter-accounts", { totalIds: voucherIds.length, chunkSize, chunkCount: chunks.length });
     }
 
+    const entries = aggregateEntriesByVoucherAccount(rawEntries as any[]);
+    let runBal = open.opening;
     const opening = runBal;
     const result = entries.map((e: any) => {
       runBal = applyEntry(runBal, { debit: e.debit, credit: e.credit });
