@@ -191,5 +191,37 @@ async function fetchAllVoucherEntriesLaravel(opts: {
   return entries;
 }
 
+/**
+ * Account Ledger entries for a period, via the dedicated server-side-join
+ * endpoint (`AccountingService::accountLedgerEntries`) — one request instead
+ * of the vouchers → entries → counter-accounts three-hop chain the generic
+ * CRUD bridge requires. Laravel mode only; returns null on any failure (or
+ * outside Laravel mode) so the caller can fall back to the row-by-row path.
+ */
+export async function fetchAccountLedgerEntriesLaravel(opts: {
+  accountId: string;
+  dateFrom: string;
+  dateTo: string;
+  branchId?: string | null;
+  statuses: string[];
+}): Promise<{ entries: any[]; counterAccounts: Record<string, string[]> } | null> {
+  if (!isLaravelMode()) return null;
+  try {
+    const qs = new URLSearchParams({
+      account_id: opts.accountId,
+      date_from: opts.dateFrom,
+      date_to: opts.dateTo,
+      statuses: opts.statuses.join(","),
+    });
+    if (opts.branchId && opts.branchId !== "all") qs.set("branch_id", opts.branchId);
+    const json = await laravelGet(`reports/account-ledger-entries?${qs.toString()}`);
+    const payload = json?.data ?? json;
+    return { entries: payload?.entries ?? [], counterAccounts: payload?.counter_accounts ?? {} };
+  } catch (e) {
+    console.error("[report-fetch] account-ledger-entries failed, falling back to row-by-row fetch", e);
+    return null;
+  }
+}
+
 /** Coerce a possibly-string numeric column (Supabase decimal) to a number. */
 export const num = (v: unknown): number => (v == null ? 0 : Number(v) || 0);

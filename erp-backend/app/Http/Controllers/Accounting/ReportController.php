@@ -50,6 +50,28 @@ class ReportController extends BaseController
         ));
     }
 
+    /**
+     * Account Ledger entries for a period, with voucher info and
+     * counter-account names already joined server-side — replaces three
+     * separate client round trips with one.
+     */
+    public function accountLedgerEntries(Request $request)
+    {
+        $request->validate([
+            'account_id' => 'required|string',
+            'date_from' => 'required|date',
+            'date_to' => 'required|date',
+        ]);
+        $statuses = $request->filled('statuses') ? explode(',', $request->string('statuses')) : ['approved', 'posted'];
+        return $this->success($this->service->accountLedgerEntries(
+            $request->string('account_id'),
+            $request->string('date_from'),
+            $request->string('date_to'),
+            $request->query('branch_id'),
+            $statuses,
+        ));
+    }
+
     public function balanceSheet(Request $request)
     {
         $request->validate(['as_of' => 'required|date']);

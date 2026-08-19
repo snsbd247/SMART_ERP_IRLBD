@@ -273,6 +273,69 @@ class AccountingService
     }
 
     /**
+     * Account Ledger entries for a period — the matching-vouchers lookup,
+     * the account's entries within them, and each voucher's counter-account
+     * names (for the "Particulars" column), all done with server-side joins
+     * in two queries instead of the three separate client round trips
+     * (fetch vouchers → fetch entries by voucher IN-list → fetch ALL entries
+     * again to work out counter-accounts) the generic CRUD bridge required.
+     */
+    public function accountLedgerEntries(string $accountId, string $dateFrom, string $dateTo, ?string $branchId, array $statuses): array
+    {
+        $voucherIds = DB::table('acc_vouchers')
+            ->whereBetween('voucher_date', [$dateFrom, $dateTo])
+            ->whereIn('status', $statuses)
+            ->whereNull('deleted_at')
+            ->when($branchId && $branchId !== 'all', fn ($q) => $q->where('branch_id', $branchId))
+            ->pluck('id');
+
+        if ($voucherIds->isEmpty()) {
+            return ['entries' => [], 'counter_accounts' => (object) []];
+        }
+
+        $entries = DB::table('voucher_entries as ve')
+            ->join('acc_vouchers as v', 've.voucher_id', '=', 'v.id')
+            ->whereIn('ve.voucher_id', $voucherIds)
+            ->where('ve.account_id', $accountId)
+            ->orderBy('v.voucher_date')
+            ->select(
+                've.id', 've.account_id', 've.debit', 've.credit', 've.narration', 've.voucher_id',
+                'v.voucher_number', 'v.voucher_date', 'v.voucher_type', 'v.status', 'v.description', 'v.branch_id',
+            )
+            ->get()
+            ->map(fn ($row) => [
+                'id' => $row->id,
+                'account_id' => $row->account_id,
+                'debit' => $row->debit,
+                'credit' => $row->credit,
+                'narration' => $row->narration,
+                'voucher_id' => $row->voucher_id,
+                'acc_vouchers' => [
+                    'id' => $row->voucher_id,
+                    'voucher_number' => $row->voucher_number,
+                    'voucher_date' => $row->voucher_date,
+                    'voucher_type' => $row->voucher_type,
+                    'status' => $row->status,
+                    'description' => $row->description,
+                    'branch_id' => $row->branch_id,
+                ],
+            ])
+            ->values();
+
+        $counterAccounts = DB::table('voucher_entries as ve')
+            ->join('chart_of_accounts as coa', 've.account_id', '=', 'coa.id')
+            ->whereIn('ve.voucher_id', $voucherIds)
+            ->where('ve.account_id', '!=', $accountId)
+            ->select('ve.voucher_id', 'coa.account_name')
+            ->distinct()
+            ->get()
+            ->groupBy('voucher_id')
+            ->map(fn ($g) => $g->pluck('account_name')->unique()->values());
+
+        return ['entries' => $entries, 'counter_accounts' => $counterAccounts];
+    }
+
+    /**
      * Trial Balance: sum debits/credits per account for a period.
      */
     public function trialBalance(string $from, string $to, ?string $branchId = null): array
