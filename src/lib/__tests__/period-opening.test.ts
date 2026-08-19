@@ -50,7 +50,7 @@ vi.mock("@/lib/laravel-auth", () => ({
   getLaravelAuthHeaders: () => ({}),
 }));
 
-import { computeCustomerPeriodOpening, computeAccountPeriodOpening } from "@/lib/period-opening";
+import { computeCustomerPeriodOpening, computeAccountPeriodOpening, fetchAccountPriorEntries } from "@/lib/period-opening";
 
 beforeEach(() => {
   for (const k of Object.keys(mockData)) mockData[k] = [];
@@ -120,6 +120,18 @@ describe("computeAccountPeriodOpening — IFIC Bank July→August regression", (
     });
     expect(r.baseOpening).toBe(0);
     expect(r.opening).toBeCloseTo(-16512262.86, 2);
-    expect(r.priorEntries).toHaveLength(1);
+    // The row-level breakdown is now fetched lazily (only when the Opening
+    // Balance drilldown is actually opened) via fetchAccountPriorEntries,
+    // not eagerly by computeAccountPeriodOpening.
+    expect(r.priorEntries).toEqual([]);
+
+    const rows = await fetchAccountPriorEntries({
+      accountId: "ific",
+      dateFrom: "2025-08-01",
+      statuses: ["approved", "posted"],
+      baseOpening: r.baseOpening,
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].running_balance).toBeCloseTo(-16512262.86, 2);
   });
 });

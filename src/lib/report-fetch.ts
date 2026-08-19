@@ -70,7 +70,7 @@ export async function fetchAllVoucherEntries(opts: {
   return all;
 }
 
-async function laravelGet(path: string): Promise<any> {
+export async function laravelGet(path: string): Promise<any> {
   const base = (getApiBaseUrl() || "").replace(/\/$/, "");
   const res = await fetch(`${base}/v1/${path.replace(/^\//, "")}`, {
     headers: { Accept: "application/json", ...getLaravelAuthHeaders() },

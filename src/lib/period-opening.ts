@@ -15,7 +15,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { signedOpeningBalance } from "@/lib/balance-format";
 import { applyEntry } from "@/lib/ledger-balance";
-import { fetchAllVoucherEntries } from "@/lib/report-fetch";
+import { fetchAllVoucherEntries, laravelGet } from "@/lib/report-fetch";
+import { isLaravelMode } from "@/lib/laravel-auth";
 
 export interface PriorEntry {
   id: string;
@@ -58,8 +59,15 @@ function prevDay(isoDate: string): string {
 
 /**
  * Compute the period opening balance for a single Chart-of-Accounts node.
- * Pulls the account's base opening plus every approved/posted entry strictly
- * before `dateFrom` and folds them through the ledger formula.
+ *
+ * The opening NUMBER only needs the sum of every approved/posted entry
+ * strictly before `dateFrom` — it does not need each individual entry row.
+ * In Laravel mode we ask the server for that sum directly (one aggregate
+ * SQL query) instead of pulling potentially years of prior transactions
+ * across the network just to add them up client-side. The detailed
+ * breakdown (`priorEntries`) is only needed by the "Opening Balance"
+ * drilldown dialog, which most report loads never open — fetch it lazily
+ * via `fetchAccountPriorEntries` instead of eagerly here.
  */
 export async function computeAccountPeriodOpening(opts: {
   accountId: string;
@@ -90,6 +98,52 @@ export async function computeAccountPeriodOpening(opts: {
   if (priorTo < "1900-01-01") {
     return { baseOpening, opening: baseOpening, priorEntries: [] };
   }
+  const statuses = opts.statuses ?? ["approved", "posted"];
+
+  if (isLaravelMode()) {
+    try {
+      const qs = new URLSearchParams({ account_id: opts.accountId, date_to: priorTo, statuses: statuses.join(",") });
+      if (opts.branchId && opts.branchId !== "all") qs.set("branch_id", opts.branchId);
+      const json = await laravelGet(`reports/account-opening-sum?${qs.toString()}`);
+      const sum = json?.data ?? json;
+      const opening = applyEntry(baseOpening, { debit: Number(sum?.debit) || 0, credit: Number(sum?.credit) || 0 });
+      return { baseOpening, opening, priorEntries: [] };
+    } catch (e) {
+      console.error("[period-opening] account-opening-sum failed, falling back to row fetch", e);
+      // fall through to the row-fetch path below
+    }
+  }
+
+  const raw = await fetchAllVoucherEntries({
+    dateFrom: "1900-01-01",
+    dateTo: priorTo,
+    branchId: opts.branchId ?? null,
+    accountId: opts.accountId,
+    statuses,
+  });
+
+  let running = baseOpening;
+  raw.forEach((e: any) => { running = applyEntry(running, { debit: e.debit, credit: e.credit }); });
+
+  return { baseOpening, opening: running, priorEntries: [] };
+}
+
+/**
+ * Full prior-period entry breakdown for the "Opening Balance" drilldown
+ * dialog — fetches every approved/posted entry strictly before `dateFrom`
+ * and folds them through the ledger formula to build a running balance.
+ * This is the (network-heavy) row-level fetch that `computeAccountPeriodOpening`
+ * intentionally skips; call it only when the user actually opens the drilldown.
+ */
+export async function fetchAccountPriorEntries(opts: {
+  accountId: string;
+  dateFrom: string;
+  branchId?: string | null;
+  statuses?: string[];
+  baseOpening: number;
+}): Promise<PriorEntry[]> {
+  const priorTo = prevDay(opts.dateFrom);
+  if (priorTo < "1900-01-01") return [];
 
   const raw = await fetchAllVoucherEntries({
     dateFrom: "1900-01-01",
@@ -99,8 +153,8 @@ export async function computeAccountPeriodOpening(opts: {
     statuses: opts.statuses ?? ["approved", "posted"],
   });
 
-  let running = baseOpening;
-  const priorEntries: PriorEntry[] = raw.map((e: any) => {
+  let running = opts.baseOpening;
+  return raw.map((e: any) => {
     running = applyEntry(running, { debit: e.debit, credit: e.credit });
     return {
       id: String(e.id),
@@ -113,8 +167,6 @@ export async function computeAccountPeriodOpening(opts: {
       description: e.acc_vouchers?.description ?? e.narration ?? null,
     };
   });
-
-  return { baseOpening, opening: running, priorEntries };
 }
 
 /**

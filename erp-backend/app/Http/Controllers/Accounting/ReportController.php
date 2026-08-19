@@ -33,6 +33,23 @@ class ReportController extends BaseController
         ]);
     }
 
+    /**
+     * Opening balance sum (debit/credit) for one account up to a date —
+     * used by the frontend ledger/statement reports so they don't have to
+     * pull every prior-period entry across the wire just to add them up.
+     */
+    public function accountOpeningSum(Request $request)
+    {
+        $request->validate(['account_id' => 'required|string', 'date_to' => 'required|date']);
+        $statuses = $request->filled('statuses') ? explode(',', $request->string('statuses')) : ['approved', 'posted'];
+        return $this->success($this->service->accountOpeningSum(
+            $request->string('account_id'),
+            $request->string('date_to'),
+            $request->query('branch_id'),
+            $statuses,
+        ));
+    }
+
     public function balanceSheet(Request $request)
     {
         $request->validate(['as_of' => 'required|date']);
