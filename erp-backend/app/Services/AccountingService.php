@@ -249,6 +249,30 @@ class AccountingService
     }
 
     /**
+     * Sum of debit/credit for a single account up to (and including) a date —
+     * the building block for a period's opening balance. A single aggregate
+     * query instead of pulling every prior entry to the client just to sum it.
+     */
+    public function accountOpeningSum(string $accountId, string $dateTo, ?string $branchId, array $statuses): array
+    {
+        $row = VoucherEntry::query()
+            ->selectRaw('COALESCE(SUM(debit),0) as total_debit, COALESCE(SUM(credit),0) as total_credit')
+            ->where('account_id', $accountId)
+            ->whereHas('voucher', function ($q) use ($dateTo, $branchId, $statuses) {
+                $q->where('voucher_date', '<=', $dateTo)
+                  ->whereIn('status', $statuses)
+                  ->whereNull('deleted_at');
+                if ($branchId && $branchId !== 'all') $q->where('branch_id', $branchId);
+            })
+            ->first();
+
+        return [
+            'debit' => round((float) ($row->total_debit ?? 0), 2),
+            'credit' => round((float) ($row->total_credit ?? 0), 2),
+        ];
+    }
+
+    /**
      * Trial Balance: sum debits/credits per account for a period.
      */
     public function trialBalance(string $from, string $to, ?string $branchId = null): array

@@ -22,6 +22,8 @@ interface Props {
   periodOpening: number;
   /** Label for the "base opening" row, e.g. "System Opening" or "Pre-period start" */
   baseLabel?: string;
+  /** True while the detailed breakdown is being fetched (fetched lazily on open). */
+  loading?: boolean;
 }
 
 /**
@@ -37,6 +39,7 @@ export function OpeningDrilldownDialog({
   rows,
   periodOpening,
   baseLabel = "Base Opening (chart of accounts)",
+  loading = false,
 }: Props) {
   const { fc } = useCurrency();
   return (
@@ -75,7 +78,13 @@ export function OpeningDrilldownDialog({
                   {fc(baseOpening)}
                 </TableCell>
               </TableRow>
-              {rows.length === 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-6 text-sm">
+                    Loading prior transactions…
+                  </TableCell>
+                </TableRow>
+              ) : rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-6 text-sm">
                     No prior transactions — opening equals the base opening.

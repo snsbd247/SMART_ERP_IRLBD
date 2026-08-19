@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchAllVoucherEntries } from "@/lib/report-fetch";
 import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
 import { aggregateEntriesByVoucherAccount } from "@/lib/ledger-entry-aggregation";
-import { computeAccountPeriodOpening, type PriorEntry } from "@/lib/period-opening";
+import { computeAccountPeriodOpening, fetchAccountPriorEntries, type PriorEntry } from "@/lib/period-opening";
 import { OpeningDrilldownDialog } from "@/components/accounts/OpeningDrilldownDialog";
 import { downloadCSV } from "@/lib/csv-export";
 import { ScrollText, FileDown } from "lucide-react";
@@ -24,7 +24,27 @@ const AccountLedgerReport = () => {
   const [drilldownOpen, setDrilldownOpen] = useState(false);
   const [baseOpening, setBaseOpening] = useState<number>(0);
   const [priorEntries, setPriorEntries] = useState<PriorEntry[]>([]);
+  const [priorLoading, setPriorLoading] = useState(false);
   const [periodOpening, setPeriodOpening] = useState<number>(0);
+
+  // Prior-period entry breakdown is only needed if the user opens the
+  // Opening Balance drilldown — fetched lazily instead of on every report
+  // generation, since it means pulling potentially years of history.
+  const openDrilldown = async () => {
+    setDrilldownOpen(true);
+    if (priorEntries.length > 0 || !selectedAccount) return;
+    setPriorLoading(true);
+    try {
+      const { BALANCE_VOUCHER_STATUSES } = await import("@/lib/shared-balance");
+      const statuses = statusFilter === "both" ? [...BALANCE_VOUCHER_STATUSES] : [statusFilter];
+      const rows = await fetchAccountPriorEntries({
+        accountId: selectedAccount, dateFrom, branchId: branch, statuses, baseOpening,
+      });
+      setPriorEntries(rows);
+    } finally {
+      setPriorLoading(false);
+    }
+  };
 
 
   const fetchData = async () => {
@@ -52,7 +72,7 @@ const AccountLedgerReport = () => {
       }),
     ]);
     setBaseOpening(open.baseOpening);
-    setPriorEntries(open.priorEntries);
+    setPriorEntries([]); // invalidate lazy drilldown cache for the new selection
     const entries = aggregateEntriesByVoucherAccount(rawEntries as any[]);
     let runBal = open.opening;
 
@@ -190,7 +210,7 @@ const AccountLedgerReport = () => {
                       <TableCell className="text-sm font-medium">
                         <button
                           type="button"
-                          onClick={() => setDrilldownOpen(true)}
+                          onClick={openDrilldown}
                           className="bg-transparent border-0 p-0 m-0 appearance-none hover:underline print:no-underline"
                           title="See prior-period transactions"
                         >
@@ -238,6 +258,7 @@ const AccountLedgerReport = () => {
         onOpenChange={setDrilldownOpen}
         title={`Opening Balance — ${selectedAcc?.account_name ?? ""} (as of ${dateFrom})`}
         baseOpening={baseOpening}
+        loading={priorLoading}
         rows={priorEntries.map((p) => ({
           id: p.id,
           date: p.voucher_date,
