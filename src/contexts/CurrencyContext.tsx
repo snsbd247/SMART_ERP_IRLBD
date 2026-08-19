@@ -1,6 +1,61 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { getApiBaseUrl, getLaravelAuthHeaders, getLaravelToken } from "@/lib/laravel-auth";
+import { getApiBaseUrl, getLaravelAuthHeaders, getLaravelToken, setLaravelToken } from "@/lib/laravel-auth";
+import { useAuth } from "@/contexts/AuthContext";
+
+/**
+ * Full company_settings row — one shared shape/query for both CurrencyContext
+ * (currency formatting, used app-wide) and useCompanySettings() (report
+ * headers, print layouts, branding). Both used to fetch `/v1/settings/company`
+ * independently, doubling that request on every page that used both. Same
+ * query key here means React Query dedupes and caches it as a single fetch.
+ */
+export const COMPANY_SETTINGS_QUERY_KEY = ["company-settings"] as const;
+
+export interface CompanySettingsRow {
+  id: string;
+  company_name: string;
+  company_logo_url: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  currency_name: string;
+  currency_code: string;
+  currency_symbol: string;
+  currency_position: string;
+  default_branch_id: string | null;
+  default_financial_year_id: string | null;
+  public_employee_registration_enabled?: boolean;
+  bin_number?: string | null;
+}
+
+async function fetchCompanySettings(): Promise<CompanySettingsRow | null> {
+  const base = getApiBaseUrl();
+  if (base) {
+    const res = await fetch(`${base}/v1/settings/company`, { headers: getLaravelAuthHeaders() });
+    if (res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      return (payload?.data ?? payload) as CompanySettingsRow | null;
+    }
+    // Token rejected — clear it so we don't keep hitting 401s.
+    if (res.status === 401) setLaravelToken(null);
+    return null;
+  }
+  const { data } = await supabase.from("company_settings" as any).select("*").maybeSingle();
+  return (data as unknown) as CompanySettingsRow | null;
+}
+
+export function useCompanySettingsQuery() {
+  const { profile, loading: authLoading } = useAuth();
+  return useQuery({
+    queryKey: COMPANY_SETTINGS_QUERY_KEY,
+    queryFn: fetchCompanySettings,
+    enabled: !authLoading && !!profile && !!getLaravelToken(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
 interface CurrencyConfig {
   currency_name: string;
@@ -34,47 +89,16 @@ const CurrencyContext = createContext<CurrencyContextType>({
 export const useCurrency = () => useContext(CurrencyContext);
 
 export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
-  const [config, setConfig] = useState<CurrencyConfig>(defaults);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, refetch } = useCompanySettingsQuery();
 
-  const fetchConfig = async () => {
-    try {
-      const base = getApiBaseUrl();
-      if (base) {
-        // Skip authenticated call when no token — avoids spammy 401s on the login screen.
-        const hasToken = !!getLaravelToken();
-        if (!hasToken) { setLoading(false); return; }
-        const res = await fetch(`${base}/v1/settings/company`, { headers: getLaravelAuthHeaders() });
-        if (res.ok) {
-          const payload = await res.json().catch(() => ({}));
-          const row = (payload?.data ?? payload) as Partial<CurrencyConfig> | null;
-          if (row && row.currency_symbol) {
-            setConfig({
-              currency_name: row.currency_name || defaults.currency_name,
-              currency_code: row.currency_code || defaults.currency_code,
-              currency_symbol: row.currency_symbol,
-              currency_position: row.currency_position || defaults.currency_position,
-            });
-          }
-        }
-      } else {
-        const { data } = await supabase
-          .from("company_settings" as any)
-          .select("currency_name, currency_code, currency_symbol, currency_position")
-          .eq("id", "default")
-          .maybeSingle();
-        if (data) setConfig(data as any);
+  const config: CurrencyConfig = data?.currency_symbol
+    ? {
+        currency_name: data.currency_name || defaults.currency_name,
+        currency_code: data.currency_code || defaults.currency_code,
+        currency_symbol: data.currency_symbol,
+        currency_position: data.currency_position || defaults.currency_position,
       }
-    } catch (e) {
-      console.warn("[CurrencyContext] load failed", e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchConfig();
-  }, []);
+    : defaults;
 
   const fc = (amount: number): string => {
     const formatted = Number(amount).toLocaleString(undefined, {
@@ -87,7 +111,7 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <CurrencyContext.Provider value={{ config, fc, loading, refetch: fetchConfig }}>
+    <CurrencyContext.Provider value={{ config, fc, loading: isLoading, refetch: async () => { await refetch(); } }}>
       {children}
     </CurrencyContext.Provider>
   );
