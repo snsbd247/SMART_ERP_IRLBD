@@ -27,9 +27,11 @@ const ProfitLossReport = () => {
       ...a, balance: balMap.get(a.id) || 0,
     })).filter((a) => Math.abs(a.balance) > 0);
 
-    // For expenses, flip the sign so debit-heavy accounts show positive.
+    // This system posts expenses as the credit leg (e.g. Payment Vouchers:
+    // Dr Cash/Bank, Cr the expense account), so credit-heavy already means
+    // positive spend — no sign flip needed here.
     const expenseAccounts = accounts.filter((a) => a.account_type === "expense").map((a) => ({
-      ...a, balance: -(balMap.get(a.id) || 0),
+      ...a, balance: balMap.get(a.id) || 0,
     })).filter((a) => Math.abs(a.balance) > 0);
 
     setIncome(incomeAccounts);
