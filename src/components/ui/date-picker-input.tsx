@@ -4,7 +4,7 @@ import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { dmyToIso, isoToDmy, isoToLocalDate, localDateToIso, toDateInputValue } from "@/lib/date-format";
+import { dmyToIso, isoToDmy, isoToLocalDate, localDateToIso, looseDmyToIso, toDateInputValue } from "@/lib/date-format";
 
 export interface DatePickerInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "onChange"> {
@@ -78,17 +78,43 @@ export const DatePickerInput = React.forwardRef<HTMLInputElement, DatePickerInpu
 
     const handleTextChange = (event: React.ChangeEvent<HTMLInputElement>) => {
       const cleaned = event.target.value.replace(/[^\d\-/.]/g, "");
-      setText(cleaned);
+      const digits = cleaned.replace(/\D/g, "");
 
-      const parsed = dmyToIso(cleaned);
-      if (parsed) emitChange(parsed);
-      else if (cleaned === "") emitChange("");
+      // Already-separated input (typed or pasted, e.g. "10-07-2026") is
+      // unambiguous regardless of length: resolve it immediately.
+      const strict = dmyToIso(cleaned);
+      if (strict) {
+        setText(isoToDmy(strict));
+        emitChange(strict);
+        return;
+      }
+
+      // Raw digits with no separators ("010726", "25122026"): only 8
+      // digits (DDMMYYYY) is safe to snap live — 6 digits (DDMMYY) is
+      // still ambiguous with the first 6 of an 8-digit entry the user
+      // may keep typing, so that case waits for blur (see handleBlur)
+      // instead of snapping mid-keystroke and corrupting later input.
+      if (digits.length === 8 && digits === cleaned) {
+        const parsed = looseDmyToIso(digits);
+        if (parsed) {
+          setText(isoToDmy(parsed));
+          emitChange(parsed);
+          return;
+        }
+      }
+
+      setText(cleaned);
+      if (cleaned === "") emitChange("");
     };
 
     const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
-      const parsed = dmyToIso(text);
-      if (parsed) setText(isoToDmy(parsed));
-      else if (text.trim() !== "") setText(isoToDmy(iso));
+      const parsed = looseDmyToIso(text);
+      if (parsed) {
+        setText(isoToDmy(parsed));
+        emitChange(parsed);
+      } else if (text.trim() !== "") {
+        setText(isoToDmy(iso));
+      }
       onBlur?.(event);
     };
 
