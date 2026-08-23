@@ -50,6 +50,36 @@ export const dmyToIso = (dmy?: string | null): string => {
   return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 };
 
+/**
+ * Loose DD-MM-YY(YY) parser for the date input's live auto-format — accepts
+ * digits typed with or without separators ("010726", "01-07-26",
+ * "01072026") once there are enough of them to be unambiguous (6 digits =
+ * DDMMYY, 8 = DDMMYYYY). A 2-digit year expands via a simple pivot: 00-79 →
+ * 20xx, 80-99 → 19xx (this business's data is all 2000s+, so in practice
+ * every 2-digit year typed here lands in 20xx). Falls back to the strict
+ * dmyToIso() first since that already handles a properly-typed 4-digit year.
+ * Returns ISO YYYY-MM-DD, or "" if it's not (yet) a valid date.
+ */
+export const looseDmyToIso = (input?: string | null): string => {
+  const strict = dmyToIso(input);
+  if (strict) return strict;
+  if (!input) return "";
+
+  const digits = String(input).replace(/\D/g, "");
+  if (digits.length !== 6 && digits.length !== 8) return "";
+
+  const d = parseInt(digits.slice(0, 2), 10);
+  const mo = parseInt(digits.slice(2, 4), 10);
+  const y = digits.length === 8
+    ? parseInt(digits.slice(4, 8), 10)
+    : (parseInt(digits.slice(4, 6), 10) <= 79 ? 2000 : 1900) + parseInt(digits.slice(4, 6), 10);
+
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return "";
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return "";
+  return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+};
+
 export const isoToLocalDate = (iso?: string | Date | null): Date | undefined => {
   const normalized = toDateInputValue(iso);
   const m = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
