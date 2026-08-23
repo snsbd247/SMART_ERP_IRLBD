@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 
+import { DateInput } from "@/components/ui/date-input";
 export default function InvoiceQueuePage() {
   const nav = useNavigate();
   const [customers, setCustomers] = useState<any[]>([]);
@@ -43,13 +44,13 @@ export default function InvoiceQueuePage() {
             <option value="">All</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
-        <div><label className="text-sm">Challan Date</label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        <div><label className="text-sm">Challan Date</label><DateInput value={date} onChange={(v) => setDate(v)} /></div>
         <div><label className="text-sm">Invoice Mode</label>
           <select className="w-full border rounded px-2 h-10 bg-background" value={mode} onChange={(e) => setMode(e.target.value as any)}>
             <option value="single">Single Challan</option><option value="same_day">Same-day Consolidation</option><option value="custom">Custom (multi-pick)</option>
           </select>
         </div>
-        <div><label className="text-sm">Invoice Date</label><Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} /></div>
+        <div><label className="text-sm">Invoice Date</label><DateInput value={invoiceDate} onChange={(v) => setInvoiceDate(v)} /></div>
       </Card>
       <Card>
         <Table>

@@ -10,6 +10,7 @@ import { Receipt, Printer, Search } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { ReportPrintFooter } from "@/components/reports/ReportPrintFooter";
 
+import { DateInput } from "@/components/ui/date-input";
 interface SalesRow {
   id: string;
   invoice_number: string;
@@ -85,8 +86,8 @@ export default function SalesReport() {
       <Card className="print:hidden">
         <CardHeader className="pb-3"><CardTitle className="text-sm">Filters</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <div><Label>From</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
-          <div><Label>To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+          <div><Label>From</Label><DateInput value={from} onChange={(v) => setFrom(v)} /></div>
+          <div><Label>To</Label><DateInput value={to} onChange={(v) => setTo(v)} /></div>
           <div>
             <Label>Status</Label>
             <select className="w-full h-10 border rounded px-3 bg-background" value={status} onChange={(e) => setStatus(e.target.value)}>

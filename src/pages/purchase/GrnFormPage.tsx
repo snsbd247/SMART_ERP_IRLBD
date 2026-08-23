@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { nextDocNo, logAudit } from "@/lib/purchase-numbering";
 import { Save, ArrowLeft } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 const GrnFormPage = () => {
   const { id } = useParams();
   const [sp] = useSearchParams();
@@ -156,7 +157,7 @@ const GrnFormPage = () => {
               </Select>
             </div>
           )}
-          <div><Label>GRN Date</Label><Input type="date" value={h.grn_date || ""} onChange={(e) => setH({ ...h, grn_date: e.target.value })} /></div>
+          <div><Label>GRN Date</Label><DateInput value={h.grn_date || ""} onChange={(v) => setH({ ...h, grn_date: v })} /></div>
           <div>
             <Label>Supplier *</Label>
             <Select value={h.supplier_id || ""} onValueChange={(v) => setH({ ...h, supplier_id: v })}>
@@ -179,7 +180,7 @@ const GrnFormPage = () => {
             </Select>
           </div>
           <div><Label>Challan No</Label><Input value={h.challan_no || ""} onChange={(e) => setH({ ...h, challan_no: e.target.value })} /></div>
-          <div><Label>Challan Date</Label><Input type="date" value={h.challan_date || ""} onChange={(e) => setH({ ...h, challan_date: e.target.value })} /></div>
+          <div><Label>Challan Date</Label><DateInput value={h.challan_date || ""} onChange={(v) => setH({ ...h, challan_date: v })} /></div>
           <div><Label>Vehicle No</Label><Input value={h.vehicle_no || ""} onChange={(e) => setH({ ...h, vehicle_no: e.target.value })} /></div>
           <div><Label>Received By</Label><Input value={h.received_by_name || ""} onChange={(e) => setH({ ...h, received_by_name: e.target.value })} /></div>
           <div><Label>Inspected By</Label><Input value={h.inspected_by_name || ""} onChange={(e) => setH({ ...h, inspected_by_name: e.target.value })} /></div>

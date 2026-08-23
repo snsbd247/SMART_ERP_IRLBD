@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Edit, Plus, Trash2, Save, User, DollarSign, Landmark, GraduationCap, Briefcase, Phone, Camera, Upload } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
+import { DateInput } from "@/components/ui/date-input";
 interface SalaryStructure {
   id: string;
   employee_id: string;
@@ -467,7 +468,7 @@ export default function EmployeeProfilePage() {
                 </div>
                 <div>
                   <Label>Effective From</Label>
-                  <Input type="date" value={salaryForm.effective_from} onChange={e => setSalaryForm({ ...salaryForm, effective_from: e.target.value })} disabled={!isAdmin} />
+                  <DateInput value={salaryForm.effective_from} onChange={(v) => setSalaryForm({ ...salaryForm, effective_from: v })} disabled={!isAdmin} />
                 </div>
                 <div>
                   <Label>Total Salary</Label>
@@ -674,8 +675,8 @@ export default function EmployeeProfilePage() {
           <div className="grid grid-cols-2 gap-4">
             <div><Label>Company Name *</Label><Input value={expForm.company_name} onChange={e => setExpForm({ ...expForm, company_name: e.target.value })} /></div>
             <div><Label>Designation *</Label><Input value={expForm.designation} onChange={e => setExpForm({ ...expForm, designation: e.target.value })} /></div>
-            <div><Label>Start Date</Label><Input type="date" value={expForm.start_date} onChange={e => setExpForm({ ...expForm, start_date: e.target.value })} /></div>
-            <div><Label>End Date</Label><Input type="date" value={expForm.end_date} onChange={e => setExpForm({ ...expForm, end_date: e.target.value })} /></div>
+            <div><Label>Start Date</Label><DateInput value={expForm.start_date} onChange={(v) => setExpForm({ ...expForm, start_date: v })} /></div>
+            <div><Label>End Date</Label><DateInput value={expForm.end_date} onChange={(v) => setExpForm({ ...expForm, end_date: v })} /></div>
             <div className="col-span-2"><Label>Job Description</Label><Textarea value={expForm.job_description} onChange={e => setExpForm({ ...expForm, job_description: e.target.value })} /></div>
           </div>
           <DialogFooter>

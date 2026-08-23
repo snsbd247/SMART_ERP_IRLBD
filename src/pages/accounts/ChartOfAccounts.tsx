@@ -18,6 +18,7 @@ import { AccountTreeTable } from "@/components/accounts/AccountTreeTable";
 import { AccountLedgerDialog } from "@/components/accounts/AccountLedgerDialog";
 import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
 
+import { DateInput } from "@/components/ui/date-input";
 const ACCOUNT_TYPES = ["asset", "liability", "income", "expense", "equity"] as const;
 
 const ChartOfAccounts = () => {
@@ -374,11 +375,11 @@ const ChartOfAccounts = () => {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">From</Label>
-              <Input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} className="w-40" />
+              <DateInput value={filterFrom} onChange={(v) => setFilterFrom(v)} className="w-40" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">To</Label>
-              <Input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} className="w-40" />
+              <DateInput value={filterTo} onChange={(v) => setFilterTo(v)} className="w-40" />
             </div>
             <Button variant="ghost" size="sm" onClick={() => { setFilterFY(""); setFilterBranch(""); setFilterFrom(""); setFilterTo(""); }}>
               Clear

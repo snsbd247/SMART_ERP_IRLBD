@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Plus, Search, Factory, Trash2, CheckCircle } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 const ProductionPage = () => {
   const [entries, setEntries] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -183,7 +184,7 @@ const ProductionPage = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Date *</Label>
-                <Input type="date" value={form.production_date} onChange={(e) => setForm({ ...form, production_date: e.target.value })} />
+                <DateInput value={form.production_date} onChange={(v) => setForm({ ...form, production_date: v })} />
               </div>
               <div className="space-y-2">
                 <Label>Finished Product *</Label>

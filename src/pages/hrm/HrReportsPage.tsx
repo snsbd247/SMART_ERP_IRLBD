@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { Users, Calendar, FileText, DollarSign } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 export default function HrReportsPage() {
   const { fc: formatAmount } = useCurrency();
   const [employees, setEmployees] = useState<any[]>([]);
@@ -62,8 +63,8 @@ export default function HrReportsPage() {
       </div>
 
       <div className="flex gap-4 items-end">
-        <div><Label>From</Label><Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-44" /></div>
-        <div><Label>To</Label><Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-44" /></div>
+        <div><Label>From</Label><DateInput value={dateFrom} onChange={(v) => setDateFrom(v)} className="w-44" /></div>
+        <div><Label>To</Label><DateInput value={dateTo} onChange={(v) => setDateTo(v)} className="w-44" /></div>
         <Button variant="outline" onClick={fetchData}>Refresh</Button>
       </div>
 

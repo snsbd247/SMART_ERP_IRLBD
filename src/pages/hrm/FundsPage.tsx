@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { PiggyBank, Plus, Settings, History, Users, TrendingUp } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 interface Employee {
   id: string; employee_code: string; first_name: string; last_name: string; salary: number;
 }
@@ -431,7 +432,7 @@ export default function FundsPage() {
             )}
             <div>
               <Label>Effective From</Label>
-              <Input type="date" value={form.effective_from} onChange={e => setForm(f => ({ ...f, effective_from: e.target.value }))} />
+              <DateInput value={form.effective_from} onChange={(v) => setForm(f => ({ ...f, effective_from: v }))} />
             </div>
           </div>
           <DialogFooter>

@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 export default function HoReceivePage() {
   const [rows, setRows] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
@@ -40,7 +41,7 @@ export default function HoReceivePage() {
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">HO Receive (Head Office Inbox)</h1>
       <Card className="p-4 flex gap-3 items-end">
-        <div><label className="text-sm">HO Receive Date</label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        <div><label className="text-sm">HO Receive Date</label><DateInput value={date} onChange={(v) => setDate(v)} /></div>
         <Button onClick={submit} disabled={selected.size === 0}>Confirm {selected.size}</Button>
       </Card>
       <Card>

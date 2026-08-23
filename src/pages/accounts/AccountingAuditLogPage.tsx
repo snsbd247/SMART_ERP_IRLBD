@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollText, RefreshCw } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 interface Row {
   id: string;
   user_id: string | null;
@@ -96,11 +97,11 @@ export default function AccountingAuditLogPage() {
             </div>
             <div>
               <Label>From</Label>
-              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <DateInput value={from} onChange={(v) => setFrom(v)} />
             </div>
             <div>
               <Label>To</Label>
-              <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+              <DateInput value={to} onChange={(v) => setTo(v)} />
             </div>
             <div className="md:col-span-1">
               <Label>Search</Label>

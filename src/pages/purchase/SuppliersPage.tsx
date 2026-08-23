@@ -17,6 +17,7 @@ import { AccountCombobox } from "@/components/accounts/AccountCombobox";
 import { nextSupplierCode, findDuplicateSupplierCode, buildSupplierPayload } from "@/lib/supplier-utils";
 import { useAccountBalances } from "@/hooks/useAccountBalances";
 
+import { DateInput } from "@/components/ui/date-input";
 interface Supplier {
   id: string; code: string; name: string; supplier_type: string;
   contact_person?: string; phone?: string; email?: string;
@@ -246,7 +247,7 @@ const SuppliersPage = () => {
             </div>
             <div className="space-y-1">
               <Label>Opening Balance Date</Label>
-              <Input type="date" value={form.opening_balance_date || ""} onChange={(e) => setForm({ ...form, opening_balance_date: e.target.value || null })} />
+              <DateInput value={form.opening_balance_date || ""} onChange={(v) => setForm({ ...form, opening_balance_date: v || null })} />
               <p className="text-[11px] text-muted-foreground">As-of date for the brought-forward balance.</p>
             </div>
             <div className="col-span-2 space-y-1"><Label>Address</Label><Input value={form.address || ""} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>

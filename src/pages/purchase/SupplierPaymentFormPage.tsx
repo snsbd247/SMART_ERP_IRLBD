@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Save } from "lucide-react";
 import { nextDocNo, logAudit } from "@/lib/purchase-numbering";
 
+import { DateInput } from "@/components/ui/date-input";
 const SupplierPaymentFormPage = () => {
   const [sp] = useSearchParams();
   const billId = sp.get("bill");
@@ -89,7 +90,7 @@ const SupplierPaymentFormPage = () => {
       <h1 className="text-xl font-semibold">New Supplier Payment</h1>
       <Card><CardContent className="p-4 grid md:grid-cols-4 gap-3">
         <div><Label>Payment #</Label><Input value={header.payment_no} onChange={e => setHeader({ ...header, payment_no: e.target.value })} /></div>
-        <div><Label>Date</Label><Input type="date" value={header.payment_date} onChange={e => setHeader({ ...header, payment_date: e.target.value })} /></div>
+        <div><Label>Date</Label><DateInput value={header.payment_date} onChange={(v) => setHeader({ ...header, payment_date: v })} /></div>
         <div><Label>Supplier</Label>
           <Select value={header.supplier_id} onValueChange={v => setHeader({ ...header, supplier_id: v })}>
             <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>

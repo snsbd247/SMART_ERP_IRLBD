@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Trash2 } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 export default function PurchaseOrderFormPage() {
   const nav = useNavigate();
   const { id } = useParams();
@@ -70,8 +71,8 @@ export default function PurchaseOrderFormPage() {
     <div className="p-6 space-y-4 max-w-5xl">
       <h1 className="text-2xl font-bold">{isEdit ? "Edit Purchase Order" : "New Purchase Order"}</h1>
       <Card className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div><Label>PO Date</Label><Input type="date" value={form.po_date} onChange={(e) => setForm({ ...form, po_date: e.target.value })} /></div>
-        <div><Label>Delivery Date</Label><Input type="date" value={form.delivery_date} onChange={(e) => setForm({ ...form, delivery_date: e.target.value })} /></div>
+        <div><Label>PO Date</Label><DateInput value={form.po_date} onChange={(v) => setForm({ ...form, po_date: v })} /></div>
+        <div><Label>Delivery Date</Label><DateInput value={form.delivery_date} onChange={(v) => setForm({ ...form, delivery_date: v })} /></div>
         <div>
           <Label>Customer</Label>
           <select className="w-full border rounded px-2 h-10 bg-background" value={form.customer_id} onChange={(e) => setForm({ ...form, customer_id: e.target.value })}>

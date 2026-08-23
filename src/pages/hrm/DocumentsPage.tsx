@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { FileText, Printer, Save, Download, Trash2 } from "lucide-react";
 import DOMPurify from "dompurify";
 
+import { DateInput } from "@/components/ui/date-input";
 interface Employee {
   id: string; employee_code: string; first_name: string; last_name: string;
   department_id: string | null; designation_id: string | null; joining_date: string;
@@ -271,7 +272,7 @@ export default function DocumentsPage() {
                 {docType === "experience_certificate" && (
                   <div>
                     <Label>Last Working Date</Label>
-                    <Input type="date" value={lastWorkingDate} onChange={e => setLastWorkingDate(e.target.value)} />
+                    <DateInput value={lastWorkingDate} onChange={(v) => setLastWorkingDate(v)} />
                   </div>
                 )}
                 <div className="flex items-end gap-2">

@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 
+import { DateInput } from "@/components/ui/date-input";
 type PoItem = {
   id: string; product_id: string; product?: { name: string };
   qty_ordered: number; qty_delivered: number; qty_remaining: number;
@@ -114,7 +115,7 @@ export default function VatChallanFormPage() {
         </div>
         <div>
           <Label>Challan Date</Label>
-          <Input type="date" value={header.challan_date} onChange={(e) => setHeader({ ...header, challan_date: e.target.value })} />
+          <DateInput value={header.challan_date} onChange={(v) => setHeader({ ...header, challan_date: v })} />
         </div>
         <div>
           <Label>Vehicle No</Label>

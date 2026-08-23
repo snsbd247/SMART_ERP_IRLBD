@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Save, Calendar, Upload } from "lucide-react";
 import { BulkImportDialog } from "@/components/hrm/BulkImportDialog";
 
+import { DateInput } from "@/components/ui/date-input";
 interface Employee { id: string; employee_code: string; first_name: string; last_name: string; }
 interface AttendanceRecord { id: string; employee_id: string; date: string; check_in: string | null; check_out: string | null; status: string; }
 
@@ -87,7 +88,7 @@ export default function AttendancePage() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-muted-foreground" />
-            <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-44" />
+            <DateInput value={date} onChange={(v) => setDate(v)} className="w-44" />
           </div>
           {isAdmin && <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-2" />Bulk Import</Button>}
           {isAdmin && <Button onClick={handleSave} disabled={saving}><Save className="w-4 h-4 mr-2" />{saving ? "Saving..." : "Save Attendance"}</Button>}

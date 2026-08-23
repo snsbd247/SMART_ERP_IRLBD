@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Save } from "lucide-react";
 import { nextDocNo, logAudit } from "@/lib/purchase-numbering";
 
+import { DateInput } from "@/components/ui/date-input";
 type Item = { id?: string; item_id?: string; description: string; quantity: number; unit_cost: number; vat_rate: number; line_total: number; grn_item_id?: string };
 const empty = (): Item => ({ description: "", quantity: 1, unit_cost: 0, vat_rate: 0, line_total: 0 });
 
@@ -97,7 +98,7 @@ const PurchaseReturnFormPage = () => {
       <h1 className="text-xl font-semibold">{id ? "Edit Return" : "New Purchase Return"}</h1>
       <Card><CardContent className="p-4 grid md:grid-cols-4 gap-3">
         <div><Label>Return #</Label><Input value={header.return_no} onChange={e => setHeader({ ...header, return_no: e.target.value })} /></div>
-        <div><Label>Date</Label><Input type="date" value={header.return_date} onChange={e => setHeader({ ...header, return_date: e.target.value })} /></div>
+        <div><Label>Date</Label><DateInput value={header.return_date} onChange={(v) => setHeader({ ...header, return_date: v })} /></div>
         <div><Label>From GRN</Label>
           <Select value={header.grn_id || ""} onValueChange={v => { setHeader({ ...header, grn_id: v }); loadFromGrn(v); }}>
             <SelectTrigger><SelectValue placeholder="(optional)" /></SelectTrigger>

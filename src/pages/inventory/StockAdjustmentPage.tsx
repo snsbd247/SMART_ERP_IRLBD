@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, ClipboardCheck } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
+import { DateInput } from "@/components/ui/date-input";
 interface Product { id: string; product_name: string; product_code: string; cost_price: number; stock_group_id: string | null; }
 interface WH { id: string; warehouse_name: string; warehouse_code: string; }
 interface StockGroup { id: string; name: string; }
@@ -240,7 +241,7 @@ const StockAdjustmentPage = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Date</Label>
-                <Input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} />
+                <DateInput value={formDate} onChange={(v) => setFormDate(v)} />
               </div>
               <div className="space-y-2"><Label>Adjustment Type</Label>
                 <Select value={formType} onValueChange={setFormType}>

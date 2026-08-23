@@ -38,6 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { downloadCSV } from "@/lib/csv-export";
 import { logCreate, logUpdate, logDelete } from "@/lib/audit-utils";
+import { DateInput } from "@/components/ui/date-input";
 import {
   buildChallanUrl,
   challanValidationMessage,
@@ -864,11 +865,11 @@ export default function TreasuryInformationPage() {
             </div>
             <div>
               <Label className="text-xs">From</Label>
-              <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+              <DateInput value={fromDate} onChange={(v) => setFromDate(v)} />
             </div>
             <div>
               <Label className="text-xs">To</Label>
-              <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+              <DateInput value={toDate} onChange={(v) => setToDate(v)} />
             </div>
           </div>
 
@@ -964,7 +965,7 @@ export default function TreasuryInformationPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <Label>Date *</Label>
-              <Input type="date" value={form.treasury_date} onChange={(e) => setForm({ ...form, treasury_date: e.target.value })} />
+              <DateInput value={form.treasury_date} onChange={(v) => setForm({ ...form, treasury_date: v })} />
             </div>
             <div>
               <Label>Treasury Type *</Label>
@@ -1059,7 +1060,7 @@ export default function TreasuryInformationPage() {
             </div>
             <div>
               <Label>Challan Date</Label>
-              <Input type="date" value={form.challan_date} onChange={(e) => setForm({ ...form, challan_date: e.target.value })} />
+              <DateInput value={form.challan_date} onChange={(v) => setForm({ ...form, challan_date: v })} />
             </div>
 
             <div>

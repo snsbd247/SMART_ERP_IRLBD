@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollText, Search, ShieldAlert, Eye, Activity, AlertTriangle } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 interface AuditLogEntry {
   id: string;
   user_id: string | null;
@@ -316,11 +317,11 @@ const AuditLogPage = () => {
         </div>
         <div className="space-y-1">
           <Label className="text-xs">From</Label>
-          <Input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} className="h-9 w-36" />
+          <DateInput value={filterFrom} onChange={(v) => setFilterFrom(v)} className="h-9 w-36" />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">To</Label>
-          <Input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)} className="h-9 w-36" />
+          <DateInput value={filterTo} onChange={(v) => setFilterTo(v)} className="h-9 w-36" />
         </div>
         <Button size="sm" onClick={handleFilter} className="h-9">
           <Search className="w-4 h-4 mr-1" />Filter

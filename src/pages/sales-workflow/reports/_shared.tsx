@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Download, Printer } from "lucide-react";
 import { ReportPrintFooter } from "@/components/reports/ReportPrintFooter";
 
+import { DateInput } from "@/components/ui/date-input";
 export function ReportShell({
   title, filters, children, onExport, showCustomer = true, showStatus = false, statusOptions = [],
 }: {
@@ -37,8 +38,8 @@ export function FilterBar({
 }: any) {
   return (
     <Card className="p-4 flex gap-2 flex-wrap items-end print:hidden">
-      <div><label className="text-xs">From</label><Input type="date" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} /></div>
-      <div><label className="text-xs">To</label><Input type="date" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} /></div>
+      <div><label className="text-xs">From</label><DateInput value={filters.from} onChange={(v) => setFilters({ ...filters, from: v })} /></div>
+      <div><label className="text-xs">To</label><DateInput value={filters.to} onChange={(v) => setFilters({ ...filters, to: v })} /></div>
       {showCustomer && <div>
         <label className="text-xs">Customer</label>
         <select className="block border rounded px-2 h-10 bg-background" value={filters.customer_id} onChange={(e) => setFilters({ ...filters, customer_id: e.target.value })}>

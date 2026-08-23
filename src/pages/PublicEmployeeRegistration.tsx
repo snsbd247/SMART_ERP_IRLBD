@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, UserPlus, CheckCircle2, Building2 } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 interface Option { id: string; name: string; }
 interface Config {
   enabled: boolean;
@@ -195,7 +196,7 @@ export default function PublicEmployeeRegistration() {
             <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => set("email", e.target.value)} /></div>
             <div><Label>Mobile</Label><Input value={form.mobile} onChange={e => set("mobile", e.target.value)} /></div>
             <div><Label>National ID</Label><Input value={form.national_id} onChange={e => set("national_id", e.target.value)} /></div>
-            <div><Label>Joining Date *</Label><Input type="date" value={form.joining_date} onChange={e => set("joining_date", e.target.value)} required /></div>
+            <div><Label>Joining Date *</Label><DateInput value={form.joining_date} onChange={(v) => set("joining_date", v)} required /></div>
             <div>
               <Label>Branch</Label>
               <Select value={form.branch_id} onValueChange={v => set("branch_id", v)}>

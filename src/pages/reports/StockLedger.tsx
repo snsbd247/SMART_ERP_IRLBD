@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Search } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 interface Product { id: string; product_name: string; product_code: string; }
 interface Branch { id: string; name: string; }
 
@@ -86,8 +87,8 @@ const StockLedger = () => {
         <div className="space-y-2 w-48"><Label>Branch</Label>
           <Select value={filterBranch} onValueChange={setFilterBranch}><SelectTrigger><SelectValue placeholder="All branches" /></SelectTrigger>
             <SelectContent><SelectItem value="__all__">All</SelectItem>{branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select></div>
-        <div className="space-y-2"><Label>From</Label><Input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} /></div>
-        <div className="space-y-2"><Label>To</Label><Input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} /></div>
+        <div className="space-y-2"><Label>From</Label><DateInput value={filterFrom} onChange={(v) => setFilterFrom(v)} /></div>
+        <div className="space-y-2"><Label>To</Label><DateInput value={filterTo} onChange={(v) => setFilterTo(v)} /></div>
         <Button size="sm" onClick={fetchMovements}><Search className="w-4 h-4 mr-1" />View</Button>
       </div>
 
