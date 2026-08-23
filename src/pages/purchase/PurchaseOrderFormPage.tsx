@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { nextDocNo, getPurchaseSettings, logAudit } from "@/lib/purchase-numbering";
 import { Plus, Trash2, Save, Send, ArrowLeft } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 const PurchaseOrderFormPage = () => {
   const { id } = useParams();
   const [sp] = useSearchParams();
@@ -163,8 +164,8 @@ const PurchaseOrderFormPage = () => {
 
       <Card><CardHeader><CardTitle className="text-base">Header</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="space-y-1"><Label>PO Date</Label><Input type="date" value={h.po_date || ""} onChange={(e) => setH({ ...h, po_date: e.target.value })} /></div>
-          <div className="space-y-1"><Label>Expected Date</Label><Input type="date" value={h.expected_date || ""} onChange={(e) => setH({ ...h, expected_date: e.target.value })} /></div>
+          <div className="space-y-1"><Label>PO Date</Label><DateInput value={h.po_date || ""} onChange={(v) => setH({ ...h, po_date: v })} /></div>
+          <div className="space-y-1"><Label>Expected Date</Label><DateInput value={h.expected_date || ""} onChange={(v) => setH({ ...h, expected_date: v })} /></div>
           <div className="space-y-1"><Label>Supplier *</Label>
             <Select value={h.supplier_id || ""} onValueChange={(v) => setH({ ...h, supplier_id: v })}>
               <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>

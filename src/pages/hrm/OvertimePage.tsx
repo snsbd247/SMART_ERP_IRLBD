@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Plus, CheckCircle, Upload } from "lucide-react";
 import { BulkImportDialog } from "@/components/hrm/BulkImportDialog";
 
+import { DateInput } from "@/components/ui/date-input";
 interface Employee { id: string; employee_code: string; first_name: string; last_name: string; }
 interface OvertimeRecord { id: string; employee_id: string; date: string; hours: number; status: string; }
 
@@ -105,7 +106,7 @@ export default function OvertimePage() {
                 <SelectContent>{employees.map(e => <SelectItem key={e.id} value={e.id}>{e.first_name} {e.last_name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Date</Label><Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></div>
+            <div><Label>Date</Label><DateInput value={form.date} onChange={(v) => setForm({ ...form, date: v })} /></div>
             <div><Label>Hours</Label><Input type="number" step="0.5" value={form.hours} onChange={e => setForm({ ...form, hours: Number(e.target.value) })} /></div>
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setDialog(false)}>Cancel</Button><Button onClick={save}>Save</Button></DialogFooter>

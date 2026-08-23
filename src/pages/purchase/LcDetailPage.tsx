@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Plus, Trash2, Edit, Printer, Globe } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 const CHARGE_TYPES = ["LC Opening", "Margin", "Freight", "Insurance", "Customs Duty", "VAT", "AIT", "C&F", "Other"];
 
 const LcDetailPage = () => {
@@ -96,7 +97,7 @@ const LcDetailPage = () => {
               </TableRow>
             ))}
             <TableRow>
-              <TableCell><Input type="date" value={newCharge.charge_date} onChange={e => setNewCharge({ ...newCharge, charge_date: e.target.value })} /></TableCell>
+              <TableCell><DateInput value={newCharge.charge_date} onChange={(v) => setNewCharge({ ...newCharge, charge_date: v })} /></TableCell>
               <TableCell>
                 <Select value={newCharge.charge_type} onValueChange={v => setNewCharge({ ...newCharge, charge_type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>

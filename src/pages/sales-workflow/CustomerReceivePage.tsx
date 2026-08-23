@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 export default function CustomerReceivePage() {
   const [rows, setRows] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
@@ -49,7 +50,7 @@ export default function CustomerReceivePage() {
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">Customer Receive</h1>
       <Card className="p-4 grid md:grid-cols-3 gap-3 items-end">
-        <div><label className="text-sm">Receive Date</label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        <div><label className="text-sm">Receive Date</label><DateInput value={date} onChange={(v) => setDate(v)} /></div>
         <div><label className="text-sm">Received By</label><Input value={receiver} onChange={(e) => setReceiver(e.target.value)} placeholder="Name" /></div>
         <Button onClick={submit} disabled={selected.size === 0}>Mark {selected.size} Received</Button>
       </Card>

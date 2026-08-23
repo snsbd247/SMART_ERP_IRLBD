@@ -11,6 +11,7 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { signedOpeningBalance, formatSignedBalance } from "@/lib/balance-format";
 import { isoToDmy, toDateInputValue } from "@/lib/date-format";
 
+import { DateInput } from "@/components/ui/date-input";
 interface Props {
   accountId: string | null;
   accountName: string;
@@ -152,11 +153,11 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
           </div>
           <div className="space-y-1">
             <Label className="text-xs">From</Label>
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 w-36" />
+            <DateInput value={dateFrom} onChange={(v) => setDateFrom(v)} className="h-9 w-36" />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">To</Label>
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 w-36" />
+            <DateInput value={dateTo} onChange={(v) => setDateTo(v)} className="h-9 w-36" />
           </div>
           {(search || dateFrom || dateTo) && (
             <Button size="sm" variant="ghost" onClick={() => { setSearch(""); setDateFrom(""); setDateTo(""); }}>Clear</Button>

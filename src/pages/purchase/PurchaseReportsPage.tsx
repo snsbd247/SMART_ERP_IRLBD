@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { BarChart3, Printer } from "lucide-react";
 import { ReportPrintFooter } from "@/components/reports/ReportPrintFooter";
 
+import { DateInput } from "@/components/ui/date-input";
 const PurchaseReportsPage = () => {
   const today = new Date().toISOString().slice(0, 10);
   const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
@@ -93,8 +94,8 @@ const PurchaseReportsPage = () => {
       </div>
 
       <Card><CardContent className="p-4 grid md:grid-cols-4 gap-3">
-        <div><Label>From</Label><Input type="date" value={from} onChange={e => setFrom(e.target.value)} /></div>
-        <div><Label>To</Label><Input type="date" value={to} onChange={e => setTo(e.target.value)} /></div>
+        <div><Label>From</Label><DateInput value={from} onChange={(v) => setFrom(v)} /></div>
+        <div><Label>To</Label><DateInput value={to} onChange={(v) => setTo(v)} /></div>
         <div className="md:col-span-2"><Label>Supplier</Label>
           <Select value={supplierId} onValueChange={setSupplierId}>
             <SelectTrigger><SelectValue /></SelectTrigger>

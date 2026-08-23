@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/hooks/use-toast";
 import { PrintTaxInvoice, PrintMoneyReceipt } from "@/components/sales-workflow/SalesWorkflowPrints";
 
+import { DateInput } from "@/components/ui/date-input";
 export default function InvoiceDetailPage() {
   const { id } = useParams();
   const [inv, setInv] = useState<any>(null);
@@ -94,7 +95,7 @@ export default function InvoiceDetailPage() {
           </p>
         )}
         <div className="grid md:grid-cols-4 gap-3 mt-2">
-          <div><Label>Submission Date</Label><Input type="date" value={bill.bill_submitted_at} onChange={(e) => setBill({ ...bill, bill_submitted_at: e.target.value })} /></div>
+          <div><Label>Submission Date</Label><DateInput value={bill.bill_submitted_at} onChange={(v) => setBill({ ...bill, bill_submitted_at: v })} /></div>
           <div><Label>Credit Days</Label><Input type="number" min={0} max={365} value={bill.payment_terms_days} onChange={(e) => setBill({ ...bill, payment_terms_days: Number(e.target.value) })} /></div>
           <div className="md:col-span-2"><Label>Customer Receipt / Ref</Label><Input placeholder="e.g. Bill register no." value={bill.bill_submission_ref} onChange={(e) => setBill({ ...bill, bill_submission_ref: e.target.value })} /></div>
         </div>
@@ -104,7 +105,7 @@ export default function InvoiceDetailPage() {
       <Card className="p-4">
         <h3 className="font-semibold mb-3">Record Payment / TDS</h3>
         <div className="grid md:grid-cols-4 gap-3">
-          <div><Label>Date</Label><Input type="date" value={pay.payment_date} onChange={(e) => setPay({ ...pay, payment_date: e.target.value })} /></div>
+          <div><Label>Date</Label><DateInput value={pay.payment_date} onChange={(v) => setPay({ ...pay, payment_date: v })} /></div>
           <div><Label>Mode</Label>
             <select className="w-full border rounded px-2 h-10 bg-background" value={pay.mode} onChange={(e) => setPay({ ...pay, mode: e.target.value })}>
               <option value="cash">Cash</option><option value="bank">Bank</option><option value="cheque">Cheque</option><option value="online">Online</option>
@@ -114,7 +115,7 @@ export default function InvoiceDetailPage() {
           <div><Label>TDS Amount</Label><Input type="number" step="0.01" value={pay.tds_amount} onChange={(e) => setPay({ ...pay, tds_amount: e.target.value })} /></div>
           <div><Label>TDS %</Label><Input type="number" step="0.01" value={pay.tds_pct} onChange={(e) => setPay({ ...pay, tds_pct: e.target.value })} /></div>
           <div><Label>TDS Cert No</Label><Input value={pay.tds_certificate_no} onChange={(e) => setPay({ ...pay, tds_certificate_no: e.target.value })} /></div>
-          <div><Label>TDS Cert Date</Label><Input type="date" value={pay.tds_certificate_date} onChange={(e) => setPay({ ...pay, tds_certificate_date: e.target.value })} /></div>
+          <div><Label>TDS Cert Date</Label><DateInput value={pay.tds_certificate_date} onChange={(v) => setPay({ ...pay, tds_certificate_date: v })} /></div>
           <div><Label>Reference</Label><Input value={pay.reference} onChange={(e) => setPay({ ...pay, reference: e.target.value })} /></div>
         </div>
         <div className="flex justify-end mt-3"><Button onClick={submitPayment}>Record</Button></div>

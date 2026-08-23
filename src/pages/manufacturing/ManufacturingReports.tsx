@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { BarChart3, Search } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 const ManufacturingReports = () => {
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,11 +47,11 @@ const ManufacturingReports = () => {
       <div className="flex gap-3 items-end flex-wrap">
         <div className="space-y-1">
           <Label className="text-xs">From</Label>
-          <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="h-9 w-36" />
+          <DateInput value={fromDate} onChange={(v) => setFromDate(v)} className="h-9 w-36" />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">To</Label>
-          <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-9 w-36" />
+          <DateInput value={toDate} onChange={(v) => setToDate(v)} className="h-9 w-36" />
         </div>
         <Button size="sm" onClick={fetchData} className="h-9"><Search className="w-4 h-4 mr-1" />Filter</Button>
       </div>

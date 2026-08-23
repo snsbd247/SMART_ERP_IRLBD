@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { BarChart3, ChevronRight, ChevronDown, FolderTree, Package, Search, Download } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
+import { DateInput } from "@/components/ui/date-input";
 interface StockGroup { id: string; name: string; parent_id: string | null; }
 interface Item { id: string; item_code: string; item_name: string; stock_group_id: string | null; opening_stock: number; cost_price: number; }
 interface Movement { product_id: string | null; item_id: string | null; stock_group_id: string | null; quantity: number; }
@@ -188,11 +189,11 @@ const StockByGroupPage = () => {
       <div className="flex gap-3 items-end flex-wrap">
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">From</label>
-          <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" />
+          <DateInput value={from} onChange={(v) => setFrom(v)} className="w-40" />
         </div>
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">To</label>
-          <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" />
+          <DateInput value={to} onChange={(v) => setTo(v)} className="w-40" />
         </div>
         <Button size="sm" onClick={fetchAll}>Apply</Button>
         <div className="relative ml-auto w-64">

@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Plus, Check, X, Upload } from "lucide-react";
 import { BulkImportDialog } from "@/components/hrm/BulkImportDialog";
 
+import { DateInput } from "@/components/ui/date-input";
 interface LeaveType { id: string; name: string; days_per_year: number; }
 interface Employee { id: string; employee_code: string; first_name: string; last_name: string; }
 interface LeaveRequest {
@@ -135,8 +136,8 @@ export default function LeavePage() {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>From *</Label><Input type="date" value={form.start_date} onChange={e => setForm({...form, start_date: e.target.value})} /></div>
-              <div><Label>To *</Label><Input type="date" value={form.end_date} onChange={e => setForm({...form, end_date: e.target.value})} /></div>
+              <div><Label>From *</Label><DateInput value={form.start_date} onChange={(v) => setForm({...form, start_date: v})} /></div>
+              <div><Label>To *</Label><DateInput value={form.end_date} onChange={(v) => setForm({...form, end_date: v})} /></div>
             </div>
             <div><Label>Reason</Label><Textarea value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} /></div>
           </div>

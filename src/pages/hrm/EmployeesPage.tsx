@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Plus, Edit, Trash2, Search, Users, Eye, EyeOff, KeyRound, Wand2, Upload } from "lucide-react";
 import { BulkImportDialog } from "@/components/hrm/BulkImportDialog";
 
+import { DateInput } from "@/components/ui/date-input";
 interface Employee {
   id: string;
   employee_code: string;
@@ -453,7 +454,7 @@ export default function EmployeesPage() {
               </Select>
             </div>
 
-            <div><Label>Joining Date</Label><Input type="date" value={form.joining_date} onChange={e => setForm({...form, joining_date: e.target.value})} /></div>
+            <div><Label>Joining Date</Label><DateInput value={form.joining_date} onChange={(v) => setForm({...form, joining_date: v})} /></div>
             <div><Label>Salary</Label><Input type="number" value={form.salary} onChange={e => setForm({...form, salary: Number(e.target.value)})} /></div>
             <div>
               <Label>Employment Type</Label>

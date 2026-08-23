@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 
+import { DateInput } from "@/components/ui/date-input";
 interface InvoiceData {
   id: string; invoice_number: string; invoice_date: string; customer_id: string | null;
   total_amount: number; discount: number; net_amount: number; status: string; notes: string | null;
@@ -549,7 +550,7 @@ const SalesInvoiceDetailPage = () => {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Payment Date</Label>
-                <Input type="date" value={pay.payment_date} onChange={(e) => setPay({ ...pay, payment_date: e.target.value })} />
+                <DateInput value={pay.payment_date} onChange={(v) => setPay({ ...pay, payment_date: v })} />
               </div>
               <div>
                 <Label>Method</Label>

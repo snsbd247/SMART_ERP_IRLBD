@@ -20,6 +20,7 @@ import {
 import { FileText, Printer, FileSpreadsheet, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 
+import { DateInput } from "@/components/ui/date-input";
 type Account = {
   id: string; account_name: string; account_code: string;
   account_type: string; opening_balance: number; opening_balance_type: string;
@@ -687,10 +688,10 @@ const IFRSFinancialStatements = () => {
             </SelectContent>
           </Select>
         </div>
-        <div><Label className="text-xs">Current From</Label><Input type="date" value={curFrom} onChange={e => { setCurFrom(e.target.value); setPreset("custom"); }} /></div>
-        <div><Label className="text-xs">Current To</Label><Input type="date" value={curTo} onChange={e => { setCurTo(e.target.value); setPreset("custom"); }} /></div>
-        <div><Label className="text-xs">Previous From</Label><Input type="date" value={prvFrom} onChange={e => { setPrvFrom(e.target.value); setPreset("custom"); }} /></div>
-        <div><Label className="text-xs">Previous To</Label><Input type="date" value={prvTo} onChange={e => { setPrvTo(e.target.value); setPreset("custom"); }} /></div>
+        <div><Label className="text-xs">Current From</Label><DateInput value={curFrom} onChange={(v) => { setCurFrom(v); setPreset("custom"); }} /></div>
+        <div><Label className="text-xs">Current To</Label><DateInput value={curTo} onChange={(v) => { setCurTo(v); setPreset("custom"); }} /></div>
+        <div><Label className="text-xs">Previous From</Label><DateInput value={prvFrom} onChange={(v) => { setPrvFrom(v); setPreset("custom"); }} /></div>
+        <div><Label className="text-xs">Previous To</Label><DateInput value={prvTo} onChange={(v) => { setPrvTo(v); setPreset("custom"); }} /></div>
         <Button onClick={generate} disabled={loading} className="md:col-span-6 md:w-auto md:justify-self-end">
           {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
           Generate Report

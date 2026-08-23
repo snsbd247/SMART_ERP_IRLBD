@@ -20,6 +20,7 @@ import { PrintLayout } from "@/components/PrintLayout";
 import { useDocumentRules, getDocumentStatusConfig } from "@/hooks/useDocumentRules";
 import { documentApi } from "@/lib/document-api";
 import { Badge } from "@/components/ui/badge";
+import { DateInput } from "@/components/ui/date-input";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -499,7 +500,7 @@ const SalesPage = () => {
           <DialogHeader><DialogTitle>{editingInvoice ? `Edit Invoice ${editingInvoice.invoice_number}` : "New Sales Invoice"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2"><Label>Date</Label><Input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Date</Label><DateInput value={formDate} onChange={(v) => setFormDate(v)} /></div>
               <div className="space-y-2"><Label>Customer</Label>
                 <Select value={formCustomer} onValueChange={setFormCustomer}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                   <SelectContent>{customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>
@@ -529,7 +530,7 @@ const SalesPage = () => {
           <DialogHeader><DialogTitle>Sales Return</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2"><Label>Date</Label><Input type="date" value={retDate} onChange={(e) => setRetDate(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Date</Label><DateInput value={retDate} onChange={(v) => setRetDate(v)} /></div>
               <div className="space-y-2"><Label>Customer</Label>
                 <Select value={retCustomer} onValueChange={setRetCustomer}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                   <SelectContent>{customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></div>

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Save } from "lucide-react";
 import { nextDocNo, logAudit } from "@/lib/purchase-numbering";
 
+import { DateInput } from "@/components/ui/date-input";
 type Item = { id?: string; item_id?: string; description: string; quantity: number; unit_price: number; discount: number; vat_rate: number; ait_rate: number; line_total: number; grn_item_id?: string };
 
 const empty = (): Item => ({ description: "", quantity: 1, unit_price: 0, discount: 0, vat_rate: 0, ait_rate: 0, line_total: 0 });
@@ -95,8 +96,8 @@ const SupplierBillFormPage = () => {
       <Card><CardContent className="p-4 grid md:grid-cols-4 gap-3">
         <div><Label>Bill #</Label><Input value={header.bill_no} onChange={e => setHeader({ ...header, bill_no: e.target.value })} /></div>
         <div><Label>Supplier Invoice #</Label><Input value={header.supplier_invoice_no || ""} onChange={e => setHeader({ ...header, supplier_invoice_no: e.target.value })} /></div>
-        <div><Label>Bill Date</Label><Input type="date" value={header.bill_date} onChange={e => setHeader({ ...header, bill_date: e.target.value })} /></div>
-        <div><Label>Due Date</Label><Input type="date" value={header.due_date || ""} onChange={e => setHeader({ ...header, due_date: e.target.value })} /></div>
+        <div><Label>Bill Date</Label><DateInput value={header.bill_date} onChange={(v) => setHeader({ ...header, bill_date: v })} /></div>
+        <div><Label>Due Date</Label><DateInput value={header.due_date || ""} onChange={(v) => setHeader({ ...header, due_date: v })} /></div>
         <div><Label>Supplier</Label>
           <Select value={header.supplier_id || ""} onValueChange={v => setHeader({ ...header, supplier_id: v })}>
             <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>

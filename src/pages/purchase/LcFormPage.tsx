@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Save } from "lucide-react";
 import { nextDocNo, logAudit } from "@/lib/purchase-numbering";
 
+import { DateInput } from "@/components/ui/date-input";
 const LcFormPage = () => {
   const { id } = useParams();
   const nav = useNavigate();
@@ -60,8 +61,8 @@ const LcFormPage = () => {
       <h1 className="text-xl font-semibold">{id ? "Edit LC" : "New Letter of Credit"}</h1>
       <Card><CardContent className="p-4 grid md:grid-cols-3 gap-3">
         <div><Label>LC #</Label><Input value={header.lc_no} onChange={e => setHeader({ ...header, lc_no: e.target.value })} /></div>
-        <div><Label>LC Date</Label><Input type="date" value={header.lc_date} onChange={e => setHeader({ ...header, lc_date: e.target.value })} /></div>
-        <div><Label>Expiry</Label><Input type="date" value={header.expiry_date || ""} onChange={e => setHeader({ ...header, expiry_date: e.target.value })} /></div>
+        <div><Label>LC Date</Label><DateInput value={header.lc_date} onChange={(v) => setHeader({ ...header, lc_date: v })} /></div>
+        <div><Label>Expiry</Label><DateInput value={header.expiry_date || ""} onChange={(v) => setHeader({ ...header, expiry_date: v })} /></div>
         <div><Label>Supplier</Label>
           <Select value={header.supplier_id} onValueChange={v => setHeader({ ...header, supplier_id: v })}>
             <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>

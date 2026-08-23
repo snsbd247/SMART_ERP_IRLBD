@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { Eye, Trash2 } from "lucide-react";
 import { ReportPrintFooter } from "@/components/reports/ReportPrintFooter";
 
+import { DateInput } from "@/components/ui/date-input";
 export default function TdsRegisterPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [from, setFrom] = useState("");
@@ -31,8 +32,8 @@ export default function TdsRegisterPage() {
         <Button variant="outline" onClick={handlePrint}>Print</Button>
       </div>
       <Card className="p-4 flex gap-3">
-        <div><label className="text-sm">From</label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
-        <div><label className="text-sm">To</label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+        <div><label className="text-sm">From</label><DateInput value={from} onChange={(v) => setFrom(v)} /></div>
+        <div><label className="text-sm">To</label><DateInput value={to} onChange={(v) => setTo(v)} /></div>
       </Card>
       <Card>
         <Table>

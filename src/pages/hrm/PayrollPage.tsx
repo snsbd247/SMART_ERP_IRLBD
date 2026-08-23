@@ -16,6 +16,7 @@ import { DollarSign, Play, CheckCircle, FileText, Printer, FileSpreadsheet } fro
 import { voucherApi } from "@/lib/voucher-api";
 import * as XLSX from "xlsx";
 
+import { DateInput } from "@/components/ui/date-input";
 interface Employee {
   id: string; employee_code: string; first_name: string; last_name: string;
   salary: number; branch_id: string | null; department_id: string | null;
@@ -716,7 +717,7 @@ export default function PayrollPage() {
             <div className="bg-muted/50 p-2 rounded text-sm">
               Total: {formatAmount(structForm.basic_salary + structForm.house_rent + structForm.medical_allowance + structForm.other_allowance)}
             </div>
-            <div><Label>Effective From</Label><Input type="date" value={structForm.effective_from} onChange={e => setStructForm({...structForm, effective_from: e.target.value})} /></div>
+            <div><Label>Effective From</Label><DateInput value={structForm.effective_from} onChange={(v) => setStructForm({...structForm, effective_from: v})} /></div>
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setStructDialog(false)}>Cancel</Button><Button onClick={saveStructure}>Save</Button></DialogFooter>
         </DialogContent>

@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Check, X, Pencil, Trash2 } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 interface FY { id: string; name: string; start_date: string; end_date: string; is_active: boolean; }
 
 /** Two [start,end] date ranges (inclusive, "YYYY-MM-DD" strings) overlap unless one ends before the other begins. */
@@ -172,8 +173,8 @@ const FinancialYearsPage = () => {
             <DialogHeader><DialogTitle>{editing ? "Edit Financial Year" : "New Financial Year"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="FY 2026-27" /></div>
-              <div><Label>Start Date</Label><Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} /></div>
-              <div><Label>End Date</Label><Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} /></div>
+              <div><Label>Start Date</Label><DateInput value={form.start_date} onChange={(v) => setForm({ ...form, start_date: v })} /></div>
+              <div><Label>End Date</Label><DateInput value={form.end_date} onChange={(v) => setForm({ ...form, end_date: v })} /></div>
               <div className="flex items-center justify-between rounded-md border p-3">
                 <div>
                   <Label className="cursor-pointer">Active</Label>

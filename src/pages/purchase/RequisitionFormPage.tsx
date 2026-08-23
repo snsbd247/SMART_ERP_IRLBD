@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { nextDocNo, getPurchaseSettings, logAudit } from "@/lib/purchase-numbering";
 import { Plus, Trash2, Save, Send, ArrowLeft } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 const PRIORITIES = ["low", "normal", "high", "urgent"];
 
 const RequisitionFormPage = () => {
@@ -132,8 +133,8 @@ const RequisitionFormPage = () => {
 
       <Card><CardHeader><CardTitle className="text-base">Header</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="space-y-1"><Label>PR Date</Label><Input type="date" value={header.pr_date || ""} onChange={(e) => setHeader({ ...header, pr_date: e.target.value })} /></div>
-          <div className="space-y-1"><Label>Required Date</Label><Input type="date" value={header.required_date || ""} onChange={(e) => setHeader({ ...header, required_date: e.target.value })} /></div>
+          <div className="space-y-1"><Label>PR Date</Label><DateInput value={header.pr_date || ""} onChange={(v) => setHeader({ ...header, pr_date: v })} /></div>
+          <div className="space-y-1"><Label>Required Date</Label><DateInput value={header.required_date || ""} onChange={(v) => setHeader({ ...header, required_date: v })} /></div>
           <div className="space-y-1"><Label>Purchase Type</Label>
             <Select value={header.purchase_type_id || "_none"} onValueChange={(v) => setHeader({ ...header, purchase_type_id: v === "_none" ? null : v })}>
               <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>

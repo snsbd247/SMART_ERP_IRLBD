@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
 import { Search, Printer, Download, FileSpreadsheet } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 interface Branch {
   id: string;
   name: string;
@@ -66,11 +67,11 @@ export const ReportFilters = ({
       <div className="flex flex-wrap gap-3 items-end">
         <div className="space-y-1.5">
           <Label className="text-xs">From</Label>
-          <Input type="date" value={dateFrom} onChange={(e) => onDateFromChange(e.target.value)} className="w-36 h-9 text-sm" />
+          <DateInput value={dateFrom} onChange={(v) => onDateFromChange(v)} className="w-36 h-9 text-sm" />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">To</Label>
-          <Input type="date" value={dateTo} onChange={(e) => onDateToChange(e.target.value)} className="w-36 h-9 text-sm" />
+          <DateInput value={dateTo} onChange={(v) => onDateToChange(v)} className="w-36 h-9 text-sm" />
         </div>
         {branches && branches.length > 0 && onBranchChange && (
           <div className="space-y-1.5">

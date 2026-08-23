@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { ScrollText } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 interface LedgerEntry {
   id: string;
   transaction_type: string;
@@ -100,8 +101,8 @@ export default function StockLedgerPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label className="text-xs">From</Label><Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div>
-            <div><Label className="text-xs">To</Label><Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div>
+            <div><Label className="text-xs">From</Label><DateInput value={dateFrom} onChange={(v) => setDateFrom(v)} /></div>
+            <div><Label className="text-xs">To</Label><DateInput value={dateTo} onChange={(v) => setDateTo(v)} /></div>
           </div>
 
           <Table>

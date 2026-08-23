@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { DateInput } from "@/components/ui/date-input";
 import {
   ArrowLeft, User, DollarSign, FileText, CreditCard, Printer, Download,
   Phone, Mail, MapPin, StickyNote, Plus, Trash2, TrendingUp, Receipt, RotateCcw, Wallet, CheckCircle
@@ -619,11 +620,11 @@ const CustomerProfilePage = () => {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">From</Label>
-              <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setLedgerPage(1); }} className="h-9 w-36" />
+              <DateInput value={dateFrom} onChange={(v) => { setDateFrom(v); setLedgerPage(1); }} className="h-9 w-36" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">To</Label>
-              <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setLedgerPage(1); }} className="h-9 w-36" />
+              <DateInput value={dateTo} onChange={(v) => { setDateTo(v); setLedgerPage(1); }} className="h-9 w-36" />
             </div>
             {(dateFrom || dateTo || ledgerSearch) && (
               <Button size="sm" variant="ghost" onClick={() => { setDateFrom(""); setDateTo(""); setLedgerSearch(""); setLedgerPage(1); }}>Clear</Button>
@@ -813,7 +814,7 @@ const CustomerProfilePage = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Date</Label>
-                    <Input type="date" value={newPayment.payment_date} onChange={e => setNewPayment(p => ({ ...p, payment_date: e.target.value }))} className="h-9" />
+                    <DateInput value={newPayment.payment_date} onChange={(v) => setNewPayment(p => ({ ...p, payment_date: v }))} className="h-9" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Amount</Label>
@@ -909,11 +910,11 @@ const CustomerProfilePage = () => {
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
               <Label className="text-xs">From</Label>
-              <Input type="date" value={payDateFrom} onChange={e => setPayDateFrom(e.target.value)} className="h-9 w-36" />
+              <DateInput value={payDateFrom} onChange={(v) => setPayDateFrom(v)} className="h-9 w-36" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">To</Label>
-              <Input type="date" value={payDateTo} onChange={e => setPayDateTo(e.target.value)} className="h-9 w-36" />
+              <DateInput value={payDateTo} onChange={(v) => setPayDateTo(v)} className="h-9 w-36" />
             </div>
             {(payDateFrom || payDateTo) && (
               <Button size="sm" variant="ghost" onClick={() => { setPayDateFrom(""); setPayDateTo(""); }}>Clear</Button>

@@ -18,6 +18,7 @@ import { formatDateDMY } from "@/lib/date-format";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, RotateCcw, Trash2 } from "lucide-react";
 
+import { DateInput } from "@/components/ui/date-input";
 const VOUCHER_TYPES = [
   { id: "journal", label: "Journal" },
   { id: "payment", label: "Payment" },
@@ -222,8 +223,8 @@ const DeletedVouchersPage = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Input type="date" className="w-40" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="From date" />
-              <Input type="date" className="w-40" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="To date" />
+              <DateInput className="w-40" value={dateFrom} onChange={(v) => setDateFrom(v)} aria-label="From date" />
+              <DateInput className="w-40" value={dateTo} onChange={(v) => setDateTo(v)} aria-label="To date" />
             </div>
           </div>
         </CardHeader>
