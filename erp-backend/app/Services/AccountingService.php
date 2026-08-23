@@ -31,7 +31,7 @@ class AccountingService
         $seqId = $seqMap[$data['voucher_type']] ?? throw new \InvalidArgumentException("Unknown type: {$data['voucher_type']}");
 
         return DB::transaction(function () use ($data, $entries, $autoApprove, $seqId, $totalDebit) {
-            $voucherNumber = $this->seqService->next($seqId);
+            $voucherNumber = $this->seqService->nextForVoucher($seqId, $data['branch_id'] ?? null);
 
             $voucher = AccVoucher::create([
                 'voucher_number' => $voucherNumber,

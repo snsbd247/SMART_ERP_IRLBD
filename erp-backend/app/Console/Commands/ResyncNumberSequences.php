@@ -42,7 +42,9 @@ class ResyncNumberSequences extends Command
             $seq = DB::table('number_sequences')->where('id', $seqId)->first();
             if (!$seq) { $this->warn("Skip {$seqId}: no sequence row"); continue; }
 
-            $pattern = $seq->prefix . '-' . $seq->year . '-%';
+            // Leading wildcard too — voucher_number may carry a branch-code
+            // prefix ("FAC-PV-2026-00972") ahead of prefix-year-serial.
+            $pattern = '%' . $seq->prefix . '-' . $seq->year . '-%';
             $max = DB::table($tbl)
                 ->where($col, 'like', $pattern)
                 ->selectRaw("MAX(CAST(SUBSTRING_INDEX({$col}, '-', -1) AS UNSIGNED)) as m")
