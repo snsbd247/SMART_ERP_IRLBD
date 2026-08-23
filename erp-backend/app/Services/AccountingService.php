@@ -415,4 +415,198 @@ class AccountingService
             'balance' => round($e->total_debit - $e->total_credit, 2),
         ])->toArray();
     }
+
+    private function interBranchClearingAccountId(): string
+    {
+        $id = DB::table('chart_of_accounts')->where('account_code', '1259')->value('id');
+        if (!$id) {
+            throw new \RuntimeException('Inter-Branch Clearing account (1259) not found. Run the inter-branch-transfer migration first.');
+        }
+        return $id;
+    }
+
+    /**
+     * Post an inter-branch fund transfer as two branch-scoped journal
+     * vouchers linked through the Inter-Branch Clearing account (1259),
+     * instead of one voucher that would straddle both branches. This keeps
+     * each branch's own Account Ledger fully self-contained — a branch-
+     * scoped user (locked by BranchScope) can reconcile their account's
+     * closing balance using only their own branch's vouchers, with zero
+     * visibility into the other branch's data.
+     *
+     * Convention (matches this system's existing historical entries):
+     * the source account is debited, the destination account is credited.
+     */
+    public function createInterBranchTransfer(array $data, string $userId): array
+    {
+        $amount = round((float) ($data['amount'] ?? 0), 2);
+        if ($amount <= 0) {
+            throw new \InvalidArgumentException('Amount must be greater than zero.');
+        }
+        if ($data['from_branch_id'] === $data['to_branch_id']) {
+            throw new \InvalidArgumentException('From and To branch must be different.');
+        }
+
+        $clearingId = $this->interBranchClearingAccountId();
+
+        return DB::transaction(function () use ($data, $userId, $amount, $clearingId) {
+            $fromBranch = DB::table('branches')->where('id', $data['from_branch_id'])->first();
+            $toBranch = DB::table('branches')->where('id', $data['to_branch_id'])->first();
+            $narration = trim((string) ($data['description'] ?? ''));
+
+            $fromVoucher = $this->createVoucher([
+                'voucher_type' => 'journal',
+                'voucher_date' => $data['voucher_date'],
+                'description' => trim("Inter-branch transfer to {$toBranch?->name}" . ($narration ? ": {$narration}" : '')),
+                'branch_id' => $data['from_branch_id'],
+                'financial_year_id' => $data['financial_year_id'] ?? null,
+                'created_by' => $userId,
+            ], [
+                ['account_id' => $data['from_account_id'], 'debit' => $amount, 'credit' => 0, 'narration' => $narration],
+                ['account_id' => $clearingId, 'debit' => 0, 'credit' => $amount, 'narration' => "Transfer to {$toBranch?->name}"],
+            ], true);
+
+            $toVoucher = $this->createVoucher([
+                'voucher_type' => 'journal',
+                'voucher_date' => $data['voucher_date'],
+                'description' => trim("Inter-branch transfer from {$fromBranch?->name}" . ($narration ? ": {$narration}" : '')),
+                'branch_id' => $data['to_branch_id'],
+                'financial_year_id' => $data['financial_year_id'] ?? null,
+                'created_by' => $userId,
+            ], [
+                ['account_id' => $clearingId, 'debit' => $amount, 'credit' => 0, 'narration' => "Transfer from {$fromBranch?->name}"],
+                ['account_id' => $data['to_account_id'], 'debit' => 0, 'credit' => $amount, 'narration' => $narration],
+            ], true);
+
+            $fromVoucher->update(['linked_voucher_id' => $toVoucher->id]);
+            $toVoucher->update(['linked_voucher_id' => $fromVoucher->id]);
+
+            return ['from_voucher' => $fromVoucher->fresh('entries'), 'to_voucher' => $toVoucher->fresh('entries')];
+        });
+    }
+
+    /**
+     * Retroactively convert a legacy single-voucher inter-branch transfer
+     * (one voucher whose entries straddle two branches, e.g. an HO journal
+     * voucher that directly credits Factory Petty Cash) into the two-leg
+     * model: the $splitAccountId entry moves into its own $newBranchId
+     * voucher, the remaining entries stay on the original branch, and both
+     * sides balance through the Inter-Branch Clearing account (1259).
+     *
+     * The original voucher is never hard-deleted — it is soft-deleted with
+     * status='transferred' (same mechanism as changeVoucherType()), with
+     * full VoucherApprovalHistory + AuditLog trail, and both replacement
+     * vouchers reference it via transferred_from_id / linked_voucher_id.
+     */
+    public function splitVoucherAtAccount(string $voucherId, string $splitAccountId, string $newBranchId, string $userId, ?string $reason = null): array
+    {
+        $clearingId = $this->interBranchClearingAccountId();
+
+        return DB::transaction(function () use ($voucherId, $splitAccountId, $newBranchId, $userId, $reason, $clearingId) {
+            /** @var AccVoucher $old */
+            $old = AccVoucher::with('entries')->lockForUpdate()->findOrFail($voucherId);
+
+            if ($old->deleted_at) {
+                throw new \RuntimeException('Voucher is already deleted/transferred.');
+            }
+            if (!empty($old->source_module)) {
+                throw new \RuntimeException('Auto-posted vouchers cannot be split.');
+            }
+
+            $splitEntry = $old->entries->firstWhere('account_id', $splitAccountId);
+            if (!$splitEntry) {
+                throw new \RuntimeException('Split account not found on this voucher.');
+            }
+            $remaining = $old->entries->reject(fn ($e) => $e->id === $splitEntry->id);
+            if ($remaining->isEmpty()) {
+                throw new \RuntimeException('Voucher has no other entries to keep on the original branch.');
+            }
+
+            $splitDebit = (float) $splitEntry->debit;
+            $splitCredit = (float) $splitEntry->credit;
+            $dateStr = $old->voucher_date instanceof \DateTimeInterface ? $old->voucher_date->format('Y-m-d') : (string) $old->voucher_date;
+
+            // Original-branch replacement: the other entries, unchanged,
+            // plus a clearing entry in the SAME direction as the split
+            // entry (this is exactly what keeps the voucher balanced,
+            // since the original voucher already balanced as a whole).
+            $originalBranchEntries = $remaining->map(fn ($e) => [
+                'account_id' => $e->account_id, 'debit' => (float) $e->debit, 'credit' => (float) $e->credit, 'narration' => $e->narration,
+            ])->push([
+                'account_id' => $clearingId, 'debit' => $splitDebit, 'credit' => $splitCredit,
+                'narration' => 'Inter-branch transfer clearing',
+            ])->values()->all();
+
+            $originalBranchVoucher = $this->createVoucher([
+                'voucher_type' => $old->voucher_type,
+                'voucher_date' => $dateStr,
+                'description' => $old->description,
+                'branch_id' => $old->branch_id,
+                'financial_year_id' => $old->financial_year_id,
+                'created_by' => $userId,
+                'transferred_from_id' => $old->id,
+            ], $originalBranchEntries, in_array($old->status, ['approved', 'posted'], true));
+
+            // New-branch voucher: the split entry unchanged, plus the
+            // MIRRORED clearing entry (debit/credit swapped) so this
+            // voucher also balances, and the two clearing entries net to
+            // zero company-wide.
+            $newBranchVoucher = $this->createVoucher([
+                'voucher_type' => $old->voucher_type,
+                'voucher_date' => $dateStr,
+                'description' => $old->description,
+                'branch_id' => $newBranchId,
+                'financial_year_id' => $old->financial_year_id,
+                'created_by' => $userId,
+                'transferred_from_id' => $old->id,
+            ], [
+                ['account_id' => $splitAccountId, 'debit' => $splitDebit, 'credit' => $splitCredit, 'narration' => $splitEntry->narration],
+                ['account_id' => $clearingId, 'debit' => $splitCredit, 'credit' => $splitDebit, 'narration' => 'Inter-branch transfer clearing'],
+            ], in_array($old->status, ['approved', 'posted'], true));
+
+            $originalBranchVoucher->update(['linked_voucher_id' => $newBranchVoucher->id]);
+            $newBranchVoucher->update(['linked_voucher_id' => $originalBranchVoucher->id]);
+
+            $old->update([
+                'prev_status' => $old->status,
+                'status' => 'transferred',
+                'deleted_at' => now(),
+                'deleted_by' => $userId,
+                'transferred_to_id' => $newBranchVoucher->id,
+                'transfer_reason' => $reason,
+            ]);
+
+            $actor = \App\Models\User::find($userId);
+            \App\Models\VoucherApprovalHistory::create([
+                'voucher_id' => $old->id,
+                'actor_user_id' => $userId,
+                'actor_name' => $actor?->name,
+                'action' => 'branch_split',
+                'before_status' => $old->prev_status,
+                'after_status' => 'transferred',
+                'note' => trim(($reason ?? '') . " → split into: {$originalBranchVoucher->voucher_number} (original branch) + {$newBranchVoucher->voucher_number} (new branch)"),
+                'created_at' => now(),
+            ]);
+            \App\Models\AuditLog::create([
+                'user_id' => $userId,
+                'user_name' => $actor?->name ?? 'System',
+                'module' => 'accounting_vouchers',
+                'action' => 'voucher_split_inter_branch_transfer',
+                'record_id' => $old->id,
+                'details' => "Voucher {$old->voucher_number} split into {$originalBranchVoucher->voucher_number} + {$newBranchVoucher->voucher_number} via Inter-Branch Clearing (1259). Reason: " . ($reason ?: '(none)'),
+                'old_data' => ['voucher_number' => $old->voucher_number, 'branch_id' => $old->branch_id],
+                'new_data' => [
+                    'original_branch_voucher' => $originalBranchVoucher->voucher_number,
+                    'new_branch_voucher' => $newBranchVoucher->voucher_number,
+                    'new_branch_id' => $newBranchId,
+                ],
+            ]);
+
+            return [
+                'original_voucher' => $old->fresh(),
+                'original_branch_voucher' => $originalBranchVoucher->fresh('entries'),
+                'new_branch_voucher' => $newBranchVoucher->fresh('entries'),
+            ];
+        });
+    }
 }

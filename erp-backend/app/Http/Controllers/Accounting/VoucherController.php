@@ -614,5 +614,47 @@ class VoucherController extends BaseController
             return $this->error($e->getMessage(), 422);
         }
     }
+
+    /**
+     * Post an inter-branch fund transfer as two branch-scoped journal
+     * vouchers (see AccountingService::createInterBranchTransfer()).
+     * Restricted to users who can access BOTH branches — BranchScope
+     * already forces a single-branch user's branch_id, so this check is a
+     * clearer error message, not the actual security boundary.
+     */
+    public function branchTransfer(Request $request)
+    {
+        $this->normalizeVoucherDateInput($request);
+        $data = $request->validate([
+            'from_branch_id' => 'required|uuid|exists:branches,id',
+            'to_branch_id' => 'required|uuid|exists:branches,id|different:from_branch_id',
+            'from_account_id' => 'required|uuid|exists:chart_of_accounts,id',
+            'to_account_id' => 'required|uuid|exists:chart_of_accounts,id',
+            'amount' => 'required|numeric|min:0.01',
+            'voucher_date' => 'required|date',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        $user = $request->user();
+        if (!$user->isSuperAdmin()) {
+            $allowed = $user->allowedBranchIds();
+            if (!in_array($data['from_branch_id'], $allowed, true) || !in_array($data['to_branch_id'], $allowed, true)) {
+                return $this->error('You do not have permission to transfer funds between these branches.', 403);
+            }
+        }
+
+        try {
+            $this->period->assertOpen($data['voucher_date'], 'branch fund transfer');
+        } catch (\Throwable $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+
+        try {
+            $result = $this->service->createInterBranchTransfer($data, $user->id);
+            return $this->success($result);
+        } catch (\InvalidArgumentException | \RuntimeException $e) {
+            return $this->error($e->getMessage(), 422);
+        }
+    }
 }
 
