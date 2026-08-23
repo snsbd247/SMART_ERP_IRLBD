@@ -537,6 +537,15 @@ class AccountingService
                 'narration' => 'Inter-branch transfer clearing',
             ])->values()->all();
 
+            // IMPORTANT: the original description often bundles several
+            // unrelated line items in one note (e.g. "TDS-53340,VAT-1470000,
+            // Fand-36000,Layout Update-30000"). Copying it verbatim onto
+            // BOTH resulting vouchers is misleading — a reader of the
+            // Factory-branch voucher would see the whole combined note even
+            // though that voucher only actually contains the Factory Petty
+            // Cash + clearing entries. Keep the original note on the branch
+            // that kept the other real entries, and give the split-out leg
+            // its own honest, narrower description instead.
             $originalBranchVoucher = $this->createVoucher([
                 'voucher_type' => $old->voucher_type,
                 'voucher_date' => $dateStr,
@@ -554,7 +563,7 @@ class AccountingService
             $newBranchVoucher = $this->createVoucher([
                 'voucher_type' => $old->voucher_type,
                 'voucher_date' => $dateStr,
-                'description' => $old->description,
+                'description' => "Inter-branch transfer (ref: {$old->voucher_number})",
                 'branch_id' => $newBranchId,
                 'financial_year_id' => $old->financial_year_id,
                 'created_by' => $userId,
