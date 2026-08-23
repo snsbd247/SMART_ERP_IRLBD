@@ -593,7 +593,7 @@ const AccountingVouchers = () => {
           });
           toast({ title: "Approved voucher updated (Super Admin override)" });
         } else {
-          await voucherApi.update({
+          const updated = await voucherApi.update({
             id: editingVoucher.id,
             voucher_date: formDate,
             branch_id: formBranch || null,
@@ -607,10 +607,13 @@ const AccountingVouchers = () => {
             })),
             submit: submitForApproval,
           });
-          toast({ title: "Voucher updated successfully" });
+          const linkedNumber = (updated as any)?.voucher?.linked_voucher_number;
+          toast(linkedNumber
+            ? { title: "Voucher updated — split across branches", description: `Factory Petty Cash portion moved to ${linkedNumber} on its own branch.` }
+            : { title: "Voucher updated successfully" });
         }
       } else {
-        await voucherApi.create({
+        const created = await voucherApi.create({
           voucher_type: newVoucherType,
           voucher_date: formDate,
           branch_id: formBranch || undefined,
@@ -624,7 +627,10 @@ const AccountingVouchers = () => {
           })),
           submit: submitForApproval,
         });
-        toast({ title: "Voucher created successfully" });
+        const linkedNumber = (created as any)?.voucher?.linked_voucher_number;
+        toast(linkedNumber
+          ? { title: "Voucher created — split across branches", description: `Factory Petty Cash portion moved to ${linkedNumber} on its own branch.` }
+          : { title: "Voucher created successfully" });
       }
       // Audit log: capture per-account computed balance fields (Opening,
       // Debit, Credit, Closing) used by the form at save time. This makes

@@ -211,6 +211,14 @@ class VoucherController extends BaseController
                 true // approval system removed — auto-post directly to accounts
             );
 
+            $split = $this->service->maybeSplitInterBranchAfterSave($voucher->id, $request->user()?->id);
+            if ($split) {
+                $result = $split['original_branch_voucher']->toArray();
+                $result['linked_voucher_number'] = $split['new_branch_voucher']->voucher_number;
+                $result['linked_voucher_branch_id'] = $split['new_branch_voucher']->branch_id;
+                return $this->created($result);
+            }
+
             return $this->created($voucher);
         } catch (\InvalidArgumentException | \RuntimeException $e) {
             \Log::warning('Voucher store rejected', [
@@ -295,7 +303,7 @@ class VoucherController extends BaseController
                 return $this->error('Debit and Credit must be equal', 422, ['correlation_id' => $cid]);
             }
 
-            return DB::transaction(function () use ($voucher, $data, $totalDebit, $request, $resolvedFinancialYearId) {
+            DB::transaction(function () use ($voucher, $data, $totalDebit, $request, $resolvedFinancialYearId) {
                 $oldDate = $voucher->voucher_date instanceof \DateTimeInterface ? $voucher->voucher_date->format('Y-m-d') : (string) $voucher->voucher_date;
                 $voucher->update([
                     'voucher_date' => $data['voucher_date'],
@@ -319,8 +327,17 @@ class VoucherController extends BaseController
                     ]);
                 }
                 $this->auditVoucherDateChange($voucher, $oldDate, $data['voucher_date'], $request, $resolvedFinancialYearId);
-                return $this->success($this->repo->findWithEntries($voucher->id));
             });
+
+            $split = $this->service->maybeSplitInterBranchAfterSave($voucher->id, $request->user()?->id);
+            if ($split) {
+                $result = $split['original_branch_voucher']->toArray();
+                $result['linked_voucher_number'] = $split['new_branch_voucher']->voucher_number;
+                $result['linked_voucher_branch_id'] = $split['new_branch_voucher']->branch_id;
+                return $this->success($result);
+            }
+
+            return $this->success($this->repo->findWithEntries($voucher->id));
         } catch (\Illuminate\Validation\ValidationException $e) {
             throw $e;
         } catch (\InvalidArgumentException | \RuntimeException $e) {
