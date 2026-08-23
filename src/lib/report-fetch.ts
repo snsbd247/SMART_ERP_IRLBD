@@ -29,6 +29,7 @@ export async function fetchAllVoucherEntries(opts: {
   dateTo: string;
   branchId?: string | null;
   accountId?: string | null;
+  createdBy?: string | null;
   statuses?: string[];
   pageSize?: number;
 }): Promise<any[]> {
@@ -57,6 +58,7 @@ export async function fetchAllVoucherEntries(opts: {
       .range(from, from + pageSize - 1);
     if (opts.branchId && opts.branchId !== "all") q = q.eq("acc_vouchers.branch_id", opts.branchId);
     if (opts.accountId) q = q.eq("account_id", opts.accountId);
+    if (opts.createdBy && opts.createdBy !== "all") q = q.eq("acc_vouchers.created_by", opts.createdBy);
     const { data, error } = await q;
     if (error) {
       console.error("[report-fetch] voucher_entries page error", error);
@@ -93,6 +95,7 @@ async function fetchAllVoucherEntriesLaravel(opts: {
   dateTo: string;
   branchId?: string | null;
   accountId?: string | null;
+  createdBy?: string | null;
   statuses: string[];
   pageSize: number;
 }): Promise<any[]> {
@@ -113,6 +116,9 @@ async function fetchAllVoucherEntriesLaravel(opts: {
     ];
     if (opts.branchId && opts.branchId !== "all") {
       parts.push(`f%5Bbranch_id%5D%5Beq%5D=${encodeURIComponent(opts.branchId)}`);
+    }
+    if (opts.createdBy && opts.createdBy !== "all") {
+      parts.push(`f%5Bcreated_by%5D%5Beq%5D=${encodeURIComponent(opts.createdBy)}`);
     }
 
     let page: any[] = [];
@@ -203,6 +209,7 @@ export async function fetchAccountLedgerEntriesLaravel(opts: {
   dateFrom: string;
   dateTo: string;
   branchId?: string | null;
+  createdBy?: string | null;
   statuses: string[];
 }): Promise<{ entries: any[]; counterAccounts: Record<string, string[]> } | null> {
   if (!isLaravelMode()) return null;
@@ -214,12 +221,29 @@ export async function fetchAccountLedgerEntriesLaravel(opts: {
       statuses: opts.statuses.join(","),
     });
     if (opts.branchId && opts.branchId !== "all") qs.set("branch_id", opts.branchId);
+    if (opts.createdBy && opts.createdBy !== "all") qs.set("created_by", opts.createdBy);
     const json = await laravelGet(`reports/account-ledger-entries?${qs.toString()}`);
     const payload = json?.data ?? json;
     return { entries: payload?.entries ?? [], counterAccounts: payload?.counter_accounts ?? {} };
   } catch (e) {
     console.error("[report-fetch] account-ledger-entries failed, falling back to row-by-row fetch", e);
     return null;
+  }
+}
+
+/**
+ * Distinct users who have created at least one voucher — powers Account
+ * Ledger's "User" filter dropdown. Laravel mode only; returns [] otherwise
+ * or on any failure (the filter just won't have options, non-fatal).
+ */
+export async function fetchVoucherCreators(): Promise<{ id: string; name: string }[]> {
+  if (!isLaravelMode()) return [];
+  try {
+    const json = await laravelGet("reports/voucher-creators");
+    return unwrapList(json);
+  } catch (e) {
+    console.error("[report-fetch] voucher-creators failed", e);
+    return [];
   }
 }
 

@@ -73,6 +73,7 @@ export async function computeAccountPeriodOpening(opts: {
   accountId: string;
   dateFrom: string;
   branchId?: string | null;
+  createdBy?: string | null;
   statuses?: string[];
   /** Optional preloaded account to avoid an extra fetch */
   account?: {
@@ -104,6 +105,7 @@ export async function computeAccountPeriodOpening(opts: {
     try {
       const qs = new URLSearchParams({ account_id: opts.accountId, date_to: priorTo, statuses: statuses.join(",") });
       if (opts.branchId && opts.branchId !== "all") qs.set("branch_id", opts.branchId);
+      if (opts.createdBy && opts.createdBy !== "all") qs.set("created_by", opts.createdBy);
       const json = await laravelGet(`reports/account-opening-sum?${qs.toString()}`);
       const sum = json?.data ?? json;
       const opening = applyEntry(baseOpening, { debit: Number(sum?.debit) || 0, credit: Number(sum?.credit) || 0 });
@@ -119,6 +121,7 @@ export async function computeAccountPeriodOpening(opts: {
     dateTo: priorTo,
     branchId: opts.branchId ?? null,
     accountId: opts.accountId,
+    createdBy: opts.createdBy ?? null,
     statuses,
   });
 
@@ -139,6 +142,7 @@ export async function fetchAccountPriorEntries(opts: {
   accountId: string;
   dateFrom: string;
   branchId?: string | null;
+  createdBy?: string | null;
   statuses?: string[];
   baseOpening: number;
 }): Promise<PriorEntry[]> {
@@ -150,6 +154,7 @@ export async function fetchAccountPriorEntries(opts: {
     dateTo: priorTo,
     branchId: opts.branchId ?? null,
     accountId: opts.accountId,
+    createdBy: opts.createdBy ?? null,
     statuses: opts.statuses ?? ["approved", "posted"],
   });
 

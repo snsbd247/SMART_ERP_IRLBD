@@ -47,6 +47,7 @@ class ReportController extends BaseController
             $request->string('date_to'),
             $request->query('branch_id'),
             $statuses,
+            $request->query('created_by'),
         ));
     }
 
@@ -69,7 +70,17 @@ class ReportController extends BaseController
             $request->string('date_to'),
             $request->query('branch_id'),
             $statuses,
+            $request->query('created_by'),
         ));
+    }
+
+    /**
+     * Distinct users who have created at least one voucher — powers the
+     * Account Ledger "User" filter dropdown.
+     */
+    public function voucherCreators()
+    {
+        return $this->success($this->service->voucherCreators());
     }
 
     /**
