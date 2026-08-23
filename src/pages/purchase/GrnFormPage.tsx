@@ -35,7 +35,7 @@ const GrnFormPage = () => {
       const [s, b, w, p] = await Promise.all([
         supabase.from("suppliers" as any).select("id,code,name").eq("is_active", true),
         supabase.from("branches").select("id,name"),
-        supabase.from("warehouses").select("id,warehouse_name"),
+        supabase.from("warehouses").select("id,name"),
         supabase.from("purchase_orders_v2" as any).select("id,po_no,supplier_id,branch_id,warehouse_id,purchase_type_id,status").in("status", ["approved", "partially_received"]),
       ]);
       setSuppliers(s.data || []); setBranches(b.data || []);
@@ -176,7 +176,7 @@ const GrnFormPage = () => {
             <Label>Warehouse</Label>
             <Select value={h.warehouse_id || ""} onValueChange={(v) => setH({ ...h, warehouse_id: v })}>
               <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>{warehouses.map((w: any) => <SelectItem key={w.id} value={w.id}>{w.warehouse_name}</SelectItem>)}</SelectContent>
+              <SelectContent>{warehouses.map((w: any) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div><Label>Challan No</Label><Input value={h.challan_no || ""} onChange={(e) => setH({ ...h, challan_no: e.target.value })} /></div>

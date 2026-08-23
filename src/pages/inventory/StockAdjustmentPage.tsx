@@ -21,7 +21,7 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 
 import { DateInput } from "@/components/ui/date-input";
 interface Product { id: string; product_name: string; product_code: string; cost_price: number; stock_group_id: string | null; }
-interface WH { id: string; warehouse_name: string; warehouse_code: string; }
+interface WH { id: string; name: string; code: string; }
 interface StockGroup { id: string; name: string; }
 interface Adjustment {
   id: string; adjustment_number: string; adjustment_date: string; adjustment_type: string;
@@ -66,7 +66,7 @@ const StockAdjustmentPage = () => {
     const [aRes, pRes, wRes, sgRes] = await Promise.all([
       supabase.from("stock_adjustments" as any).select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("item_master").select("id, item_name, item_code, cost_price, stock_group_id").eq("status", "active"),
-      supabase.from("warehouses" as any).select("id, warehouse_name, warehouse_code").eq("status", "active"),
+      supabase.from("warehouses" as any).select("id, name, code").eq("is_active", 1),
       (supabase.from as any)("stock_groups").select("id, name").eq("is_active", true).order("name"),
     ]);
     const prods = (pRes.data || []).map((i: any) => ({ id: i.id, product_name: i.item_name, product_code: i.item_code, cost_price: i.cost_price, stock_group_id: i.stock_group_id })) as Product[];
@@ -278,7 +278,7 @@ const StockAdjustmentPage = () => {
                 <SelectTrigger><SelectValue placeholder="All warehouses" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">No specific warehouse</SelectItem>
-                  {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.warehouse_code} — {w.warehouse_name}</SelectItem>)}
+                  {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.code} — {w.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

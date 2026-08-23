@@ -27,7 +27,7 @@ interface LedgerEntry {
 }
 
 interface Item { id: string; item_code: string; item_name: string; }
-interface Warehouse { id: string; warehouse_name: string; }
+interface Warehouse { id: string; name: string; }
 
 export default function StockLedgerPage() {
   const { fc } = useCurrency();
@@ -42,7 +42,7 @@ export default function StockLedgerPage() {
   const fetchData = useCallback(async () => {
     const [itemRes, whRes] = await Promise.all([
       supabase.from("item_master").select("id, item_code, item_name").eq("is_stock_item", true),
-      supabase.from("warehouses" as any).select("id, warehouse_name"),
+      supabase.from("warehouses" as any).select("id, name"),
     ]);
     if (itemRes.data) setItems(itemRes.data);
     if (whRes.data) setWarehouses(whRes.data as any);
@@ -60,7 +60,7 @@ export default function StockLedgerPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const getItemName = (id: string) => items.find(i => i.id === id)?.item_name || "-";
-  const getWhName = (id: string | null) => id ? warehouses.find(w => w.id === id)?.warehouse_name || "-" : "-";
+  const getWhName = (id: string | null) => id ? warehouses.find(w => w.id === id)?.name || "-" : "-";
 
   const typeColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     purchase: "default", sales: "destructive", production_output: "default",

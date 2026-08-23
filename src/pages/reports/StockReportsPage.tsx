@@ -11,7 +11,7 @@ import { BarChart3, AlertTriangle, Printer } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { ReportPrintFooter } from "@/components/reports/ReportPrintFooter";
 
-interface WH { id: string; warehouse_name: string; warehouse_code: string; branch_id: string | null; }
+interface WH { id: string; name: string; code: string; branch_id: string | null; }
 interface Item { id: string; item_code: string; item_name: string; item_type: string; min_stock_level: number; }
 interface WHStock { id: string; item_id: string; warehouse_id: string; quantity: number; }
 interface Branch { id: string; name: string; }
@@ -36,7 +36,7 @@ const StockReportsPage = () => {
   useEffect(() => {
     const init = async () => {
       const [wRes, iRes, sRes, bRes, mRes] = await Promise.all([
-        supabase.from("warehouses").select("*").order("warehouse_name"),
+        supabase.from("warehouses").select("*").order("name"),
         supabase.from("item_master").select("*").order("item_name"),
         supabase.from("warehouse_stock").select("*"),
         supabase.from("branches").select("id, name"),
@@ -126,7 +126,7 @@ const StockReportsPage = () => {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all__">All Warehouses</SelectItem>
-                {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.warehouse_name}</SelectItem>)}
+                {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -206,7 +206,7 @@ const StockReportsPage = () => {
                     <TableRow key={s.id}>
                       <TableCell className="font-mono text-xs">{item?.item_code || "—"}</TableCell>
                       <TableCell className="font-medium">{item?.item_name || "—"}</TableCell>
-                      <TableCell>{wh?.warehouse_name || "—"}</TableCell>
+                      <TableCell>{wh?.name || "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{branchMap.get(wh?.branch_id || "") || "—"}</TableCell>
                       <TableCell className="text-right tabular-nums font-medium">{s.quantity}</TableCell>
                     </TableRow>
@@ -241,7 +241,7 @@ const StockReportsPage = () => {
                           {movementTypeLabel(m.movement_type)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{wh?.warehouse_name || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{wh?.name || "—"}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{m.reference_type || "—"}</TableCell>
                       <TableCell className={`text-right tabular-nums font-medium ${m.quantity > 0 ? "text-green-600" : "text-red-600"}`}>
                         {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
