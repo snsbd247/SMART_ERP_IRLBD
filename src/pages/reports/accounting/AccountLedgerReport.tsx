@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllVoucherEntries, fetchAccountLedgerEntriesLaravel } from "@/lib/report-fetch";
+import { fetchAllVoucherEntries, fetchAccountLedgerEntriesLaravel, fetchVoucherCreators } from "@/lib/report-fetch";
 import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
 import { aggregateEntriesByVoucherAccount } from "@/lib/ledger-entry-aggregation";
 import { computeAccountPeriodOpening, fetchAccountPriorEntries, type PriorEntry } from "@/lib/period-opening";
 import { OpeningDrilldownDialog } from "@/components/accounts/OpeningDrilldownDialog";
+import { VoucherDetailDialog } from "@/components/accounts/VoucherDetailDialog";
 import { downloadCSV } from "@/lib/csv-export";
 import { formatDateDMY } from "@/lib/date-format";
 import { ScrollText, FileDown } from "lucide-react";
@@ -27,6 +28,14 @@ const AccountLedgerReport = () => {
   const [priorEntries, setPriorEntries] = useState<PriorEntry[]>([]);
   const [priorLoading, setPriorLoading] = useState(false);
   const [periodOpening, setPeriodOpening] = useState<number>(0);
+  const [voucherCreators, setVoucherCreators] = useState<{ id: string; name: string }[]>([]);
+  const [selectedUser, setSelectedUser] = useState("all");
+  const [viewVoucherId, setViewVoucherId] = useState<string | null>(null);
+  const [viewVoucherOpen, setViewVoucherOpen] = useState(false);
+
+  useEffect(() => {
+    fetchVoucherCreators().then(setVoucherCreators);
+  }, []);
 
   // Prior-period entry breakdown is only needed if the user opens the
   // Opening Balance drilldown — fetched lazily instead of on every report
@@ -39,7 +48,7 @@ const AccountLedgerReport = () => {
       const { BALANCE_VOUCHER_STATUSES } = await import("@/lib/shared-balance");
       const statuses = statusFilter === "both" ? [...BALANCE_VOUCHER_STATUSES] : [statusFilter];
       const rows = await fetchAccountPriorEntries({
-        accountId: selectedAccount, dateFrom, branchId: branch, statuses, baseOpening,
+        accountId: selectedAccount, dateFrom, branchId: branch, createdBy: selectedUser, statuses, baseOpening,
       });
       setPriorEntries(rows);
     } finally {
@@ -67,10 +76,11 @@ const AccountLedgerReport = () => {
         accountId: selectedAccount,
         dateFrom,
         branchId: branch,
+        createdBy: selectedUser,
         statuses,
         account: acc as any,
       }),
-      fetchAccountLedgerEntriesLaravel({ accountId: selectedAccount, dateFrom, dateTo, branchId: branch, statuses }),
+      fetchAccountLedgerEntriesLaravel({ accountId: selectedAccount, dateFrom, dateTo, branchId: branch, createdBy: selectedUser, statuses }),
     ]);
     setBaseOpening(open.baseOpening);
     setPriorEntries([]); // invalidate lazy drilldown cache for the new selection
@@ -82,7 +92,7 @@ const AccountLedgerReport = () => {
       counterMap = fast.counterAccounts;
     } else {
       rawEntries = await fetchAllVoucherEntries({
-        dateFrom, dateTo, branchId: branch, accountId: selectedAccount, statuses,
+        dateFrom, dateTo, branchId: branch, accountId: selectedAccount, createdBy: selectedUser, statuses,
       });
       counterMap = {};
       const voucherIdsForCounter = Array.from(new Set(rawEntries.map((e: any) => e.acc_vouchers?.id).filter(Boolean)));
@@ -141,7 +151,7 @@ const AccountLedgerReport = () => {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAccount, statusFilter, dateFrom, dateTo, branch]);
+  }, [selectedAccount, statusFilter, dateFrom, dateTo, branch, selectedUser]);
 
 
   const selectedAcc = accounts.find((a) => a.id === selectedAccount);
@@ -178,6 +188,16 @@ const AccountLedgerReport = () => {
               <SelectItem value="both">Approved + Posted</SelectItem>
               <SelectItem value="approved">Approved only</SelectItem>
               <SelectItem value="posted">Posted only</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">User</Label>
+          <Select value={selectedUser} onValueChange={setSelectedUser}>
+            <SelectTrigger className="w-44 h-9 text-sm"><SelectValue placeholder="All Users" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Users</SelectItem>
+              {voucherCreators.map((u) => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -237,7 +257,15 @@ const AccountLedgerReport = () => {
                 {data.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell>{formatDateDMY(e.voucher_date)}</TableCell>
-                  <TableCell className="font-mono text-xs">{e.voucher_number}</TableCell>
+                  <TableCell className="font-mono text-xs">
+                    <button
+                      type="button"
+                      onClick={() => { setViewVoucherId(e.voucher_id); setViewVoucherOpen(true); }}
+                      className="bg-transparent border-0 p-0 m-0 appearance-none text-primary hover:underline print:no-underline print:text-inherit"
+                    >
+                      {e.voucher_number}
+                    </button>
+                  </TableCell>
                   <TableCell className="text-sm">{e.particulars}</TableCell>
                   <TableCell className="text-muted-foreground">{e.description}</TableCell>
                   <TableCell className="text-right tabular-nums">{Number(e.debit) > 0 ? fc(Number(e.debit)) : ""}</TableCell>
@@ -279,6 +307,11 @@ const AccountLedgerReport = () => {
           running_balance: p.running_balance,
         }))}
         periodOpening={periodOpening}
+      />
+      <VoucherDetailDialog
+        voucherId={viewVoucherId}
+        open={viewVoucherOpen}
+        onOpenChange={setViewVoucherOpen}
       />
     </div>
   );

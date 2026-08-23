@@ -253,16 +253,17 @@ class AccountingService
      * the building block for a period's opening balance. A single aggregate
      * query instead of pulling every prior entry to the client just to sum it.
      */
-    public function accountOpeningSum(string $accountId, string $dateTo, ?string $branchId, array $statuses): array
+    public function accountOpeningSum(string $accountId, string $dateTo, ?string $branchId, array $statuses, ?string $createdBy = null): array
     {
         $row = VoucherEntry::query()
             ->selectRaw('COALESCE(SUM(debit),0) as total_debit, COALESCE(SUM(credit),0) as total_credit')
             ->where('account_id', $accountId)
-            ->whereHas('voucher', function ($q) use ($dateTo, $branchId, $statuses) {
+            ->whereHas('voucher', function ($q) use ($dateTo, $branchId, $statuses, $createdBy) {
                 $q->where('voucher_date', '<=', $dateTo)
                   ->whereIn('status', $statuses)
                   ->whereNull('deleted_at');
                 if ($branchId && $branchId !== 'all') $q->where('branch_id', $branchId);
+                if ($createdBy && $createdBy !== 'all') $q->where('created_by', $createdBy);
             })
             ->first();
 
@@ -280,13 +281,14 @@ class AccountingService
      * (fetch vouchers → fetch entries by voucher IN-list → fetch ALL entries
      * again to work out counter-accounts) the generic CRUD bridge required.
      */
-    public function accountLedgerEntries(string $accountId, string $dateFrom, string $dateTo, ?string $branchId, array $statuses): array
+    public function accountLedgerEntries(string $accountId, string $dateFrom, string $dateTo, ?string $branchId, array $statuses, ?string $createdBy = null): array
     {
         $voucherIds = DB::table('acc_vouchers')
             ->whereBetween('voucher_date', [$dateFrom, $dateTo])
             ->whereIn('status', $statuses)
             ->whereNull('deleted_at')
             ->when($branchId && $branchId !== 'all', fn ($q) => $q->where('branch_id', $branchId))
+            ->when($createdBy && $createdBy !== 'all', fn ($q) => $q->where('created_by', $createdBy))
             ->pluck('id');
 
         if ($voucherIds->isEmpty()) {
@@ -333,6 +335,23 @@ class AccountingService
             ->map(fn ($g) => $g->pluck('account_name')->unique()->values());
 
         return ['entries' => $entries, 'counter_accounts' => $counterAccounts];
+    }
+
+    /**
+     * Distinct users who have created at least one voucher — powers the
+     * "User" filter on Account Ledger. Scoped to actual voucher creators
+     * (not the full users list, which needs a separate admin permission)
+     * so any accounts-report user can populate this dropdown.
+     */
+    public function voucherCreators(): array
+    {
+        return DB::table('acc_vouchers as v')
+            ->join('users as u', 'v.created_by', '=', 'u.id')
+            ->select('u.id', 'u.name')
+            ->distinct()
+            ->orderBy('u.name')
+            ->get()
+            ->toArray();
     }
 
     /**
