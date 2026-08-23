@@ -45,7 +45,10 @@ const WarehousesPage = () => {
   const openEdit = (w: WH) => { setEditWH(w); setF({ code: w.code, name: w.name, branch_id: w.branch_id || "", address: w.address || "", status: Number(w.is_active) ? "active" : "inactive" }); setDialogOpen(true); };
 
   const handleSave = async () => {
-    if (!f.code.trim() || !f.name.trim()) return;
+    if (!f.code.trim() || !f.name.trim()) {
+      toast({ title: "Code and Name are required", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       const payload: any = {
