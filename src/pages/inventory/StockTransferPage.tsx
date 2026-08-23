@@ -22,7 +22,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-interface WH { id: string; warehouse_code: string; warehouse_name: string; branch_id: string | null; }
+interface WH { id: string; code: string; name: string; branch_id: string | null; }
 interface Item { id: string; item_code: string; item_name: string; stock_group_id: string | null; }
 interface StockGroup { id: string; name: string; }
 interface TransferLine { item_id: string; quantity: number; notes?: string | null; }
@@ -79,7 +79,7 @@ const StockTransferPage = () => {
   const fetchData = async () => {
     setLoading(true);
     const [wRes, iRes, sgRes, tRows] = await Promise.all([
-      supabase.from("warehouses" as any).select("id, warehouse_code, warehouse_name, branch_id").eq("status", "active").order("warehouse_name"),
+      supabase.from("warehouses" as any).select("id, code, name, branch_id").eq("is_active", 1).order("name"),
       supabase.from("item_master" as any).select("id, item_code, item_name, stock_group_id").eq("status", "active").order("item_name"),
       (supabase.from as any)("stock_groups").select("id, name").eq("is_active", true).order("name"),
       stockTransfersApi.list().catch(() => ({ data: [] })),
@@ -94,7 +94,7 @@ const StockTransferPage = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  const whMap = new Map(warehouses.map((w) => [w.id, w.warehouse_name]));
+  const whMap = new Map(warehouses.map((w) => [w.id, w.name]));
   const itemMap = new Map(items.map((i) => [i.id, `${i.item_code} — ${i.item_name}`]));
   const itemNameMap = new Map(items.map((i) => [i.id, i.item_name]));
 
@@ -246,13 +246,13 @@ const StockTransferPage = () => {
               <div className="space-y-2"><Label>From Warehouse *</Label>
                 <Select value={fromWH} onValueChange={setFromWH}>
                   <SelectTrigger><SelectValue placeholder="Source" /></SelectTrigger>
-                  <SelectContent>{warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.warehouse_name}</SelectItem>)}</SelectContent>
+                  <SelectContent>{warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2"><Label>To Warehouse *</Label>
                 <Select value={toWH} onValueChange={setToWH}>
                   <SelectTrigger><SelectValue placeholder="Destination" /></SelectTrigger>
-                  <SelectContent>{warehouses.filter((w) => w.id !== fromWH).map((w) => <SelectItem key={w.id} value={w.id}>{w.warehouse_name}</SelectItem>)}</SelectContent>
+                  <SelectContent>{warehouses.filter((w) => w.id !== fromWH).map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>

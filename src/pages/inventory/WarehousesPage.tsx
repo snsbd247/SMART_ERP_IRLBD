@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Warehouse as WarehouseIcon } from "lucide-react";
 
-interface WH { id: string; warehouse_code: string; warehouse_name: string; branch_id: string | null; description: string | null; status: string; }
+interface WH { id: string; code: string; name: string; branch_id: string | null; address: string | null; is_active: number | boolean; }
 interface Branch { id: string; name: string; }
 
 const WarehousesPage = () => {
@@ -23,13 +23,13 @@ const WarehousesPage = () => {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
-  const [f, setF] = useState({ warehouse_code: "", warehouse_name: "", branch_id: "", description: "", status: "active" });
+  const [f, setF] = useState({ code: "", name: "", branch_id: "", address: "", status: "active" });
   const upd = (k: string, v: string) => setF((p) => ({ ...p, [k]: v }));
 
   const fetchData = async () => {
     setLoading(true);
     const [wRes, bRes] = await Promise.all([
-      supabase.from("warehouses" as any).select("*").order("warehouse_name"),
+      supabase.from("warehouses" as any).select("*").order("name"),
       supabase.from("branches").select("id, name").eq("status", "active"),
     ]);
     setWarehouses((wRes.data || []) as any);
@@ -41,17 +41,17 @@ const WarehousesPage = () => {
 
   const branchMap = new Map(branches.map((b) => [b.id, b.name]));
 
-  const openCreate = () => { setEditWH(null); setF({ warehouse_code: "", warehouse_name: "", branch_id: "", description: "", status: "active" }); setDialogOpen(true); };
-  const openEdit = (w: WH) => { setEditWH(w); setF({ warehouse_code: w.warehouse_code, warehouse_name: w.warehouse_name, branch_id: w.branch_id || "", description: w.description || "", status: w.status }); setDialogOpen(true); };
+  const openCreate = () => { setEditWH(null); setF({ code: "", name: "", branch_id: "", address: "", status: "active" }); setDialogOpen(true); };
+  const openEdit = (w: WH) => { setEditWH(w); setF({ code: w.code, name: w.name, branch_id: w.branch_id || "", address: w.address || "", status: Number(w.is_active) ? "active" : "inactive" }); setDialogOpen(true); };
 
   const handleSave = async () => {
-    if (!f.warehouse_code.trim() || !f.warehouse_name.trim()) return;
+    if (!f.code.trim() || !f.name.trim()) return;
     setSaving(true);
     try {
       const payload: any = {
-        warehouse_code: f.warehouse_code, warehouse_name: f.warehouse_name,
-        branch_id: f.branch_id || null, description: f.description || null,
-        status: f.status, updated_at: new Date().toISOString(),
+        code: f.code, name: f.name,
+        branch_id: f.branch_id || null, address: f.address || null,
+        is_active: f.status === "active" ? 1 : 0, updated_at: new Date().toISOString(),
       };
       if (editWH) {
         const { error } = await supabase.from("warehouses" as any).update(payload).eq("id", editWH.id);
@@ -84,11 +84,11 @@ const WarehousesPage = () => {
             : warehouses.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No warehouses</TableCell></TableRow>
             : warehouses.map((w) => (
               <TableRow key={w.id}>
-                <TableCell className="font-mono text-xs">{w.warehouse_code}</TableCell>
-                <TableCell className="font-medium">{w.warehouse_name}</TableCell>
+                <TableCell className="font-mono text-xs">{w.code}</TableCell>
+                <TableCell className="font-medium">{w.name}</TableCell>
                 <TableCell className="text-muted-foreground">{branchMap.get(w.branch_id || "") || "—"}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{w.description || "—"}</TableCell>
-                <TableCell><Badge variant={w.status === "active" ? "default" : "secondary"}>{w.status}</Badge></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{w.address || "—"}</TableCell>
+                <TableCell><Badge variant={Number(w.is_active) ? "default" : "secondary"}>{Number(w.is_active) ? "active" : "inactive"}</Badge></TableCell>
                 <TableCell><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(w)}><Pencil className="w-3.5 h-3.5" /></Button></TableCell>
               </TableRow>
             ))}
@@ -101,8 +101,8 @@ const WarehousesPage = () => {
           <DialogHeader><DialogTitle>{editWH ? "Edit Warehouse" : "Add Warehouse"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Code *</Label><Input value={f.warehouse_code} onChange={(e) => upd("warehouse_code", e.target.value)} placeholder="WH-001" /></div>
-              <div className="space-y-2"><Label>Name *</Label><Input value={f.warehouse_name} onChange={(e) => upd("warehouse_name", e.target.value)} placeholder="Main Warehouse" /></div>
+              <div className="space-y-2"><Label>Code *</Label><Input value={f.code} onChange={(e) => upd("code", e.target.value)} placeholder="WH-001" /></div>
+              <div className="space-y-2"><Label>Name *</Label><Input value={f.name} onChange={(e) => upd("name", e.target.value)} placeholder="Main Warehouse" /></div>
             </div>
             <div className="space-y-2"><Label>Branch</Label>
               <Select value={f.branch_id || "__none__"} onValueChange={(v) => upd("branch_id", v === "__none__" ? "" : v)}>
@@ -113,7 +113,7 @@ const WarehousesPage = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label>Description</Label><Input value={f.description} onChange={(e) => upd("description", e.target.value)} /></div>
+            <div className="space-y-2"><Label>Description</Label><Input value={f.address} onChange={(e) => upd("address", e.target.value)} /></div>
             <div className="space-y-2"><Label>Status</Label>
               <Select value={f.status} onValueChange={(v) => upd("status", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
