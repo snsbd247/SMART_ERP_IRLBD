@@ -148,7 +148,6 @@ import PartyLedgerReport from "./pages/reports/accounting/PartyLedgerReport";
 import CashBookReport from "./pages/reports/accounting/CashBookReport";
 import BankBookReport from "./pages/reports/accounting/BankBookReport";
 import BankReconciliationReport from "./pages/reports/accounting/BankReconciliationReport";
-import { JournalVoucherReport, PaymentVoucherReport, ReceiptVoucherReport, ContraVoucherReport } from "./pages/reports/accounting/VoucherReports";
 import AccountsReceivableReport from "./pages/reports/accounting/AccountsReceivableReport";
 import { ARAgingReport } from "./pages/reports/accounting/AgingReports";
 import { IncomeAnalysisReport } from "./pages/reports/accounting/AnalysisReports";
@@ -351,10 +350,6 @@ const App = () => (
                 <Route path="/reports/cash-book" element={<P perm="bank.view"><CashBookReport /></P>} />
                 <Route path="/reports/bank-book" element={<P perm="bank.view"><BankBookReport /></P>} />
                 <Route path="/reports/bank-reconciliation" element={<P perm="bank.view"><BankReconciliationReport /></P>} />
-                <Route path="/reports/journal-vouchers" element={<P perm="journal.view"><JournalVoucherReport /></P>} />
-                <Route path="/reports/payment-vouchers" element={<P perm="payment.view"><PaymentVoucherReport /></P>} />
-                <Route path="/reports/receipt-vouchers" element={<P perm="receipt.view"><ReceiptVoucherReport /></P>} />
-                <Route path="/reports/contra-vouchers" element={<P perm="contra.view"><ContraVoucherReport /></P>} />
                 <Route path="/reports/accounts-receivable" element={<P perm="sales.view"><AccountsReceivableReport /></P>} />
                 <Route path="/reports/ar-aging" element={<P perm="sales.view"><ARAgingReport /></P>} />
                 <Route path="/reports/income-analysis" element={<P perm="sales.view"><IncomeAnalysisReport /></P>} />

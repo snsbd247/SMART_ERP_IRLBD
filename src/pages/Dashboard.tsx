@@ -135,7 +135,7 @@ const Dashboard = () => {
       settle(supabase.from("sales_invoices").select("total_amount, net_amount, invoice_date"), "sales_invoices"),
       settle(supabase.from("sales_invoices_v2").select("grand_total, invoice_date"), "sales_invoices_v2"),
       settle(supabase.from("supplier_bills_v2").select("grand_total, bill_date"), "supplier_bills_v2"),
-      settle(supabase.from("acc_vouchers").select("id, voucher_type, voucher_date, total_amount, status").neq("status", "cancelled"), "acc_vouchers"),
+      settle(supabase.from("acc_vouchers").select("id, voucher_type, voucher_date, total_amount, status").neq("status", "cancelled").is("deleted_at", null), "acc_vouchers"),
       settle(supabase.from("chart_of_accounts").select("id, account_name, account_type, opening_balance, opening_balance_type"), "chart_of_accounts"),
     ]);
 
@@ -228,7 +228,7 @@ const Dashboard = () => {
     // first batch finishes so we never hold 10+ requests open at once.
     const [auditRes, recentVoucherRes, paymentRowsRes] = await Promise.all([
       settle(supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(6), "audit_log"),
-      settle(supabase.from("acc_vouchers").select("id, voucher_number, voucher_type, voucher_date, description, total_amount, status").order("created_at", { ascending: false }).limit(5), "recent acc_vouchers"),
+      settle(supabase.from("acc_vouchers").select("id, voucher_number, voucher_type, voucher_date, description, total_amount, status").is("deleted_at", null).order("created_at", { ascending: false }).limit(5), "recent acc_vouchers"),
       settle(supabase.from("party_payments").select("amount, party_type"), "party_payments"),
     ]);
     setRecentActivities((auditRes as any)?.data || []);

@@ -34,15 +34,15 @@ const BalanceSheetReport = () => {
     setLiabilities(accounts.filter((a) => a.account_type === "liability").map((a) => ({ ...a, balance: -getBalance(a) })).filter((a) => a.balance !== 0));
     setEquity(accounts.filter((a) => a.account_type === "equity").map((a) => ({ ...a, balance: -getBalance(a) })).filter((a) => a.balance !== 0));
 
-    // Compute period Net Profit/(Loss) and roll into equity total so BS balances
-    const incomeTotal = accounts.filter((a) => a.account_type === "income")
-      .reduce((s, a) => s + -(balMap.get(a.id) || 0) * -1, 0); // credit-balance = income
-    // Simpler: income natural = credit - debit; expense natural = debit - credit
+    // Compute period Net Profit/(Loss) and roll into equity total so BS balances.
+    // Income is credit-heavy (standard). Expenses in this system are ALSO
+    // posted as the credit leg (e.g. Payment Vouchers: Dr Cash/Bank, Cr the
+    // expense account), so both flip the same way from the raw debit-credit txn.
     let income = 0, expense = 0;
     accounts.forEach((a) => {
       const txn = balMap.get(a.id) || 0; // debit - credit
-      if (a.account_type === "income") income += -txn; // flip to credit-positive
-      if (a.account_type === "expense") expense += txn;
+      if (a.account_type === "income") income += -txn;
+      if (a.account_type === "expense") expense += -txn;
     });
     setNetProfit(income - expense);
     setLoading(false);
