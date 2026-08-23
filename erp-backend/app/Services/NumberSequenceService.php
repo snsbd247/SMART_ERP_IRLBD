@@ -49,6 +49,22 @@ class NumberSequenceService
     ];
 
     /**
+     * Same as next(), but prepends the given branch's code (e.g. "FAC-") to
+     * the generated number for display/filing — e.g. "FAC-PV-2026-00972".
+     * The underlying sequence counter and collision detection are untouched;
+     * only the stored voucher_number string gains the prefix. Falls back to
+     * the bare number when the branch has no id or no code set.
+     */
+    public function nextForVoucher(string $sequenceId, ?string $branchId): string
+    {
+        $number = $this->next($sequenceId);
+        if (!$branchId) return $number;
+
+        $code = DB::table('branches')->where('id', $branchId)->value('code');
+        return $code ? "{$code}-{$number}" : $number;
+    }
+
+    /**
      * Get the next number for a sequence and increment atomically.
      * Auto-rolls the year and resets the serial when the calendar year changes.
      * Self-heals if the sequence row is missing.
@@ -120,7 +136,7 @@ class NumberSequenceService
                 [$tbl, $col] = self::COLLISION_SOURCES[$sequenceId];
                 if (Schema::hasTable($tbl)) {
                     $guard = 0;
-                    while (DB::table($tbl)->where($col, $candidate)->exists() && $guard++ < 10000) {
+                    while ($this->documentNumberExists($sequenceId, $candidate) && $guard++ < 10000) {
                         $seq->current_number = (int) $seq->current_number + 1;
                         $candidate = sprintf('%s-%d-%s', $seq->prefix, $seq->year, str_pad((string) $seq->current_number, 5, '0', STR_PAD_LEFT));
                     }
@@ -151,6 +167,13 @@ class NumberSequenceService
         ]);
     }
 
+    /**
+     * Suffix match rather than exact match — voucher_number may carry a
+     * branch-code prefix ("FAC-PV-2026-00972") ahead of the bare sequence
+     * number this class generates, so collision checks must look for the
+     * bare number occurring at the END of the stored value, not the whole
+     * value matching it exactly.
+     */
     private function documentNumberExists(string $sequenceId, string $number): bool
     {
         if (!isset(self::COLLISION_SOURCES[$sequenceId])) return false;
@@ -158,7 +181,7 @@ class NumberSequenceService
         [$tbl, $col] = self::COLLISION_SOURCES[$sequenceId];
         if (!Schema::hasTable($tbl)) return false;
 
-        return DB::table($tbl)->where($col, $number)->exists();
+        return DB::table($tbl)->where($col, $number)->orWhere($col, 'like', "%-{$number}")->exists();
     }
 
     private function actualMaxSerial(string $sequenceId, string $prefix, int $year): int
@@ -168,10 +191,12 @@ class NumberSequenceService
         [$tbl, $col] = self::COLLISION_SOURCES[$sequenceId];
         if (!Schema::hasTable($tbl)) return 0;
 
-        $pattern = sprintf('/^%s-%d-(\d+)$/', preg_quote($prefix, '/'), $year);
+        // No leading ^ anchor: match "PREFIX-YEAR-NNNNN" wherever it sits,
+        // including right after a branch-code prefix like "FAC-".
+        $pattern = sprintf('/%s-%d-(\d+)$/', preg_quote($prefix, '/'), $year);
 
         return DB::table($tbl)
-            ->where($col, 'like', "{$prefix}-{$year}-%")
+            ->where($col, 'like', "%{$prefix}-{$year}-%")
             ->pluck($col)
             ->reduce(function (int $max, $value) use ($pattern) {
                 return preg_match($pattern, (string) $value, $m)

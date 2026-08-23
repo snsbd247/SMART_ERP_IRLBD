@@ -126,7 +126,7 @@ class AccountController extends BaseController
             ]);
         }
 
-        $voucherNumber = $this->numService->next('journal_voucher');
+        $voucherNumber = $this->numService->nextForVoucher('journal_voucher', $user->branch_id);
 
         $voucher = AccVoucher::create([
             'voucher_number' => $voucherNumber,
