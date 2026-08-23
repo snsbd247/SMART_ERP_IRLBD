@@ -51,6 +51,77 @@ const makeRow = (defaults: { date?: string; debitAccountId?: string; creditAccou
   amount: "",
 });
 
+/**
+ * Safe arithmetic evaluator for quick-sum entry like "=120+90+50+30" — typed
+ * in Narration to auto-fill Amount with the total, or typed in Amount itself
+ * to replace it with the computed sum on blur/Tab. Small recursive-descent
+ * parser (+ - * / and parens, no eval/Function) so this never executes
+ * arbitrary code regardless of what's typed.
+ */
+function evalArithmeticExpr(input: string): number | null {
+  const expr = input.trim().replace(/^=/, "").trim();
+  if (!expr) return null;
+  if (!/^[\d+\-*/.() \s]+$/.test(expr)) return null;
+
+  let i = 0;
+  const peek = () => expr[i];
+  const isDigit = (c: string | undefined) => !!c && /[\d.]/.test(c);
+
+  const parseNumber = (): number => {
+    const start = i;
+    while (isDigit(peek())) i++;
+    const numStr = expr.slice(start, i);
+    if (!numStr || numStr === ".") throw new Error("bad number");
+    return parseFloat(numStr);
+  };
+
+  const parseFactor = (): number => {
+    while (peek() === " ") i++;
+    if (peek() === "(") {
+      i++;
+      const val = parseExpr();
+      while (peek() === " ") i++;
+      if (peek() !== ")") throw new Error("expected )");
+      i++;
+      return val;
+    }
+    if (peek() === "-") { i++; return -parseFactor(); }
+    if (peek() === "+") { i++; return parseFactor(); }
+    return parseNumber();
+  };
+
+  const parseTerm = (): number => {
+    let val = parseFactor();
+    for (;;) {
+      while (peek() === " ") i++;
+      if (peek() === "*") { i++; val *= parseFactor(); }
+      else if (peek() === "/") { i++; const d = parseFactor(); if (d === 0) throw new Error("div by zero"); val /= d; }
+      else break;
+    }
+    return val;
+  };
+
+  function parseExpr(): number {
+    let val = parseTerm();
+    for (;;) {
+      while (peek() === " ") i++;
+      if (peek() === "+") { i++; val += parseTerm(); }
+      else if (peek() === "-") { i++; val -= parseTerm(); }
+      else break;
+    }
+    return val;
+  }
+
+  try {
+    const result = parseExpr();
+    while (peek() === " ") i++;
+    if (i !== expr.length) return null; // leftover characters → invalid expression
+    return Number.isFinite(result) ? result : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Accepts YYYY-MM-DD or DD-MM-YYYY / DD/MM/YYYY; returns ISO or "" if unparseable. */
 function parsePastedDate(raw: string): string {
   const s = raw.trim();
@@ -140,6 +211,22 @@ export default function BulkVoucherEntryPage() {
   };
   const clearAll = () => { setRows([]); setRowErrors({}); setResults({}); };
 
+  /** Narration like "=120+90+50+30" — on blur, auto-fills this row's Amount with the sum. */
+  const handleNarrationBlur = (id: string, value: string) => {
+    if (!value.trim().startsWith("=")) return;
+    const sum = evalArithmeticExpr(value);
+    if (sum == null) return;
+    updateRow(id, { amount: String(Math.round(sum * 100) / 100) });
+  };
+
+  /** Amount typed as "=120+90+50+30" — on blur/Tab, replaces the field with the computed sum. */
+  const handleAmountBlur = (id: string, value: string) => {
+    if (!value.trim().startsWith("=")) return;
+    const sum = evalArithmeticExpr(value);
+    if (sum == null) return;
+    updateRow(id, { amount: String(Math.round(sum * 100) / 100) });
+  };
+
   const parsePasteText = () => {
     const lines = pasteText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     if (lines.length === 0) return;
@@ -200,9 +287,9 @@ export default function BulkVoucherEntryPage() {
 
   const totalAmount = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
-  const validateRows = (): Record<string, string> => {
+  const validateRows = (rowsToCheck: Row[] = rows): Record<string, string> => {
     const errs: Record<string, string> = {};
-    for (const r of rows) {
+    for (const r of rowsToCheck) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) { errs[r.id] = "Invalid date"; continue; }
       if (!r.debitAccountId || !r.creditAccountId) { errs[r.id] = "Select both debit and credit accounts"; continue; }
       if (r.debitAccountId === r.creditAccountId) { errs[r.id] = "Debit and credit account must differ"; continue; }
@@ -216,7 +303,20 @@ export default function BulkVoucherEntryPage() {
 
   const handleSubmit = async (submitForApproval: boolean) => {
     if (rows.length === 0) { toast({ title: "Add at least one row first", variant: "destructive" }); return; }
-    const errs = validateRows();
+
+    // Safety net: resolve any "=expr" left in Amount (e.g. from a pasted row
+    // whose blur never fired) before validating/submitting. Built into a
+    // local array first — setRows() is async, so the rest of this function
+    // uses `resolvedRows` throughout rather than the (still-stale) `rows`
+    // state closure.
+    const resolvedRows = rows.map((r) => {
+      if (!r.amount.trim().startsWith("=")) return r;
+      const sum = evalArithmeticExpr(r.amount);
+      return sum == null ? r : { ...r, amount: String(Math.round(sum * 100) / 100) };
+    });
+    setRows(resolvedRows);
+
+    const errs = validateRows(resolvedRows);
     setRowErrors(errs);
     if (Object.keys(errs).length > 0) {
       toast({ title: "Fix the highlighted rows before submitting", variant: "destructive" });
@@ -225,10 +325,10 @@ export default function BulkVoucherEntryPage() {
 
     setSubmitting(true);
     setResults({});
-    setProgress({ done: 0, total: rows.length });
+    setProgress({ done: 0, total: resolvedRows.length });
 
     const finalResults: RowResult[] = [];
-    for (const row of rows) {
+    for (const row of resolvedRows) {
       const fy = matchingFinYearForDate(row.date);
       const debitAcc = accounts.find((a) => a.id === row.debitAccountId);
       const creditAcc = accounts.find((a) => a.id === row.creditAccountId);
@@ -415,7 +515,13 @@ export default function BulkVoucherEntryPage() {
                       <DateInput value={r.date} onChange={(v) => updateRow(r.id, { date: v })} className="h-9" />
                     </TableCell>
                     <TableCell>
-                      <Input value={r.narration} onChange={(e) => updateRow(r.id, { narration: e.target.value })} placeholder="Description" className="h-9" />
+                      <Input
+                        value={r.narration}
+                        onChange={(e) => updateRow(r.id, { narration: e.target.value })}
+                        onBlur={(e) => handleNarrationBlur(r.id, e.target.value)}
+                        placeholder="Description, or =120+90+50+30 to sum into Amount"
+                        className="h-9"
+                      />
                     </TableCell>
                     <TableCell>
                       <AccountCombobox accounts={accounts} value={r.debitAccountId} onChange={(v) => updateRow(r.id, { debitAccountId: v })} placeholder="Debit account" />
@@ -425,11 +531,13 @@ export default function BulkVoucherEntryPage() {
                     </TableCell>
                     <TableCell>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         value={r.amount}
                         onChange={(e) => updateRow(r.id, { amount: e.target.value })}
+                        onBlur={(e) => handleAmountBlur(r.id, e.target.value)}
                         className="h-9 text-right tabular-nums"
-                        placeholder="0.00"
+                        placeholder="0.00 or =120+90"
                       />
                     </TableCell>
                     <TableCell>
