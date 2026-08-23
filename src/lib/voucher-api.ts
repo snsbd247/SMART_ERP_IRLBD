@@ -283,31 +283,6 @@ export const voucherApi = {
     }
     throw new Error("Voucher type change is only supported on the VPS/Laravel backend.");
   },
-
-  /**
-   * Post an inter-branch fund transfer as two branch-scoped journal
-   * vouchers linked through the Inter-Branch Clearing account (1259), so
-   * each branch's own Account Ledger stays fully self-contained. Only
-   * implemented on Laravel/VPS mode.
-   */
-  branchTransfer: async (data: {
-    from_branch_id: string;
-    to_branch_id: string;
-    from_account_id: string;
-    to_account_id: string;
-    amount: number;
-    voucher_date: string;
-    description?: string;
-  }) => {
-    if (isLaravelMode()) {
-      const json = await laravelFetch<any>("vouchers/branch-transfer", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
-      return unwrapItem(json) as { from_voucher: any; to_voucher: any };
-    }
-    throw new Error("Branch fund transfer is only supported on the VPS/Laravel backend.");
-  },
 };
 
 

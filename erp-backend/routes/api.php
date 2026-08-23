@@ -151,7 +151,6 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:accounts.edit|vouchers.edit')->post('vouchers/{id}/restore', [\App\Http\Controllers\Accounting\VoucherController::class, 'restore'])->whereUuid('id');
         Route::middleware('permission:accounts.delete|vouchers.delete')->post('vouchers/{id}/purge', [\App\Http\Controllers\Accounting\VoucherController::class, 'purge'])->whereUuid('id');
         Route::middleware('permission:accounts.edit')->post('vouchers/{id}/change-type', [\App\Http\Controllers\Accounting\VoucherController::class, 'changeType'])->whereUuid('id');
-        Route::middleware('permission:accounts.edit')->post('vouchers/branch-transfer', [\App\Http\Controllers\Accounting\VoucherController::class, 'branchTransfer']);
 
 
         // ─── Generic Super-Admin soft delete / restore (sales, purchases, payments) ──
