@@ -609,4 +609,44 @@ class AccountingService
             ];
         });
     }
+
+    /**
+     * After a voucher is saved (create or full-replace update), check
+     * whether it straddles branches the same way the historical
+     * HO->Factory Petty Cash transfers did — an entry against Factory
+     * Petty Cash on a voucher that isn't already FAC-branch — and, if so,
+     * transparently split it into the two-leg inter-branch-transfer model
+     * via splitVoucherAtAccount(). This lets a user keep entering a single
+     * voucher exactly as before (e.g. "Debit IFIC Bank, Credit Office
+     * Petty Cash, Credit Factory Petty Cash" in one Journal Voucher) —
+     * the branch-correct split happens automatically, with no new tool to
+     * learn. Returns the split result, or null if no split was needed.
+     */
+    public function maybeSplitInterBranchAfterSave(string $voucherId, string $userId): ?array
+    {
+        $facAccountId = DB::table('chart_of_accounts')->where('account_code', '1258')->value('id');
+        $facBranchId = DB::table('branches')->where('code', 'FAC')->value('id');
+        if (!$facAccountId || !$facBranchId) return null;
+
+        $voucher = AccVoucher::with('entries')->find($voucherId);
+        if (!$voucher || $voucher->deleted_at || $voucher->branch_id === $facBranchId) return null;
+
+        $splitEntry = $voucher->entries->firstWhere('account_id', $facAccountId);
+        if (!$splitEntry) return null;
+
+        if ($voucher->entries->where('account_id', $facAccountId)->count() > 1) {
+            \Log::warning('Voucher touches Factory Petty Cash more than once — skipping auto-split, needs manual review', [
+                'voucher_id' => $voucherId, 'voucher_number' => $voucher->voucher_number,
+            ]);
+            return null;
+        }
+
+        return $this->splitVoucherAtAccount(
+            $voucherId,
+            $facAccountId,
+            $facBranchId,
+            $userId,
+            'Auto-split at save time: this voucher touched Factory Petty Cash from a non-Factory-branch voucher.'
+        );
+    }
 }
