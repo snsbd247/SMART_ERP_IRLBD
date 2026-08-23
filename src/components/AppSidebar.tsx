@@ -25,7 +25,7 @@ interface NavGroup {
   icon: any;
   permission?: string;
   requiredModules?: ModuleKey[];
-  children: { to: string; label: string; icon: any; end?: boolean; permission?: string }[];
+  children: { to: string; label: string; icon: any; end?: boolean; permission?: string; superAdminOnly?: boolean }[];
   portalOnly?: boolean;
 }
 
@@ -42,6 +42,7 @@ const navGroups: NavGroup[] = [
       { to: "/admin/ifrs-mapping", label: "IFRS Account Mapping", icon: Settings2, permission: "accounts.view" },
       { to: "/accounts/vouchers", label: "Accounting Vouchers", icon: FileText, permission: "journal.view,payment.view,receipt.view,contra.view" },
       { to: "/accounts/vouchers/bulk-entry", label: "Bulk Voucher Entry", icon: Layers, permission: "journal.create,payment.create,receipt.create,contra.create" },
+      { to: "/accounts/branch-transfer", label: "Branch Fund Transfer", icon: ArrowLeftRight, permission: "accounts.edit", superAdminOnly: true },
       { to: "/accounts/treasury", label: "Treasury Information", icon: Landmark, permission: "accounts.view" },
       { to: "/reports/trial-balance", label: "Trial Balance", icon: FileText, permission: "accounts.view" },
       { to: "/reports/profit-loss", label: "Profit & Loss", icon: TrendingUp, permission: "accounts.view" },
@@ -278,11 +279,12 @@ const hasAnyPermission = (permStr: string, hasPermission: (p: string) => boolean
   return perms.some((p) => hasPermission(p.trim()));
 };
 
-const CollapsibleGroup = ({ group, isModuleEnabled, hasPermission }: { group: NavGroup; isModuleEnabled: (key: ModuleKey) => boolean; hasPermission: (perm: string) => boolean }) => {
+const CollapsibleGroup = ({ group, isModuleEnabled, hasPermission, isSuperAdmin }: { group: NavGroup; isModuleEnabled: (key: ModuleKey) => boolean; hasPermission: (perm: string) => boolean; isSuperAdmin: boolean }) => {
   const location = useLocation();
   const filteredChildren = group.children.filter((item) => {
     const required = routeModuleMap[item.to];
     if (required && required.some((m) => !isModuleEnabled(m))) return false;
+    if (item.superAdminOnly && !isSuperAdmin) return false;
     if (item.permission && !hasAnyPermission(item.permission, hasPermission)) return false;
     return true;
   });
@@ -381,7 +383,7 @@ export const AppSidebar = () => {
             if (group.requiredModules?.includes("sales_basic") && isModuleEnabled("sales_vat")) return null;
             if (group.portalOnly && !hasEmployeeRecord && !isHrAdmin) return null;
             if (group.permission && !hasAnyPermission(group.permission, hasPermission)) return null;
-            return <CollapsibleGroup key={group.label} group={group} isModuleEnabled={isModuleEnabled} hasPermission={hasPermission} />;
+            return <CollapsibleGroup key={group.label} group={group} isModuleEnabled={isModuleEnabled} hasPermission={hasPermission} isSuperAdmin={isSuperAdmin} />;
           })}
         </nav>
       </ScrollArea>

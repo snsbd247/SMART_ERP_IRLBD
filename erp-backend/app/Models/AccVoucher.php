@@ -14,6 +14,7 @@ class AccVoucher extends Model
         'created_by', 'approved_by', 'approved_at',
         'deleted_at', 'deleted_by', 'prev_status',
         'source_module', 'transferred_to_id', 'transferred_from_id', 'transfer_reason',
+        'linked_voucher_id',
     ];
 
     protected $casts = [
