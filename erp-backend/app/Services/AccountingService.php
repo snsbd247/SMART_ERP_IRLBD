@@ -426,66 +426,6 @@ class AccountingService
     }
 
     /**
-     * Post an inter-branch fund transfer as two branch-scoped journal
-     * vouchers linked through the Inter-Branch Clearing account (1259),
-     * instead of one voucher that would straddle both branches. This keeps
-     * each branch's own Account Ledger fully self-contained — a branch-
-     * scoped user (locked by BranchScope) can reconcile their account's
-     * closing balance using only their own branch's vouchers, with zero
-     * visibility into the other branch's data.
-     *
-     * Convention (matches this system's existing historical entries):
-     * the source account is debited, the destination account is credited.
-     */
-    public function createInterBranchTransfer(array $data, string $userId): array
-    {
-        $amount = round((float) ($data['amount'] ?? 0), 2);
-        if ($amount <= 0) {
-            throw new \InvalidArgumentException('Amount must be greater than zero.');
-        }
-        if ($data['from_branch_id'] === $data['to_branch_id']) {
-            throw new \InvalidArgumentException('From and To branch must be different.');
-        }
-
-        $clearingId = $this->interBranchClearingAccountId();
-
-        return DB::transaction(function () use ($data, $userId, $amount, $clearingId) {
-            $fromBranch = DB::table('branches')->where('id', $data['from_branch_id'])->first();
-            $toBranch = DB::table('branches')->where('id', $data['to_branch_id'])->first();
-            $narration = trim((string) ($data['description'] ?? ''));
-
-            $fromVoucher = $this->createVoucher([
-                'voucher_type' => 'journal',
-                'voucher_date' => $data['voucher_date'],
-                'description' => trim("Inter-branch transfer to {$toBranch?->name}" . ($narration ? ": {$narration}" : '')),
-                'branch_id' => $data['from_branch_id'],
-                'financial_year_id' => $data['financial_year_id'] ?? null,
-                'created_by' => $userId,
-            ], [
-                ['account_id' => $data['from_account_id'], 'debit' => $amount, 'credit' => 0, 'narration' => $narration],
-                ['account_id' => $clearingId, 'debit' => 0, 'credit' => $amount, 'narration' => "Transfer to {$toBranch?->name}"],
-            ], true);
-
-            $toVoucher = $this->createVoucher([
-                'voucher_type' => 'journal',
-                'voucher_date' => $data['voucher_date'],
-                'description' => trim("Inter-branch transfer from {$fromBranch?->name}" . ($narration ? ": {$narration}" : '')),
-                'branch_id' => $data['to_branch_id'],
-                'financial_year_id' => $data['financial_year_id'] ?? null,
-                'created_by' => $userId,
-            ], [
-                ['account_id' => $clearingId, 'debit' => $amount, 'credit' => 0, 'narration' => "Transfer from {$fromBranch?->name}"],
-                ['account_id' => $data['to_account_id'], 'debit' => 0, 'credit' => $amount, 'narration' => $narration],
-            ], true);
-
-            $fromVoucher->update(['linked_voucher_id' => $toVoucher->id]);
-            $toVoucher->update(['linked_voucher_id' => $fromVoucher->id]);
-
-            return ['from_voucher' => $fromVoucher->fresh('entries'), 'to_voucher' => $toVoucher->fresh('entries')];
-        });
-    }
-
-    /**
      * Retroactively convert a legacy single-voucher inter-branch transfer
      * (one voucher whose entries straddle two branches, e.g. an HO journal
      * voucher that directly credits Factory Petty Cash) into the two-leg
