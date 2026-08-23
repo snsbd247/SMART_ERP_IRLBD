@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { nextSupplierCode } from "@/lib/supplier-utils";
 import { Plus, Pencil, Warehouse as WarehouseIcon } from "lucide-react";
 
 interface WH { id: string; code: string; name: string; branch_id: string | null; address: string | null; is_active: number | boolean; }
@@ -41,7 +42,7 @@ const WarehousesPage = () => {
 
   const branchMap = new Map(branches.map((b) => [b.id, b.name]));
 
-  const openCreate = () => { setEditWH(null); setF({ code: "", name: "", branch_id: "", address: "", status: "active" }); setDialogOpen(true); };
+  const openCreate = () => { setEditWH(null); setF({ code: nextSupplierCode(warehouses, "WH-", 3), name: "", branch_id: "", address: "", status: "active" }); setDialogOpen(true); };
   const openEdit = (w: WH) => { setEditWH(w); setF({ code: w.code, name: w.name, branch_id: w.branch_id || "", address: w.address || "", status: Number(w.is_active) ? "active" : "inactive" }); setDialogOpen(true); };
 
   const handleSave = async () => {
