@@ -393,7 +393,7 @@ export default function BulkVoucherEntryPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-36">Date</TableHead>
+                <TableHead className="w-44">Date</TableHead>
                 <TableHead>Narration</TableHead>
                 <TableHead className="w-64">Debit Account</TableHead>
                 <TableHead className="w-64">Credit Account</TableHead>
