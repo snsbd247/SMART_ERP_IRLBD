@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatDateDMY } from "@/lib/date-format";
 
 export interface DrilldownRow {
   id: string;
@@ -93,7 +94,7 @@ export function OpeningDrilldownDialog({
               ) : (
                 rows.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="text-sm">{r.date}</TableCell>
+                    <TableCell className="text-sm">{formatDateDMY(r.date)}</TableCell>
                     <TableCell className="font-mono text-xs">{r.reference || "—"}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{r.description || "—"}</TableCell>
                     <TableCell className="text-right tabular-nums text-sm">{r.debit > 0 ? fc(r.debit) : ""}</TableCell>

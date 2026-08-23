@@ -13,6 +13,7 @@ import { aggregateEntriesByVoucherAccount } from "@/lib/ledger-entry-aggregation
 import { computeAccountPeriodOpening, fetchAccountPriorEntries, type PriorEntry } from "@/lib/period-opening";
 import { OpeningDrilldownDialog } from "@/components/accounts/OpeningDrilldownDialog";
 import { downloadCSV } from "@/lib/csv-export";
+import { formatDateDMY } from "@/lib/date-format";
 import { ScrollText, FileDown } from "lucide-react";
 
 const AccountLedgerReport = () => {
@@ -214,7 +215,7 @@ const AccountLedgerReport = () => {
                   const op = periodOpening;
                   return (
                     <TableRow className="bg-muted/40">
-                      <TableCell>{dateFrom}</TableCell>
+                      <TableCell>{formatDateDMY(dateFrom)}</TableCell>
                       <TableCell className="font-mono text-xs">—</TableCell>
                       <TableCell className="text-sm font-medium">
                         <button
@@ -235,7 +236,7 @@ const AccountLedgerReport = () => {
                 })()}
                 {data.map((e) => (
                 <TableRow key={e.id}>
-                  <TableCell>{e.voucher_date}</TableCell>
+                  <TableCell>{formatDateDMY(e.voucher_date)}</TableCell>
                   <TableCell className="font-mono text-xs">{e.voucher_number}</TableCell>
                   <TableCell className="text-sm">{e.particulars}</TableCell>
                   <TableCell className="text-muted-foreground">{e.description}</TableCell>
