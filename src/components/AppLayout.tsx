@@ -5,6 +5,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { CommandPalette } from "@/components/CommandPalette";
 import { BrandingFooter } from "@/components/BrandingFooter";
 import { ChunkRetryIndicator } from "@/components/ChunkRetryIndicator";
+import { LicenseGraceBanner } from "@/components/LicenseGraceBanner";
 
 export const AppLayout = () => {
   return (
@@ -12,6 +13,7 @@ export const AppLayout = () => {
       <AppSidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopNavbar />
+        <LicenseGraceBanner />
         <Breadcrumbs />
         <main className="flex-1 overflow-auto overscroll-contain">
           <Outlet />

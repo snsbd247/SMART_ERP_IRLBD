@@ -10,11 +10,13 @@ import { BranchProvider } from "@/contexts/BranchContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { ModuleProvider } from "@/contexts/ModuleContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
+import { LicenseProvider } from "@/contexts/LicenseContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
 import Login from "./pages/Login";
 import PublicEmployeeRegistration from "./pages/PublicEmployeeRegistration";
 import InstallPage from "./pages/InstallPage";
+import LicenseVerificationPage from "./pages/LicenseVerificationPage";
 import Dashboard from "./pages/Dashboard";
 import VouchersPage from "./pages/VouchersPage";
 import Profile from "./pages/Profile";
@@ -203,6 +205,7 @@ const App = () => (
           <CurrencyProvider>
           <ModuleProvider>
           <BrandingProvider>
+          <LicenseProvider>
           <BrowserRouter>
             <Routes>
               <Route path="/install" element={<InstallPage />} />
@@ -212,6 +215,7 @@ const App = () => (
               <Route path="/employee/verify" element={<EmployeeVerifyPage />} />
               <Route path="/employee/verify/:code" element={<EmployeeVerifyPage />} />
               <Route path="/verify/:code" element={<EmployeeVerifyPage />} />
+              <Route path="/license-verification" element={<LicenseVerificationPage />} />
 
 
 
@@ -409,6 +413,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+          </LicenseProvider>
           </BrandingProvider>
           </ModuleProvider>
           </CurrencyProvider>

@@ -67,7 +67,22 @@ Route::get('v1/public/employee-verify/{code}/signature', function (string $code)
     ]]);
 });
 
+// License status/activation — same auth/scope as the main group below,
+// same "v1" prefix so the frontend can call it consistently, but
+// deliberately NOT behind LicenseGuard (applied only to the main group):
+// a blocked deployment must still be able to fetch its own status and
+// submit a renewed key to unblock itself.
+Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App\Http\Middleware\UpdateLastSeen::class])->prefix('v1')->group(function () {
+    Route::get('license/status', [\App\Http\Controllers\LicenseController::class, 'status']);
+    Route::post('license/activate', [\App\Http\Controllers\LicenseController::class, 'activate']);
+});
+
 // Protected routes
+// NOTE: LicenseGuard is deliberately NOT enabled on this group yet — no
+// license key has been activated in production. Enabling it now would
+// block the entire live app. Add \App\Http\Middleware\LicenseGuard::class
+// to this array only once a real license key has been activated and
+// verified end-to-end (see LicenseController::activate).
 Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App\Http\Middleware\UpdateLastSeen::class])->group(function () {
 
     // Auth

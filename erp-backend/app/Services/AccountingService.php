@@ -12,6 +12,7 @@ class AccountingService
     public function __construct(
         private AccountRepository $accountRepo,
         private NumberSequenceService $seqService,
+        private \App\Services\LicenseService $license,
     ) {}
 
     /**
@@ -19,6 +20,15 @@ class AccountingService
      */
     public function createVoucher(array $data, array $entries, bool $autoApprove = true): AccVoucher
     {
+        // Second, independent license check — disabled for now (no license
+        // key has been activated in production yet; enabling this before
+        // that would block all voucher posting). Re-enable once
+        // LicenseGuard is confirmed working end-to-end with a real key.
+        // $licenseStatus = $this->license->getEffectiveStatus();
+        // if ($licenseStatus['blocked']) {
+        //     throw new \RuntimeException($licenseStatus['message'] ?? 'This software license is not valid.');
+        // }
+
         // Validate balanced
         $totalDebit = collect($entries)->sum('debit');
         $totalCredit = collect($entries)->sum('credit');
