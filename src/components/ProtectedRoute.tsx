@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useLicense } from "@/contexts/LicenseContext";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert, Home, ArrowLeft } from "lucide-react";
@@ -49,6 +50,7 @@ export const ProtectedRoute = ({
   requiredAction = "can_view",
 }: Props) => {
   const { user, loading, isSuperAdmin, hasPermission } = useAuth();
+  const { blocked: licenseBlocked, loading: licenseLoading } = useLicense();
 
   if (loading) {
     return (
@@ -62,6 +64,8 @@ export const ProtectedRoute = ({
   }
 
   if (!user) return <Navigate to="/login" replace />;
+
+  if (!licenseLoading && licenseBlocked) return <Navigate to="/license-verification" replace />;
 
   if (requiredPermission) {
     const perms = requiredPermission.split(",").map((p) => p.trim()).filter(Boolean);

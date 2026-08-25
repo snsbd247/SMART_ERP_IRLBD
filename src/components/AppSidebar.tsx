@@ -228,6 +228,7 @@ const navGroups: NavGroup[] = [
       { to: "/admin/settings", label: "General Settings", icon: CircleDot, permission: "settings.view" },
       { to: "/admin/sms", label: "SMS Integration", icon: MessageSquare, permission: "sms.view,settings.view" },
       { to: "/admin/branding", label: "Branding", icon: Palette, permission: "branding.view,settings.view" },
+      { to: "/license-verification", label: "License", icon: Shield, permission: "settings.view" },
     ],
   },
 ];
