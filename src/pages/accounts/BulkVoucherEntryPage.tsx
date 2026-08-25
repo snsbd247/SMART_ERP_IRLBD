@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { voucherApi } from "@/lib/voucher-api";
 import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
@@ -140,6 +141,8 @@ export default function BulkVoucherEntryPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [finYears, setFinYears] = useState<FinYear[]>([]);
   const [loadingSetup, setLoadingSetup] = useState(true);
+  const [narrationSuggestions, setNarrationSuggestions] = useState<string[]>([]);
+  const amountRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const [defaultBranch, setDefaultBranch] = useState("");
   const [defaultDebit, setDefaultDebit] = useState("");
@@ -171,6 +174,28 @@ export default function BulkVoucherEntryPage() {
       setBranches(((brRes as any).data || []) as Branch[]);
       setFinYears(((fyRes as any).data || []) as FinYear[]);
       setLoadingSetup(false);
+    })();
+
+    // Narration suggestions: past voucher descriptions, so the datalist on
+    // each row's Narration input can offer them back. Vouchers entered
+    // outside Bulk Voucher Entry only ever populate the voucher-level
+    // description (not the per-entry narration), so that's the field with
+    // real history to suggest from.
+    (async () => {
+      const { data } = await supabase
+        .from("acc_vouchers")
+        .select("description")
+        .neq("description", "")
+        .limit(1000);
+      const seen = new Set<string>();
+      const unique: string[] = [];
+      for (const row of (data || []) as { description: string }[]) {
+        const v = (row.description || "").trim();
+        if (!v || seen.has(v)) continue;
+        seen.add(v);
+        unique.push(v);
+      }
+      setNarrationSuggestions(unique);
     })();
   }, []);
 
@@ -489,6 +514,10 @@ export default function BulkVoucherEntryPage() {
           </CardContent>
         )}
 
+        <datalist id="narration-suggestions">
+          {narrationSuggestions.map((n) => <option key={n} value={n} />)}
+        </datalist>
+
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -519,7 +548,15 @@ export default function BulkVoucherEntryPage() {
                         value={r.narration}
                         onChange={(e) => updateRow(r.id, { narration: e.target.value })}
                         onBlur={(e) => handleNarrationBlur(r.id, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Tab" && !e.shiftKey) {
+                            e.preventDefault();
+                            amountRefs.current[r.id]?.focus();
+                            amountRefs.current[r.id]?.select();
+                          }
+                        }}
                         placeholder="Description, or =120+90+50+30 to sum into Amount"
+                        list="narration-suggestions"
                         className="h-9"
                       />
                     </TableCell>
@@ -531,6 +568,7 @@ export default function BulkVoucherEntryPage() {
                     </TableCell>
                     <TableCell>
                       <Input
+                        ref={(el) => { amountRefs.current[r.id] = el; }}
                         type="text"
                         inputMode="decimal"
                         value={r.amount}
