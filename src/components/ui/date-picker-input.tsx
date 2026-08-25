@@ -80,20 +80,18 @@ export const DatePickerInput = React.forwardRef<HTMLInputElement, DatePickerInpu
       const cleaned = event.target.value.replace(/[^\d\-/.]/g, "");
       const digits = cleaned.replace(/\D/g, "");
 
-      // Already-separated input (typed or pasted, e.g. "10-07-2026") is
-      // unambiguous regardless of length: resolve it immediately.
-      const strict = dmyToIso(cleaned);
-      if (strict) {
-        setText(isoToDmy(strict));
-        emitChange(strict);
-        return;
-      }
-
       // Raw digits with no separators ("010726", "25122026"): only 8
       // digits (DDMMYYYY) is safe to snap live — 6 digits (DDMMYY) is
       // still ambiguous with the first 6 of an 8-digit entry the user
       // may keep typing, so that case waits for blur (see handleBlur)
       // instead of snapping mid-keystroke and corrupting later input.
+      //
+      // Deliberately NOT eagerly reformatting already-separated input here
+      // (e.g. "1-07-2025" while mid-edit correcting "10-07-2025" to
+      // "13-07-2025"): a partial edit can transiently parse as a complete
+      // valid date, and snapping it mid-keystroke moves the cursor to the
+      // end, so the rest of what's being typed lands in the wrong place.
+      // Separated input still resolves correctly on blur (see handleBlur).
       if (digits.length === 8 && digits === cleaned) {
         const parsed = looseDmyToIso(digits);
         if (parsed) {
