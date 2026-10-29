@@ -26,6 +26,9 @@ Route::get('v1/public/branding', [\App\Http\Controllers\Admin\BrandingController
 Route::get('v1/public/employee-registration/config', [\App\Http\Controllers\PublicEmployeeRegistrationController::class, 'config']);
 Route::post('v1/public/employee-registration', [\App\Http\Controllers\PublicEmployeeRegistrationController::class, 'register']);
 
+// Public Money Receipt verification (used by /verify/money-receipt/{code} SPA route + QR)
+Route::get('v1/public/money-receipt-verify/{code}', [\App\Http\Controllers\MoneyReceiptVerifyController::class, 'show']);
+
 // Public employee verification (used by /verify/{code} SPA route + QR)
 Route::get('v1/public/employee-verify/{code}', function (string $code) {
     $emp = \App\Models\Employee::where('employee_code', $code)->first();
@@ -170,6 +173,19 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:accounts.delete|vouchers.delete')->post('vouchers/{id}/purge', [\App\Http\Controllers\Accounting\VoucherController::class, 'purge'])->whereUuid('id');
         Route::middleware('permission:accounts.edit')->post('vouchers/{id}/change-type', [\App\Http\Controllers\Accounting\VoucherController::class, 'changeType'])->whereUuid('id');
 
+        // ─── Money Receipt — standalone printable record, no accounting impact ──
+        Route::middleware('permission:money_receipt.view')->group(function () {
+            Route::get('money-receipts', [\App\Http\Controllers\Accounting\MoneyReceiptController::class, 'index']);
+            Route::get('money-receipts-settings', [\App\Http\Controllers\Accounting\MoneyReceiptController::class, 'getSettings']);
+            Route::get('money-receipts/{id}', [\App\Http\Controllers\Accounting\MoneyReceiptController::class, 'show'])->whereUuid('id');
+            Route::get('money-receipts/customers/{customerId}/receipt-vouchers', [\App\Http\Controllers\Accounting\MoneyReceiptController::class, 'receiptVouchersForCustomer']);
+        });
+        Route::middleware('permission:money_receipt.create')->post('money-receipts', [\App\Http\Controllers\Accounting\MoneyReceiptController::class, 'store']);
+        Route::middleware('permission:money_receipt.edit')->group(function () {
+            Route::put('money-receipts/{id}', [\App\Http\Controllers\Accounting\MoneyReceiptController::class, 'update'])->whereUuid('id');
+            Route::put('money-receipts-settings', [\App\Http\Controllers\Accounting\MoneyReceiptController::class, 'updateSettings']);
+        });
+        Route::middleware('permission:money_receipt.delete')->delete('money-receipts/{id}', [\App\Http\Controllers\Accounting\MoneyReceiptController::class, 'destroy'])->whereUuid('id');
 
         // ─── Generic Super-Admin soft delete / restore (sales, purchases, payments) ──
         Route::middleware('permission:accounts.delete')->post('soft-delete/{table}/{id}', [\App\Http\Controllers\SoftDeleteController::class, 'delete']);
