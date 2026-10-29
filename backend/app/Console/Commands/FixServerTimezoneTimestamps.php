@@ -90,9 +90,9 @@ class FixServerTimezoneTimestamps extends Command
                         DB::table($table)->where('id', $row->id)->update(['created_at' => $new]);
                     }
                 }
-                $sample = $rows->first();
+                $first = $rows->isEmpty() ? null : $backup[count($backup) - $rows->count()];
                 $this->line(sprintf('  %-16s %5d rows%s', $table, $rows->count(),
-                    $sample ? "  e.g. {$sample->created_at} -> " . end($backup)['new'] : ''));
+                    $first ? "  e.g. {$first['old']} -> {$first['new']}" : ''));
             }
 
             if ($dry) {
