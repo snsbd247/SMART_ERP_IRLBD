@@ -306,7 +306,7 @@ class UserController extends BaseController
 
             // Soft delete user
             $user = User::findOrFail($id);
-            $user->update(['status' => 'deleted', 'deleted_at' => now()]);
+            $user->forceFill(['status' => 'deleted', 'deleted_at' => now()])->save();
 
             // Remove roles
             DB::table('user_custom_roles')->where('user_id', $id)->delete();
@@ -349,7 +349,8 @@ class UserController extends BaseController
 
         $user = User::findOrFail($id);
         $oldData = $user->toArray();
-        $user->update(['status' => 'deleted', 'deleted_at' => now()]);
+        // deleted_at is not mass-assignable on User, so update() silently dropped it.
+        $user->forceFill(['status' => 'deleted', 'deleted_at' => now()])->save();
 
         // Remove roles
         DB::table('user_custom_roles')->where('user_id', $id)->delete();

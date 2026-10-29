@@ -17,7 +17,8 @@ use Tests\TestCase;
  *
  * Covers all scenarios requested:
  *  - Payment → Journal transfer soft-deletes old & creates new
- *  - Released serial is reused by the next same-type entry (free-list FIFO)
+ *  - A transferred voucher keeps its serial (never reissued); freed, unused
+ *    serials are reused FIFO by the next same-type entry
  *  - Transferred vouchers are excluded from ledger / trial balance sums
  *  - Auto-posted (source_module set) vouchers are forbidden from transfer
  *  - Audit log + approval history rows are persisted with correct linkage
@@ -98,34 +99,25 @@ class VoucherTransferTest extends TestCase
             'New voucher must get a fresh journal number, not the released payment number');
     }
 
-    public function test_released_payment_serial_is_reused_by_next_payment_entry(): void
+    public function test_transferred_payment_serial_is_not_reissued(): void
     {
         $old = $this->makeVoucher('payment');
-        $releasedNumber = $old->voucher_number;
+        $oldNumber = $old->voucher_number;
 
         $this->svc->changeVoucherType($old->id, 'journal', $this->user->id, 'oops');
 
-        $this->assertDatabaseHas('number_sequence_free_list', [
+        // The soft-deleted original still owns its UNIQUE voucher_number, so
+        // release() must not queue it for reuse.
+        $this->assertDatabaseMissing('number_sequence_free_list', [
             'sequence_id' => 'payment_voucher',
-            'number' => $releasedNumber,
-            'consumed_at' => null,
+            'number' => $oldNumber,
         ]);
 
         $nextPayment = $this->makeVoucher('payment');
-
-        $this->assertSame($releasedNumber, $nextPayment->voucher_number,
-            'Free-list must FIFO-reuse released number for the next Payment voucher');
-        $this->assertDatabaseHas('number_sequence_free_list', [
-            'sequence_id' => 'payment_voucher',
-            'number' => $releasedNumber,
-        ]);
-        $this->assertNotNull(
-            DB::table('number_sequence_free_list')
-                ->where('sequence_id', 'payment_voucher')
-                ->where('number', $releasedNumber)
-                ->value('consumed_at'),
-            'Consumed free-list rows must be marked, not re-issued twice'
-        );
+        $this->assertNotSame($oldNumber, $nextPayment->voucher_number,
+            'A transferred voucher keeps its number; the next Payment gets a fresh one');
+        $this->assertSame(1, DB::table('acc_vouchers')->where('voucher_number', $oldNumber)->count(),
+            'No voucher number may be issued twice');
     }
 
     // ── Ledger / trial balance exclusion ────────────────────────────────────
@@ -216,23 +208,20 @@ class VoucherTransferTest extends TestCase
 
     public function test_free_list_fifo_under_interleaved_next_calls(): void
     {
-        // Release three numbers in order: A, B, C
-        $a = $this->makeVoucher('payment'); $numA = $a->voucher_number;
-        $b = $this->makeVoucher('payment'); $numB = $b->voucher_number;
-        $c = $this->makeVoucher('payment'); $numC = $c->voucher_number;
+        // Issue five numbers, then free the first three (numbers that are
+        // genuinely unused in acc_vouchers, e.g. after a failed post).
+        $issued = [];
+        for ($i = 0; $i < 5; $i++) {
+            $issued[] = $this->seq->next('payment_voucher');
+        }
+        [$numA, $numB, $numC] = $issued;
 
-        // Transfer all three (releases A then B then C into free-list)
-        $this->svc->changeVoucherType($a->id, 'journal', $this->user->id);
-        // Tiny sleep-free ordering via released_at timestamp resolution:
-        // ensure distinct ordering even on fast SQLite by touching rows.
-        DB::table('number_sequence_free_list')
-            ->where('number', $numA)->update(['released_at' => now()->subSeconds(3)]);
-        $this->svc->changeVoucherType($b->id, 'journal', $this->user->id);
-        DB::table('number_sequence_free_list')
-            ->where('number', $numB)->update(['released_at' => now()->subSeconds(2)]);
-        $this->svc->changeVoucherType($c->id, 'journal', $this->user->id);
-        DB::table('number_sequence_free_list')
-            ->where('number', $numC)->update(['released_at' => now()->subSeconds(1)]);
+        $this->seq->release('payment_voucher', $numA, $this->user->id);
+        DB::table('number_sequence_free_list')->where('number', $numA)->update(['released_at' => now()->subSeconds(3)]);
+        $this->seq->release('payment_voucher', $numB, $this->user->id);
+        DB::table('number_sequence_free_list')->where('number', $numB)->update(['released_at' => now()->subSeconds(2)]);
+        $this->seq->release('payment_voucher', $numC, $this->user->id);
+        DB::table('number_sequence_free_list')->where('number', $numC)->update(['released_at' => now()->subSeconds(1)]);
 
         // Next three Payment entries must reuse A, B, C in FIFO order — no duplicates.
         $r1 = $this->makeVoucher('payment')->voucher_number;
@@ -243,7 +232,7 @@ class VoucherTransferTest extends TestCase
             'Free-list must issue numbers strictly FIFO with no double-issuance');
 
         $r4 = $this->makeVoucher('payment')->voucher_number;
-        $this->assertNotContains($r4, [$numA, $numB, $numC],
+        $this->assertNotContains($r4, $issued,
             'After free-list drained, next() must fall through to fresh sequence increment');
 
         // Free-list must contain no unconsumed rows for payment_voucher.
@@ -257,9 +246,9 @@ class VoucherTransferTest extends TestCase
 
     public function test_receipt_and_contra_sequences_are_isolated_from_payment_free_list(): void
     {
-        $p = $this->makeVoucher('payment');
-        $released = $p->voucher_number;
-        $this->svc->changeVoucherType($p->id, 'journal', $this->user->id);
+        // A freed (unused) payment number must only ever be reissued as a payment.
+        $released = $this->seq->next('payment_voucher');
+        $this->seq->release('payment_voucher', $released, $this->user->id);
 
         $receipt = $this->makeVoucher('receipt');
         $contra  = $this->makeVoucher('contra');

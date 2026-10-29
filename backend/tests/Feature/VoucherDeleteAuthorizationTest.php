@@ -128,7 +128,11 @@ class VoucherDeleteAuthorizationTest extends TestCase
         $this->assertSame('deleted', $newData['status']);
         $this->assertSame('receipt', $newData['voucher_type']);
         $this->assertSame($actor->id, $newData['deleted_by']);
-        $this->assertContains('Accountant', $newData['actor_roles']);
+        // giveRole() suffixes role names with a random tag (e.g. "Accountant x7Kq2a").
+        $this->assertTrue(
+            collect($newData['actor_roles'])->contains(fn ($r) => str_starts_with($r, 'Accountant ')),
+            'actor_roles must include the Accountant role.'
+        );
     }
 
     public function test_role_without_delete_permission_cannot_delete_receipt(): void
