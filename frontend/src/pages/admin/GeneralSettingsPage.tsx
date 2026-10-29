@@ -77,10 +77,10 @@ const GeneralSettingsPage = () => {
   // Prefer Laravel API whenever an API base is configured (VPS deploy). The
   // The legacy path is never used in production. We never silently mix
   // sources: save and load always use the same backend.
-  const useLaravel = () => !!getApiBaseUrl();
+  const isLaravelApi = () => !!getApiBaseUrl();
 
   const loadBranchesAndYears = async (): Promise<[Branch[], FinancialYear[]]> => {
-    if (useLaravel()) {
+    if (isLaravelApi()) {
       const base = apiBase();
       const headers = getLaravelAuthHeaders();
       const [bRes, yRes] = await Promise.all([
@@ -99,7 +99,7 @@ const GeneralSettingsPage = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        const settingsRow = useLaravel() ? await loadLaravelSettings() : await loadDataClientSettings();
+        const settingsRow = isLaravelApi() ? await loadLaravelSettings() : await loadDataClientSettings();
         setSettings(settingsRow);
         try {
           const [b, y] = await loadBranchesAndYears();
@@ -140,7 +140,7 @@ const GeneralSettingsPage = () => {
     setSaving(true);
     const { id, ...rest } = settings;
     try {
-      if (useLaravel()) {
+      if (isLaravelApi()) {
         const res = await fetch(`${apiBase()}/v1/settings/company`, {
           method: "PUT",
           headers: { ...getLaravelAuthHeaders(), "Content-Type": "application/json" },
@@ -183,7 +183,7 @@ const GeneralSettingsPage = () => {
     }
     setUploading(true);
     try {
-      if (useLaravel()) {
+      if (isLaravelApi()) {
         const fd = new FormData();
         fd.append("file", file);
         fd.append("setting_key", "company_logo_url");

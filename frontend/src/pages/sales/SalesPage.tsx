@@ -137,7 +137,7 @@ const SalesPage = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  const updateItem = (id: string, field: keyof ItemRow, value: any, itemList: ItemRow[], setFn: Function) => {
+  const updateItem = (id: string, field: keyof ItemRow, value: any, itemList: ItemRow[], setFn: (rows: ItemRow[]) => void) => {
     setFn(itemList.map((i) => {
       if (i.id !== id) return i;
       const updated = { ...i, [field]: value };
@@ -311,7 +311,7 @@ const SalesPage = () => {
     else { setCustDialogOpen(false); setCustName(""); setCustPhone(""); fetchData(); toast({ title: "Customer added" }); }
   };
 
-  const renderItemsGrid = (itemList: ItemRow[], setFn: Function) => (
+  const renderItemsGrid = (itemList: ItemRow[], setFn: (rows: ItemRow[]) => void) => (
     <Card>
       <CardHeader className="py-3 px-4"><CardTitle className="text-sm">Items</CardTitle></CardHeader>
       <CardContent className="p-0">

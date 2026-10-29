@@ -80,7 +80,6 @@ test.describe("Treasury A-Challan print preview", () => {
 
   test("popup blocker surfaces retry alert", async ({ page }) => {
     await page.addInitScript(() => {
-      // @ts-ignore
       window.open = () => null;
     });
     await page.setContent(HARNESS_HTML);

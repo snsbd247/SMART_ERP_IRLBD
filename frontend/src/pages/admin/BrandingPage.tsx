@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 
 // Compute on each call so the auto-fallback flag (set after a 503) is honored.
-const useLaravel = () => isLaravelMode();
+const isLaravelApi = () => isLaravelMode();
 const apiBase = () => getApiBaseUrl() || "";
 
 /** Format a validation-error object into a single readable line. */
@@ -80,7 +80,7 @@ export default function BrandingPage() {
         updated_at: new Date().toISOString(),
       }));
 
-      if (useLaravel()) {
+      if (isLaravelApi()) {
         const res = await fetch(`${apiBase()}/v1/admin/branding`, {
           method: "PUT",
           headers: { ...getLaravelAuthHeaders(), "Content-Type": "application/json" },
@@ -158,7 +158,7 @@ export default function BrandingPage() {
     try {
       let publicUrl = "";
 
-      if (useLaravel()) {
+      if (isLaravelApi()) {
         const fd = new FormData();
         fd.append("file", file);
         fd.append("setting_key", settingKey);

@@ -56,6 +56,7 @@ export function sanitizeChallanNo(v: string | null | undefined): string {
   if (v === null || v === undefined) return "";
   return String(v)
     .trim()
+    // eslint-disable-next-line no-control-regex -- stripping control chars is the point
     .replace(/[\s\u0000-\u001F\u007F]+/g, "")
     .replace(/\/{2,}/g, "/")
     .toUpperCase();

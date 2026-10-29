@@ -32,14 +32,14 @@ export default function CustomerReceivePage() {
 
   const toggle = (id: string) => {
     const s = new Set(selected);
-    s.has(id) ? s.delete(id) : s.add(id);
+    if (s.has(id)) s.delete(id); else s.add(id);
     setSelected(s);
   };
 
   const toggleHistory = (id: string) => {
     setHistorySelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };

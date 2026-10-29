@@ -46,7 +46,7 @@ function parseRelationEmbeds(select?: string): RelationEmbed[] {
   const embeds: RelationEmbed[] = [];
   for (let i = 0; i < select.length; i++) {
     if (select[i] !== "(") continue;
-    let start = i;
+    const start = i;
     let depth = 1;
     while (++i < select.length && depth > 0) {
       if (select[i] === "(") depth++;

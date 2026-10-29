@@ -21,6 +21,10 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      // Rows from the data client are dynamic (any table, any columns), so
+      // `any` is used deliberately in ~2000 places. Keep it visible as a
+      // warning for new code without failing lint.
+      "@typescript-eslint/no-explicit-any": "warn",
     },
   },
 );

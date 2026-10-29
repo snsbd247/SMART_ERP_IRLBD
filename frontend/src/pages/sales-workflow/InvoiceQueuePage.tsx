@@ -58,7 +58,7 @@ export default function InvoiceQueuePage() {
           <TableBody>
             {eligible.map((v) => (
               <TableRow key={v.id}>
-                <TableCell><Checkbox checked={selected.has(v.id)} onCheckedChange={() => { const s = new Set(selected); s.has(v.id) ? s.delete(v.id) : s.add(v.id); setSelected(s); }} /></TableCell>
+                <TableCell><Checkbox checked={selected.has(v.id)} onCheckedChange={() => { const s = new Set(selected); if (s.has(v.id)) s.delete(v.id); else s.add(v.id); setSelected(s); }} /></TableCell>
                 <TableCell>{v.challan_number}</TableCell><TableCell>{v.challan_date}</TableCell><TableCell>{v.customer?.name}</TableCell>
                 <TableCell className="text-right">{Number(v.grand_total).toFixed(2)}</TableCell>
                 <TableCell className="text-right">

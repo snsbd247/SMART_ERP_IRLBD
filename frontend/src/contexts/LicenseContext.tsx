@@ -51,10 +51,10 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         setData(json.data as LicenseStatus);
       } else {
         // Fail closed on an unreadable response — don't silently allow access.
-        setData({ blocked: true, status: "error", message: json?.message || "Could not check license status.", expires_at: null });
+        setData({ blocked: true, status: "error", message: json?.message || "Could not check license status.", expires_at: null, activated_at: null, last_checked_at: null });
       }
     } catch {
-      setData({ blocked: true, status: "error", message: "Could not reach the server to check license status.", expires_at: null });
+      setData({ blocked: true, status: "error", message: "Could not reach the server to check license status.", expires_at: null, activated_at: null, last_checked_at: null });
     } finally {
       setLoading(false);
     }

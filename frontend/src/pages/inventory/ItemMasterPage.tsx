@@ -140,7 +140,7 @@ const ItemMasterPage = () => {
       return n;
     });
   };
-  const toggleOne = (id: string) => setSelectedIds((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleOne = (id: string) => setSelectedIds((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const handleBulkAssign = async () => {
     if (selectedIds.size === 0) return;

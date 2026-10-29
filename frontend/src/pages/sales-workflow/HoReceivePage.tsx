@@ -31,7 +31,7 @@ export default function HoReceivePage() {
   const toggleHistory = (id: string) => {
     setHistorySelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
@@ -83,7 +83,7 @@ export default function HoReceivePage() {
           <TableBody>
             {rows.map((r) => (
               <TableRow key={r.id}>
-                <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => { const s = new Set(selected); s.has(r.id) ? s.delete(r.id) : s.add(r.id); setSelected(s); }} /></TableCell>
+                <TableCell><Checkbox checked={selected.has(r.id)} onCheckedChange={() => { const s = new Set(selected); if (s.has(r.id)) s.delete(r.id); else s.add(r.id); setSelected(s); }} /></TableCell>
                 <TableCell>{r.dc_number}</TableCell><TableCell>{r.customer?.name}</TableCell><TableCell>{r.product?.name}</TableCell><TableCell>{r.qty}</TableCell>
               </TableRow>
             ))}

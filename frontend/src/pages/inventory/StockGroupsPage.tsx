@@ -29,7 +29,7 @@ const StockGroupsPage = () => {
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "tree">("tree");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const toggleExpand = (id: string) => setExpanded((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleExpand = (id: string) => setExpanded((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const [f, setF] = useState({ name: "", parent_id: "", primary_group_id: "", is_default: false, is_active: true });
 

@@ -120,7 +120,7 @@ const MessagingPage = () => {
 
       // Fetch employee photos for participants that have employee_id
       const empIds = (partProfiles as any[] || []).filter((p: any) => p.employee_id).map((p: any) => p.employee_id);
-      let empPhotoMap = new Map<string, string>();
+      const empPhotoMap = new Map<string, string>();
       if (empIds.length > 0) {
         const { data: empData } = await dataClient
           .from("employees" as any)

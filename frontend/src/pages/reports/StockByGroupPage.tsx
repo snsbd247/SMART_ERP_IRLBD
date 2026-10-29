@@ -43,7 +43,7 @@ const StockByGroupPage = () => {
   };
   useEffect(() => { fetchAll(); /* eslint-disable-next-line */ }, []);
 
-  const toggle = (id: string) => setExpanded((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggle = (id: string) => setExpanded((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   // Item-level aggregation
   const itemAggs = useMemo<Map<string, ItemAgg>>(() => {
