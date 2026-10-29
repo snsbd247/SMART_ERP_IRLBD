@@ -138,6 +138,7 @@ php artisan migrate --force
 php artisan optimize:clear >/dev/null
 php artisan up >/dev/null
 rm -rf ~/"\$TMP"
+rmdir ~/deploy-tmp 2>/dev/null || true
 REMOTE
 
 # ---------- 5. Health check (auto-rollback on failure) ----------
