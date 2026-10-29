@@ -9,8 +9,8 @@ existing user mappings, vouchers, or business data are modified.
 ## 1. Laravel / VPS deploy
 
 ```bash
-# On the VPS, inside the erp-backend directory
-cd /var/www/erp/erp-backend
+# On the VPS, inside the backend directory
+cd /var/www/erp/backend
 git pull
 php artisan migrate --force          # no-op if no new migrations
 php artisan db:seed --class=CanonicalRolesSeeder

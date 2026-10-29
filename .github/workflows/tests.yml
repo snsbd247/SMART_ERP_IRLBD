@@ -9,22 +9,27 @@ jobs:
   unit:
     name: Vitest (incl. contrast regression suite)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: npm ci --legacy-peer-deps
 
       # Runs ALL Vitest specs, including the WCAG contrast suite at
       # src/contexts/__tests__/contrast.test.ts. A regression in
       # Pass/Low logic (light/dark surfaces × primary/secondary edge cases)
       # fails this job and blocks merge.
       - name: Run unit tests
-        run: bunx vitest run --reporter=verbose
+        run: npx vitest run --reporter=verbose
 
       # Belt-and-braces: explicitly fail if the contrast file is missing
       # or stops being picked up by the glob.

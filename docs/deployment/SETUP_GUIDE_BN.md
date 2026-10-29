@@ -11,7 +11,7 @@
 |---|---|---|---|
 | **VPS Production** | `erp.irlbd.com` | Laravel API (same-origin `/api`) | VPS MySQL (`smarterp`) |
 
-Frontend (`src/lib/laravel-auth.ts`) সবসময় same-origin Laravel API ব্যবহার করে — কোনো Cloud/Supabase dependency নেই।
+Frontend (`src/lib/laravel-auth.ts`) সবসময় same-origin Laravel API ব্যবহার করে — কোনো বাইরের Cloud dependency নেই।
 
 ---
 
@@ -146,9 +146,9 @@ sudo APP_DIR=/opt/smarterp /opt/smarterp/deploy/vps/update.sh
 | সাইট খুলছে না | `sudo systemctl status nginx` |
 | 502 Bad Gateway | `sudo systemctl status php8.2-fpm` |
 | Login 500 error | `sudo APP_DIR=/opt/smarterp /opt/smarterp/deploy/vps/update.sh` |
-| DB / app error | `sudo tail -50 /opt/smarterp/erp-backend/storage/logs/laravel.log` |
+| DB / app error | `sudo tail -50 /opt/smarterp/backend/storage/logs/laravel.log` |
 | Nginx error | `sudo tail -50 /var/log/nginx/error.log` |
-| Cache clear | `cd /opt/smarterp/erp-backend && sudo -u www-data php artisan optimize:clear` |
+| Cache clear | `cd /opt/smarterp/backend && sudo -u www-data php artisan optimize:clear` |
 | Restart সব | `sudo systemctl restart nginx php8.2-fpm mysql` |
 | SSL আবার চালান | `sudo certbot --nginx -d erp.irlbd.com` |
 
@@ -157,7 +157,7 @@ sudo APP_DIR=/opt/smarterp /opt/smarterp/deploy/vps/update.sh
 এটা পুরোনো deploy-এ frontend-backend split-এর কারণে হতো। Latest code-এ ঠিক করা — শুধু update চালানঃ
 ```bash
 sudo APP_DIR=/opt/smarterp /opt/smarterp/deploy/vps/update.sh
-cd /opt/smarterp/erp-backend && sudo -u www-data php artisan optimize:clear
+cd /opt/smarterp/backend && sudo -u www-data php artisan optimize:clear
 ```
 তারপর browser-এ **Ctrl + Shift + R** (hard reload)।
 

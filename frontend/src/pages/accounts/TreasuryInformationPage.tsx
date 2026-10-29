@@ -804,7 +804,7 @@ export default function TreasuryInformationPage() {
             The <code>treasury_entries</code> table is missing. An administrator must run the latest
             database migrations on the server:
           </p>
-          <pre className="text-xs bg-muted p-3 rounded inline-block text-left">cd erp-backend{"\n"}php artisan migrate</pre>
+          <pre className="text-xs bg-muted p-3 rounded inline-block text-left">cd backend{"\n"}php artisan migrate</pre>
           <div>
             <Button variant="outline" size="sm" onClick={() => { setTableMissing(false); void load(); }}>
               Retry

@@ -304,32 +304,93 @@ if [[ "${SMARTERP_UPDATE_REEXECED:-0}" != "1" && -n "${STARTED_UPDATE_SHA}" && -
   exec bash "${APP_DIR}/deploy/vps/update.sh"
 fi
 
+# ---------- ONE-TIME: erp-backend/ -> backend/ layout migration ----------
+# The repo moved the Laravel app from erp-backend/ to backend/ (and the
+# React app into frontend/). `git reset --hard` above moved every tracked
+# file, but untracked runtime state (.env, vendor/, storage/ uploads and
+# logs) is still in erp-backend/. Carry it over once, repoint nginx /
+# supervisor / cron at the new path, and keep the old dir as a backup.
+migrate_backend_layout() {
+  local old="${APP_DIR}/erp-backend" new="${APP_DIR}/backend"
+  [[ -d "${old}" && -d "${new}" ]] || return 0
+  CURRENT_STEP="layout-migration"
+  log "Migrating runtime files from erp-backend/ to backend/ ..."
+
+  [[ -f "${old}/.env" && ! -f "${new}/.env" ]] && cp -a "${old}/.env" "${new}/.env"
+  [[ -f "${old}/.env.production.deploy" && ! -f "${new}/.env.production.deploy" ]] && \
+    cp -a "${old}/.env.production.deploy" "${new}/.env.production.deploy"
+  [[ -d "${old}/storage" ]] && rsync -a "${old}/storage/" "${new}/storage/"
+  [[ -d "${old}/vendor" && ! -d "${new}/vendor" ]] && cp -a "${old}/vendor" "${new}/vendor"
+  if [[ -L "${old}/public/storage" && ! -e "${new}/public/storage" ]]; then
+    ln -s "${new}/storage/app/public" "${new}/public/storage"
+  fi
+  if [[ ! -f "${new}/.env" ]]; then
+    step "layout-migration" failed "backend/.env missing after migration"
+    err "backend/.env is missing — aborting before touching server config."
+    exit 1
+  fi
+
+  local bak="${BACKUP_DIR}/layout-migration-$(date +%Y%m%d%H%M%S)"
+  mkdir -p "${bak}"
+  local changed_nginx=()
+  for conf in /etc/nginx/sites-available/* /etc/nginx/conf.d/*.conf /etc/supervisor/conf.d/*.conf /etc/cron.d/*; do
+    [[ -f "${conf}" ]] || continue
+    grep -q "${old}" "${conf}" || continue
+    cp -a "${conf}" "${bak}/$(echo "${conf}" | tr '/' '_')"
+    sed -i "s#${old}#${new}#g" "${conf}"
+    [[ "${conf}" == /etc/nginx/* ]] && changed_nginx+=("${conf}")
+    log "Repointed ${conf} -> backend/"
+  done
+  for u in root www-data; do
+    if crontab -l -u "${u}" 2>/dev/null | grep -q "${old}"; then
+      crontab -l -u "${u}" > "${bak}/crontab.${u}"
+      sed "s#${old}#${new}#g" "${bak}/crontab.${u}" | crontab -u "${u}" -
+      log "Repointed ${u} crontab -> backend/"
+    fi
+  done
+
+  if ! nginx -t >/dev/null 2>&1; then
+    for conf in "${changed_nginx[@]}"; do
+      cp -a "${bak}/$(echo "${conf}" | tr '/' '_')" "${conf}"
+    done
+    step "layout-migration" failed "nginx -t failed; nginx config restored (backups in ${bak})"
+    err "nginx config test failed after repointing — restored the original config."
+    exit 1
+  fi
+  command -v supervisorctl >/dev/null 2>&1 && { supervisorctl reread || true; supervisorctl update || true; }
+
+  mv "${old}" "${old}.migrated-$(date +%Y%m%d%H%M%S)"
+  step "layout-migration" ok "runtime files moved; config backups in ${bak}"
+}
+migrate_backend_layout
+
 install_deploy_runner
 install_rollback_runner
 
 # ---------- PRE-CHECK: pending migrations (no side-effects) ----------
-if [[ -d "${APP_DIR}/erp-backend" ]]; then
+if [[ -d "${APP_DIR}/backend" ]]; then
   CURRENT_STEP="migrations-check"
-  PENDING=$(cd "${APP_DIR}/erp-backend" && php artisan migrate:status --pending 2>&1 | grep -cE '^\s*\|\s+[NY]\s+\|' || true)
+  PENDING=$(cd "${APP_DIR}/backend" && php artisan migrate:status --pending 2>&1 | grep -cE '^\s*\|\s+[NY]\s+\|' || true)
   step "migrations-check" ok "${PENDING} pending migration(s)"
 fi
 
 CURRENT_STEP="frontend-build"
 log "Rebuilding frontend..."
+cd "${APP_DIR}/frontend"
 if [[ -f package.json ]]; then
   APP_URL="https://erp.irlbd.com"
-  if [[ -f "${APP_DIR}/erp-backend/.env" ]]; then
-    APP_URL_FROM_ENV=$(grep -E '^APP_URL=' "${APP_DIR}/erp-backend/.env" | cut -d= -f2- | tr -d '"' || true)
+  if [[ -f "${APP_DIR}/backend/.env" ]]; then
+    APP_URL_FROM_ENV=$(grep -E '^APP_URL=' "${APP_DIR}/backend/.env" | cut -d= -f2- | tr -d '"' || true)
     [[ -n "${APP_URL_FROM_ENV:-}" ]] && APP_URL="${APP_URL_FROM_ENV%/}"
   fi
   export VITE_API_BASE_URL="${APP_URL}/api"
   npm install --no-audit --no-fund --legacy-peer-deps
   npm run build
-  step "frontend-build" ok "dist/ rebuilt"
+  step "frontend-build" ok "frontend/dist rebuilt"
 fi
 
-if [[ -d "${APP_DIR}/erp-backend" ]]; then
-  cd "${APP_DIR}/erp-backend"
+if [[ -d "${APP_DIR}/backend" ]]; then
+  cd "${APP_DIR}/backend"
   CURRENT_STEP="composer-install"
   log "Updating backend deps..."
   composer install --no-dev --optimize-autoloader --no-interaction
@@ -422,12 +483,12 @@ SQL
   php artisan view:cache
   step "cache-refresh" ok
 
-  if [[ -d "${APP_DIR}/dist" ]]; then
+  if [[ -d "${APP_DIR}/frontend/dist" ]]; then
     CURRENT_STEP="publish-assets"
     log "Copying built frontend into Laravel public/ ..."
-    rm -rf "${APP_DIR}/erp-backend/public/assets" 2>/dev/null || true
+    rm -rf "${APP_DIR}/backend/public/assets" 2>/dev/null || true
     rsync -a --exclude='index.php' --exclude='.htaccess' --exclude='storage' \
-      "${APP_DIR}/dist/" "${APP_DIR}/erp-backend/public/"
+      "${APP_DIR}/frontend/dist/" "${APP_DIR}/backend/public/"
     step "publish-assets" ok
   fi
 

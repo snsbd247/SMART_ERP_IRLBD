@@ -16,38 +16,58 @@
 
 ---
 
-## Quick Deploy (Automated)
-```bash
-cd erp-backend
-bash deploy.sh
+## Live site (erp.irlbd.com) — one command
+
+The live site runs on cPanel with this layout (the server has no git, composer or node):
+
 ```
-This builds React, copies to Laravel `public/`, and creates a deployment ZIP.
+~/erp_app/                       Laravel app  (= repo backend/)
+~/public_html/erp.irlbd.com/     web root: built frontend + index.php/.htaccess that boot ~/erp_app
+```
+
+Deploy from the repo root (Git Bash on Windows, or Linux/macOS):
+
+```bash
+CPANEL_PASS='<ssh password>' bash deploy/cpanel/deploy.sh     # or set up an SSH key and omit CPANEL_PASS
+```
+
+What it does:
+1. Builds `frontend/` and packages `backend/` from the committed tree (`git archive` — commit first).
+2. Uploads both, then on the server: backs up the database + web root to `~/db_backups/deploy-<time>/`,
+   stages the new backend in `~/erp_app.new` (carrying over `.env`, `vendor/`, `storage/`, `composer.lock`),
+   checks it boots, swaps it in (old one kept as `~/erp_app.prev-<time>`), replaces the frontend files
+   (keeping `index.php`, `.htaccess`, `storage` link), runs `migrate --force` and clears caches.
+3. Health-checks `/` and `/api/v1/public/branding`; on failure it restores the previous backend and web root.
+
+Options: `WITH_VENDOR=1` (upload `backend/vendor` when composer dependencies changed), `SKIP_BUILD=1`.
+Old `~/erp_app.prev-*` folders and `~/db_backups/deploy-*` can be deleted once the new version is confirmed.
 
 ---
 
-## Manual Deployment Steps
+## Fresh install on a new cPanel account (manual)
 
 ### 1. Build Frontend
 ```bash
-npm install
+cd frontend
+npm install --legacy-peer-deps
 npm run build
 ```
 
 ### 2. Install Laravel Dependencies
 ```bash
-cd erp-backend
+cd backend
 composer install --no-dev --optimize-autoloader
 ```
 
 ### 3. Copy Frontend Build to Laravel
 ```bash
-cp -r ../dist/assets public/
-cp ../dist/index.html public/
-cp ../dist/favicon.ico public/
+cp -r ../frontend/dist/assets public/
+cp ../frontend/dist/index.html public/
+cp ../frontend/dist/favicon.ico public/
 ```
 
 ### 4. Upload to Server
-Upload the `erp-backend/` folder content:
+Upload the `backend/` folder content:
 ```
 /home/username/erp/
 ├── app/
@@ -202,4 +222,3 @@ php artisan route:cache
 - [ ] SSL certificate installed (HTTPS)
 - [ ] `.htaccess` blocks `.env`, `.sql`, `.json` files
 - [ ] `storage/` has 775 permissions (not 777)
-- [ ] Remove `install.php` if using PHP deploy method

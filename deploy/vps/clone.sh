@@ -2,7 +2,7 @@
 # ============================================================
 #  SmartERP — App Clone (Step 2)
 #  Clones the repo and installs PHP + Node dependencies, builds
-#  the React frontend into erp-backend/public.
+#  the React frontend (frontend/) into backend/public.
 # ============================================================
 #  Usage:
 #     sudo REPO_URL=... APP_DIR=/opt/smarterp ./clone.sh
@@ -30,24 +30,24 @@ else
 fi
 
 log "Installing frontend deps and building..."
-cd "${APP_DIR}"
+cd "${APP_DIR}/frontend"
 if [[ -f package.json ]]; then
   npm install --no-audit --no-fund --legacy-peer-deps
   npm run build
 fi
 
 # Deploy React build into Laravel public/ (SPA served as index.html)
-if [[ -d "${APP_DIR}/dist" && -d "${APP_DIR}/erp-backend/public" ]]; then
-  log "Copying dist/ -> erp-backend/public/ ..."
+if [[ -d "${APP_DIR}/frontend/dist" && -d "${APP_DIR}/backend/public" ]]; then
+  log "Copying frontend/dist/ -> backend/public/ ..."
   # Preserve Laravel's index.php, .htaccess, storage symlink
   rsync -a --exclude='index.php' --exclude='.htaccess' --exclude='storage' \
-    "${APP_DIR}/dist/" "${APP_DIR}/erp-backend/public/"
+    "${APP_DIR}/frontend/dist/" "${APP_DIR}/backend/public/"
 fi
 
 
 log "Installing backend (Laravel) deps..."
-if [[ -d "${APP_DIR}/erp-backend" ]]; then
-  cd "${APP_DIR}/erp-backend"
+if [[ -d "${APP_DIR}/backend" ]]; then
+  cd "${APP_DIR}/backend"
   export COMPOSER_ALLOW_SUPERUSER=1
   composer config --global --no-plugins allow-plugins.php-http/discovery true || true
   composer config --global --no-plugins policy.advisories.block false || true

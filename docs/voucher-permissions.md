@@ -8,7 +8,7 @@ otherwise the UI shows a button that the API later refuses with `403`.
 
 | Layer       | Path                                                  | Symbol                          |
 | ----------- | ----------------------------------------------------- | ------------------------------- |
-| Backend     | `erp-backend/app/Support/VoucherPermissions.php`      | `App\Support\VoucherPermissions`|
+| Backend     | `backend/app/Support/VoucherPermissions.php`      | `App\Support\VoucherPermissions`|
 | Frontend    | `src/lib/voucher-permissions.ts`                      | `evaluateVoucherPermission()`   |
 | Reconciler  | `php artisan permissions:sync-vouchers [--dry-run]`   | `SyncVoucherPermissions`        |
 

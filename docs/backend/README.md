@@ -30,7 +30,7 @@ Controllers → Services → Repositories → Models
 
 ```bash
 # 1. Clone/upload to server
-cd /home/user/erp-backend
+cd /home/user/backend
 
 # 2. Install dependencies
 composer install --no-dev --optimize-autoloader
@@ -56,9 +56,9 @@ chown -R www-data:www-data storage bootstrap/cache
 
 ## cPanel Deployment
 
-1. Upload project to a folder outside `public_html` (e.g., `/home/user/erp-backend/`)
-2. In cPanel, create a subdomain or subdirectory pointing to `erp-backend/public`
-3. Or symlink: `ln -s /home/user/erp-backend/public /home/user/public_html/erp/api`
+1. Upload project to a folder outside `public_html` (e.g., `/home/user/backend/`)
+2. In cPanel, create a subdomain or subdirectory pointing to `backend/public`
+3. Or symlink: `ln -s /home/user/backend/public /home/user/public_html/erp/api`
 4. Create MySQL database & user via cPanel
 5. Update `.env` with credentials
 6. Run `php artisan migrate --seed`

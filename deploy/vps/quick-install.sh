@@ -68,7 +68,7 @@ REPO_URL="${REPO_URL}" REPO_BRANCH="${REPO_BRANCH}" APP_DIR="${APP_DIR}" \
 
 # ---------------- 4. .env + migrate ------------
 log "Step 4/6  Writing .env, key:generate, migrate --seed..."
-ENV_FILE="${APP_DIR}/erp-backend/.env"
+ENV_FILE="${APP_DIR}/backend/.env"
 cat > "${ENV_FILE}" <<EOF
 APP_NAME=SmartERP
 APP_ENV=production
@@ -99,7 +99,7 @@ SESSION_LIFETIME=120
 FILESYSTEM_DISK=public
 EOF
 
-cd "${APP_DIR}/erp-backend"
+cd "${APP_DIR}/backend"
 mkdir -p storage/app/public storage/app/backups storage/framework/cache/data \
          storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache
@@ -123,9 +123,9 @@ SQL
 touch storage/installed
 php artisan config:cache
 php artisan route:cache || true
-chown -R www-data:www-data "${APP_DIR}/erp-backend/storage" \
-                            "${APP_DIR}/erp-backend/bootstrap/cache" \
-                            "${APP_DIR}/erp-backend/public"
+chown -R www-data:www-data "${APP_DIR}/backend/storage" \
+                            "${APP_DIR}/backend/bootstrap/cache" \
+                            "${APP_DIR}/backend/public"
 
 # ---------------- 5. Nginx ---------------------
 log "Step 5/6  Configuring Nginx vhost for ${DOMAIN}..."
@@ -133,7 +133,7 @@ cat > /etc/nginx/sites-available/smarterp <<NGINX
 server {
     listen 80;
     server_name ${DOMAIN};
-    root ${APP_DIR}/erp-backend/public;
+    root ${APP_DIR}/backend/public;
     index index.php index.html;
 
     client_max_body_size 64M;
@@ -207,7 +207,7 @@ cat > "${CRED_FILE}" <<EOF
 =========================================================
  URL          : https://${DOMAIN}
  App path     : ${APP_DIR}
- Backend path : ${APP_DIR}/erp-backend
+ Backend path : ${APP_DIR}/backend
  DB name      : ${DB_NAME}
  DB user      : ${DB_USER}
  DB password  : ${DB_PASS}

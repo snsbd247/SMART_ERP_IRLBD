@@ -55,8 +55,8 @@ else
 fi
 
 # ---- 2. Restore DB ----
-if [[ -f "${BKP_PATH}" && -d "${APP_DIR}/erp-backend" && -f "${APP_DIR}/erp-backend/.env" ]]; then
-  cd "${APP_DIR}/erp-backend"
+if [[ -f "${BKP_PATH}" && -d "${APP_DIR}/backend" && -f "${APP_DIR}/backend/.env" ]]; then
+  cd "${APP_DIR}/backend"
   DB_HOST=$(grep -E '^DB_HOST='     .env | cut -d= -f2- | tr -d '"' || true)
   DB_PORT=$(grep -E '^DB_PORT='     .env | cut -d= -f2- | tr -d '"' || true)
   DB_NAME=$(grep -E '^DB_DATABASE=' .env | cut -d= -f2- | tr -d '"' || true)
@@ -75,22 +75,22 @@ if [[ -f "${BKP_PATH}" && -d "${APP_DIR}/erp-backend" && -f "${APP_DIR}/erp-back
 fi
 
 # ---- 3. Rebuild frontend at rolled-back code ----
-if [[ -f "${APP_DIR}/package.json" ]]; then
-  cd "${APP_DIR}"
+if [[ -f "${APP_DIR}/frontend/package.json" ]]; then
+  cd "${APP_DIR}/frontend"
   say "Reinstalling node modules + rebuilding frontend..."
   npm install --no-audit --no-fund --legacy-peer-deps >>"$LOG" 2>&1 || say "WARN: npm install issues"
   npm run build >>"$LOG" 2>&1 || { say "ERROR: npm build failed"; echo "failed" > "$STATE" 2>/dev/null || true; exit 1; }
 fi
 
-if [[ -d "${APP_DIR}/dist" && -d "${APP_DIR}/erp-backend/public" ]]; then
-  rm -rf "${APP_DIR}/erp-backend/public/assets" 2>/dev/null || true
+if [[ -d "${APP_DIR}/frontend/dist" && -d "${APP_DIR}/backend/public" ]]; then
+  rm -rf "${APP_DIR}/backend/public/assets" 2>/dev/null || true
   rsync -a --exclude='index.php' --exclude='.htaccess' --exclude='storage' \
-    "${APP_DIR}/dist/" "${APP_DIR}/erp-backend/public/" >>"$LOG" 2>&1 || true
+    "${APP_DIR}/frontend/dist/" "${APP_DIR}/backend/public/" >>"$LOG" 2>&1 || true
 fi
 
 # ---- 4. Composer + caches ----
-if [[ -d "${APP_DIR}/erp-backend" ]]; then
-  cd "${APP_DIR}/erp-backend"
+if [[ -d "${APP_DIR}/backend" ]]; then
+  cd "${APP_DIR}/backend"
   say "composer install (no-dev)..."
   composer install --no-dev --optimize-autoloader --no-interaction >>"$LOG" 2>&1 || true
   for c in config:clear route:clear view:clear cache:clear config:cache route:cache view:cache; do

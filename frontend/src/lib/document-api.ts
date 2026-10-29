@@ -37,7 +37,7 @@ async function laravelSimpleUpdate(docType: DocumentType, id: string, fields: Re
 
 // REST route prefix (under /v1) for document types backed by a real Laravel
 // controller with approve/cancel/edit-approved/delete-approved endpoints
-// (see erp-backend/routes/api.php). acc_voucher intentionally has its own
+// (see backend/routes/api.php). acc_voucher intentionally has its own
 // dedicated client (`@/lib/voucher-api`) with richer voucher-specific
 // payloads, so it is not routed through here.
 const LARAVEL_ROUTE_PREFIX: Partial<Record<DocumentType, string>> = {
