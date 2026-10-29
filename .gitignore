@@ -39,3 +39,9 @@ erp-backend/public/robots.txt
 # Contains real production DB credentials — never commit
 erp-backend/.env.production.deploy
 .env.production
+
+# Local env files (frontend needs none; backend keeps its own .env)
+.env
+
+# Laravel's generated package/service manifests
+erp-backend/bootstrap/cache/*.php
