@@ -12,7 +12,7 @@ import {
   ArrowLeftRight, Calendar, Activity, Menu, X, CircleDot, Truck, UserCheck,
   Briefcase, Clock, CalendarDays, DollarSign, FileCheck, BadgeCheck, User,
   Fingerprint, ScanFace, Timer, Gauge, Keyboard, Palette, MessageSquare,
-  Mail, Factory, Settings2, Github, PackageCheck, RotateCcw,
+  Mail, Factory, Settings2, Github, PackageCheck, RotateCcw, Download,
 } from "lucide-react";
 import { useBranding } from "@/contexts/BrandingContext";
 import { Button } from "@/components/ui/button";
@@ -147,8 +147,8 @@ const navGroups: NavGroup[] = [
     children: [
       { to: "/customers", label: "Customer List", icon: UserCheck, permission: "customers.view,sales.view" },
       { to: "/sales-workflow/po", label: "Customer POs", icon: ClipboardList, permission: "sales.view" },
-      { to: "/sales-workflow/delivery-challan", label: "Delivery Challans", icon: FileText, permission: "sales.view" },
       { to: "/sales-workflow/vat-challan", label: "VAT Challans", icon: Receipt, permission: "sales.view" },
+      { to: "/sales-workflow/delivery-challan", label: "Delivery Challans", icon: FileText, permission: "sales.view" },
       { to: "/sales-workflow/customer-receive", label: "Customer Receive", icon: UserCheck, permission: "sales.edit" },
       { to: "/sales-workflow/ho-receive", label: "HO Receive", icon: Building2, permission: "sales.edit" },
       { to: "/sales-workflow/invoice-queue", label: "Invoice Queue", icon: FileCheck, permission: "sales.create" },
@@ -219,6 +219,7 @@ const navGroups: NavGroup[] = [
       { to: "/admin/roles", label: "Roles & Permissions", icon: Shield, permission: "roles.view" },
       { to: "/admin/permission-matrix", label: "Permission Matrix", icon: Shield, permission: "roles.view" },
       { to: "/admin/backup", label: "Backup & Restore", icon: Database, permission: "backup.view" },
+      { to: "/admin/vat-import", label: "VAT Data Import", icon: Download, permission: "backup.view" },
       { to: "/admin/audit-log", label: "Activity Logs", icon: Activity, permission: "audit_log.view" },
       { to: "/admin/diagnostics", label: "System Diagnostics", icon: Gauge, permission: "settings.view" },
       { to: "/admin/github-deploy", label: "GitHub Deploy Sync", icon: Github, permission: "settings.view" },

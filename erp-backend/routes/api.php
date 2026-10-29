@@ -469,6 +469,18 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::post('gdrive/disconnect', [\App\Http\Controllers\Admin\BackupController::class, 'gdriveDisconnect']);
         });
 
+        // ─── VAT Software Data Import (Super Admin only) ──────────
+        Route::prefix('vat-import')->group(function () {
+            Route::get('sales', [\App\Http\Controllers\Admin\VatImportController::class, 'salesIndex']);
+            Route::get('sales/{id}/items', [\App\Http\Controllers\Admin\VatImportController::class, 'salesItems']);
+            Route::post('sales/import', [\App\Http\Controllers\Admin\VatImportController::class, 'importSales']);
+            Route::get('purchase', [\App\Http\Controllers\Admin\VatImportController::class, 'purchaseIndex']);
+            Route::get('purchase/{id}/items', [\App\Http\Controllers\Admin\VatImportController::class, 'purchaseItems']);
+            Route::post('purchase/import', [\App\Http\Controllers\Admin\VatImportController::class, 'importPurchase']);
+            Route::get('vat-challans', [\App\Http\Controllers\Admin\VatImportController::class, 'vatChallansIndex']);
+            Route::post('vat-challans/import', [\App\Http\Controllers\Admin\VatImportController::class, 'importVatChallans']);
+        });
+
         // ─── SMS (Super Admin only) ──────────────────────────────
         Route::post('sms/send', [\App\Http\Controllers\Admin\SmsController::class, 'send']);
 
