@@ -67,6 +67,12 @@ Route::get('v1/public/employee-verify/{code}/signature', function (string $code)
     ]]);
 });
 
+// Public Google Drive OAuth callback — Google's browser redirect carries no
+// Authorization header, so this must be reachable without auth:sanctum.
+// Protected instead by a signed, time-limited `state` param (see
+// BackupController::gdriveAuthUrl / gdriveCallback).
+Route::get('v1/backups/gdrive/callback', [\App\Http\Controllers\Admin\BackupController::class, 'gdriveCallback']);
+
 // License status/activation — same auth/scope as the main group below,
 // same "v1" prefix so the frontend can call it consistently, but
 // deliberately NOT behind LicenseGuard (applied only to the main group):
@@ -456,6 +462,11 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
             Route::get('settings', [\App\Http\Controllers\Admin\BackupController::class, 'settings']);
             Route::put('settings', [\App\Http\Controllers\Admin\BackupController::class, 'settings']);
             Route::post('gdrive/test', [\App\Http\Controllers\Admin\BackupController::class, 'gdriveTest']);
+            Route::get('gdrive/auth-url', [\App\Http\Controllers\Admin\BackupController::class, 'gdriveAuthUrl']);
+            Route::get('gdrive/folders', [\App\Http\Controllers\Admin\BackupController::class, 'gdriveFolders']);
+            Route::post('gdrive/folders', [\App\Http\Controllers\Admin\BackupController::class, 'gdriveCreateFolder']);
+            Route::post('gdrive/select-folder', [\App\Http\Controllers\Admin\BackupController::class, 'gdriveSelectFolder']);
+            Route::post('gdrive/disconnect', [\App\Http\Controllers\Admin\BackupController::class, 'gdriveDisconnect']);
         });
 
         // ─── SMS (Super Admin only) ──────────────────────────────

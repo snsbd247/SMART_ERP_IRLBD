@@ -9,11 +9,15 @@ use Illuminate\Support\Str;
 
 class BackupDatabase extends Command
 {
-    protected $signature = 'backup:database {--type=auto : Backup type (manual|auto)} {--format=sql : Format (sql|json)} {--gdrive=auto : Upload to Google Drive (auto|yes|no)}';
+    protected $signature = 'backup:database {--type=auto : Backup type (manual|auto|auto_gdrive)} {--format=sql : Format (sql|json)} {--gdrive=auto : Upload to Google Drive (auto|yes|no)}';
     protected $description = 'Create a SQL or JSON dump backup of the database';
 
     public function handle(): int
     {
+        if ($this->option('type') === 'auto_gdrive') {
+            return $this->handleHourlyGdriveBackup();
+        }
+
         $format = strtolower((string) $this->option('format'));
         if (!in_array($format, ['sql', 'json'], true)) $format = 'sql';
 
@@ -302,7 +306,7 @@ class BackupDatabase extends Command
         Log::info("SQL backup OK: {$exportedTables} tables, {$exportedRows} rows, " . count($views) . " views");
     }
 
-    private function recordBackup(string $filename, string $path, string $type, string $method, string $format = 'sql'): void
+    private function recordBackup(string $filename, string $path, string $type, string $method, string $format = 'sql'): string
     {
         $fileSize = file_exists($path) ? filesize($path) : 0;
         $database = config('database.connections.mysql.database');
@@ -316,8 +320,9 @@ class BackupDatabase extends Command
             } catch (\Exception $e) {}
         }
 
+        $id = (string) Str::uuid();
         DB::table('backup_history')->insert([
-            'id' => Str::uuid(),
+            'id' => $id,
             'file_name' => $filename,
             'backup_type' => $type,
             'format' => $format,
@@ -330,10 +335,123 @@ class BackupDatabase extends Command
         ]);
 
         // Update last auto backup time
-        if ($type === 'auto') {
+        if (in_array($type, ['auto', 'auto_gdrive'], true)) {
             DB::table('backup_settings')->where('id', 'default')->update([
                 'last_auto_backup_at' => now(),
             ]);
+        }
+
+        return $id;
+    }
+
+    /**
+     * The hourly Drive-only flow: create a SQL backup, upload it, delete the
+     * local copy on success (local disk is never used as long-term storage
+     * for these), then prune Drive backups older than the retention window.
+     * Skips entirely if Google Drive isn't connected/enabled.
+     */
+    private function handleHourlyGdriveBackup(): int
+    {
+        $settings = DB::table('backup_settings')->where('id', 'default')->first();
+        if (!$settings || empty($settings->gdrive_enabled) || empty($settings->gdrive_refresh_token)) {
+            $this->info('Google Drive not connected/enabled — skipping hourly backup.');
+            return 0;
+        }
+
+        $filename = 'erp_backup_' . date('Y_m_d_H_i') . '.sql';
+        $dir = storage_path('app/backups');
+        if (!is_dir($dir)) mkdir($dir, 0775, true);
+        $path = $dir . '/' . $filename;
+
+        $this->info("Creating hourly SQL backup: {$filename}");
+        try {
+            $host = config('database.connections.mysql.host');
+            $port = config('database.connections.mysql.port', 3306);
+            $database = config('database.connections.mysql.database');
+            $username = config('database.connections.mysql.username');
+            $password = config('database.connections.mysql.password');
+
+            $method = $this->tryMysqldump($host, $port, $database, $username, $password, $path) ? 'mysqldump' : 'php';
+            if ($method === 'php') $this->phpSqlExport($database, $path);
+
+            $historyId = $this->recordBackup($filename, $path, 'auto_gdrive', $method, 'sql');
+        } catch (\Throwable $e) {
+            Log::error('Hourly backup creation failed: ' . $e->getMessage());
+            $this->error('Backup failed: ' . $e->getMessage());
+            return 1;
+        }
+
+        try {
+            $svc = \App\Services\GoogleDriveService::fromSettings($settings);
+            $meta = $svc->upload($path, $filename, 'application/sql');
+            DB::table('backup_history')->where('id', $historyId)->update([
+                'storage_path' => null,
+                'gdrive_file_id' => $meta['id'] ?? null,
+                'gdrive_view_link' => $meta['webViewLink'] ?? null,
+            ]);
+            @unlink($path);
+            DB::table('backup_settings')->where('id', 'default')->update([
+                'last_gdrive_backup_at' => now(),
+                'last_gdrive_error' => null,
+            ]);
+            $this->info('☁ Uploaded to Google Drive, local copy removed.');
+
+            $this->cleanupOldDriveBackups($svc, $settings->gdrive_folder_id);
+        } catch (\Throwable $e) {
+            Log::warning('Hourly Google Drive upload failed, keeping local copy: ' . $e->getMessage());
+            DB::table('backup_settings')->where('id', 'default')->update([
+                'last_gdrive_error' => substr($e->getMessage(), 0, 500),
+            ]);
+            $this->warn('Upload failed, local copy kept as fallback: ' . $e->getMessage());
+        }
+
+        $this->cleanupStaleLocalAutoBackups();
+
+        return 0;
+    }
+
+    /**
+     * Delete Drive backups older than 5 days from the configured folder.
+     */
+    private function cleanupOldDriveBackups(\App\Services\GoogleDriveService $svc, ?string $folderId): void
+    {
+        try {
+            $files = $svc->listFiles($folderId ?: null);
+            $cutoff = now()->subDays(5);
+            foreach ($files as $f) {
+                if (empty($f['createdTime'])) continue;
+                $created = \Illuminate\Support\Carbon::parse($f['createdTime']);
+                if ($created->lt($cutoff)) {
+                    $svc->deleteFile($f['id']);
+                    $this->info("Deleted old Drive backup: {$f['name']}");
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Drive backup cleanup failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Safety-net cleanup: an hourly backup whose upload kept failing (and
+     * so kept its local copy) shouldn't accumulate on disk forever — clear
+     * anything still local past a week.
+     */
+    private function cleanupStaleLocalAutoBackups(): void
+    {
+        try {
+            $cutoff = now()->subDays(7);
+            $stale = DB::table('backup_history')
+                ->where('backup_type', 'auto_gdrive')
+                ->whereNotNull('storage_path')
+                ->where('created_at', '<', $cutoff)
+                ->get();
+            foreach ($stale as $b) {
+                $full = storage_path('app/' . $b->storage_path);
+                if (file_exists($full)) @unlink($full);
+                DB::table('backup_history')->where('id', $b->id)->update(['storage_path' => null]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Stale local auto-backup cleanup failed: ' . $e->getMessage());
         }
     }
 
