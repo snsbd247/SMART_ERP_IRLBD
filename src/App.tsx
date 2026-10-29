@@ -25,6 +25,7 @@ import RolesPage from "./pages/admin/RolesPage";
 import BranchesPage from "./pages/admin/BranchesPage";
 import AuditLogPage from "./pages/admin/AuditLogPage";
 import BackupPage from "./pages/admin/BackupPage";
+import VatImportPage from "./pages/admin/VatImportPage";
 import GeneralSettingsPage from "./pages/admin/GeneralSettingsPage";
 import DocumentNumberingPage from "./pages/admin/DocumentNumberingPage";
 import DiagnosticsPage from "./pages/admin/DiagnosticsPage";
@@ -371,6 +372,7 @@ const App = () => (
                 <Route path="/admin/financial-years" element={<P perm="financial_years.view"><FinancialYearsPage /></P>} />
                 <Route path="/admin/audit-log" element={<P perm="audit_log.view"><AuditLogPage /></P>} />
                 <Route path="/admin/backup" element={<P perm="backup.view"><BackupPage /></P>} />
+                <Route path="/admin/vat-import" element={<P perm="backup.view"><VatImportPage /></P>} />
                 <Route path="/admin/settings" element={<P perm="settings.view"><GeneralSettingsPage /></P>} />
                 <Route path="/admin/numbering" element={<P perm="settings.view"><DocumentNumberingPage /></P>} />
                 <Route path="/admin/shortcuts" element={<P perm="settings.view"><ShortcutsPage /></P>} />
