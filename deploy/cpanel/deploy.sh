@@ -74,7 +74,7 @@ tar czf "${WORK}/frontend.tar.gz" -C "${ROOT}/frontend/dist" .
 if [[ -n "$(git -C "${ROOT}" status --porcelain -- backend)" ]]; then
   fail "backend/ has uncommitted changes — commit them first (the backend is deployed from HEAD)."
 fi
-git -C "${ROOT}" archive --format=tar HEAD:backend | tar x -C "${WORK}" --one-top-level=backend
+git -C "${ROOT}" -c core.autocrlf=false archive --format=tar HEAD:backend | tar x -C "${WORK}" --one-top-level=backend
 rm -rf "${WORK}/backend/storage" "${WORK}/backend/tests"
 if [[ "${WITH_VENDOR:-0}" == "1" ]]; then
   [[ -d "${ROOT}/backend/vendor" ]] || fail "WITH_VENDOR=1 but backend/vendor is missing (run composer install)."
