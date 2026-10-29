@@ -260,7 +260,7 @@ export default function EmployeeVerifyPage() {
           </div>
 
           {/* Certificate */}
-          <div className="bg-white border-2 border-primary/20 rounded-lg p-6 sm:p-10 relative overflow-hidden print:border-2 print:rounded-none print:p-10">
+          <div className="print-preview-area print:[zoom:0.72] bg-white border-2 border-primary/20 rounded-lg p-6 sm:p-10 relative overflow-hidden print:border-2 print:rounded-none print:p-10">
             {/* Watermark */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] print:opacity-[0.04]">
               <span className="text-[100px] sm:text-[140px] font-black text-primary rotate-[-30deg] whitespace-nowrap select-none">
@@ -507,7 +507,7 @@ export default function EmployeeVerifyPage() {
 
       {/* Result Card */}
       {!loading && employee && (
-        <div ref={printRef} className="w-full max-w-md">
+        <div ref={printRef} className="print-preview-area w-full max-w-md">
           <Card className="overflow-hidden shadow-lg print:shadow-none print:border">
             {/* Header */}
             <div className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-5 text-center print:bg-primary print:text-white">

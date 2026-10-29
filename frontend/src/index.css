@@ -215,8 +215,13 @@ html, body, #root {
   }
 }
 
+/* When a page marks a .print-preview-area, print only that area. Pages
+   without one print their normal content (app chrome is print:hidden in
+   AppLayout) instead of a blank sheet. */
 @media print {
-  body * {
+  /* :where() keeps this at the old `body *` specificity so the
+     .print-preview-area rules below still win. */
+  body:where(:has(.print-preview-area)) * {
     visibility: hidden;
   }
   .print-preview-area,
