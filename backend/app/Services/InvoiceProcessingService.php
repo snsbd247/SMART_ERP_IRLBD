@@ -111,6 +111,7 @@ class InvoiceProcessingService
                     'id' => (string) \Illuminate\Support\Str::uuid(),
                     'invoice_id' => $invoice->id,
                     'vat_challan_id' => $c->id,
+                    'created_at' => now(),
                 ]);
                 // mark all DCs invoiced
                 DeliveryChallan::where('vat_challan_id', $c->id)->update(['status' => 'invoiced']);
