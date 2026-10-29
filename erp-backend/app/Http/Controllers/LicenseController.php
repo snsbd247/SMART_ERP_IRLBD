@@ -14,6 +14,11 @@ class LicenseController extends BaseController
         return $this->success($this->license->getEffectiveStatus());
     }
 
+    public function recheck()
+    {
+        return $this->success($this->license->recheck());
+    }
+
     public function activate(Request $request)
     {
         $data = $request->validate([

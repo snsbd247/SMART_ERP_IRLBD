@@ -7,6 +7,8 @@ interface LicenseStatus {
   status: string;
   message: string | null;
   expires_at: string | null;
+  activated_at: string | null;
+  last_checked_at: string | null;
 }
 
 interface LicenseContextType {
@@ -15,8 +17,11 @@ interface LicenseContextType {
   status: string | null;
   message: string | null;
   expiresAt: string | null;
+  activatedAt: string | null;
+  lastCheckedAt: string | null;
   refetch: () => Promise<void>;
   activate: (licenseKey: string) => Promise<{ ok: boolean; message: string }>;
+  recheck: () => Promise<{ ok: boolean; message: string }>;
 }
 
 const LicenseContext = createContext<LicenseContextType | undefined>(undefined);
@@ -75,6 +80,23 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     }
   }, [fetchStatus]);
 
+  const recheck = useCallback(async () => {
+    try {
+      const res = await fetch(apiUrl("license/recheck"), {
+        method: "POST",
+        headers: { Accept: "application/json", ...getLaravelAuthHeaders() },
+      });
+      const json = await res.json();
+      if (res.ok && json?.data) {
+        setData(json.data as LicenseStatus);
+        return { ok: true, message: "License status refreshed." };
+      }
+      return { ok: false, message: json?.message || "Could not refresh license status." };
+    } catch {
+      return { ok: false, message: "Could not reach the license server. Check your internet connection and try again." };
+    }
+  }, []);
+
   return (
     <LicenseContext.Provider
       value={{
@@ -83,8 +105,11 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         status: data?.status ?? null,
         message: data?.message ?? null,
         expiresAt: data?.expires_at ?? null,
+        activatedAt: data?.activated_at ?? null,
+        lastCheckedAt: data?.last_checked_at ?? null,
         refetch: fetchStatus,
         activate,
+        recheck,
       }}
     >
       {children}

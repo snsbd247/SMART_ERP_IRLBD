@@ -6,6 +6,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { BrandingFooter } from "@/components/BrandingFooter";
 import { ChunkRetryIndicator } from "@/components/ChunkRetryIndicator";
 import { LicenseGraceBanner } from "@/components/LicenseGraceBanner";
+import { LicenseExpiryWarningDialog } from "@/components/LicenseExpiryWarningDialog";
 
 export const AppLayout = () => {
   return (
@@ -22,6 +23,7 @@ export const AppLayout = () => {
       </div>
       <CommandPalette />
       <ChunkRetryIndicator />
+      <LicenseExpiryWarningDialog />
     </div>
   );
 };
