@@ -97,12 +97,16 @@ export default function EmployeeVerifyPage() {
           if (!base) return;
           const res = await fetch(`${base}/v1/public/branding`);
           const json = await res.json().catch(() => ({}));
-          const b = json?.data || json;
-          if (b) {
-            setCompanyName(b.company_name || "");
-            setCompanyLogo(b.company_logo_url || "");
-            setCompanyAddress(b.address || "");
-          }
+          const raw = json?.data || json;
+          // Branding comes back as [{ setting_key, setting_value }] rows.
+          const b: Record<string, string> = Array.isArray(raw)
+            ? Object.fromEntries(raw.map((r: { setting_key: string; setting_value: string }) => [r.setting_key, r.setting_value]))
+            : raw || {};
+          // Only fill gaps: the verify response (which may land first) is
+          // the authoritative source and must not be blanked out here.
+          if (b.company_name) setCompanyName((prev) => prev || b.company_name);
+          if (b.company_logo_url) setCompanyLogo((prev) => prev || b.company_logo_url);
+          if (b.address) setCompanyAddress((prev) => prev || b.address);
         } catch { /* ignore */ }
         return;
       }
