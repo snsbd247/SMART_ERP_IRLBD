@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
+import { PageLoader } from "@/components/PageLoader";
 import { AppSidebar } from "@/components/AppSidebar";
 import { TopNavbar } from "@/components/TopNavbar";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -23,7 +25,10 @@ export const AppLayout = () => {
           <Breadcrumbs />
         </div>
         <main className="flex-1 overflow-auto overscroll-contain print:overflow-visible">
-          <Outlet />
+          {/* Own boundary so the sidebar/navbar stay put while a page chunk loads. */}
+          <Suspense fallback={<PageLoader fullScreen={false} />}>
+            <Outlet />
+          </Suspense>
         </main>
         <div className="contents print:hidden">
           <BrandingFooter />

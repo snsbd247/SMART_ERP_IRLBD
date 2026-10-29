@@ -13,181 +13,184 @@ import { BrandingProvider } from "@/contexts/BrandingContext";
 import { LicenseProvider } from "@/contexts/LicenseContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
+import { PageLoader } from "@/components/PageLoader";
+import { lazyPage } from "@/lib/lazy-page";
+import { Suspense } from "react";
 import Login from "./pages/Login";
-import PublicEmployeeRegistration from "./pages/PublicEmployeeRegistration";
-import InstallPage from "./pages/InstallPage";
-import LicenseVerificationPage from "./pages/LicenseVerificationPage";
-import Dashboard from "./pages/Dashboard";
-import VouchersPage from "./pages/VouchersPage";
-import Profile from "./pages/Profile";
-import UsersPage from "./pages/admin/UsersPage";
-import RolesPage from "./pages/admin/RolesPage";
-import BranchesPage from "./pages/admin/BranchesPage";
-import AuditLogPage from "./pages/admin/AuditLogPage";
-import BackupPage from "./pages/admin/BackupPage";
-import VatImportPage from "./pages/admin/VatImportPage";
-import GeneralSettingsPage from "./pages/admin/GeneralSettingsPage";
-import DocumentNumberingPage from "./pages/admin/DocumentNumberingPage";
-import DiagnosticsPage from "./pages/admin/DiagnosticsPage";
-import InChunkSettingsPage from "./pages/admin/InChunkSettingsPage";
-import GithubDeploySyncPage from "./pages/admin/GithubDeploySyncPage";
+const PublicEmployeeRegistration = lazyPage(() => import("./pages/PublicEmployeeRegistration"));
+const InstallPage = lazyPage(() => import("./pages/InstallPage"));
+const LicenseVerificationPage = lazyPage(() => import("./pages/LicenseVerificationPage"));
+const Dashboard = lazyPage(() => import("./pages/Dashboard"));
+const VouchersPage = lazyPage(() => import("./pages/VouchersPage"));
+const Profile = lazyPage(() => import("./pages/Profile"));
+const UsersPage = lazyPage(() => import("./pages/admin/UsersPage"));
+const RolesPage = lazyPage(() => import("./pages/admin/RolesPage"));
+const BranchesPage = lazyPage(() => import("./pages/admin/BranchesPage"));
+const AuditLogPage = lazyPage(() => import("./pages/admin/AuditLogPage"));
+const BackupPage = lazyPage(() => import("./pages/admin/BackupPage"));
+const VatImportPage = lazyPage(() => import("./pages/admin/VatImportPage"));
+const GeneralSettingsPage = lazyPage(() => import("./pages/admin/GeneralSettingsPage"));
+const DocumentNumberingPage = lazyPage(() => import("./pages/admin/DocumentNumberingPage"));
+const DiagnosticsPage = lazyPage(() => import("./pages/admin/DiagnosticsPage"));
+const InChunkSettingsPage = lazyPage(() => import("./pages/admin/InChunkSettingsPage"));
+const GithubDeploySyncPage = lazyPage(() => import("./pages/admin/GithubDeploySyncPage"));
 
-import ChartOfAccounts from "./pages/accounts/ChartOfAccounts";
-import AccountingVouchers from "./pages/accounts/AccountingVouchers";
-import MoneyReceiptsPage from "./pages/accounts/MoneyReceiptsPage";
-import BulkVoucherEntryPage from "./pages/accounts/BulkVoucherEntryPage";
-import DeletedVouchersPage from "./pages/accounts/DeletedVouchersPage";
-import AccountingAuditLogPage from "./pages/accounts/AccountingAuditLogPage";
-import TreasuryInformationPage from "./pages/accounts/TreasuryInformationPage";
-import PermissionMatrixPage from "./pages/admin/PermissionMatrixPage";
+const ChartOfAccounts = lazyPage(() => import("./pages/accounts/ChartOfAccounts"));
+const AccountingVouchers = lazyPage(() => import("./pages/accounts/AccountingVouchers"));
+const MoneyReceiptsPage = lazyPage(() => import("./pages/accounts/MoneyReceiptsPage"));
+const BulkVoucherEntryPage = lazyPage(() => import("./pages/accounts/BulkVoucherEntryPage"));
+const DeletedVouchersPage = lazyPage(() => import("./pages/accounts/DeletedVouchersPage"));
+const AccountingAuditLogPage = lazyPage(() => import("./pages/accounts/AccountingAuditLogPage"));
+const TreasuryInformationPage = lazyPage(() => import("./pages/accounts/TreasuryInformationPage"));
+const PermissionMatrixPage = lazyPage(() => import("./pages/admin/PermissionMatrixPage"));
 
-import SalesPage from "./pages/sales/SalesPage";
-import SalesInvoiceDetailPage from "./pages/sales/SalesInvoiceDetailPage";
+const SalesPage = lazyPage(() => import("./pages/sales/SalesPage"));
+const SalesInvoiceDetailPage = lazyPage(() => import("./pages/sales/SalesInvoiceDetailPage"));
 
 // Purchase module (Phase 1 Foundation)
-import PurchaseDashboardPage from "./pages/purchase/PurchaseDashboardPage";
-import PurchaseSuppliersPage from "./pages/purchase/SuppliersPage";
-import PurchaseTypesPage from "./pages/purchase/PurchaseTypesPage";
-import PurchaseSettingsPage from "./pages/purchase/PurchaseSettingsPage";
-import PurchaseApprovalMatrixPage from "./pages/purchase/ApprovalMatrixPage";
-import PurchaseCoaMappingPage from "./pages/purchase/CoaMappingPage";
-import PurchaseAuditLogPage from "./pages/purchase/AuditLogPage";
+const PurchaseDashboardPage = lazyPage(() => import("./pages/purchase/PurchaseDashboardPage"));
+const PurchaseSuppliersPage = lazyPage(() => import("./pages/purchase/SuppliersPage"));
+const PurchaseTypesPage = lazyPage(() => import("./pages/purchase/PurchaseTypesPage"));
+const PurchaseSettingsPage = lazyPage(() => import("./pages/purchase/PurchaseSettingsPage"));
+const PurchaseApprovalMatrixPage = lazyPage(() => import("./pages/purchase/ApprovalMatrixPage"));
+const PurchaseCoaMappingPage = lazyPage(() => import("./pages/purchase/CoaMappingPage"));
+const PurchaseAuditLogPage = lazyPage(() => import("./pages/purchase/AuditLogPage"));
 // Purchase module (Phase 2 PR & PO)
-import PurchaseRequisitionsPage from "./pages/purchase/RequisitionsPage";
-import PurchaseRequisitionFormPage from "./pages/purchase/RequisitionFormPage";
-import PurchaseRequisitionDetailPage from "./pages/purchase/RequisitionDetailPage";
-import PurchaseOrdersV2Page from "./pages/purchase/PurchaseOrdersPage";
-import PurchaseOrderV2FormPage from "./pages/purchase/PurchaseOrderFormPage";
-import PurchaseOrderV2DetailPage from "./pages/purchase/PurchaseOrderDetailPage";
-import GrnsPage from "./pages/purchase/GrnsPage";
-import GrnFormPage from "./pages/purchase/GrnFormPage";
-import GrnDetailPage from "./pages/purchase/GrnDetailPage";
+const PurchaseRequisitionsPage = lazyPage(() => import("./pages/purchase/RequisitionsPage"));
+const PurchaseRequisitionFormPage = lazyPage(() => import("./pages/purchase/RequisitionFormPage"));
+const PurchaseRequisitionDetailPage = lazyPage(() => import("./pages/purchase/RequisitionDetailPage"));
+const PurchaseOrdersV2Page = lazyPage(() => import("./pages/purchase/PurchaseOrdersPage"));
+const PurchaseOrderV2FormPage = lazyPage(() => import("./pages/purchase/PurchaseOrderFormPage"));
+const PurchaseOrderV2DetailPage = lazyPage(() => import("./pages/purchase/PurchaseOrderDetailPage"));
+const GrnsPage = lazyPage(() => import("./pages/purchase/GrnsPage"));
+const GrnFormPage = lazyPage(() => import("./pages/purchase/GrnFormPage"));
+const GrnDetailPage = lazyPage(() => import("./pages/purchase/GrnDetailPage"));
 // Purchase module (Phase 4 Billing / Payments / LC)
-import SupplierBillsPage from "./pages/purchase/SupplierBillsPage";
-import SupplierBillFormPage from "./pages/purchase/SupplierBillFormPage";
-import SupplierBillDetailPage from "./pages/purchase/SupplierBillDetailPage";
-import SupplierPaymentsPage from "./pages/purchase/SupplierPaymentsPage";
-import SupplierPaymentFormPage from "./pages/purchase/SupplierPaymentFormPage";
-import SupplierPaymentDetailPage from "./pages/purchase/SupplierPaymentDetailPage";
-import LcsPage from "./pages/purchase/LcsPage";
-import LcFormPage from "./pages/purchase/LcFormPage";
-import LcDetailPage from "./pages/purchase/LcDetailPage";
+const SupplierBillsPage = lazyPage(() => import("./pages/purchase/SupplierBillsPage"));
+const SupplierBillFormPage = lazyPage(() => import("./pages/purchase/SupplierBillFormPage"));
+const SupplierBillDetailPage = lazyPage(() => import("./pages/purchase/SupplierBillDetailPage"));
+const SupplierPaymentsPage = lazyPage(() => import("./pages/purchase/SupplierPaymentsPage"));
+const SupplierPaymentFormPage = lazyPage(() => import("./pages/purchase/SupplierPaymentFormPage"));
+const SupplierPaymentDetailPage = lazyPage(() => import("./pages/purchase/SupplierPaymentDetailPage"));
+const LcsPage = lazyPage(() => import("./pages/purchase/LcsPage"));
+const LcFormPage = lazyPage(() => import("./pages/purchase/LcFormPage"));
+const LcDetailPage = lazyPage(() => import("./pages/purchase/LcDetailPage"));
 // Purchase module (Phase 5 Returns & Reports)
-import PurchaseReturnsPage from "./pages/purchase/PurchaseReturnsPage";
-import PurchaseReturnFormPage from "./pages/purchase/PurchaseReturnFormPage";
-import PurchaseReturnDetailPage from "./pages/purchase/PurchaseReturnDetailPage";
-import PurchaseReportsPage from "./pages/purchase/PurchaseReportsPage";
-import InventoryPage from "./pages/inventory/InventoryPage";
-import UnitsPage from "./pages/inventory/UnitsPage";
-import ItemCategoriesPage from "./pages/inventory/ItemCategoriesPage";
-import ItemMasterPage from "./pages/inventory/ItemMasterPage";
-import StockGroupsPage from "./pages/inventory/StockGroupsPage";
-import ChartOfInventoryPage from "./pages/inventory/ChartOfInventoryPage";
-import WarehousesPage from "./pages/inventory/WarehousesPage";
-import StockTransferPage from "./pages/inventory/StockTransferPage";
-import FinancialReports from "./pages/reports/FinancialReports";
-import StockLedger from "./pages/reports/StockLedger";
-import CustomersPage from "./pages/CustomersPage";
-import CustomerProfilePage from "./pages/CustomerProfilePage";
-import FinancialYearsPage from "./pages/FinancialYearsPage";
-import ChangePasswordPage from "./pages/ChangePasswordPage";
-import BankAccountsPage from "./pages/bank/BankAccountsPage";
-import CashBookPage from "./pages/bank/CashBookPage";
-import LowStockPage from "./pages/reports/LowStockPage";
-import StockReportsPage from "./pages/reports/StockReportsPage";
-import StockByGroupPage from "./pages/reports/StockByGroupPage";
-import StockAdjustmentPage from "./pages/inventory/StockAdjustmentPage";
-import NotFound from "./pages/NotFound";
-import ResetPassword from "./pages/ResetPassword";
-import ShortcutsPage from "./pages/admin/ShortcutsPage";
-import BrandingPage from "./pages/admin/BrandingPage";
-import SmsSettingsPage from "./pages/admin/SmsSettingsPage";
-import MessagingPage from "./pages/messaging/MessagingPage";
+const PurchaseReturnsPage = lazyPage(() => import("./pages/purchase/PurchaseReturnsPage"));
+const PurchaseReturnFormPage = lazyPage(() => import("./pages/purchase/PurchaseReturnFormPage"));
+const PurchaseReturnDetailPage = lazyPage(() => import("./pages/purchase/PurchaseReturnDetailPage"));
+const PurchaseReportsPage = lazyPage(() => import("./pages/purchase/PurchaseReportsPage"));
+const InventoryPage = lazyPage(() => import("./pages/inventory/InventoryPage"));
+const UnitsPage = lazyPage(() => import("./pages/inventory/UnitsPage"));
+const ItemCategoriesPage = lazyPage(() => import("./pages/inventory/ItemCategoriesPage"));
+const ItemMasterPage = lazyPage(() => import("./pages/inventory/ItemMasterPage"));
+const StockGroupsPage = lazyPage(() => import("./pages/inventory/StockGroupsPage"));
+const ChartOfInventoryPage = lazyPage(() => import("./pages/inventory/ChartOfInventoryPage"));
+const WarehousesPage = lazyPage(() => import("./pages/inventory/WarehousesPage"));
+const StockTransferPage = lazyPage(() => import("./pages/inventory/StockTransferPage"));
+const FinancialReports = lazyPage(() => import("./pages/reports/FinancialReports"));
+const StockLedger = lazyPage(() => import("./pages/reports/StockLedger"));
+const CustomersPage = lazyPage(() => import("./pages/CustomersPage"));
+const CustomerProfilePage = lazyPage(() => import("./pages/CustomerProfilePage"));
+const FinancialYearsPage = lazyPage(() => import("./pages/FinancialYearsPage"));
+const ChangePasswordPage = lazyPage(() => import("./pages/ChangePasswordPage"));
+const BankAccountsPage = lazyPage(() => import("./pages/bank/BankAccountsPage"));
+const CashBookPage = lazyPage(() => import("./pages/bank/CashBookPage"));
+const LowStockPage = lazyPage(() => import("./pages/reports/LowStockPage"));
+const StockReportsPage = lazyPage(() => import("./pages/reports/StockReportsPage"));
+const StockByGroupPage = lazyPage(() => import("./pages/reports/StockByGroupPage"));
+const StockAdjustmentPage = lazyPage(() => import("./pages/inventory/StockAdjustmentPage"));
+const NotFound = lazyPage(() => import("./pages/NotFound"));
+const ResetPassword = lazyPage(() => import("./pages/ResetPassword"));
+const ShortcutsPage = lazyPage(() => import("./pages/admin/ShortcutsPage"));
+const BrandingPage = lazyPage(() => import("./pages/admin/BrandingPage"));
+const SmsSettingsPage = lazyPage(() => import("./pages/admin/SmsSettingsPage"));
+const MessagingPage = lazyPage(() => import("./pages/messaging/MessagingPage"));
 // HRM Pages
-import EmployeesPage from "./pages/hrm/EmployeesPage";
-import EmployeeApprovalsPage from "./pages/hrm/EmployeeApprovalsPage";
-import DepartmentsPage from "./pages/hrm/DepartmentsPage";
-import DesignationsPage from "./pages/hrm/DesignationsPage";
-import AttendancePage from "./pages/hrm/AttendancePage";
-import LeavePage from "./pages/hrm/LeavePage";
-import PayrollPage from "./pages/hrm/PayrollPage";
-import DocumentsPage from "./pages/hrm/DocumentsPage";
-import IdCardsPage from "./pages/hrm/IdCardsPage";
-import HrReportsPage from "./pages/hrm/HrReportsPage";
-import EmployeeVerifyPage from "./pages/hrm/EmployeeVerifyPage";
-import MoneyReceiptVerifyPage from "./pages/MoneyReceiptVerifyPage";
-import ShiftsPage from "./pages/hrm/ShiftsPage";
-import BiometricImportPage from "./pages/hrm/BiometricImportPage";
-import OvertimePage from "./pages/hrm/OvertimePage";
-import FaceAttendancePage from "./pages/hrm/FaceAttendancePage";
-import HrDashboardPage from "./pages/hrm/HrDashboardPage";
-import EmployeeProfilePage from "./pages/hrm/EmployeeProfilePage";
-import LoginActivityPage from "./pages/hrm/LoginActivityPage";
-import FundsPage from "./pages/hrm/FundsPage";
-import SectionsPage from "./pages/hrm/SectionsPage";
+const EmployeesPage = lazyPage(() => import("./pages/hrm/EmployeesPage"));
+const EmployeeApprovalsPage = lazyPage(() => import("./pages/hrm/EmployeeApprovalsPage"));
+const DepartmentsPage = lazyPage(() => import("./pages/hrm/DepartmentsPage"));
+const DesignationsPage = lazyPage(() => import("./pages/hrm/DesignationsPage"));
+const AttendancePage = lazyPage(() => import("./pages/hrm/AttendancePage"));
+const LeavePage = lazyPage(() => import("./pages/hrm/LeavePage"));
+const PayrollPage = lazyPage(() => import("./pages/hrm/PayrollPage"));
+const DocumentsPage = lazyPage(() => import("./pages/hrm/DocumentsPage"));
+const IdCardsPage = lazyPage(() => import("./pages/hrm/IdCardsPage"));
+const HrReportsPage = lazyPage(() => import("./pages/hrm/HrReportsPage"));
+const EmployeeVerifyPage = lazyPage(() => import("./pages/hrm/EmployeeVerifyPage"));
+const MoneyReceiptVerifyPage = lazyPage(() => import("./pages/MoneyReceiptVerifyPage"));
+const ShiftsPage = lazyPage(() => import("./pages/hrm/ShiftsPage"));
+const BiometricImportPage = lazyPage(() => import("./pages/hrm/BiometricImportPage"));
+const OvertimePage = lazyPage(() => import("./pages/hrm/OvertimePage"));
+const FaceAttendancePage = lazyPage(() => import("./pages/hrm/FaceAttendancePage"));
+const HrDashboardPage = lazyPage(() => import("./pages/hrm/HrDashboardPage"));
+const EmployeeProfilePage = lazyPage(() => import("./pages/hrm/EmployeeProfilePage"));
+const LoginActivityPage = lazyPage(() => import("./pages/hrm/LoginActivityPage"));
+const FundsPage = lazyPage(() => import("./pages/hrm/FundsPage"));
+const SectionsPage = lazyPage(() => import("./pages/hrm/SectionsPage"));
 
 
 // Manufacturing Pages
-import BOMPage from "./pages/manufacturing/BOMPage";
-import ProductionPage from "./pages/manufacturing/ProductionPage";
-import ManufacturingReports from "./pages/manufacturing/ManufacturingReports";
-import RawMaterialsPage from "./pages/manufacturing/RawMaterialsPage";
+const BOMPage = lazyPage(() => import("./pages/manufacturing/BOMPage"));
+const ProductionPage = lazyPage(() => import("./pages/manufacturing/ProductionPage"));
+const ManufacturingReports = lazyPage(() => import("./pages/manufacturing/ManufacturingReports"));
+const RawMaterialsPage = lazyPage(() => import("./pages/manufacturing/RawMaterialsPage"));
 
 // Inventory - Stock Ledger
-import StockLedgerPage from "./pages/inventory/StockLedgerPage";
+const StockLedgerPage = lazyPage(() => import("./pages/inventory/StockLedgerPage"));
 
 // Employee Portal Pages
-import MyDashboardPage from "./pages/portal/MyDashboardPage";
-import MyProfilePage from "./pages/portal/MyProfilePage";
-import MyAttendancePage from "./pages/portal/MyAttendancePage";
-import MyLeavePage from "./pages/portal/MyLeavePage";
-import MyPayslipsPage from "./pages/portal/MyPayslipsPage";
-import MyDocumentsPage from "./pages/portal/MyDocumentsPage";
+const MyDashboardPage = lazyPage(() => import("./pages/portal/MyDashboardPage"));
+const MyProfilePage = lazyPage(() => import("./pages/portal/MyProfilePage"));
+const MyAttendancePage = lazyPage(() => import("./pages/portal/MyAttendancePage"));
+const MyLeavePage = lazyPage(() => import("./pages/portal/MyLeavePage"));
+const MyPayslipsPage = lazyPage(() => import("./pages/portal/MyPayslipsPage"));
+const MyDocumentsPage = lazyPage(() => import("./pages/portal/MyDocumentsPage"));
 
 // Accounting Report Pages
-import TrialBalanceReport from "./pages/reports/accounting/TrialBalanceReport";
-import ProfitLossReport from "./pages/reports/accounting/ProfitLossReport";
-import BalanceSheetReport from "./pages/reports/accounting/BalanceSheetReport";
-import AccountLedgerReport from "./pages/reports/accounting/AccountLedgerReport";
-import PartyLedgerReport from "./pages/reports/accounting/PartyLedgerReport";
-import CashBookReport from "./pages/reports/accounting/CashBookReport";
-import BankBookReport from "./pages/reports/accounting/BankBookReport";
-import BankReconciliationReport from "./pages/reports/accounting/BankReconciliationReport";
-import AccountsReceivableReport from "./pages/reports/accounting/AccountsReceivableReport";
-import { ARAgingReport } from "./pages/reports/accounting/AgingReports";
-import { IncomeAnalysisReport } from "./pages/reports/accounting/AnalysisReports";
-import FinancialSummaryDashboard from "./pages/reports/accounting/FinancialSummaryDashboard";
-import ChartOfAccountsVertical from "./pages/reports/accounting/ChartOfAccountsVertical";
-import IFRSFinancialStatements from "./pages/reports/accounting/IFRSFinancialStatements";
-import IFRSMappingPage from "./pages/admin/IFRSMappingPage";
-import CustomerStatementPage from "./pages/reports/CustomerStatementPage";
-import SalesReport from "./pages/reports/SalesReport";
+const TrialBalanceReport = lazyPage(() => import("./pages/reports/accounting/TrialBalanceReport"));
+const ProfitLossReport = lazyPage(() => import("./pages/reports/accounting/ProfitLossReport"));
+const BalanceSheetReport = lazyPage(() => import("./pages/reports/accounting/BalanceSheetReport"));
+const AccountLedgerReport = lazyPage(() => import("./pages/reports/accounting/AccountLedgerReport"));
+const PartyLedgerReport = lazyPage(() => import("./pages/reports/accounting/PartyLedgerReport"));
+const CashBookReport = lazyPage(() => import("./pages/reports/accounting/CashBookReport"));
+const BankBookReport = lazyPage(() => import("./pages/reports/accounting/BankBookReport"));
+const BankReconciliationReport = lazyPage(() => import("./pages/reports/accounting/BankReconciliationReport"));
+const AccountsReceivableReport = lazyPage(() => import("./pages/reports/accounting/AccountsReceivableReport"));
+const ARAgingReport = lazyPage(() => import("./pages/reports/accounting/AgingReports").then((m) => ({ default: m.ARAgingReport })));
+const IncomeAnalysisReport = lazyPage(() => import("./pages/reports/accounting/AnalysisReports").then((m) => ({ default: m.IncomeAnalysisReport })));
+const FinancialSummaryDashboard = lazyPage(() => import("./pages/reports/accounting/FinancialSummaryDashboard"));
+const ChartOfAccountsVertical = lazyPage(() => import("./pages/reports/accounting/ChartOfAccountsVertical"));
+const IFRSFinancialStatements = lazyPage(() => import("./pages/reports/accounting/IFRSFinancialStatements"));
+const IFRSMappingPage = lazyPage(() => import("./pages/admin/IFRSMappingPage"));
+const CustomerStatementPage = lazyPage(() => import("./pages/reports/CustomerStatementPage"));
+const SalesReport = lazyPage(() => import("./pages/reports/SalesReport"));
 
 // Sales (BD VAT)
-import PurchaseOrdersPage from "./pages/sales-workflow/PurchaseOrdersPage";
-import PurchaseOrderFormPage from "./pages/sales-workflow/PurchaseOrderFormPage";
-import PurchaseOrderDetailPage from "./pages/sales-workflow/PurchaseOrderDetailPage";
-import VatChallansPage from "./pages/sales-workflow/VatChallansPage";
-import VatChallanFormPage from "./pages/sales-workflow/VatChallanFormPage";
-import VatChallanDetailPage from "./pages/sales-workflow/VatChallanDetailPage";
-import Mushak63PreviewPage from "./pages/sales-workflow/Mushak63PreviewPage";
-import DeliveryChallansPage from "./pages/sales-workflow/DeliveryChallansPage";
-import CustomerReceivePage from "./pages/sales-workflow/CustomerReceivePage";
-import HoReceivePage from "./pages/sales-workflow/HoReceivePage";
-import InvoiceQueuePage from "./pages/sales-workflow/InvoiceQueuePage";
-import InvoicesPage from "./pages/sales-workflow/InvoicesPage";
-import InvoiceDetailPage from "./pages/sales-workflow/InvoiceDetailPage";
-import TdsRegisterPage from "./pages/sales-workflow/TdsRegisterPage";
-import SalesWorkflowReportsIndex from "./pages/sales-workflow/reports/SalesWorkflowReportsIndex";
-import PoVsVatChallanReport from "./pages/sales-workflow/reports/PoVsVatChallanReport";
-import PendingPoReport from "./pages/sales-workflow/reports/PendingPoReport";
-import ChallanStatusReport from "./pages/sales-workflow/reports/ChallanStatusReport";
-import VatRegisterReport from "./pages/sales-workflow/reports/VatRegisterReport";
-import InvoiceRegisterReport from "./pages/sales-workflow/reports/InvoiceRegisterReport";
-import InvoicePendingReport from "./pages/sales-workflow/reports/InvoicePendingReport";
-import CollectionReport from "./pages/sales-workflow/reports/CollectionReport";
-import ArAgingReport from "./pages/sales-workflow/reports/ArAgingReport";
-import Mushak91Page from "./pages/sales-workflow/reports/Mushak91Page";
+const PurchaseOrdersPage = lazyPage(() => import("./pages/sales-workflow/PurchaseOrdersPage"));
+const PurchaseOrderFormPage = lazyPage(() => import("./pages/sales-workflow/PurchaseOrderFormPage"));
+const PurchaseOrderDetailPage = lazyPage(() => import("./pages/sales-workflow/PurchaseOrderDetailPage"));
+const VatChallansPage = lazyPage(() => import("./pages/sales-workflow/VatChallansPage"));
+const VatChallanFormPage = lazyPage(() => import("./pages/sales-workflow/VatChallanFormPage"));
+const VatChallanDetailPage = lazyPage(() => import("./pages/sales-workflow/VatChallanDetailPage"));
+const Mushak63PreviewPage = lazyPage(() => import("./pages/sales-workflow/Mushak63PreviewPage"));
+const DeliveryChallansPage = lazyPage(() => import("./pages/sales-workflow/DeliveryChallansPage"));
+const CustomerReceivePage = lazyPage(() => import("./pages/sales-workflow/CustomerReceivePage"));
+const HoReceivePage = lazyPage(() => import("./pages/sales-workflow/HoReceivePage"));
+const InvoiceQueuePage = lazyPage(() => import("./pages/sales-workflow/InvoiceQueuePage"));
+const InvoicesPage = lazyPage(() => import("./pages/sales-workflow/InvoicesPage"));
+const InvoiceDetailPage = lazyPage(() => import("./pages/sales-workflow/InvoiceDetailPage"));
+const TdsRegisterPage = lazyPage(() => import("./pages/sales-workflow/TdsRegisterPage"));
+const SalesWorkflowReportsIndex = lazyPage(() => import("./pages/sales-workflow/reports/SalesWorkflowReportsIndex"));
+const PoVsVatChallanReport = lazyPage(() => import("./pages/sales-workflow/reports/PoVsVatChallanReport"));
+const PendingPoReport = lazyPage(() => import("./pages/sales-workflow/reports/PendingPoReport"));
+const ChallanStatusReport = lazyPage(() => import("./pages/sales-workflow/reports/ChallanStatusReport"));
+const VatRegisterReport = lazyPage(() => import("./pages/sales-workflow/reports/VatRegisterReport"));
+const InvoiceRegisterReport = lazyPage(() => import("./pages/sales-workflow/reports/InvoiceRegisterReport"));
+const InvoicePendingReport = lazyPage(() => import("./pages/sales-workflow/reports/InvoicePendingReport"));
+const CollectionReport = lazyPage(() => import("./pages/sales-workflow/reports/CollectionReport"));
+const ArAgingReport = lazyPage(() => import("./pages/sales-workflow/reports/ArAgingReport"));
+const Mushak91Page = lazyPage(() => import("./pages/sales-workflow/reports/Mushak91Page"));
 
 
 const queryClient = new QueryClient();
@@ -210,6 +213,7 @@ const App = () => (
           <BrandingProvider>
           <LicenseProvider>
           <BrowserRouter>
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/install" element={<InstallPage />} />
               <Route path="/login" element={<Login />} />
@@ -418,6 +422,7 @@ const App = () => (
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </BrowserRouter>
           </LicenseProvider>
           </BrandingProvider>

@@ -123,10 +123,14 @@ rm -rf "\$NEW/storage"; cp -a ~/"\$APP/storage" "\$NEW/storage"
 rm -f "\$NEW/storage/framework/down" "\$NEW/storage/framework/maintenance.php"
 mv ~/"\$APP" ~/"\$APP.prev-${STAMP}"
 mv "\$NEW" ~/"\$APP"
+# assets/ is kept: hashed page chunks from the previous build must stay
+# reachable for tabs that were open during the deploy. Files not refreshed
+# by a build for 14 days are pruned.
 find ~/"\$WEB" -maxdepth 1 -mindepth 1 \
-  ! -name index.php ! -name .htaccess ! -name storage ! -name .well-known ! -name cgi-bin \
+  ! -name index.php ! -name .htaccess ! -name storage ! -name .well-known ! -name cgi-bin ! -name assets \
   -exec rm -rf {} +
 tar xzf "\$TMP/frontend.tar.gz" -C ~/"\$WEB"
+find ~/"\$WEB/assets" -type f -mtime +14 -delete 2>/dev/null || true
 echo "prev: ~/\$APP.prev-${STAMP}"
 
 cd ~/"\$APP"
