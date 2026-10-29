@@ -66,7 +66,7 @@ interface Voucher {
 type SuperAdminAction = "delete" | "reopen" | "reverse" | "restore" | "purge" | null;
 
 const AccountingVouchers = () => {
-  const { isSuperAdmin, hasPermission, user } = useAuth();
+  const { isSuperAdmin, hasPermission, user, profile } = useAuth();
   const { toast } = useToast();
   const { fc } = useCurrency();
 
@@ -208,9 +208,28 @@ const AccountingVouchers = () => {
   };
   const [filterFrom, setFilterFrom] = useState<string>(() => currentMonthRange().start);
   const [filterTo, setFilterTo] = useState<string>(() => currentMonthRange().end);
+  // Defaults to the logged-in user so the page opens scoped to "my own
+  // entries"; the user can still switch it to another person or "All Users".
+  const [filterUser, setFilterUser] = useState<string>(() => profile?.id || user?.id || "all");
+  const [users, setUsers] = useState<Array<{ id: string; name?: string | null; username?: string | null }>>([]);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(50);
   const [totalCount, setTotalCount] = useState(0);
+
+  useEffect(() => {
+    voucherApi.listUsers().then((r: any) => {
+      const list: Array<{ id: string; name?: string | null; username?: string | null }> = r?.data || [];
+      const myId = profile?.id || user?.id;
+      // The creators list only includes users who've already entered a
+      // voucher — include "me" even with zero entries so the auto-selected
+      // default has a label to show.
+      if (myId && !list.some((u) => u.id === myId)) {
+        list.unshift({ id: myId, name: profile?.name, username: profile?.username });
+      }
+      setUsers(list);
+    }).catch(() => setUsers([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Debounce search → server (300ms)
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -220,7 +239,7 @@ const AccountingVouchers = () => {
   }, [searchQuery]);
 
   // Reset to page 1 whenever filters change.
-  useEffect(() => { setPage(1); }, [debouncedSearch, filterFrom, filterTo, typeFilter, showDeleted]);
+  useEffect(() => { setPage(1); }, [debouncedSearch, filterFrom, filterTo, filterUser, typeFilter, showDeleted]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -229,6 +248,7 @@ const AccountingVouchers = () => {
         search: debouncedSearch || undefined,
         from: filterFrom || undefined,
         to: filterTo || undefined,
+        created_by: filterUser !== "all" ? filterUser : undefined,
       };
       // "all" — fetch each allowed type in parallel and merge client-side.
       // Otherwise use existing per-type paginated call.
@@ -291,7 +311,7 @@ const AccountingVouchers = () => {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeFilter, showDeleted, debouncedSearch, filterFrom, filterTo, page, perPage, toast]);
+  }, [typeFilter, showDeleted, debouncedSearch, filterFrom, filterTo, filterUser, page, perPage, toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -803,7 +823,7 @@ const AccountingVouchers = () => {
 
   // ============ Bulk actions ============
   // Clear selection whenever the list changes (tab / filters / page / trash toggle).
-  useEffect(() => { setSelectedIds(new Set()); }, [typeFilter, showDeleted, debouncedSearch, filterFrom, filterTo, page, perPage]);
+  useEffect(() => { setSelectedIds(new Set()); }, [typeFilter, showDeleted, debouncedSearch, filterFrom, filterTo, filterUser, page, perPage]);
 
   const isBulkDeletable = (v: Voucher) => canDeleteVoucher(v) && !(v as any).deleted_at;
   const isBulkTransferable = (v: Voucher) =>
@@ -1031,8 +1051,20 @@ const AccountingVouchers = () => {
                 <Label className="text-xs text-muted-foreground">To</Label>
                 <DateInput value={filterTo} onChange={(v) => setFilterTo(v)} className="bg-background" />
               </div>
-              {(filterFrom || filterTo || debouncedSearch.trim()) && (
-                <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearchQuery(""); setFilterFrom(""); setFilterTo(""); }}>
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">Entered By</Label>
+                <Select value={filterUser} onValueChange={setFilterUser}>
+                  <SelectTrigger className="w-44 h-9 bg-background"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Users</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>{u.name || u.username || u.id}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {(filterFrom || filterTo || filterUser !== "all" || debouncedSearch.trim()) && (
+                <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearchQuery(""); setFilterFrom(""); setFilterTo(""); setFilterUser("all"); }}>
                   Clear
                 </Button>
               )}

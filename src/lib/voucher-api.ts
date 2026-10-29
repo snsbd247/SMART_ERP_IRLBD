@@ -79,6 +79,7 @@ export interface VoucherListParams {
   search?: string;
   from?: string; // YYYY-MM-DD
   to?: string;   // YYYY-MM-DD
+  created_by?: string; // user id
   page?: number; // 1-based
   per_page?: number;
 }
@@ -89,13 +90,14 @@ export const voucherApi = {
     include_deleted = false,
     params: VoucherListParams = {}
   ) => {
-    const { search, from, to, page = 1, per_page = 50 } = params;
+    const { search, from, to, created_by, page = 1, per_page = 50 } = params;
     if (isLaravelMode()) {
       const qs = new URLSearchParams();
       if (include_deleted) qs.set("include_deleted", "1");
       if (search) qs.set("search", search);
       if (from) qs.set("from", from);
       if (to) qs.set("to", to);
+      if (created_by) qs.set("created_by", created_by);
       qs.set("page", String(page));
       qs.set("per_page", String(per_page));
       const json = await laravelFetch<any>(`vouchers/${voucher_type}?${qs.toString()}`);
@@ -109,6 +111,7 @@ export const voucherApi = {
       search,
       from,
       to,
+      created_by,
       page,
       per_page,
     });
@@ -145,6 +148,18 @@ export const voucherApi = {
       return { data: unwrapList(json) } as { data: any[] };
     }
     return supabase.from("financial_years").select("id, name, start_date, end_date, is_active").order("start_date", { ascending: false });
+  },
+
+  listUsers: async () => {
+    if (isLaravelMode()) {
+      // vouchers/creators is branch-scoped server-side (same BranchScope the
+      // voucher list itself uses) and limited to users who actually created a
+      // voucher — the generic db/users endpoint is denylisted, so this
+      // dedicated, permission-gated endpoint is used instead.
+      const json = await laravelFetch<any>("vouchers/creators");
+      return { data: unwrapList(json) } as { data: any[] };
+    }
+    return supabase.from("users").select("id, name, username").order("name");
   },
 
   create: async (params: {
