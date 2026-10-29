@@ -143,15 +143,83 @@ export const swApi = {
   nextNumber,
 
   // -------- Purchase Orders --------
-  async listPOs(filters: any = {}) {
-    let q = supabase.from("purchase_orders").select("*, customer:customers(id,name), items:purchase_order_items(*)").is("deleted_at", null).order("po_date", { ascending: false });
+  /**
+   * Plain POs (no embed — see getVatChallan for why belongs-to embeds have
+   * been unreliable on these workflow tables) plus customer/items hydrated
+   * with a handful of bulk (IN-list) queries, instead of the old N+1
+   * pattern of calling getPO() once per row.
+   */
+  async listPOsFull(filters: any = {}) {
+    let q = supabase.from("purchase_orders").select("*").is("deleted_at", null).order("po_date", { ascending: false });
     if (filters.customer_id) q = q.eq("customer_id", filters.customer_id);
     if (filters.status) q = q.eq("status", filters.status);
     if (filters.q) q = q.ilike("po_number", `%${filters.q}%`);
-    return q;
+    const { data: pos, error } = await q;
+    const rows = (pos as any[]) || [];
+    if (error || rows.length === 0) return { data: rows, error };
+
+    const ids = rows.map((r) => r.id);
+    const customerIds = [...new Set(rows.map((r) => r.customer_id).filter(Boolean))];
+    const [{ data: customers }, { data: allItems }] = await Promise.all([
+      customerIds.length ? supabase.from("customers").select("id,name").in("id", customerIds) : Promise.resolve({ data: [] as any[] }),
+      supabase.from("purchase_order_items").select("*").in("po_id", ids),
+    ]);
+    const customerMap = new Map(((customers as any[]) || []).map((c) => [c.id, c]));
+
+    const itemRows = (allItems as any[]) || [];
+    const productIds = [...new Set(itemRows.map((i) => i.product_id).filter(Boolean))];
+    const { data: products } = productIds.length
+      ? await supabase.from("item_master").select("id,item_name,item_code").in("id", productIds)
+      : { data: [] as any[] };
+    const productMap = new Map(((products as any[]) || []).map((p) => [p.id, p]));
+
+    const itemsByPo = new Map<string, any[]>();
+    for (const it of itemRows) {
+      const arr = itemsByPo.get(it.po_id) || [];
+      arr.push({
+        ...it,
+        product: productMap.has(it.product_id)
+          ? { name: productMap.get(it.product_id).item_name, sku: productMap.get(it.product_id).item_code }
+          : null,
+      });
+      itemsByPo.set(it.po_id, arr);
+    }
+
+    return {
+      data: rows.map((r) => ({
+        ...r,
+        customer: customerMap.get(r.customer_id) || null,
+        items: (itemsByPo.get(r.id) || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)),
+      })),
+      error: null,
+    };
   },
   async getPO(id: string) {
-    return supabase.from("purchase_orders").select("*, customer:customers(*), items:purchase_order_items(*, product:item_master(id,name:item_name,sku:item_code))").eq("id", id).maybeSingle();
+    // items is has-many (FK on the child row) with a nested product embed —
+    // same limitation as getVatChallan/getInvoice above; fetched separately.
+    const { data: po, error } = await supabase.from("purchase_orders").select("*, customer:customers(*)").eq("id", id).maybeSingle();
+    if (error || !po) return { data: null, error };
+
+    const { data: items } = await supabase.from("purchase_order_items").select("*").eq("po_id", id).order("sort_order", { ascending: true });
+    const itemRows = (items as any[]) || [];
+    const productIds = [...new Set(itemRows.map((i) => i.product_id).filter(Boolean))];
+    const { data: products } = productIds.length
+      ? await supabase.from("item_master").select("id,item_name,item_code").in("id", productIds)
+      : { data: [] as any[] };
+    const productMap = new Map(((products as any[]) || []).map((p) => [p.id, p]));
+
+    return {
+      data: {
+        ...(po as any),
+        items: itemRows.map((i) => ({
+          ...i,
+          product: productMap.has(i.product_id)
+            ? { id: i.product_id, name: productMap.get(i.product_id).item_name, sku: productMap.get(i.product_id).item_code }
+            : null,
+        })),
+      },
+      error: null,
+    } as any;
   },
   async createPO(payload: any, items: any[]) {
     const po_number = await nextNumber("PO");
@@ -178,15 +246,105 @@ export const swApi = {
   },
 
   // -------- VAT Challan --------
-  async listVatChallans(filters: any = {}) {
-    let q = supabase.from("vat_challans").select("*, customer:customers(id,name), purchase_order:purchase_orders(id,po_number)").is("deleted_at", null).order("challan_date", { ascending: false });
+  async getVatChallan(id: string) {
+    // items/delivery_challans are has-many from a challan's perspective (the
+    // FK lives on the child row) and items also nested a second embed
+    // (product:item_master) inside itself — neither is something the
+    // Laravel bridge's embed emulation can follow (belongs-to only, one
+    // level), so the combined embedded select used to silently come back
+    // with items/product/delivery_challans all missing. Fetched separately.
+    const { data: challan, error } = await supabase.from("vat_challans").select("*, customer:customers(*), purchase_order:purchase_orders(id,po_number,po_date)").eq("id", id).maybeSingle();
+    if (error || !challan) return { data: null, error };
+
+    const c: any = challan;
+    const [{ data: items }, { data: dcs }] = await Promise.all([
+      supabase.from("vat_challan_items").select("*").eq("vat_challan_id", id).order("sort_order", { ascending: true }),
+      supabase.from("delivery_challans").select("*").eq("vat_challan_id", id),
+    ]);
+
+    const itemRows = (items as any[]) || [];
+    const productIds = [...new Set(itemRows.map((i) => i.product_id).filter(Boolean))];
+    const poItemIds = [...new Set(itemRows.map((i) => i.purchase_order_item_id).filter(Boolean))];
+    const [{ data: products }, { data: poItems }] = await Promise.all([
+      productIds.length
+        ? supabase.from("item_master").select("id,item_name,item_code").in("id", productIds)
+        : Promise.resolve({ data: [] as any[] }),
+      poItemIds.length
+        ? supabase.from("purchase_order_items").select("id,qty_ordered,qty_delivered,qty_remaining").in("id", poItemIds)
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+    const productMap = new Map(((products as any[]) || []).map((p) => [p.id, p]));
+    const poItemMap = new Map(((poItems as any[]) || []).map((p) => [p.id, p]));
+
+    return {
+      data: {
+        ...c,
+        items: itemRows.map((i) => ({
+          ...i,
+          product: productMap.has(i.product_id)
+            ? { name: productMap.get(i.product_id).item_name, sku: productMap.get(i.product_id).item_code }
+            : null,
+          purchase_order_item: poItemMap.get(i.purchase_order_item_id) || null,
+        })),
+        delivery_challans: dcs || [],
+      },
+      error: null,
+    } as any;
+  },
+  /**
+   * Plain challans (no embed — see getVatChallan for why belongs-to embeds
+   * on this table have been unreliable) plus customer/purchase_order/items
+   * hydrated with a handful of bulk (IN-list) queries. Used by the VAT
+   * Challans list page, which also needs items for its per-row Print button.
+   */
+  async listVatChallansFull(filters: any = {}) {
+    let q = supabase.from("vat_challans").select("*").is("deleted_at", null).order("challan_date", { ascending: false });
     if (filters.customer_id) q = q.eq("customer_id", filters.customer_id);
     if (filters.status) q = q.eq("status", filters.status);
     if (filters.q) q = q.ilike("challan_number", `%${filters.q}%`);
-    return q;
-  },
-  async getVatChallan(id: string) {
-    return supabase.from("vat_challans").select("*, customer:customers(*), purchase_order:purchase_orders(id,po_number,po_date), items:vat_challan_items(*, product:item_master(name:item_name,sku:item_code), purchase_order_item:purchase_order_items(id,qty_ordered,qty_delivered,qty_remaining)), delivery_challans:delivery_challans(*)").eq("id", id).maybeSingle();
+    const { data: challans, error } = await q;
+    const rows = (challans as any[]) || [];
+    if (error || rows.length === 0) return { data: rows, error };
+
+    const ids = rows.map((r) => r.id);
+    const customerIds = [...new Set(rows.map((r) => r.customer_id).filter(Boolean))];
+    const poIds = [...new Set(rows.map((r) => r.purchase_order_id).filter(Boolean))];
+    const [{ data: customers }, { data: pos }, { data: allItems }] = await Promise.all([
+      customerIds.length ? supabase.from("customers").select("id,name").in("id", customerIds) : Promise.resolve({ data: [] as any[] }),
+      poIds.length ? supabase.from("purchase_orders").select("id,po_number").in("id", poIds) : Promise.resolve({ data: [] as any[] }),
+      supabase.from("vat_challan_items").select("*").in("vat_challan_id", ids),
+    ]);
+    const customerMap = new Map(((customers as any[]) || []).map((c) => [c.id, c]));
+    const poMap = new Map(((pos as any[]) || []).map((p) => [p.id, p]));
+
+    const itemRows = (allItems as any[]) || [];
+    const productIds = [...new Set(itemRows.map((i) => i.product_id).filter(Boolean))];
+    const { data: products } = productIds.length
+      ? await supabase.from("item_master").select("id,item_name,item_code").in("id", productIds)
+      : { data: [] as any[] };
+    const productMap = new Map(((products as any[]) || []).map((p) => [p.id, p]));
+
+    const itemsByChallanId = new Map<string, any[]>();
+    for (const it of itemRows) {
+      const arr = itemsByChallanId.get(it.vat_challan_id) || [];
+      arr.push({
+        ...it,
+        product: productMap.has(it.product_id)
+          ? { name: productMap.get(it.product_id).item_name, sku: productMap.get(it.product_id).item_code }
+          : null,
+      });
+      itemsByChallanId.set(it.vat_challan_id, arr);
+    }
+
+    return {
+      data: rows.map((r) => ({
+        ...r,
+        customer: customerMap.get(r.customer_id) || null,
+        purchase_order: poMap.get(r.purchase_order_id) || null,
+        items: (itemsByChallanId.get(r.id) || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)),
+      })),
+      error: null,
+    };
   },
   async getPoAvailability(poId: string) {
     return supabase
@@ -301,25 +459,154 @@ export const swApi = {
   },
 
   // -------- Invoice V2 --------
-  async listInvoices(filters: any = {}) {
-    let q = supabase.from("sales_invoices_v2").select("*, customer:customers(id,name)").is("deleted_at", null).order("invoice_date", { ascending: false });
-    if (filters.customer_id) q = q.eq("customer_id", filters.customer_id);
-    if (filters.status) q = q.eq("status", filters.status);
-    if (filters.q) q = q.ilike("invoice_number", `%${filters.q}%`);
-    return q;
+  /**
+   * Same list, plus items/payments/tds_entries hydrated with a handful of
+   * bulk (IN-list) queries — for pages (e.g. the Invoices list, which needs
+   * items for its per-row Print button) that need more than the plain list
+   * but shouldn't pay for calling getInvoice() once per row.
+   */
+  async listInvoicesFull(filters: any = {}) {
+    // Plain columns only (no customer embed) — hydrated below via a bulk
+    // query instead, for the same reliability reasons as listVatChallansFull.
+    let iq = supabase.from("sales_invoices_v2").select("*").is("deleted_at", null).order("invoice_date", { ascending: false });
+    if (filters.customer_id) iq = iq.eq("customer_id", filters.customer_id);
+    if (filters.status) iq = iq.eq("status", filters.status);
+    if (filters.q) iq = iq.ilike("invoice_number", `%${filters.q}%`);
+    const { data: invoices, error } = await iq;
+    const rows = (invoices as any[]) || [];
+    if (error || rows.length === 0) return { data: rows, error };
+
+    const customerIds = [...new Set(rows.map((r) => r.customer_id).filter(Boolean))];
+    const { data: customers } = customerIds.length
+      ? await supabase.from("customers").select("id,name").in("id", customerIds)
+      : { data: [] as any[] };
+    const customerMap = new Map(((customers as any[]) || []).map((c) => [c.id, c]));
+
+    const ids = rows.map((r) => r.id);
+    const [{ data: allItems }, { data: allPayments }, { data: allTds }] = await Promise.all([
+      supabase.from("sales_invoice_items_v2").select("*").in("invoice_id", ids),
+      supabase.from("invoice_payments").select("*").in("invoice_id", ids),
+      supabase.from("tds_entries").select("*").in("invoice_id", ids),
+    ]);
+
+    const itemRows = (allItems as any[]) || [];
+    const productIds = [...new Set(itemRows.map((i) => i.product_id).filter(Boolean))];
+    const { data: products } = productIds.length
+      ? await supabase.from("item_master").select("id,item_name,item_code").in("id", productIds)
+      : { data: [] as any[] };
+    const productMap = new Map(((products as any[]) || []).map((p) => [p.id, p]));
+
+    const byInvoice = <T extends { invoice_id: string }>(list: T[] | null) => {
+      const map = new Map<string, T[]>();
+      for (const row of list || []) {
+        const arr = map.get(row.invoice_id) || [];
+        arr.push(row);
+        map.set(row.invoice_id, arr);
+      }
+      return map;
+    };
+    const itemsByInvoice = byInvoice(itemRows.map((i) => ({
+      ...i,
+      product: productMap.has(i.product_id)
+        ? { name: productMap.get(i.product_id).item_name, sku: productMap.get(i.product_id).item_code }
+        : null,
+    })) as any);
+    const paymentsByInvoice = byInvoice((allPayments as any[]) || []);
+    const tdsByInvoice = byInvoice((allTds as any[]) || []);
+
+    return {
+      data: rows.map((r) => ({
+        ...r,
+        customer: customerMap.get(r.customer_id) || null,
+        items: (itemsByInvoice.get(r.id) || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)),
+        payments: paymentsByInvoice.get(r.id) || [],
+        tds_entries: tdsByInvoice.get(r.id) || [],
+      })),
+      error: null,
+    };
   },
   async getInvoice(id: string) {
-    return supabase.from("sales_invoices_v2").select("*, customer:customers(*), items:sales_invoice_items_v2(*, product:item_master(name:item_name,sku:item_code)), payments:invoice_payments(*), tds_entries(*)").eq("id", id).maybeSingle();
+    // Fetched as separate has-many queries (not a nested Supabase embed) —
+    // the Laravel bridge's embed emulation only supports belongs-to relations
+    // (a single FK column on the parent row); it can't follow a has-many
+    // child table (items keyed by invoice_id) nor a second embed nested
+    // inside one (product:item_master inside items), so a combined embedded
+    // select silently comes back with items/product missing.
+    const { data: invoice, error } = await supabase.from("sales_invoices_v2").select("*").eq("id", id).maybeSingle();
+    if (error || !invoice) return { data: null, error };
+
+    const inv: any = invoice;
+    const [{ data: customer }, { data: items }, { data: payments }, { data: tdsEntries }] = await Promise.all([
+      inv.customer_id
+        ? supabase.from("customers").select("*").eq("id", inv.customer_id).maybeSingle()
+        : Promise.resolve({ data: null } as any),
+      supabase.from("sales_invoice_items_v2").select("*").eq("invoice_id", id).order("sort_order", { ascending: true }),
+      supabase.from("invoice_payments").select("*").eq("invoice_id", id),
+      supabase.from("tds_entries").select("*").eq("invoice_id", id),
+    ]);
+
+    const itemRows = ((items as any[]) || []);
+    const productIds = [...new Set(itemRows.map((i) => i.product_id).filter(Boolean))];
+    const { data: products } = productIds.length
+      ? await supabase.from("item_master").select("id,item_name,item_code").in("id", productIds)
+      : { data: [] as any[] };
+    const productMap = new Map(((products as any[]) || []).map((p) => [p.id, p]));
+
+    return {
+      data: {
+        ...inv,
+        customer: customer || null,
+        items: itemRows.map((i) => ({
+          ...i,
+          product: productMap.has(i.product_id)
+            ? { name: productMap.get(i.product_id).item_name, sku: productMap.get(i.product_id).item_code }
+            : null,
+        })),
+        payments: payments || [],
+        tds_entries: tdsEntries || [],
+      },
+      error: null,
+    } as any;
   },
   async eligibleVatChallans(customer_id?: string, date?: string) {
-    // VAT challans whose ALL delivery_challans are ho_received and not invoiced
-    let q = supabase.from("vat_challans").select("*, customer:customers(id,name), delivery_challans:delivery_challans(id,status), items:vat_challan_items(*)").neq("status", "invoiced").is("deleted_at", null);
+    // VAT challans whose ALL delivery_challans are ho_received and not invoiced.
+    // delivery_challans/items are has-many from a challan's perspective (the
+    // FK lives on the child row) — the Laravel bridge's embed emulation only
+    // follows belongs-to relations, so embedding them here always came back
+    // empty and this silently returned zero challans, ever. Fetched as
+    // separate bulk (IN-list) queries instead.
+    let q = supabase.from("vat_challans").select("*, customer:customers(id,name)").neq("status", "invoiced").is("deleted_at", null);
     if (customer_id) q = q.eq("customer_id", customer_id);
     if (date) q = q.eq("challan_date", date);
     const { data, error } = await q;
-    if (error || !data) return { data: [], error };
-    const filtered = data.filter((v: any) =>
-      v.delivery_challans?.length && v.delivery_challans.every((d: any) => d.status === "ho_received")
+    const challans = (data as any[]) || [];
+    if (error || challans.length === 0) return { data: [], error };
+
+    const ids = challans.map((c) => c.id);
+    const [{ data: allDcs }, { data: allItems }] = await Promise.all([
+      supabase.from("delivery_challans").select("id,status,vat_challan_id").in("vat_challan_id", ids),
+      supabase.from("vat_challan_items").select("*").in("vat_challan_id", ids),
+    ]);
+    const dcsByChallan = new Map<string, any[]>();
+    for (const dc of (allDcs as any[]) || []) {
+      const arr = dcsByChallan.get(dc.vat_challan_id) || [];
+      arr.push(dc);
+      dcsByChallan.set(dc.vat_challan_id, arr);
+    }
+    const itemsByChallan = new Map<string, any[]>();
+    for (const it of (allItems as any[]) || []) {
+      const arr = itemsByChallan.get(it.vat_challan_id) || [];
+      arr.push(it);
+      itemsByChallan.set(it.vat_challan_id, arr);
+    }
+
+    const hydrated = challans.map((c) => ({
+      ...c,
+      delivery_challans: dcsByChallan.get(c.id) || [],
+      items: itemsByChallan.get(c.id) || [],
+    }));
+    const filtered = hydrated.filter((v) =>
+      v.delivery_challans.length > 0 && v.delivery_challans.every((d: any) => d.status === "ho_received")
     );
     return { data: filtered, error: null };
   },
