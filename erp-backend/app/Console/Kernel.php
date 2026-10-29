@@ -17,10 +17,12 @@ class Kernel extends ConsoleKernel
         // Mark users offline if inactive for >2 minutes
         $schedule->command('users:mark-offline')->everyTwoMinutes();
 
-        // Automated daily SQL backup at 2 AM (uploads to Google Drive if enabled)
-        $schedule->command('backup:database --type=auto --format=sql --gdrive=auto')->dailyAt('02:00');
-        // Companion daily JSON backup at 2:15 AM
-        $schedule->command('backup:database --type=auto --format=json --gdrive=auto')->dailyAt('02:15');
+        // Hourly SQL backup uploaded straight to Google Drive; the local
+        // copy is deleted right after a successful upload (see
+        // BackupDatabase::handleHourlyGdriveBackup) — local disk is never
+        // used as long-term backup storage. No-ops entirely until Google
+        // Drive is connected/enabled from the Backup & Restore page.
+        $schedule->command('backup:database --type=auto_gdrive')->hourly();
 
         // Weekly legacy purchases cleanup (after 60-day verification window).
         // Logs cleanup_failed / cleanup_aborted to audit_log so alerts can pick it up.

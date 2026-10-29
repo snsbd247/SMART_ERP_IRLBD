@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Download, Upload, Database, Clock, FileText, Trash2, AlertTriangle, CheckCircle, XCircle, Settings, RefreshCw, Shield, Cloud, HardDrive, Sparkles, FileJson, Loader2 } from "lucide-react";
+import { Download, Upload, Database, Clock, Trash2, AlertTriangle, CheckCircle, XCircle, Settings, RefreshCw, Shield, Cloud, HardDrive, Sparkles, FileJson, Loader2 } from "lucide-react";
 
 const API_BASE = getApiBaseUrl() || "";
 const USE_LARAVEL = isLaravelMode();
@@ -22,6 +22,7 @@ const USE_LARAVEL = isLaravelMode();
 interface BackupRecord {
   id: string; file_name: string; file_size: number; backup_type: string; format: string;
   status: string; tables_count: number; records_count: number; storage_path: string | null;
+  gdrive_file_id?: string | null; gdrive_view_link?: string | null;
   created_at: string; error_message: string | null;
 }
 
@@ -32,7 +33,9 @@ interface BackupSettings {
   gdrive_client_id?: string | null;
   gdrive_client_secret_set?: boolean;
   gdrive_refresh_token_set?: boolean;
+  gdrive_account_email?: string | null;
   gdrive_folder_id?: string | null;
+  gdrive_folder_name?: string | null;
   gdrive_format?: string | null;
   last_gdrive_backup_at?: string | null;
   last_gdrive_error?: string | null;
@@ -104,11 +107,19 @@ const BackupPage = () => {
   const [confirmResetDemo, setConfirmResetDemo] = useState(false);
   const [backupFormat, setBackupFormat] = useState<"sql" | "json">("sql");
   const [uploadToDrive, setUploadToDrive] = useState(false);
-  const [gdriveForm, setGdriveForm] = useState({ client_id: "", client_secret: "", refresh_token: "", folder_id: "" });
-  const [gdriveTesting, setGdriveTesting] = useState(false);
-  const [gdriveTestResult, setGdriveTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [verifyResult, setVerifyResult] = useState<any | null>(null);
+  const [gdriveClientForm, setGdriveClientForm] = useState({ client_id: "", client_secret: "" });
+  const [gdriveAppSetupOpen, setGdriveAppSetupOpen] = useState(false);
+  const [connectingGdrive, setConnectingGdrive] = useState(false);
+  const [disconnectingGdrive, setDisconnectingGdrive] = useState(false);
+  const [folderPickerOpen, setFolderPickerOpen] = useState(false);
+  const [folderPath, setFolderPath] = useState<Array<{ id: string | null; name: string }>>([{ id: null, name: "My Drive" }]);
+  const [folders, setFolders] = useState<Array<{ id: string; name: string }>>([]);
+  const [loadingFolders, setLoadingFolders] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [savingFolder, setSavingFolder] = useState(false);
 
   // Section key MUST match backend keys returned by DemoConfigImportController.
   const DEMO_SECTIONS: Array<{ key: string; label: string }> = [
@@ -490,6 +501,148 @@ const BackupPage = () => {
     fetchSettings();
   }, [fetchHistory, fetchSettings]);
 
+  // Handle the redirect back from Google's OAuth consent screen
+  // (BackupController::gdriveCallback sends the browser to
+  // /admin/backup?gdrive=connected or ?gdrive=error&message=...).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const gdrive = params.get("gdrive");
+    if (!gdrive) return;
+    if (gdrive === "connected") {
+      toast({ title: "Google Drive connected" });
+      fetchSettings();
+    } else if (gdrive === "error") {
+      toast({ title: "Google Drive connection failed", description: params.get("message") || "Please try again.", variant: "destructive" });
+    }
+    params.delete("gdrive");
+    params.delete("message");
+    const qs = params.toString();
+    window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const saveGdriveClientCredentials = async () => {
+    if (!gdriveClientForm.client_id && !gdriveClientForm.client_secret) {
+      toast({ title: "Enter a Client ID and Client Secret", variant: "destructive" });
+      return;
+    }
+    setSavingSettings(true);
+    try {
+      const body: Record<string, any> = {};
+      if (gdriveClientForm.client_id) body.gdrive_client_id = gdriveClientForm.client_id;
+      if (gdriveClientForm.client_secret) body.gdrive_client_secret = gdriveClientForm.client_secret;
+      await laravelApiCall("/v1/backups/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      toast({ title: "Google OAuth app credentials saved" });
+      setGdriveClientForm({ client_id: "", client_secret: "" });
+      setGdriveAppSetupOpen(false);
+      fetchSettings();
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    }
+    setSavingSettings(false);
+  };
+
+  const handleConnectGdrive = async () => {
+    setConnectingGdrive(true);
+    try {
+      const res = await laravelApiCall("/v1/backups/gdrive/auth-url");
+      const result = await res.json();
+      const url = result.data?.url;
+      if (!url) throw new Error("Could not get a Google sign-in link.");
+      window.location.href = url;
+    } catch (err: any) {
+      toast({ title: "Could not start Google sign-in", description: err.message, variant: "destructive" });
+      setConnectingGdrive(false);
+    }
+  };
+
+  const handleDisconnectGdrive = async () => {
+    if (!confirm("Disconnect this Google account? Auto-backup uploads will stop until you reconnect.")) return;
+    setDisconnectingGdrive(true);
+    try {
+      await laravelApiCall("/v1/backups/gdrive/disconnect", { method: "POST" });
+      toast({ title: "Google Drive disconnected" });
+      fetchSettings();
+    } catch (err: any) {
+      toast({ title: "Disconnect failed", description: err.message, variant: "destructive" });
+    }
+    setDisconnectingGdrive(false);
+  };
+
+  const loadFolders = async (parentId: string | null) => {
+    setLoadingFolders(true);
+    try {
+      const qs = parentId ? `?parent_id=${encodeURIComponent(parentId)}` : "";
+      const res = await laravelApiCall(`/v1/backups/gdrive/folders${qs}`);
+      const result = await res.json();
+      setFolders(result.data || []);
+    } catch (err: any) {
+      toast({ title: "Could not load folders", description: err.message, variant: "destructive" });
+    }
+    setLoadingFolders(false);
+  };
+
+  const openFolderPicker = () => {
+    setFolderPath([{ id: null, name: "My Drive" }]);
+    setFolderPickerOpen(true);
+    loadFolders(null);
+  };
+
+  const navigateIntoFolder = (folder: { id: string; name: string }) => {
+    setFolderPath((p) => [...p, folder]);
+    loadFolders(folder.id);
+  };
+
+  const navigateToBreadcrumb = (index: number) => {
+    setFolderPath((p) => p.slice(0, index + 1));
+    loadFolders(folderPath[index].id);
+  };
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return;
+    setCreatingFolder(true);
+    try {
+      const parentId = folderPath[folderPath.length - 1].id;
+      await laravelApiCall("/v1/backups/gdrive/folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newFolderName.trim(), parent_id: parentId }),
+      });
+      setNewFolderName("");
+      loadFolders(parentId);
+    } catch (err: any) {
+      toast({ title: "Could not create folder", description: err.message, variant: "destructive" });
+    }
+    setCreatingFolder(false);
+  };
+
+  const handleSelectFolder = async (folder: { id: string; name: string }) => {
+    setSavingFolder(true);
+    try {
+      await laravelApiCall("/v1/backups/gdrive/select-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder_id: folder.id, folder_name: folder.name }),
+      });
+      toast({ title: `Backup folder set to "${folder.name}"` });
+      setFolderPickerOpen(false);
+      fetchSettings();
+    } catch (err: any) {
+      toast({ title: "Could not select folder", description: err.message, variant: "destructive" });
+    }
+    setSavingFolder(false);
+  };
+
+  const handleSelectCurrentFolder = () => {
+    const current = folderPath[folderPath.length - 1];
+    const target = current.id ? current : { id: "root", name: "My Drive" };
+    handleSelectFolder(target);
+  };
+
   const handleCreateBackup = async () => {
     if (!isSuperAdmin) {
       toast({ title: "Access denied", description: "Backup is restricted to Super Admins.", variant: "destructive" });
@@ -662,56 +815,6 @@ const BackupPage = () => {
     setSavingSettings(false);
   };
 
-  const saveGdriveSettings = async () => {
-    if (!USE_LARAVEL) {
-      toast({ title: "Google Drive settings require the Laravel backend.", variant: "destructive" });
-      return;
-    }
-    setSavingSettings(true);
-    try {
-      // Only send fields the admin actually filled in so we don't wipe existing secrets
-      const body: Record<string, any> = {
-        gdrive_enabled: !!settings?.gdrive_enabled,
-        gdrive_format: settings?.gdrive_format || "sql",
-      };
-      if (gdriveForm.client_id) body.gdrive_client_id = gdriveForm.client_id;
-      if (gdriveForm.client_secret) body.gdrive_client_secret = gdriveForm.client_secret;
-      if (gdriveForm.refresh_token) body.gdrive_refresh_token = gdriveForm.refresh_token;
-      if (gdriveForm.folder_id) body.gdrive_folder_id = gdriveForm.folder_id;
-      await laravelApiCall("/v1/backups/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      toast({ title: "Google Drive settings saved" });
-      setGdriveForm({ client_id: "", client_secret: "", refresh_token: "", folder_id: "" });
-      fetchSettings();
-    } catch (err: any) {
-      toast({ title: "Save failed", description: err.message, variant: "destructive" });
-    }
-    setSavingSettings(false);
-  };
-
-  const testGdrive = async () => {
-    if (!USE_LARAVEL) return;
-    setGdriveTesting(true);
-    setGdriveTestResult(null);
-    try {
-      const res = await fetch(`${API_BASE}/v1/backups/gdrive/test`, {
-        method: "POST",
-        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify(gdriveForm),
-      });
-      const result = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
-      if (!res.ok || !result.success) throw new Error(result.message || result.error || "Test failed");
-      const email = result.data?.user?.emailAddress || "";
-      setGdriveTestResult({ ok: true, message: `Connected${email ? ` as ${email}` : ""}.` });
-    } catch (err: any) {
-      setGdriveTestResult({ ok: false, message: err.message });
-    }
-    setGdriveTesting(false);
-  };
-
   const uploadBackupToDrive = async (id: string) => {
     if (!USE_LARAVEL) return;
     setUploadingId(id);
@@ -841,82 +944,170 @@ const BackupPage = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2"><Cloud className="w-4 h-4" />Google Drive Backup</CardTitle>
-              <CardDescription>Daily auto-upload of backups to your Google Drive folder</CardDescription>
+              <CardDescription>Sign in with Google and pick a Drive folder to auto-upload backups to</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs text-muted-foreground space-y-1">
-                <p className="font-medium text-foreground">Setup steps:</p>
-                <ol className="list-decimal list-inside space-y-0.5">
-                  <li>Create an OAuth 2.0 Client (Desktop / Web) in Google Cloud Console with the <code>drive.file</code> scope.</li>
-                  <li>Generate a refresh token (e.g. via OAuth Playground) for that client.</li>
-                  <li>Create (or pick) a Drive folder, copy its ID from the URL, share it with the OAuth user.</li>
-                  <li>Paste credentials below, press <strong>Test</strong>, then <strong>Save</strong>.</li>
-                </ol>
-              </div>
+              {settings?.gdrive_refresh_token_set ? (
+                <>
+                  <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+                      <CheckCircle className="w-4 h-4 shrink-0" />
+                      <span>Connected as <strong>{settings.gdrive_account_email || "your Google account"}</strong></span>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleDisconnectGdrive} disabled={disconnectingGdrive}>
+                      {disconnectingGdrive ? "Disconnecting..." : "Disconnect"}
+                    </Button>
+                  </div>
 
-              <div className="flex items-center gap-3">
-                <Switch
-                  id="gdrive-enabled"
-                  checked={!!settings?.gdrive_enabled}
-                  onCheckedChange={(v) => setSettings((p) => p ? { ...p, gdrive_enabled: v } : p)}
-                />
-                <Label htmlFor="gdrive-enabled" className="text-sm">Enable Google Drive auto-backup (daily)</Label>
-              </div>
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      id="gdrive-enabled"
+                      checked={!!settings?.gdrive_enabled}
+                      onCheckedChange={(v) => { setSettings((p) => p ? { ...p, gdrive_enabled: v } : p); saveScheduleSettings({ gdrive_enabled: v }); }}
+                    />
+                    <Label htmlFor="gdrive-enabled" className="text-sm">Enable hourly Google Drive backup</Label>
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Client ID {settings?.gdrive_client_id && <span className="text-green-600">• saved</span>}</Label>
-                  <Input value={gdriveForm.client_id} onChange={(e) => setGdriveForm((f) => ({ ...f, client_id: e.target.value }))} placeholder={settings?.gdrive_client_id || "xxxx.apps.googleusercontent.com"} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Client Secret {settings?.gdrive_client_secret_set && <span className="text-green-600">• saved</span>}</Label>
-                  <Input type="password" value={gdriveForm.client_secret} onChange={(e) => setGdriveForm((f) => ({ ...f, client_secret: e.target.value }))} placeholder={settings?.gdrive_client_secret_set ? "(unchanged)" : "GOCSPX-..."} />
-                </div>
-                <div className="space-y-1 md:col-span-2">
-                  <Label className="text-xs text-muted-foreground">Refresh Token {settings?.gdrive_refresh_token_set && <span className="text-green-600">• saved</span>}</Label>
-                  <Input type="password" value={gdriveForm.refresh_token} onChange={(e) => setGdriveForm((f) => ({ ...f, refresh_token: e.target.value }))} placeholder={settings?.gdrive_refresh_token_set ? "(unchanged)" : "1//0..."} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Folder ID</Label>
-                  <Input value={gdriveForm.folder_id} onChange={(e) => setGdriveForm((f) => ({ ...f, folder_id: e.target.value }))} placeholder={settings?.gdrive_folder_id || "Drive folder ID"} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Default upload format</Label>
-                  <Select value={settings?.gdrive_format || "sql"} onValueChange={(v) => setSettings((p) => p ? { ...p, gdrive_format: v } : p)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sql">SQL</SelectItem>
-                      <SelectItem value="json">JSON</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Backup folder</Label>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/30 text-sm">
+                          <HardDrive className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="truncate">{settings.gdrive_folder_name || "My Drive (root)"}</span>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={openFolderPicker}>Change</Button>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Default upload format</Label>
+                      <Select value={settings?.gdrive_format || "sql"} onValueChange={(v) => { setSettings((p) => p ? { ...p, gdrive_format: v } : p); saveScheduleSettings({ gdrive_format: v } as any); }}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sql">SQL</SelectItem>
+                          <SelectItem value="json">JSON</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-              {gdriveTestResult && (
-                <div className={`p-2 rounded border text-xs ${gdriveTestResult.ok ? "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400" : "bg-destructive/10 border-destructive/30 text-destructive"}`}>
-                  {gdriveTestResult.ok ? "✔ " : "✖ "}{gdriveTestResult.message}
-                </div>
+                  {settings?.last_gdrive_error && (
+                    <div className="p-2 rounded border text-xs bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400">
+                      Last upload error: {settings.last_gdrive_error}
+                    </div>
+                  )}
+                  {settings?.last_gdrive_backup_at && (
+                    <p className="text-xs text-muted-foreground">Last successful Drive upload: {formatDate(settings.last_gdrive_backup_at)}</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="p-4 rounded-lg border border-dashed border-border text-center space-y-3">
+                    <Cloud className="w-8 h-8 text-muted-foreground mx-auto" />
+                    <p className="text-sm text-muted-foreground">No Google account connected yet.</p>
+                    <Button onClick={handleConnectGdrive} disabled={connectingGdrive || !settings?.gdrive_client_id}>
+                      {connectingGdrive ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Cloud className="w-4 h-4 mr-2" />}
+                      {connectingGdrive ? "Redirecting to Google..." : "Connect Google Drive"}
+                    </Button>
+                    {!settings?.gdrive_client_id && (
+                      <p className="text-xs text-destructive">Save a Google OAuth Client ID/Secret below first.</p>
+                    )}
+                  </div>
+                </>
               )}
 
-              {settings?.last_gdrive_error && (
-                <div className="p-2 rounded border text-xs bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400">
-                  Last upload error: {settings.last_gdrive_error}
-                </div>
-              )}
-              {settings?.last_gdrive_backup_at && (
-                <p className="text-xs text-muted-foreground">Last successful Drive upload: {formatDate(settings.last_gdrive_backup_at)}</p>
-              )}
-
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={testGdrive} disabled={gdriveTesting}>
-                  {gdriveTesting ? "Testing..." : "Test connection"}
-                </Button>
-                <Button onClick={saveGdriveSettings} disabled={savingSettings}>
-                  {savingSettings ? "Saving..." : "Save settings"}
-                </Button>
+              <div className="pt-2 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setGdriveAppSetupOpen((v) => !v)}
+                  className="text-xs text-primary hover:underline flex items-center gap-1 pt-3"
+                >
+                  <Settings className="w-3 h-3" />
+                  {gdriveAppSetupOpen ? "Hide" : "Show"} Google OAuth app setup (one-time, admin only)
+                </button>
+                {gdriveAppSetupOpen && (
+                  <div className="mt-3 p-3 rounded-lg bg-muted/50 border border-border space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      Enter the OAuth Client ID/Secret from your Google Cloud Console project (see the step-by-step guide). This only needs to be done once for this installation.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Client ID {settings?.gdrive_client_id && <span className="text-green-600">• saved</span>}</Label>
+                        <Input value={gdriveClientForm.client_id} onChange={(e) => setGdriveClientForm((f) => ({ ...f, client_id: e.target.value }))} placeholder={settings?.gdrive_client_id || "xxxx.apps.googleusercontent.com"} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Client Secret {settings?.gdrive_client_secret_set && <span className="text-green-600">• saved</span>}</Label>
+                        <Input type="password" value={gdriveClientForm.client_secret} onChange={(e) => setGdriveClientForm((f) => ({ ...f, client_secret: e.target.value }))} placeholder={settings?.gdrive_client_secret_set ? "(unchanged)" : "GOCSPX-..."} />
+                      </div>
+                    </div>
+                    <Button size="sm" onClick={saveGdriveClientCredentials} disabled={savingSettings}>
+                      {savingSettings ? "Saving..." : "Save app credentials"}
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
+
+          <Dialog open={folderPickerOpen} onOpenChange={setFolderPickerOpen}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Choose backup folder</DialogTitle>
+                <DialogDescription>Browse your Google Drive and pick where backups should be uploaded.</DialogDescription>
+              </DialogHeader>
+              <div className="flex items-center flex-wrap gap-1 text-xs text-muted-foreground border-b border-border pb-2">
+                {folderPath.map((crumb, i) => (
+                  <span key={i} className="flex items-center gap-1">
+                    {i > 0 && <span>/</span>}
+                    <button
+                      type="button"
+                      onClick={() => navigateToBreadcrumb(i)}
+                      className={`hover:underline ${i === folderPath.length - 1 ? "text-foreground font-medium" : "text-primary"}`}
+                    >
+                      {crumb.name}
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="max-h-64 overflow-auto space-y-1">
+                {loadingFolders ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin" /></div>
+                ) : folders.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-6">No sub-folders here.</p>
+                ) : (
+                  folders.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => navigateIntoFolder(f)}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted text-sm text-left"
+                    >
+                      <HardDrive className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="truncate flex-1">{f.name}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+              <div className="flex items-center gap-2 pt-2 border-t border-border">
+                <Input
+                  placeholder="New folder name"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCreateFolder(); }}
+                  className="h-8 text-sm"
+                />
+                <Button size="sm" variant="outline" onClick={handleCreateFolder} disabled={creatingFolder || !newFolderName.trim()}>
+                  {creatingFolder ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Create"}
+                </Button>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setFolderPickerOpen(false)}>Cancel</Button>
+                <Button onClick={handleSelectCurrentFolder} disabled={savingFolder}>
+                  {savingFolder ? "Saving..." : `Use "${folderPath[folderPath.length - 1].name}"`}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
 
@@ -1237,7 +1428,7 @@ const BackupPage = () => {
                       {history.map((r) => (
                         <TableRow key={r.id}>
                           <TableCell className="font-mono text-xs max-w-[200px] truncate">{r.file_name}</TableCell>
-                          <TableCell><Badge variant="outline" className="text-xs capitalize">{r.backup_type}</Badge></TableCell>
+                          <TableCell><Badge variant="outline" className="text-xs capitalize">{r.backup_type === "auto_gdrive" ? "Hourly (Drive)" : r.backup_type}</Badge></TableCell>
                           <TableCell><Badge variant="secondary" className="text-xs uppercase">{(r.format || "sql")}</Badge></TableCell>
                           <TableCell className="text-xs">{formatFileSize(r.file_size)}</TableCell>
                           <TableCell className="text-xs">{r.tables_count}</TableCell>
@@ -1249,6 +1440,11 @@ const BackupPage = () => {
                               {r.storage_path && r.status === "completed" && r.backup_type !== "restore" && (
                                 <Button variant="ghost" size="sm" onClick={() => handleDownload(r)} title="Download">
                                   <Download className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
+                              {!r.storage_path && r.gdrive_view_link && r.status === "completed" && (
+                                <Button variant="ghost" size="sm" asChild title="View on Google Drive">
+                                  <a href={r.gdrive_view_link} target="_blank" rel="noopener noreferrer"><Cloud className="w-3.5 h-3.5" /></a>
                                 </Button>
                               )}
                               {r.storage_path && r.status === "completed" && r.backup_type !== "restore" && settings?.gdrive_enabled && USE_LARAVEL && (
@@ -1276,71 +1472,34 @@ const BackupPage = () => {
           {settings && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2"><RefreshCw className="w-4 h-4" />Backup Schedule</CardTitle>
-                <CardDescription>Configure automatic SQL backups via cron job</CardDescription>
+                <CardTitle className="text-base flex items-center gap-2"><RefreshCw className="w-4 h-4" />Hourly Google Drive Backup</CardTitle>
+                <CardDescription>Runs automatically every hour — no cron setup needed, this app's scheduler is already active</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-6 items-end">
-                  <div className="flex items-center gap-3">
-                    <Switch checked={settings.auto_backup_enabled} onCheckedChange={(v) => saveScheduleSettings({ auto_backup_enabled: v })} disabled={savingSettings} />
-                    <Label className="text-sm">Enable automatic backups</Label>
-                  </div>
-                  {settings.auto_backup_enabled && (
-                    <>
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Interval</Label>
-                        <Select value={settings.schedule_interval} onValueChange={(v) => saveScheduleSettings({ schedule_interval: v })}>
-                          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="hourly">Hourly</SelectItem>
-                            <SelectItem value="daily">Daily</SelectItem>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Retention (days)</Label>
-                        <Select value={String(settings.retention_days)} onValueChange={(v) => saveScheduleSettings({ retention_days: Number(v) })}>
-                          <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="7">7</SelectItem>
-                            <SelectItem value="14">14</SelectItem>
-                            <SelectItem value="30">30</SelectItem>
-                            <SelectItem value="90">90</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-2 text-sm">
+                  {settings.gdrive_enabled && settings.gdrive_refresh_token_set ? (
+                    <Badge variant="default" className="bg-green-600 text-white"><CheckCircle className="w-3 h-3 mr-1" />Active</Badge>
+                  ) : (
+                    <Badge variant="outline"><AlertTriangle className="w-3 h-3 mr-1" />Not connected</Badge>
                   )}
-                  {settings.last_auto_backup_at && (
-                    <p className="text-xs text-muted-foreground">Last auto backup: {formatDate(settings.last_auto_backup_at)}</p>
-                  )}
+                  <span className="text-muted-foreground">
+                    Controlled from the <button type="button" className="text-primary hover:underline" onClick={() => setActiveTab("gdrive")}>Google Drive tab</button> — connect an account and enable auto-backup there.
+                  </span>
+                </div>
+                {settings.last_auto_backup_at && (
+                  <p className="text-xs text-muted-foreground">Last hourly backup created: {formatDate(settings.last_auto_backup_at)}</p>
+                )}
+                {settings.last_gdrive_backup_at && (
+                  <p className="text-xs text-muted-foreground">Last successful Drive upload: {formatDate(settings.last_gdrive_backup_at)}</p>
+                )}
+                <div className="p-3 rounded-lg bg-muted/50 border border-border text-xs text-muted-foreground space-y-1">
+                  <p>• Every hour: a full SQL backup is created, uploaded to your configured Google Drive folder, then removed locally — the local disk is never used as long-term storage.</p>
+                  <p>• Google Drive keeps only the <strong>last 5 days</strong> of backups; older ones are deleted automatically.</p>
+                  <p>• If an upload fails (e.g. network issue), that backup is kept locally as a safety net and retried; the error shows on the Google Drive tab.</p>
                 </div>
               </CardContent>
             </Card>
           )}
-
-          <Card className="mt-4">
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileText className="w-4 h-4" />Cron Job Setup</CardTitle></CardHeader>
-            <CardContent>
-              <div className="text-sm text-muted-foreground space-y-3">
-                <p>Add this cron job in cPanel → Cron Jobs for automatic SQL backups:</p>
-                <div className="p-3 rounded-lg bg-muted border border-border font-mono text-xs">
-                  <p className="font-semibold text-foreground mb-1">Daily at 2:00 AM:</p>
-                  <code>0 2 * * * php /home/USERNAME/public_html/artisan backup:database --type=auto</code>
-                </div>
-                <div className="p-3 rounded-lg bg-muted border border-border font-mono text-xs">
-                  <p className="font-semibold text-foreground mb-1">Every 6 hours:</p>
-                  <code>0 */6 * * * php /home/USERNAME/public_html/artisan backup:database --type=auto</code>
-                </div>
-                <p className="flex items-center gap-2"><Shield className="w-4 h-4" /><strong>Security:</strong> Only Super Admins (employee_id = NULL) can manage backups.</p>
-                <p>• <strong>Format:</strong> SQL only (.sql) — full mysqldump with DROP + CREATE + INSERT</p>
-                <p>• <strong>Storage:</strong> <code>storage/app/backups/</code></p>
-                <p>• <strong>Naming:</strong> <code>erp_backup_YYYY_MM_DD_HH_MM.sql</code></p>
-                <p>• <strong>Cleanup:</strong> Old backups auto-deleted based on retention setting</p>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
 

@@ -366,6 +366,200 @@ class BackupController extends BaseController
         }
     }
 
+    /**
+     * Build the Google OAuth consent URL for connecting a Drive account.
+     * Requires the Client ID/Secret to already be saved via settings().
+     */
+    public function gdriveAuthUrl(Request $request): JsonResponse
+    {
+        if (!$request->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admins can connect Google Drive.', 403);
+        }
+        $settings = DB::table('backup_settings')->where('id', 'default')->first();
+        $clientId = $settings->gdrive_client_id ?? '';
+        if (!$clientId) {
+            return $this->error('Save a Google OAuth Client ID first.', 422);
+        }
+        $redirectUri = $this->gdriveRedirectUri($request);
+        $state = $this->signGdriveState();
+        $url = \App\Services\GoogleDriveService::authUrl($clientId, $redirectUri, $state);
+        return $this->success(['url' => $url]);
+    }
+
+    /**
+     * Google redirects the admin's browser here after consent. Public route
+     * (see routes/api.php) — protected by the signed `state` param instead
+     * of auth:sanctum, since Google's redirect carries no Authorization
+     * header. Ends with a redirect back into the SPA's Backup page.
+     */
+    public function gdriveCallback(Request $request)
+    {
+        $back = fn (string $q) => redirect($request->getSchemeAndHttpHost() . '/admin/backup?' . $q);
+
+        if (!$this->verifyGdriveState((string) $request->query('state', ''))) {
+            return $back('gdrive=error&message=' . urlencode('This connection request expired or is invalid. Please try again.'));
+        }
+        if ($request->query('error')) {
+            return $back('gdrive=error&message=' . urlencode('Google sign-in was cancelled.'));
+        }
+        $code = (string) $request->query('code', '');
+        if (!$code) {
+            return $back('gdrive=error&message=' . urlencode('Google did not return an authorization code.'));
+        }
+
+        $settings = DB::table('backup_settings')->where('id', 'default')->first();
+        $clientId = $settings->gdrive_client_id ?? '';
+        $clientSecret = $settings->gdrive_client_secret ?? '';
+        if (!$clientId || !$clientSecret) {
+            return $back('gdrive=error&message=' . urlencode('Google OAuth Client ID/Secret are not configured.'));
+        }
+
+        try {
+            $tokens = \App\Services\GoogleDriveService::exchangeCode($clientId, $clientSecret, $code, $this->gdriveRedirectUri($request));
+            $refreshToken = $tokens['refresh_token'] ?? null;
+            if (!$refreshToken) {
+                return $back('gdrive=error&message=' . urlencode("Google didn't return a refresh token. Remove this app's access at myaccount.google.com/permissions and try connecting again."));
+            }
+
+            $svc = new \App\Services\GoogleDriveService($clientId, $clientSecret, $refreshToken);
+            $info = $svc->test();
+            $email = $info['user']['emailAddress'] ?? null;
+
+            DB::table('backup_settings')->where('id', 'default')->update([
+                'gdrive_refresh_token' => $refreshToken,
+                'gdrive_account_email' => $email,
+                'gdrive_enabled' => 1,
+                'last_gdrive_error' => null,
+                'updated_at' => now(),
+            ]);
+
+            return $back('gdrive=connected');
+        } catch (\Throwable $e) {
+            Log::error('GDrive OAuth callback failed: ' . $e->getMessage());
+            return $back('gdrive=error&message=' . urlencode($e->getMessage()));
+        }
+    }
+
+    /**
+     * List folders directly under the given parent (Drive root if omitted)
+     * for the folder-picker UI.
+     */
+    public function gdriveFolders(Request $request): JsonResponse
+    {
+        if (!$request->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admins can browse Google Drive.', 403);
+        }
+        $settings = DB::table('backup_settings')->where('id', 'default')->first();
+        if (!$settings || !$settings->gdrive_refresh_token) {
+            return $this->error('Google Drive is not connected yet.', 422);
+        }
+        try {
+            $svc = \App\Services\GoogleDriveService::fromSettings($settings);
+            $folders = $svc->listFolders($request->query('parent_id') ?: null);
+            return $this->success($folders);
+        } catch (\Throwable $e) {
+            return $this->error('Failed to list folders: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Create a new folder from the folder-picker UI.
+     */
+    public function gdriveCreateFolder(Request $request): JsonResponse
+    {
+        if (!$request->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admins can manage Google Drive folders.', 403);
+        }
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'parent_id' => 'nullable|string|max:200',
+        ]);
+        $settings = DB::table('backup_settings')->where('id', 'default')->first();
+        if (!$settings || !$settings->gdrive_refresh_token) {
+            return $this->error('Google Drive is not connected yet.', 422);
+        }
+        try {
+            $svc = \App\Services\GoogleDriveService::fromSettings($settings);
+            $folder = $svc->createFolder($data['name'], $data['parent_id'] ?? null);
+            return $this->success($folder, 'Folder created');
+        } catch (\Throwable $e) {
+            return $this->error('Failed to create folder: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Save which Drive folder future backups should upload to.
+     */
+    public function gdriveSelectFolder(Request $request): JsonResponse
+    {
+        if (!$request->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admins can select the backup folder.', 403);
+        }
+        $data = $request->validate([
+            'folder_id' => 'required|string|max:200',
+            'folder_name' => 'required|string|max:255',
+        ]);
+        DB::table('backup_settings')->where('id', 'default')->update([
+            'gdrive_folder_id' => $data['folder_id'],
+            'gdrive_folder_name' => $data['folder_name'],
+            'updated_by' => $request->user()->id,
+            'updated_at' => now(),
+        ]);
+        return $this->success(null, 'Backup folder updated');
+    }
+
+    /**
+     * Disconnect the currently connected Google account (keeps the saved
+     * Client ID/Secret, only clears the per-account token + folder).
+     */
+    public function gdriveDisconnect(Request $request): JsonResponse
+    {
+        if (!$request->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admins can disconnect Google Drive.', 403);
+        }
+        DB::table('backup_settings')->where('id', 'default')->update([
+            'gdrive_refresh_token' => null,
+            'gdrive_account_email' => null,
+            'gdrive_folder_id' => null,
+            'gdrive_folder_name' => null,
+            'gdrive_enabled' => 0,
+            'last_gdrive_error' => null,
+            'updated_by' => $request->user()->id,
+            'updated_at' => now(),
+        ]);
+        return $this->success(null, 'Google Drive disconnected');
+    }
+
+    private function gdriveRedirectUri(Request $request): string
+    {
+        return $request->getSchemeAndHttpHost() . '/api/v1/backups/gdrive/callback';
+    }
+
+    /**
+     * Signs a short-lived, single-purpose token proving the OAuth callback
+     * request followed an auth-url this server itself issued — the only
+     * protection the public callback route has, since Google's redirect
+     * carries no Authorization header for auth:sanctum to check.
+     */
+    private function signGdriveState(): string
+    {
+        $payload = base64_encode(json_encode(['ts' => time(), 'n' => Str::random(16)]));
+        $sig = hash_hmac('sha256', $payload, config('app.key'));
+        return $payload . '.' . $sig;
+    }
+
+    private function verifyGdriveState(string $state): bool
+    {
+        $parts = explode('.', $state, 2);
+        if (count($parts) !== 2) return false;
+        [$payload, $sig] = $parts;
+        $expected = hash_hmac('sha256', $payload, config('app.key'));
+        if (!hash_equals($expected, $sig)) return false;
+        $decoded = json_decode(base64_decode($payload), true);
+        if (!is_array($decoded) || empty($decoded['ts'])) return false;
+        return (time() - (int) $decoded['ts']) < 600; // 10 minutes
+    }
+
     private function tryMysqlRestore(string $path): bool
     {
         $mysql = $this->findMysql();
