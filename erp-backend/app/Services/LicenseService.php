@@ -125,9 +125,11 @@ class LicenseService
 
     /**
      * Persist a signature-verified response into license_state. Never
-     * call this with an unverified response.
+     * call this with an unverified response. $isActivation is only true
+     * when called from activate() — that's the sole place activated_at
+     * should move, so routine verify() refreshes never touch it.
      */
-    private function persist(array $body): void
+    private function persist(array $body, bool $isActivation = false): void
     {
         $row = $this->row();
         $row->fill([
@@ -139,6 +141,9 @@ class LicenseService
             'message' => $body['message'] ?? null,
             'signature' => $body['signature'] ?? null,
         ]);
+        if ($isActivation && in_array($row->status, ['activated', 'already_active'], true)) {
+            $row->activated_at = now();
+        }
         $row->save();
     }
 
@@ -163,7 +168,7 @@ class LicenseService
             return ['ok' => false, 'status' => 'signature_error', 'message' => 'License server response could not be verified. Please try again or contact support.'];
         }
 
-        $this->persist($result['body']);
+        $this->persist($result['body'], true);
 
         $status = $result['body']['status'] ?? 'denied';
         $ok = in_array($status, ['activated', 'already_active'], true);
@@ -213,7 +218,7 @@ class LicenseService
         $row = $this->row();
 
         if (!$row->license_key) {
-            return ['blocked' => true, 'status' => 'unconfigured', 'message' => 'No license key has been activated for this installation.', 'expires_at' => null];
+            return ['blocked' => true, 'status' => 'unconfigured', 'message' => 'No license key has been activated for this installation.', 'expires_at' => null, 'activated_at' => null, 'last_checked_at' => null];
         }
 
         $this->verify(); // no-ops internally if cache is still fresh
@@ -226,6 +231,8 @@ class LicenseService
                 'status' => 'offline_expired',
                 'message' => 'This license could not be verified and the offline grace period has expired. Please check your internet connection or contact support.',
                 'expires_at' => $row->expires_at?->toIso8601String(),
+                'activated_at' => $row->activated_at?->toIso8601String(),
+                'last_checked_at' => $row->last_checked_at?->toIso8601String(),
             ];
         }
 
@@ -234,6 +241,19 @@ class LicenseService
             'status' => $row->status,
             'message' => $row->message,
             'expires_at' => $row->expires_at?->toIso8601String(),
+            'activated_at' => $row->activated_at?->toIso8601String(),
+            'last_checked_at' => $row->last_checked_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Force a fresh check against the license server (bypasses the
+     * cache-TTL short-circuit in verify()), then return the effective
+     * status — used by the "Recheck license now" UI action.
+     */
+    public function recheck(): array
+    {
+        $this->verify(true);
+        return $this->getEffectiveStatus();
     }
 }

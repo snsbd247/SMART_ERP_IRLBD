@@ -75,15 +75,11 @@ Route::get('v1/public/employee-verify/{code}/signature', function (string $code)
 Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App\Http\Middleware\UpdateLastSeen::class])->prefix('v1')->group(function () {
     Route::get('license/status', [\App\Http\Controllers\LicenseController::class, 'status']);
     Route::post('license/activate', [\App\Http\Controllers\LicenseController::class, 'activate']);
+    Route::post('license/recheck', [\App\Http\Controllers\LicenseController::class, 'recheck']);
 });
 
 // Protected routes
-// NOTE: LicenseGuard is deliberately NOT enabled on this group yet — no
-// license key has been activated in production. Enabling it now would
-// block the entire live app. Add \App\Http\Middleware\LicenseGuard::class
-// to this array only once a real license key has been activated and
-// verified end-to-end (see LicenseController::activate).
-Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App\Http\Middleware\UpdateLastSeen::class])->group(function () {
+Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App\Http\Middleware\UpdateLastSeen::class, \App\Http\Middleware\LicenseGuard::class])->group(function () {
 
     // Auth
     Route::prefix('auth')->group(function () {

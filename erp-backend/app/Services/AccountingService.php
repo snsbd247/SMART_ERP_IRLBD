@@ -20,14 +20,13 @@ class AccountingService
      */
     public function createVoucher(array $data, array $entries, bool $autoApprove = true): AccVoucher
     {
-        // Second, independent license check — disabled for now (no license
-        // key has been activated in production yet; enabling this before
-        // that would block all voucher posting). Re-enable once
-        // LicenseGuard is confirmed working end-to-end with a real key.
-        // $licenseStatus = $this->license->getEffectiveStatus();
-        // if ($licenseStatus['blocked']) {
-        //     throw new \RuntimeException($licenseStatus['message'] ?? 'This software license is not valid.');
-        // }
+        // Second, independent license check — a deliberate defense-in-depth
+        // layer so voucher posting stays blocked even if LicenseGuard is
+        // ever bypassed or removed from the route middleware.
+        $licenseStatus = $this->license->getEffectiveStatus();
+        if ($licenseStatus['blocked']) {
+            throw new \RuntimeException($licenseStatus['message'] ?? 'This software license is not valid.');
+        }
 
         // Validate balanced
         $totalDebit = collect($entries)->sum('debit');
