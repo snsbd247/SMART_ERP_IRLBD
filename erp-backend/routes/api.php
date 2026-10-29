@@ -134,6 +134,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::middleware('permission:payment.view')->get('admin/vouchers/payment', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::middleware('permission:receipt.view')->get('admin/vouchers/receipt', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
         Route::middleware('permission:contra.view')->get('admin/vouchers/contra', [\App\Http\Controllers\Accounting\VoucherController::class, 'index']);
+        Route::middleware('permission:journal.view|payment.view|receipt.view|contra.view')->get('vouchers/creators', [\App\Http\Controllers\Accounting\VoucherController::class, 'creators']);
         Route::middleware('permission:accounts.view')->get('vouchers/pending', [\App\Http\Controllers\Accounting\VoucherController::class, 'pending']);
         Route::middleware('permission:accounts.view')->get('vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show'])->whereUuid('id');
         Route::middleware('permission:accounts.view')->get('admin/vouchers/{id}', [\App\Http\Controllers\Accounting\VoucherController::class, 'show'])->whereUuid('id');

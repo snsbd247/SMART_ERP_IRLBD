@@ -122,6 +122,27 @@ class VoucherController extends BaseController
         return $this->paginated($paginator);
     }
 
+    /**
+     * GET /v1/vouchers/creators
+     * Users to populate the "Entered By" filter dropdown — limited to users
+     * who have actually created a voucher, and branch-scoped the same way
+     * index() is (BranchScope injects allowed_branch_ids for non Super Admins),
+     * so a branch-restricted viewer never sees users outside their own branches.
+     */
+    public function creators(Request $request)
+    {
+        $query = AccVoucher::query()->whereNotNull('created_by');
+        $allowed = $request->input('allowed_branch_ids');
+        if (is_array($allowed) && count($allowed) > 0) {
+            $query->whereIn('branch_id', $allowed);
+        }
+        $userIds = $query->distinct()->pluck('created_by')->filter()->values();
+        $users = \App\Models\User::whereIn('id', $userIds)
+            ->orderBy('name')
+            ->get(['id', 'name', 'username']);
+        return $this->success($users);
+    }
+
     public function store(Request $request)
     {
         // Correlation id so client + server logs can be tied together for fast root-cause.

@@ -32,6 +32,9 @@ class VoucherRepository extends BaseRepository
         if (!empty($filters['to'])) {
             $query->where('voucher_date', '<=', $filters['to']);
         }
+        if (!empty($filters['created_by'])) {
+            $query->where('created_by', $filters['created_by']);
+        }
         // Branch scoping — restrict to user's allowed branches when present.
         if (!empty($filters['allowed_branch_ids']) && is_array($filters['allowed_branch_ids'])) {
             $query->whereIn('branch_id', $filters['allowed_branch_ids']);
