@@ -34,6 +34,7 @@ import GithubDeploySyncPage from "./pages/admin/GithubDeploySyncPage";
 
 import ChartOfAccounts from "./pages/accounts/ChartOfAccounts";
 import AccountingVouchers from "./pages/accounts/AccountingVouchers";
+import MoneyReceiptsPage from "./pages/accounts/MoneyReceiptsPage";
 import BulkVoucherEntryPage from "./pages/accounts/BulkVoucherEntryPage";
 import DeletedVouchersPage from "./pages/accounts/DeletedVouchersPage";
 import AccountingAuditLogPage from "./pages/accounts/AccountingAuditLogPage";
@@ -114,6 +115,7 @@ import DocumentsPage from "./pages/hrm/DocumentsPage";
 import IdCardsPage from "./pages/hrm/IdCardsPage";
 import HrReportsPage from "./pages/hrm/HrReportsPage";
 import EmployeeVerifyPage from "./pages/hrm/EmployeeVerifyPage";
+import MoneyReceiptVerifyPage from "./pages/MoneyReceiptVerifyPage";
 import ShiftsPage from "./pages/hrm/ShiftsPage";
 import BiometricImportPage from "./pages/hrm/BiometricImportPage";
 import OvertimePage from "./pages/hrm/OvertimePage";
@@ -216,6 +218,7 @@ const App = () => (
               <Route path="/employee/verify" element={<EmployeeVerifyPage />} />
               <Route path="/employee/verify/:code" element={<EmployeeVerifyPage />} />
               <Route path="/verify/:code" element={<EmployeeVerifyPage />} />
+              <Route path="/verify/money-receipt/:code" element={<MoneyReceiptVerifyPage />} />
               <Route path="/license-verification" element={<LicenseVerificationPage />} />
 
 
@@ -231,6 +234,7 @@ const App = () => (
                 {/* ─── Accounts ─────────────────────────────────── */}
                 <Route path="/accounts/chart" element={<P perm="accounts.view"><ChartOfAccounts /></P>} />
                 <Route path="/accounts/vouchers" element={<AccountingVouchers />} />
+                <Route path="/accounts/money-receipts" element={<MoneyReceiptsPage />} />
                 <Route path="/accounts/vouchers/bulk-entry" element={<BulkVoucherEntryPage />} />
                 <Route path="/accounts/vouchers/trash" element={<DeletedVouchersPage />} />
                 <Route path="/accounts/audit-log" element={<AccountingAuditLogPage />} />

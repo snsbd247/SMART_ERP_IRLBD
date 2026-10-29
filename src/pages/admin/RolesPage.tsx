@@ -25,6 +25,7 @@ const MODULES: { key: string; label: string; group: string }[] = [
   { key: "payment", label: "Payment Voucher", group: "Accounting" },
   { key: "receipt", label: "Receipt Voucher", group: "Accounting" },
   { key: "contra", label: "Contra Voucher", group: "Accounting" },
+  { key: "money_receipt", label: "Money Receipt", group: "Accounting" },
   // Business
   { key: "sales", label: "Sales", group: "Business" },
   { key: "purchase", label: "Purchase", group: "Business" },

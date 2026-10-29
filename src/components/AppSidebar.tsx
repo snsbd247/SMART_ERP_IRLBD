@@ -41,6 +41,7 @@ const navGroups: NavGroup[] = [
       { to: "/reports/ifrs-financial-statements", label: "IFRS Financial Statements", icon: FileText, permission: "accounts.view" },
       { to: "/admin/ifrs-mapping", label: "IFRS Account Mapping", icon: Settings2, permission: "accounts.view" },
       { to: "/accounts/vouchers", label: "Accounting Vouchers", icon: FileText, permission: "journal.view,payment.view,receipt.view,contra.view" },
+      { to: "/accounts/money-receipts", label: "Money Receipt", icon: Receipt, permission: "money_receipt.view" },
       { to: "/accounts/vouchers/bulk-entry", label: "Bulk Voucher Entry", icon: Layers, permission: "journal.create,payment.create,receipt.create,contra.create" },
       { to: "/accounts/treasury", label: "Treasury Information", icon: Landmark, permission: "accounts.view" },
       { to: "/reports/trial-balance", label: "Trial Balance", icon: FileText, permission: "accounts.view" },
