@@ -52,8 +52,8 @@ class FixServerTimezoneTimestamps extends Command
     public function handle(): int
     {
         $dry = (bool) $this->option('dry-run');
-        if (!$dry && Storage::exists(self::MARKER) && !$this->option('force')) {
-            $this->error('Already run (' . Storage::path(self::MARKER) . '). Use --force to run again.');
+        if (!$dry && Storage::disk('local')->exists(self::MARKER) && !$this->option('force')) {
+            $this->error('Already run (' . Storage::disk('local')->path(self::MARKER) . '). Use --force to run again.');
             return 1;
         }
 
@@ -103,16 +103,16 @@ class FixServerTimezoneTimestamps extends Command
 
             $file = 'tz-fix/backup-' . now()->format('Ymd-His') . '.json';
             // Backup of the original values goes to disk before commit.
-            Storage::put($file, json_encode(['since' => $since, 'before' => $before, 'from_tz' => $fromTz, 'to_tz' => $toTz, 'rows' => $backup], JSON_PRETTY_PRINT));
+            Storage::disk('local')->put($file, json_encode(['since' => $since, 'before' => $before, 'from_tz' => $fromTz, 'to_tz' => $toTz, 'rows' => $backup], JSON_PRETTY_PRINT));
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
             $this->error('Failed, nothing changed: ' . $e->getMessage());
             return 1;
         }
-        Storage::put(self::MARKER, json_encode(['at' => now()->toIso8601String(), 'rows' => count($backup), 'backup' => $file]));
+        Storage::disk('local')->put(self::MARKER, json_encode(['at' => now()->toIso8601String(), 'rows' => count($backup), 'backup' => $file]));
 
-        $this->info(count($backup) . ' rows converted. Original values: ' . Storage::path($file));
+        $this->info(count($backup) . ' rows converted. Original values: ' . Storage::disk('local')->path($file));
         return 0;
     }
 }

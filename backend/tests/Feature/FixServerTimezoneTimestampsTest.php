@@ -21,7 +21,7 @@ class FixServerTimezoneTimestampsTest extends TestCase
 
     public function test_converts_only_db_default_rows_in_window_and_refuses_rerun(): void
     {
-        Storage::fake();
+        Storage::fake('local');
 
         $server = $this->audit('accounting_vouchers', 'voucher_soft_deleted', '2026-10-28 01:47:30');   // EDT
         $frontend = $this->audit('accounting', 'voucher_create_balance_impact', '2026-10-28 11:47:30'); // already Dhaka
@@ -41,20 +41,20 @@ class FixServerTimezoneTimestampsTest extends TestCase
         $this->assertSame('2026-07-01 03:00:00', $at($restored), 'rows from before go-live are untouched');
         $this->assertSame('2026-10-29 14:00:00', $at($afterFix), 'rows written after the fix are untouched');
 
-        $this->assertTrue(Storage::exists('tz-fix/done.json'));
+        $this->assertTrue(Storage::disk('local')->exists('tz-fix/done.json'));
         $this->artisan('timestamps:fix-server-timezone', $args)->assertFailed();
         $this->assertSame('2026-10-28 11:47:30', $at($server), 'second run must not shift again');
     }
 
     public function test_dry_run_writes_nothing(): void
     {
-        Storage::fake();
+        Storage::fake('local');
         $id = $this->audit('accounting_vouchers', 'voucher_type_changed', '2026-08-10 05:00:00');
 
         $this->artisan('timestamps:fix-server-timezone', ['--dry-run' => true, '--before' => '2026-10-29 04:00:00'])->assertSuccessful();
 
         $this->assertSame('2026-08-10 05:00:00', DB::table('audit_log')->where('id', $id)->value('created_at'));
-        $this->assertFalse(Storage::exists('tz-fix/done.json'));
+        $this->assertFalse(Storage::disk('local')->exists('tz-fix/done.json'));
     }
 
     public function test_models_without_timestamps_get_app_time_created_at(): void
