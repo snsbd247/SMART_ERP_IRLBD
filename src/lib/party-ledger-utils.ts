@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 
 const SUPPLIER_PARENT_NAMES = ["Supplier Payable", "Accounts Payable", "Sundry Creditors"];
 const CUSTOMER_PARENT_NAMES = ["Accounts Receivable", "Customer Receivable", "Sundry Debtors"];
@@ -10,7 +10,7 @@ async function findOrCreateParent(
 ): Promise<{ id: string; account_code: string } | null> {
   // Try each candidate name (case-insensitive)
   for (const n of candidateNames) {
-    const { data } = await supabase
+    const { data } = await dataClient
       .from("chart_of_accounts")
       .select("id, account_code")
       .ilike("account_name", n)
@@ -20,7 +20,7 @@ async function findOrCreateParent(
   }
 
   // Not found — create the first candidate as parent
-  const { data: created, error } = await supabase
+  const { data: created, error } = await dataClient
     .from("chart_of_accounts")
     .insert({
       account_code: fallbackCode,
@@ -40,7 +40,7 @@ async function findOrCreateParent(
 }
 
 async function nextChildCode(parentCode: string): Promise<string> {
-  const { data } = await supabase
+  const { data } = await dataClient
     .from("chart_of_accounts")
     .select("account_code")
     .ilike("account_code", `${parentCode}%`)
@@ -66,7 +66,7 @@ async function createPartyLedger(
 ): Promise<string | null> {
   try {
     // Avoid duplicates by exact name — return existing id if present
-    const { data: existing } = await supabase
+    const { data: existing } = await dataClient
       .from("chart_of_accounts")
       .select("id")
       .eq("account_name", partyName)
@@ -76,7 +76,7 @@ async function createPartyLedger(
 
     let parent: { id: string; account_code: string } | null = null;
     if (parentId) {
-      const { data } = await supabase
+      const { data } = await dataClient
         .from("chart_of_accounts")
         .select("id, account_code")
         .eq("id", parentId)
@@ -90,7 +90,7 @@ async function createPartyLedger(
 
     const code = await nextChildCode(parent.account_code);
 
-    const { data: inserted, error } = await supabase.from("chart_of_accounts").insert({
+    const { data: inserted, error } = await dataClient.from("chart_of_accounts").insert({
       account_code: code,
       account_name: partyName,
       account_type: accountType,
@@ -138,7 +138,7 @@ export async function syncPartyOpeningToLedger(
 ): Promise<void> {
   if (!accountId) return;
   const safe = Number.isFinite(amount) ? amount : 0;
-  const { error } = await supabase
+  const { error } = await dataClient
     .from("chart_of_accounts")
     .update({ opening_balance: safe, opening_balance_type: side } as any)
     .eq("id", accountId);

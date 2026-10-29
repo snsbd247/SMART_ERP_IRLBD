@@ -38,15 +38,15 @@ export function isLaravelMode(): boolean {
 }
 
 /**
- * Mark Supabase as unreachable (e.g. 503 from LARAVEL_ONLY_MODE) so subsequent
+ * Mark the legacy data path as unreachable (e.g. 503 from LARAVEL_ONLY_MODE) so subsequent
  * calls automatically prefer the Laravel API. Persisted for the session only.
  */
-export function markSupabaseUnavailable(reason?: string): void {
+export function markDataClientUnavailable(reason?: string): void {
   if (typeof window === "undefined") return;
   (window as any).__FORCE_LARAVEL_FALLBACK__ = true;
   try { sessionStorage.setItem("force_laravel_fallback", reason || "1"); } catch { /* ignore */ }
   // eslint-disable-next-line no-console
-  console.warn("[laravel-auth] Supabase unavailable — falling back to Laravel API.", reason);
+  console.warn("[laravel-auth] legacy data path unavailable — falling back to Laravel API.", reason);
 }
 
 // Restore fallback flag on module load (survives HMR / page reload within session).
@@ -58,11 +58,11 @@ if (typeof window !== "undefined") {
   } catch { /* ignore */ }
 }
 
-/** True when any Supabase error indicates the project is in Laravel-only mode. */
-export function isSupabaseDisabledError(err: unknown): boolean {
+/** True when any data-client error indicates the project is in Laravel-only mode. */
+export function isDataClientDisabledError(err: unknown): boolean {
   const msg = (err as any)?.message || String(err || "");
   const code = (err as any)?.status || (err as any)?.code;
-  return code === 503 || /supabase is disabled|laravel[_ ]only/i.test(msg);
+  return code === 503 || /dataClient is disabled|laravel[_ ]only/i.test(msg);
 }
 
 // Auth tokens are stored in localStorage so the session persists across

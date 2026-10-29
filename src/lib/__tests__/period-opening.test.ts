@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock Supabase client used by computeCustomerPeriodOpening / fetchAllVoucherEntries
+// Mock data client used by computeCustomerPeriodOpening / fetchAllVoucherEntries
 const mockData: Record<string, any[]> = {
   sales_invoices: [],
   party_payments: [],
@@ -38,8 +38,8 @@ function makeBuilder(table: string) {
   return builder;
 }
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
+vi.mock("@/integrations/data/client", () => ({
+  dataClient: {
     from: (table: string) => makeBuilder(table),
   },
 }));

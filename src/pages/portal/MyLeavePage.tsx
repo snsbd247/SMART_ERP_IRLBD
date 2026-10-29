@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { usePortalEmployee } from "@/hooks/usePortalEmployee";
 import { PortalEmployeeSelector } from "@/components/portal/PortalEmployeeSelector";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,14 +24,14 @@ export default function MyLeavePage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("leave_types").select("*");
+      const { data } = await dataClient.from("leave_types").select("*");
       if (data) setLeaveTypes(data as any);
     })();
   }, []);
 
   const fetchRequests = async () => {
     if (!employee) return;
-    const { data } = await supabase.from("leave_requests").select("*").eq("employee_id", employee.id).order("created_at", { ascending: false });
+    const { data } = await dataClient.from("leave_requests").select("*").eq("employee_id", employee.id).order("created_at", { ascending: false });
     if (data) setRequests(data as any);
   };
 
@@ -39,7 +39,7 @@ export default function MyLeavePage() {
 
   const handleSubmit = async () => {
     if (!employee || !form.leave_type_id || !form.start_date || !form.end_date) { toast.error("All fields required"); return; }
-    const { error } = await supabase.from("leave_requests").insert({
+    const { error } = await dataClient.from("leave_requests").insert({
       employee_id: employee.id, leave_type_id: form.leave_type_id,
       start_date: form.start_date, end_date: form.end_date, reason: form.reason || null,
     } as any);

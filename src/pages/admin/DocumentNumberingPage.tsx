@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -48,10 +48,10 @@ const DocumentNumberingPage = () => {
     const exactPattern = new RegExp(`^${seq.prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-${seq.year}-(\\d+)$`);
     let max = 0;
 
-    // Supabase/PostgREST returns 1,000 rows by default. Page through all rows
+    // PostgREST-style backends returns 1,000 rows by default. Page through all rows
     // so re-sync remains correct even after years of voucher data.
     for (let from = 0; ; from += 1000) {
-      const { data, error } = await supabase
+      const { data, error } = await dataClient
         .from("acc_vouchers")
         .select("voucher_number")
         .like("voucher_number", like)
@@ -75,7 +75,7 @@ const DocumentNumberingPage = () => {
     const actual = await computeActualMax(seq);
     const target = Math.max(actual, seq.current_number);
     if (target === seq.current_number) return { id: seq.id, changed: false, from: seq.current_number, to: target };
-    const { error } = await supabase
+    const { error } = await dataClient
       .from("number_sequences")
       .update({ current_number: target } as any)
       .eq("id", seq.id);
@@ -121,7 +121,7 @@ const DocumentNumberingPage = () => {
 
   const fetchSequences = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await dataClient
       .from("number_sequences")
       .select("*")
       .order("id");
@@ -167,7 +167,7 @@ const DocumentNumberingPage = () => {
           setSaving(false);
           return;
         }
-        const { error } = await supabase
+        const { error } = await dataClient
           .from("number_sequences")
           .update({ prefix } as any)
           .eq("id", id);
@@ -187,7 +187,7 @@ const DocumentNumberingPage = () => {
     if (!resetDialog) return;
     setSaving(true);
     try {
-      const { error } = await supabase
+      const { error } = await dataClient
         .from("number_sequences")
         .update({ current_number: 0 } as any)
         .eq("id", resetDialog.id);

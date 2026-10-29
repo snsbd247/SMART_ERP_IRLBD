@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { isLaravelMode } from "@/lib/laravel-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ const ResetPassword = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // This page handles Supabase's email-link reset flow only. In Laravel mode,
+  // This page handles the legacy email-link reset flow only. In Laravel mode,
   // password reset is a single-page SMS-OTP flow on the Login page instead.
   if (isLaravelMode()) {
     return (
@@ -45,7 +45,7 @@ const ResetPassword = () => {
     }
     setSubmitting(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      const { error } = await dataClient.auth.updateUser({ password });
       if (error) throw error;
       toast({ title: "Password updated successfully" });
       navigate("/");

@@ -12,7 +12,7 @@
  * Signed convention: negative balances stay negative (no Dr/Cr suffix).
  */
 
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { signedOpeningBalance } from "@/lib/balance-format";
 import { applyEntry } from "@/lib/ledger-balance";
 import { fetchAllVoucherEntries, laravelGet } from "@/lib/report-fetch";
@@ -83,7 +83,7 @@ export async function computeAccountPeriodOpening(opts: {
 }): Promise<AccountPeriodOpeningResult> {
   let account = opts.account ?? null;
   if (!account) {
-    const { data } = await supabase
+    const { data } = await dataClient
       .from("chart_of_accounts")
       .select("opening_balance, opening_balance_type")
       .eq("id", opts.accountId)
@@ -215,20 +215,20 @@ export async function computeCustomerPeriodOpening(opts: {
   const priorTo = prevDay(opts.dateFrom);
 
   const [invRes, payRes, retRes] = await Promise.all([
-    supabase
+    dataClient
       .from("sales_invoices")
       .select("id, invoice_number, invoice_date, net_amount, total_amount")
       .eq("customer_id", opts.customerId)
       .lte("invoice_date", priorTo)
       .order("invoice_date"),
-    supabase
+    dataClient
       .from("party_payments")
       .select("id, payment_date, amount, payment_method, reference")
       .eq("party_id", opts.customerId)
       .eq("party_type", "customer")
       .lte("payment_date", priorTo)
       .order("payment_date"),
-    supabase
+    dataClient
       .from("sales_returns")
       .select("id, return_number, return_date, total_amount")
       .eq("customer_id", opts.customerId)

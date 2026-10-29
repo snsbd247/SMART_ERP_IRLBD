@@ -1,11 +1,11 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 
 /**
  * Fetch the currently active financial year.
  * Returns { id, name, start_date, end_date } or null.
  */
 export async function getActiveFinancialYear() {
-  const { data } = await supabase
+  const { data } = await dataClient
     .from("financial_years")
     .select("id, name, start_date, end_date, is_active")
     .eq("is_active", true)

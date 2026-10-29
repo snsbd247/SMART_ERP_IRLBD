@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -39,10 +39,10 @@ const CoaMappingPage = () => {
 
   const load = async () => {
     const [r, t, b, a] = await Promise.all([
-      supabase.from("purchase_coa_mapping" as any).select("*"),
-      supabase.from("purchase_types" as any).select("id,code,name").eq("is_active", true),
-      supabase.from("branches").select("id,name"),
-      supabase.from("chart_of_accounts").select("id,account_code,account_name").eq("is_active", true).order("account_code"),
+      dataClient.from("purchase_coa_mapping" as any).select("*"),
+      dataClient.from("purchase_types" as any).select("id,code,name").eq("is_active", true),
+      dataClient.from("branches").select("id,name"),
+      dataClient.from("chart_of_accounts").select("id,account_code,account_name").eq("is_active", true).order("account_code"),
     ]);
     setRows((r.data || []) as any); setTypes(t.data || []); setBranches(b.data || []); setAccounts(a.data || []);
   };
@@ -61,14 +61,14 @@ const CoaMappingPage = () => {
     if (payload.branch_id === "_any") payload.branch_id = null;
     Object.keys(payload).forEach(k => { if (payload[k] === "_none") payload[k] = null; });
     const { error } = editing
-      ? await supabase.from("purchase_coa_mapping" as any).update(payload).eq("id", editing.id)
-      : await supabase.from("purchase_coa_mapping" as any).insert(payload);
+      ? await dataClient.from("purchase_coa_mapping" as any).update(payload).eq("id", editing.id)
+      : await dataClient.from("purchase_coa_mapping" as any).insert(payload);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else { toast({ title: "Saved" }); setOpen(false); load(); }
   };
   const remove = async (id: string) => {
     if (!confirm("Delete mapping?")) return;
-    await supabase.from("purchase_coa_mapping" as any).delete().eq("id", id);
+    await dataClient.from("purchase_coa_mapping" as any).delete().eq("id", id);
     load();
   };
 

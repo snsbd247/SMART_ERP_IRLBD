@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/contexts/AuthContext";
@@ -58,9 +58,9 @@ const SalesInvoiceDetailPage = () => {
     if (!id) return;
     setLoading(true);
     const [invRes, itemsRes, allocRes] = await Promise.all([
-      supabase.from("sales_invoices").select("*").eq("id", id).single(),
-      supabase.from("sales_invoice_items").select("*").eq("sales_invoice_id", id),
-      supabase.from("payment_allocations" as any)
+      dataClient.from("sales_invoices").select("*").eq("id", id).single(),
+      dataClient.from("sales_invoice_items").select("*").eq("sales_invoice_id", id),
+      dataClient.from("payment_allocations" as any)
         .select("id, allocated_amount, payment_id, payment:party_payments!inner(id, payment_number, payment_date, amount, payment_method, reference, notes, deleted_at)")
         .eq("invoice_id", id).eq("invoice_type", "sales_invoice")
         .is("payment.deleted_at", null),
@@ -68,19 +68,19 @@ const SalesInvoiceDetailPage = () => {
     if (invRes.data) {
       setInvoice(invRes.data as any);
       if (invRes.data.customer_id) {
-        const { data: cust } = await supabase.from("customers").select("*").eq("id", invRes.data.customer_id).single();
+        const { data: cust } = await dataClient.from("customers").select("*").eq("id", invRes.data.customer_id).single();
         if (cust) { setCustomerName(cust.name); setCustomerInfo(cust); }
       }
       if (invRes.data.branch_id) {
-        const { data: br } = await supabase.from("branches").select("name").eq("id", invRes.data.branch_id).single();
+        const { data: br } = await dataClient.from("branches").select("name").eq("id", invRes.data.branch_id).single();
         if (br) setBranchName(br.name);
       }
     }
     const products = (itemsRes.data || []) as any[];
     if (products.length > 0) {
       const productIds = [...new Set(products.map(p => p.product_id))];
-      const { data: prods } = await supabase.from("item_master").select("id, item_name, item_code").in("id", productIds);
-      const prodMap = new Map((prods || []).map((p: any) => [p.id, p]));
+      const { data: prods } = await dataClient.from("item_master").select("id, item_name, item_code").in("id", productIds);
+      const prodMap = new Map<string, any>((prods || []).map((p: any) => [p.id, p]));
       setItems(products.map(item => ({
         ...item,
         product_name: prodMap.get(item.product_id)?.item_name || "—",
@@ -111,18 +111,18 @@ const SalesInvoiceDetailPage = () => {
     try {
       // 1) Generate payment_number
       const year = new Date().getFullYear();
-      const { data: seq } = await supabase.from("number_sequences").select("*").eq("prefix", "RCP").eq("year", year).maybeSingle();
+      const { data: seq } = await dataClient.from("number_sequences").select("*").eq("prefix", "RCP").eq("year", year).maybeSingle();
       let serial = 1;
       if (seq) {
         serial = (Number((seq as any).current_number) || 0) + 1;
-        await supabase.from("number_sequences").update({ current_number: serial } as any).eq("id", (seq as any).id);
+        await dataClient.from("number_sequences").update({ current_number: serial } as any).eq("id", (seq as any).id);
       } else {
-        await supabase.from("number_sequences").insert([{ prefix: "RCP", year, current_number: 1, description: "Receipt" } as any]);
+        await dataClient.from("number_sequences").insert([{ prefix: "RCP", year, current_number: 1, description: "Receipt" } as any]);
       }
       const payment_number = `RCP-${year}-${String(serial).padStart(5, "0")}`;
 
       // 2) Insert party_payment
-      const { data: payData, error: payErr } = await supabase.from("party_payments" as any).insert({
+      const { data: payData, error: payErr } = await dataClient.from("party_payments" as any).insert({
         party_type: "customer",
         party_id: invoice.customer_id,
         payment_number,
@@ -136,7 +136,7 @@ const SalesInvoiceDetailPage = () => {
       if (payErr) throw payErr;
 
       // 3) Insert allocation to this invoice
-      const { error: aErr } = await supabase.from("payment_allocations" as any).insert({
+      const { error: aErr } = await dataClient.from("payment_allocations" as any).insert({
         payment_id: (payData as any).id,
         invoice_type: "sales_invoice",
         invoice_id: id,

@@ -1,15 +1,10 @@
 /**
- * Laravel-mode Supabase bridge.
+ * Laravel data bridge.
  *
- * Implements the subset of the supabase-js v2 API actually used in this
- * codebase (search the repo for `supabase.from`, `supabase.storage`,
- * `supabase.functions.invoke`). All calls are translated into REST calls
- * against the Laravel backend's generic CRUD + storage endpoints
+ * A small query-builder-style client (`dataClient.from`, `dataClient.storage`,
+ * `dataClient.functions.invoke`, ...). All calls are translated into REST
+ * calls against the Laravel backend's generic CRUD + storage endpoints
  * (see `GenericTableController` / `GenericStorageController`).
- *
- * Goal: on a VPS deployment (LARAVEL_ONLY_MODE) every page that uses
- * `supabase.from(...)` keeps working without rewriting it, and Supabase
- * is never contacted.
  */
 
 import { getApiBaseUrl, getLaravelAuthHeaders, getLaravelToken } from "@/lib/laravel-auth";
@@ -308,7 +303,7 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
   // -- execute
   private async run(): Promise<Result<T>> {
     // Company settings has a single Laravel controller-backed row whose UUID is
-    // not literally "default". Keep existing Supabase-style callers working.
+    // not literally "default". Keep existing PostgREST-style callers working.
     if (this.table === "company_settings") {
       // Skip authenticated calls when there is no session (e.g. on /login)
       // to avoid noisy 401s before the user signs in.
@@ -419,7 +414,7 @@ class QueryBuilder<T = any> implements PromiseLike<Result<T>> {
     }
     if (res.error) return res as Result<T>;
 
-    // Post-process: emulate Supabase return shapes.
+    // Post-process: emulate PostgREST return shapes.
     let data: any = res.data;
     if (this._mode === "select" && this._relationEmbeds.length > 0) {
       data = await this.attachRelationEmbeds(data);
@@ -566,7 +561,7 @@ const authBridge = {
 /*  Exposed client                                                          */
 /* ──────────────────────────────────────────────────────────────────────── */
 
-export const laravelSupabaseBridge = {
+export const laravelDataBridge = {
   from<T = any>(table: string): QueryBuilder<T> {
     return new QueryBuilder<T>(table);
   },
@@ -601,4 +596,4 @@ export const laravelSupabaseBridge = {
   removeChannel(_ch: any) { /* no-op */ },
 };
 
-export type LaravelSupabaseBridge = typeof laravelSupabaseBridge;
+export type LaravelDataBridge = typeof laravelDataBridge;

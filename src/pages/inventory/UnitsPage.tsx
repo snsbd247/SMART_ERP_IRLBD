@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,7 @@ const UnitsPage = () => {
 
   const fetchUnits = async () => {
     setLoading(true);
-    const { data } = await supabase.from("units" as any).select("*").order("name");
+    const { data } = await dataClient.from("units" as any).select("*").order("name");
     setUnits((data || []) as any);
     setLoading(false);
   };
@@ -38,10 +38,10 @@ const UnitsPage = () => {
     setSaving(true);
     try {
       if (editUnit) {
-        const { error } = await supabase.from("units" as any).update({ name: formName, abbreviation: formAbbr.toUpperCase() } as any).eq("id", editUnit.id);
+        const { error } = await dataClient.from("units" as any).update({ name: formName, abbreviation: formAbbr.toUpperCase() } as any).eq("id", editUnit.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("units" as any).insert({ name: formName, abbreviation: formAbbr.toUpperCase() } as any);
+        const { error } = await dataClient.from("units" as any).insert({ name: formName, abbreviation: formAbbr.toUpperCase() } as any);
         if (error) throw error;
       }
       toast({ title: editUnit ? "Unit updated" : "Unit created" });
@@ -53,7 +53,7 @@ const UnitsPage = () => {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("units" as any).delete().eq("id", id);
+    const { error } = await dataClient.from("units" as any).delete().eq("id", id);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else { toast({ title: "Unit deleted" }); fetchUnits(); }
   };

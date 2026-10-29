@@ -4,8 +4,8 @@ import UserDeleteDialog from "../UserDeleteDialog";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 const invokeMock = vi.fn();
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { functions: { invoke: (...a: any[]) => invokeMock(...a) } },
+vi.mock("@/integrations/data/client", () => ({
+  dataClient: { functions: { invoke: (...a: any[]) => invokeMock(...a) } },
   IS_LARAVEL_ONLY: false,
 }));
 
@@ -74,7 +74,7 @@ describe("UserDeleteDialog Laravel mode", () => {
   });
 });
 
-describe("UserDeleteDialog Supabase mode", () => {
+describe("UserDeleteDialog legacy mode", () => {
   it("invokes admin-delete-user edge function for check + delete", async () => {
     isLaravelModeMock.mockReturnValue(false);
     invokeMock

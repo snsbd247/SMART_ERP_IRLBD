@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,8 +28,8 @@ export default function AttendancePage() {
 
   const fetchData = useCallback(async () => {
     const [empRes, attRes] = await Promise.all([
-      supabase.from("employees" as any).select("id, employee_code, first_name, last_name").eq("status", "active").order("employee_code"),
-      supabase.from("attendance" as any).select("*").eq("date", date),
+      dataClient.from("employees" as any).select("id, employee_code, first_name, last_name").eq("status", "active").order("employee_code"),
+      dataClient.from("attendance" as any).select("*").eq("date", date),
     ]);
     const emps = (empRes.data || []) as any as Employee[];
     const atts = (attRes.data || []) as any as AttendanceRecord[];
@@ -67,9 +67,9 @@ export default function AttendancePage() {
     for (const rec of upserts) {
       const existing = attendance.find(a => a.employee_id === rec.employee_id);
       if (existing) {
-        await supabase.from("attendance" as any).update({ check_in: rec.check_in, check_out: rec.check_out, status: rec.status }).eq("id", existing.id);
+        await dataClient.from("attendance" as any).update({ check_in: rec.check_in, check_out: rec.check_out, status: rec.status }).eq("id", existing.id);
       } else {
-        await supabase.from("attendance" as any).insert(rec);
+        await dataClient.from("attendance" as any).insert(rec);
       }
     }
     toast.success("Attendance saved");

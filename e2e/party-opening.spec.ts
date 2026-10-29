@@ -1,7 +1,7 @@
 /**
  * Playwright smoke test: customer & supplier opening balance with distinct dates.
  *
- * Uses stubbed Supabase REST responses so it runs without seed data. Verifies:
+ * Uses stubbed REST responses so it runs without seed data. Verifies:
  *  1. CustomersPage saves opening_balance + opening_balance_date (DEBIT side).
  *  2. SuppliersPage saves opening_balance + opening_balance_date (CREDIT side).
  *  3. Empty date input is persisted as null, not "".
@@ -15,7 +15,7 @@ const APP_URL = process.env.APP_URL ?? "http://localhost:8080";
 interface CapturedWrite { table: string; method: string; body: any; }
 const captured: CapturedWrite[] = [];
 
-async function stubSupabase(page: any) {
+async function stubDataApi(page: any) {
   await page.route(/\/rest\/v1\/(customers|suppliers|chart_of_accounts)/, async (route: Route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -39,7 +39,7 @@ test.describe("Party opening balance smoke", () => {
   test.beforeEach(() => { captured.length = 0; });
 
   test("customer opening_balance + date persists with DEBIT mirror", async ({ page }) => {
-    await stubSupabase(page);
+    await stubDataApi(page);
     await page.goto(`${APP_URL}/customers`).catch(() => {});
     await page.waitForLoadState("domcontentloaded");
     // App may redirect to login when unauthenticated — bail out cleanly so the
@@ -65,7 +65,7 @@ test.describe("Party opening balance smoke", () => {
   });
 
   test("supplier opening_balance + different date persists with CREDIT mirror", async ({ page }) => {
-    await stubSupabase(page);
+    await stubDataApi(page);
     await page.goto(`${APP_URL}/purchase/suppliers`).catch(() => {});
     await page.waitForLoadState("domcontentloaded");
     if (!page.url().includes("/suppliers")) test.skip();
@@ -89,7 +89,7 @@ test.describe("Party opening balance smoke", () => {
   });
 
   test("empty opening date persists as null (regression)", async ({ page }) => {
-    await stubSupabase(page);
+    await stubDataApi(page);
     await page.goto(`${APP_URL}/customers`).catch(() => {});
     await page.waitForLoadState("domcontentloaded");
     if (!page.url().includes("/customers")) test.skip();

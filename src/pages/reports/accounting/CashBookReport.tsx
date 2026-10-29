@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { PiggyBank } from "lucide-react";
 import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
 import { computeAggregateAccountPeriodOpening } from "@/lib/period-opening";
@@ -27,7 +27,7 @@ const CashBookReport = () => {
     }
 
     const cashIds = cashAccounts.map((a) => a.id);
-    let query = supabase.from("voucher_entries")
+    let query = dataClient.from("voucher_entries")
       .select("*, acc_vouchers!inner(voucher_number, voucher_date, status, description, branch_id)")
       .in("account_id", cashIds)
       .eq("acc_vouchers.status", "approved")

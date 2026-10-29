@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +29,7 @@ const ItemCategoriesPage = () => {
 
   const fetchCategories = async () => {
     setLoading(true);
-    const { data } = await supabase.from("item_categories" as any).select("*").order("name");
+    const { data } = await dataClient.from("item_categories" as any).select("*").order("name");
     setCategories((data || []) as any);
     setLoading(false);
   };
@@ -65,10 +65,10 @@ const ItemCategoriesPage = () => {
         is_active: formActive,
       };
       if (editCat) {
-        const { error } = await supabase.from("item_categories" as any).update(payload).eq("id", editCat.id);
+        const { error } = await dataClient.from("item_categories" as any).update(payload).eq("id", editCat.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("item_categories" as any).insert(payload);
+        const { error } = await dataClient.from("item_categories" as any).insert(payload);
         if (error) throw error;
       }
       toast({ title: editCat ? "Category updated" : "Category created" });

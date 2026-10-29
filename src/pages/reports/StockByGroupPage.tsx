@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -28,12 +28,12 @@ const StockByGroupPage = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const mvQ = supabase.from("stock_movements").select("product_id, item_id, stock_group_id, quantity, created_at" as any).limit(20000);
+    const mvQ = dataClient.from("stock_movements").select("product_id, item_id, stock_group_id, quantity, created_at" as any).limit(20000);
     if (from) mvQ.gte("created_at", from);
     if (to) mvQ.lte("created_at", to + "T23:59:59");
     const [gRes, iRes, mRes] = await Promise.all([
-      (supabase.from as any)("stock_groups").select("id, name, parent_id").order("name"),
-      supabase.from("item_master").select("id, item_code, item_name, stock_group_id, opening_stock, cost_price"),
+      (dataClient.from as any)("stock_groups").select("id, name, parent_id").order("name"),
+      dataClient.from("item_master").select("id, item_code, item_name, stock_group_id, opening_stock, cost_price"),
       mvQ,
     ]);
     setGroups((gRes.data || []) as StockGroup[]);

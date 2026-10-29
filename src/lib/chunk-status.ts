@@ -36,8 +36,8 @@ async function persistChunkAudit(e: ChunkRetryEvent): Promise<void> {
   // Only persist noteworthy events (retries + failures). Success is UI-only.
   if (e.phase === "success") return;
   try {
-    const { supabase } = await import("@/integrations/supabase/client");
-    await supabase.from("audit_log").insert({
+    const { dataClient } = await import("@/integrations/data/client");
+    await dataClient.from("audit_log").insert({
       module: "system",
       action: "chunk_retry",
       details: `[${e.context}] ${e.phase} size=${e.chunkSize} retries=${e.retryCount}` +

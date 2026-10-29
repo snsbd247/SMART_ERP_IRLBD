@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +48,7 @@ const FinancialYearsPage = () => {
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    const { data } = await supabase.from("financial_years").select("*").order("start_date", { ascending: false });
+    const { data } = await dataClient.from("financial_years").select("*").order("start_date", { ascending: false });
     setYears((data || []) as FY[]);
   };
 
@@ -85,11 +85,11 @@ const FinancialYearsPage = () => {
       }
     }
     if (editing) {
-      const { error } = await supabase.from("financial_years").update({ ...form }).eq("id", editing.id);
+      const { error } = await dataClient.from("financial_years").update({ ...form }).eq("id", editing.id);
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Financial year updated" });
     } else {
-      const { error } = await supabase.from("financial_years").insert({ ...form });
+      const { error } = await dataClient.from("financial_years").insert({ ...form });
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Financial year created" });
     }
@@ -114,7 +114,7 @@ const FinancialYearsPage = () => {
       });
       return;
     }
-    const { error } = await supabase.from("financial_years").update({ is_active: true }).eq("id", id);
+    const { error } = await dataClient.from("financial_years").update({ is_active: true }).eq("id", id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: `${y.name} activated` });
     load();
@@ -122,7 +122,7 @@ const FinancialYearsPage = () => {
 
   const deactivate = async (id: string) => {
     const y = years.find((x) => x.id === id);
-    const { error } = await supabase.from("financial_years").update({ is_active: false }).eq("id", id);
+    const { error } = await dataClient.from("financial_years").update({ is_active: false }).eq("id", id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: `${y?.name ?? "Year"} deactivated` });
     load();
@@ -138,7 +138,7 @@ const FinancialYearsPage = () => {
         return;
       }
       // Dependency check — any voucher referencing this year blocks deletion.
-      const { count, error: cErr } = await supabase
+      const { count, error: cErr } = await dataClient
         .from("acc_vouchers")
         .select("id", { count: "exact", head: true })
         .eq("financial_year_id", deleteTarget.id);
@@ -151,7 +151,7 @@ const FinancialYearsPage = () => {
         });
         return;
       }
-      const { error } = await supabase.from("financial_years").delete().eq("id", deleteTarget.id);
+      const { error } = await dataClient.from("financial_years").delete().eq("id", deleteTarget.id);
       if (error) throw error;
       toast({ title: "Financial year deleted" });
       setDeleteTarget(null);

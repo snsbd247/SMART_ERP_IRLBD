@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,12 +17,12 @@ const SupplierBillDetailPage = () => {
   const [allocations, setAllocations] = useState<any[]>([]);
 
   const load = async () => {
-    const { data: h } = await supabase.from("supplier_bills_v2" as any).select("*").eq("id", id).maybeSingle();
-    const { data: it } = await supabase.from("supplier_bill_items_v2" as any).select("*").eq("bill_id", id).order("sort_order");
-    const { data: al } = await supabase.from("supplier_payment_allocations" as any).select("*,supplier_payments_v2(payment_no,payment_date,payment_method)").eq("bill_id", id);
+    const { data: h } = await dataClient.from("supplier_bills_v2" as any).select("*").eq("id", id).maybeSingle();
+    const { data: it } = await dataClient.from("supplier_bill_items_v2" as any).select("*").eq("bill_id", id).order("sort_order");
+    const { data: al } = await dataClient.from("supplier_payment_allocations" as any).select("*,supplier_payments_v2(payment_no,payment_date,payment_method)").eq("bill_id", id);
     setBill(h); setItems((it || []) as any); setAllocations((al || []) as any);
     if ((h as any)?.supplier_id) {
-      const { data: s } = await supabase.from("suppliers" as any).select("*").eq("id", (h as any).supplier_id).maybeSingle();
+      const { data: s } = await dataClient.from("suppliers" as any).select("*").eq("id", (h as any).supplier_id).maybeSingle();
       setSupplier(s);
     }
   };
@@ -30,7 +30,7 @@ const SupplierBillDetailPage = () => {
 
   const post = async () => {
     if (!bill) return;
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await dataClient.auth.getUser();
     const v = await postSupplierBill(bill, supplier?.purchase_type_id, user?.id);
     if (v) { toast.success("Bill posted to GL"); load(); }
     else toast.error("Posting failed — check COA mapping");

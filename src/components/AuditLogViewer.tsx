@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +44,7 @@ export function AuditLogViewer({ open, onOpenChange, module, recordId, title, ac
     (async () => {
       setLoading(true);
       const modules = Array.isArray(module) ? module : [module];
-      let q = supabase
+      let q = dataClient
         .from("audit_log")
         .select("id,user_name,module,action,record_id,details,ip_address,created_at")
         .in("module", modules)

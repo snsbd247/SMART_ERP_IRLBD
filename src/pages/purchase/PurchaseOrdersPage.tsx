@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,9 +22,9 @@ const PurchaseOrdersPage = () => {
 
   const load = async () => {
     setLoading(true);
-    let query = supabase.from("purchase_orders_v2" as any).select("*").order("created_at", { ascending: false }).limit(500);
+    let query = dataClient.from("purchase_orders_v2" as any).select("*").order("created_at", { ascending: false }).limit(500);
     if (status !== "all") query = query.eq("status", status);
-    const [r, s] = await Promise.all([query, supabase.from("suppliers" as any).select("id,name")]);
+    const [r, s] = await Promise.all([query, dataClient.from("suppliers" as any).select("id,name")]);
     setRows((r.data || []) as any); setSuppliers((s.data || []) as any);
     setLoading(false);
   };

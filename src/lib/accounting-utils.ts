@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { nextNumber } from "@/lib/db-utils";
 import { isLaravelMode, getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 
@@ -83,7 +83,7 @@ export async function autoPostAccounting(params: AutoPostParams) {
     return { voucherNumber: voucher?.voucher_number, voucherId: voucher?.id };
   }
 
-  // ─── Supabase-mode (legacy) path ─────────────────────────────────────
+  // ─── Legacy path ─────────────────────────────────────
   // Map voucher_type to sequence id
   const seqMap: Record<string, string> = {
     journal: "journal_voucher",
@@ -97,7 +97,7 @@ export async function autoPostAccounting(params: AutoPostParams) {
 
   const voucherNumber = await nextNumber(seqId);
 
-  const { data: voucher, error: vErr } = await supabase
+  const { data: voucher, error: vErr } = await dataClient
     .from("acc_vouchers")
     .insert({
       voucher_number: voucherNumber,
@@ -126,7 +126,7 @@ export async function autoPostAccounting(params: AutoPostParams) {
     sort_order: idx,
   }));
 
-  const { error: eErr } = await supabase.from("voucher_entries").insert(entryRows);
+  const { error: eErr } = await dataClient.from("voucher_entries").insert(entryRows);
   if (eErr) throw new Error("Failed to create voucher entries: " + eErr.message);
 
   return { voucherNumber, voucherId: (voucher as any).id };
@@ -141,7 +141,7 @@ export async function autoPostAccounting(params: AutoPostParams) {
  */
 export async function findAccountByName(name: string): Promise<string | null> {
   // 1. Exact match
-  const { data: exact } = await supabase
+  const { data: exact } = await dataClient
     .from("chart_of_accounts")
     .select("id")
     .ilike("account_name", name)
@@ -154,7 +154,7 @@ export async function findAccountByName(name: string): Promise<string | null> {
   }
 
   // 2. Partial fallback (unique only)
-  const { data: partial } = await supabase
+  const { data: partial } = await dataClient
     .from("chart_of_accounts")
     .select("id, account_name")
     .ilike("account_name", `%${name}%`)
@@ -172,7 +172,7 @@ export async function findAccountByName(name: string): Promise<string | null> {
  * Find an account by account code.
  */
 export async function findAccountByCode(code: string): Promise<string | null> {
-  const { data } = await supabase
+  const { data } = await dataClient
     .from("chart_of_accounts")
     .select("id")
     .eq("account_code", code)

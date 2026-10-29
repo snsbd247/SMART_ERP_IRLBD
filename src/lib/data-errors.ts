@@ -1,7 +1,7 @@
 import { toast } from "sonner";
 
 /**
- * Detects RLS/permission errors from Supabase and returns a friendly message.
+ * Detects RLS/permission errors from the data API and returns a friendly message.
  * Returns null if the error is not permission-related.
  */
 export function friendlyRlsMessage(error: any): string | null {
@@ -21,8 +21,8 @@ export function friendlyRlsMessage(error: any): string | null {
   return null;
 }
 
-/** Show a toast for a Supabase error, with RLS-aware friendly messaging. */
-export function handleSupabaseError(error: any, fallbackTitle = "Operation failed") {
+/** Show a toast for a data API error, with RLS-aware friendly messaging. */
+export function handleDataError(error: any, fallbackTitle = "Operation failed") {
   if (!error) return;
   const rls = friendlyRlsMessage(error);
   if (rls) {

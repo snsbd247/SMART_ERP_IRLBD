@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Users } from "lucide-react";
 
 const PartyLedgerReport = () => {
@@ -17,7 +17,7 @@ const PartyLedgerReport = () => {
   const [data, setData] = useState<any[]>([]);
 
   const fetchParties = async () => {
-    const { data } = await supabase.from("customers").select("id, name").order("name");
+    const { data } = await dataClient.from("customers").select("id, name").order("name");
     setParties(data || []);
   };
 
@@ -30,7 +30,7 @@ const PartyLedgerReport = () => {
   const fetchData = async () => {
     if (!selectedParty) return;
     setLoading(true);
-    let query = supabase.from("sales_invoices").select("*")
+    let query = dataClient.from("sales_invoices").select("*")
       .eq("customer_id", selectedParty)
       .gte("invoice_date", dateFrom)
       .lte("invoice_date", dateTo)

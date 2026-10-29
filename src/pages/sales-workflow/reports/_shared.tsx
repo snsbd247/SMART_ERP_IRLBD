@@ -1,5 +1,5 @@
 import { useEffect, useState, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,6 @@ export function FilterBar({
 
 export function useCustomers() {
   const [customers, setCustomers] = useState<any[]>([]);
-  useEffect(() => { supabase.from("customers").select("id,name").order("name").then(({ data }) => setCustomers(data || [])); }, []);
+  useEffect(() => { dataClient.from("customers").select("id,name").order("name").then(({ data }) => setCustomers(data || [])); }, []);
   return customers;
 }

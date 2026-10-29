@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { usePortalEmployee } from "@/hooks/usePortalEmployee";
 import { PortalEmployeeSelector } from "@/components/portal/PortalEmployeeSelector";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
@@ -33,12 +33,12 @@ export default function MyDashboardPage() {
 
     (async () => {
       const [attRes, leaveRes, payRes, docRes] = await Promise.all([
-        supabase.from("attendance").select("status").eq("employee_id", employee.id)
+        dataClient.from("attendance").select("status").eq("employee_id", employee.id)
           .gte("date", monthStart).lte("date", monthEnd),
-        supabase.from("leave_requests").select("status").eq("employee_id", employee.id),
-        supabase.from("payroll").select("*").eq("employee_id", employee.id)
+        dataClient.from("leave_requests").select("status").eq("employee_id", employee.id),
+        dataClient.from("payroll").select("*").eq("employee_id", employee.id)
           .order("year", { ascending: false }).order("month", { ascending: false }).limit(1),
-        supabase.from("employee_documents").select("id").eq("employee_id", employee.id),
+        dataClient.from("employee_documents").select("id").eq("employee_id", employee.id),
       ]);
 
       const att = attRes.data || [];

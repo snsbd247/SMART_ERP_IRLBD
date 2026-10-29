@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,13 +41,13 @@ export default function StockLedgerPage() {
 
   const fetchData = useCallback(async () => {
     const [itemRes, whRes] = await Promise.all([
-      supabase.from("item_master").select("id, item_code, item_name").eq("is_stock_item", true),
-      supabase.from("warehouses" as any).select("id, name"),
+      dataClient.from("item_master").select("id, item_code, item_name").eq("is_stock_item", true),
+      dataClient.from("warehouses" as any).select("id, name"),
     ]);
     if (itemRes.data) setItems(itemRes.data);
     if (whRes.data) setWarehouses(whRes.data as any);
 
-    let query = supabase.from("stock_ledger" as any).select("*").order("transaction_date", { ascending: false }).order("created_at", { ascending: false }).limit(500);
+    let query = dataClient.from("stock_ledger" as any).select("*").order("transaction_date", { ascending: false }).order("created_at", { ascending: false }).limit(500);
     if (filterItem !== "all") query = query.eq("item_id", filterItem);
     if (filterType !== "all") query = query.eq("transaction_type", filterType);
     if (dateFrom) query = query.gte("transaction_date", dateFrom);

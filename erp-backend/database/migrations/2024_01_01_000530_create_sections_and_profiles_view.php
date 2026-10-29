@@ -6,9 +6,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Add the two Supabase-derived tables the frontend still references:
+ * Add the two legacy tables the frontend still references:
  *   - sections  (HRM organizational sections under branches)
- *   - profiles  (read-only view over users for legacy supabase.from("profiles"))
+ *   - profiles  (read-only view over users for legacy dataClient.from("profiles"))
  */
 return new class extends Migration {
     public function up(): void
@@ -26,7 +26,7 @@ return new class extends Migration {
             });
         }
 
-        // 2. profiles view (maps to users so existing supabase.from("profiles") works)
+        // 2. profiles view (maps to users so existing dataClient.from("profiles") works)
         // Drop first in case of an older table/view definition.
         DB::statement("DROP VIEW IF EXISTS profiles");
         // Note: cannot create view if a table with same name exists.

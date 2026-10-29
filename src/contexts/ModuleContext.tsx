@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -31,7 +31,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
 
   const fetchModules = useCallback(async () => {
     if (!user) { setLoading(false); return; }
-    const { data, error } = await supabase
+    const { data, error } = await dataClient
       .from("module_settings" as any)
       .select("*");
     if (!error && data) {
@@ -55,7 +55,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const { error } = await supabase
+    const { error } = await dataClient
       .from("module_settings" as any)
       .update({
         is_enabled: enabled,
@@ -70,7 +70,7 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     }
 
     // Audit log
-    await supabase.from("audit_log").insert({
+    await dataClient.from("audit_log").insert({
       user_id: user?.id,
       user_name: profile?.name || profile?.email || "Unknown",
       module: "Module Settings",

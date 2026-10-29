@@ -4,7 +4,7 @@
  * Ensures that:
  *  - Laravel mode includes `search`, `from`, `to`, `page`, `per_page` in the
  *    querystring so server-side filters + pagination actually take effect.
- *  - Supabase mode forwards the same fields in the edge function body.
+ *  - legacy mode forwards the same fields in the edge function body.
  *
  * Branch scoping itself is enforced server-side (BranchScope middleware on
  * Laravel, profile-based scope in the edge function). These tests pin the
@@ -13,8 +13,8 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
+vi.mock("@/integrations/data/client", () => ({
+  dataClient: {
     functions: { invoke: vi.fn(async (_name, { body }: any) => ({ data: { data: [], total: 0, ...body }, error: null })) },
     from: vi.fn(),
   },
@@ -27,7 +27,7 @@ vi.mock("@/lib/laravel-auth", () => ({
 
 import { voucherApi } from "@/lib/voucher-api";
 import { getApiBaseUrl } from "@/lib/laravel-auth";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 
 describe("voucherApi.list — Laravel mode", () => {
   const origFetch = globalThis.fetch;
@@ -107,10 +107,10 @@ describe("voucherApi.list — Laravel mode", () => {
   });
 });
 
-describe("voucherApi.list — Supabase mode", () => {
+describe("voucherApi.list — legacy mode", () => {
   beforeEach(() => {
     (getApiBaseUrl as any).mockReturnValue("");
-    (supabase.functions.invoke as any).mockClear();
+    (dataClient.functions.invoke as any).mockClear();
   });
 
   it("forwards filters + pagination in the edge function body", async () => {
@@ -121,7 +121,7 @@ describe("voucherApi.list — Supabase mode", () => {
       page: 2,
       per_page: 25,
     });
-    const body = (supabase.functions.invoke as any).mock.calls[0][1].body;
+    const body = (dataClient.functions.invoke as any).mock.calls[0][1].body;
     expect(body).toMatchObject({
       action: "list",
       voucher_type: "receipt",
@@ -143,7 +143,7 @@ describe("voucherApi.list — Supabase mode", () => {
       description: "date correction",
       entries: [],
     });
-    const body = (supabase.functions.invoke as any).mock.calls[0][1].body;
+    const body = (dataClient.functions.invoke as any).mock.calls[0][1].body;
     expect(body).toMatchObject({
       action: "edit_approved",
       id: "22222222-2222-2222-2222-222222222222",

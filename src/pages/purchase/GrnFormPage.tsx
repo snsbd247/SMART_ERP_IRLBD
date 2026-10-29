@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,18 +33,18 @@ const GrnFormPage = () => {
   useEffect(() => {
     (async () => {
       const [s, b, w, p] = await Promise.all([
-        supabase.from("suppliers" as any).select("id,code,name").eq("is_active", true),
-        supabase.from("branches").select("id,name"),
-        supabase.from("warehouses").select("id,name"),
-        supabase.from("purchase_orders_v2" as any).select("id,po_no,supplier_id,branch_id,warehouse_id,purchase_type_id,status").in("status", ["approved", "partially_received"]),
+        dataClient.from("suppliers" as any).select("id,code,name").eq("is_active", true),
+        dataClient.from("branches").select("id,name"),
+        dataClient.from("warehouses").select("id,name"),
+        dataClient.from("purchase_orders_v2" as any).select("id,po_no,supplier_id,branch_id,warehouse_id,purchase_type_id,status").in("status", ["approved", "partially_received"]),
       ]);
       setSuppliers(s.data || []); setBranches(b.data || []);
       setWarehouses(w.data || []); setPos(p.data || []);
 
       if (isEdit) {
         const [{ data: hd }, { data: ls }] = await Promise.all([
-          supabase.from("grns_v2" as any).select("*").eq("id", id).single(),
-          supabase.from("grn_items_v2" as any).select("*").eq("grn_id", id).order("line_no"),
+          dataClient.from("grns_v2" as any).select("*").eq("id", id).single(),
+          dataClient.from("grn_items_v2" as any).select("*").eq("grn_id", id).order("line_no"),
         ]);
         if (hd) setH(hd);
         setLines((ls || []) as any);
@@ -56,8 +56,8 @@ const GrnFormPage = () => {
 
   const loadFromPo = async (poId: string) => {
     const [{ data: po }, { data: items }] = await Promise.all([
-      supabase.from("purchase_orders_v2" as any).select("*").eq("id", poId).single(),
-      supabase.from("purchase_order_items_v2" as any).select("*").eq("po_id", poId).order("line_no"),
+      dataClient.from("purchase_orders_v2" as any).select("*").eq("id", poId).single(),
+      dataClient.from("purchase_order_items_v2" as any).select("*").eq("po_id", poId).order("line_no"),
     ]);
     if (po) {
       const p = po as any;
@@ -115,18 +115,18 @@ const GrnFormPage = () => {
       const payload = { ...h, subtotal: totals, grand_total: grandTotal };
       let grnId = id;
       if (isEdit) {
-        await supabase.from("grns_v2" as any).update(payload).eq("id", id);
-        await supabase.from("grn_items_v2" as any).delete().eq("grn_id", id);
+        await dataClient.from("grns_v2" as any).update(payload).eq("id", id);
+        await dataClient.from("grn_items_v2" as any).delete().eq("grn_id", id);
       } else {
         payload.grn_no = await nextDocNo("GRN", "grns_v2", "grn_no");
         payload.created_by = user?.id;
-        const { data, error } = await supabase.from("grns_v2" as any).insert(payload).select("id,grn_no").single();
+        const { data, error } = await dataClient.from("grns_v2" as any).insert(payload).select("id,grn_no").single();
         if (error) throw error;
         grnId = (data as any).id;
         await logAudit({ document_type: "GRN", document_id: grnId!, document_no: (data as any).grn_no, action: "created", performed_by: user?.id });
       }
       const linesPayload = lines.map((l, idx) => ({ ...l, grn_id: grnId, line_no: idx + 1 }));
-      const { error: le } = await supabase.from("grn_items_v2" as any).insert(linesPayload);
+      const { error: le } = await dataClient.from("grn_items_v2" as any).insert(linesPayload);
       if (le) throw le;
       toast({ title: "Saved" });
       nav(`/purchase/grns/${grnId}`);

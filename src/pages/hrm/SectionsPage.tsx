@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,9 +39,9 @@ export default function SectionsPage() {
 
   const fetchAll = useCallback(async () => {
     const [sRes, bRes, dRes] = await Promise.all([
-      supabase.from("sections" as any).select("*").order("name"),
-      supabase.from("branches").select("id, name").eq("status", "active"),
-      supabase.from("departments" as any).select("id, name").eq("status", "active"),
+      dataClient.from("sections" as any).select("*").order("name"),
+      dataClient.from("branches").select("id, name").eq("status", "active"),
+      dataClient.from("departments" as any).select("id, name").eq("status", "active"),
     ]);
     if (sRes.data) setItems(sRes.data as any);
     if (bRes.data) setBranches(bRes.data as any);
@@ -74,15 +74,15 @@ export default function SectionsPage() {
       updated_at: new Date().toISOString(),
     };
     const { error } = editId
-      ? await supabase.from("sections" as any).update(payload).eq("id", editId)
-      : await supabase.from("sections" as any).insert(payload);
+      ? await dataClient.from("sections" as any).update(payload).eq("id", editId)
+      : await dataClient.from("sections" as any).insert(payload);
     if (error) toast.error(error.message);
     else { toast.success(editId ? "Updated" : "Created"); setDialogOpen(false); fetchAll(); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this section?")) return;
-    const { error } = await supabase.from("sections" as any).delete().eq("id", id);
+    const { error } = await dataClient.from("sections" as any).delete().eq("id", id);
     if (error) toast.error(error.message); else { toast.success("Deleted"); fetchAll(); }
   };
 

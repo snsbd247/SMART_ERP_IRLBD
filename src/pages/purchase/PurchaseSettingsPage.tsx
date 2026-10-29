@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,10 +14,10 @@ const PurchaseSettingsPage = () => {
   const { toast } = useToast();
 
   const load = async () => {
-    const { data } = await supabase.from("purchase_settings" as any).select("*").limit(1).maybeSingle();
+    const { data } = await dataClient.from("purchase_settings" as any).select("*").limit(1).maybeSingle();
     if (data) setS(data);
     else {
-      const ins = await supabase.from("purchase_settings" as any).insert({}).select().single();
+      const ins = await dataClient.from("purchase_settings" as any).insert({}).select().single();
       setS(ins.data);
     }
   };
@@ -27,7 +27,7 @@ const PurchaseSettingsPage = () => {
     if (!s) return;
     setSaving(true);
     const { id, created_at, updated_at, ...rest } = s;
-    const { error } = await supabase.from("purchase_settings" as any).update(rest).eq("id", id);
+    const { error } = await dataClient.from("purchase_settings" as any).update(rest).eq("id", id);
     setSaving(false);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else toast({ title: "Settings saved" });

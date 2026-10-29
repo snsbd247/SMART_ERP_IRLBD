@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useUnreadMessages(pollInterval = 30000) {
@@ -14,7 +14,7 @@ export function useUnreadMessages(pollInterval = 30000) {
 
     try {
       // Get conversations this user participates in
-      const { data: participantRows } = await supabase
+      const { data: participantRows } = await dataClient
         .from("conversation_participants")
         .select("conversation_id")
         .eq("user_id", user.id);
@@ -27,7 +27,7 @@ export function useUnreadMessages(pollInterval = 30000) {
       const convIds = participantRows.map((r) => r.conversation_id);
 
       // Count unread messages not sent by current user
-      const { count } = await supabase
+      const { count } = await dataClient
         .from("messages")
         .select("id", { count: "exact", head: true })
         .in("conversation_id", convIds)

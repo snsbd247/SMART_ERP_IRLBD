@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * Generic Supabase Storage replacement for VPS Laravel mode.
+ * Generic file storage endpoints used by the frontend data client.
  * Routes:
  *   POST   /api/v1/storage/{bucket}            multipart "file" + optional "path"
  *   DELETE /api/v1/storage/{bucket}/{path}     remove an object

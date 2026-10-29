@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,8 +28,8 @@ export default function FaceAttendancePage() {
 
   const fetchData = useCallback(async () => {
     const [empRes, faceRes] = await Promise.all([
-      supabase.from("employees" as any).select("id, employee_code, first_name, last_name").eq("status", "active"),
-      supabase.from("face_data" as any).select("*").order("created_at", { ascending: false }),
+      dataClient.from("employees" as any).select("id, employee_code, first_name, last_name").eq("status", "active"),
+      dataClient.from("face_data" as any).select("*").order("created_at", { ascending: false }),
     ]);
     if (empRes.data) setEmployees(empRes.data as any);
     if (faceRes.data) setFaceRecords(faceRes.data as any);
@@ -65,7 +65,7 @@ export default function FaceAttendancePage() {
     ctx?.drawImage(videoRef.current, 0, 0, 320, 240);
     const dataUrl = canvasRef.current.toDataURL("image/jpeg", 0.8);
 
-    const { error } = await supabase.from("face_data" as any).insert({
+    const { error } = await dataClient.from("face_data" as any).insert({
       employee_id: selectedEmp,
       photo_url: dataUrl,
       face_encoding: "browser-captured",

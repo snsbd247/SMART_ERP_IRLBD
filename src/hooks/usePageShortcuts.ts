@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface PageShortcut {
@@ -26,7 +26,7 @@ const SHORTCUTS_QUERY_KEY = ["page-shortcuts"] as const;
 const favoritesQueryKey = (userId: string | undefined) => ["user-favorite-pages", userId] as const;
 
 async function fetchShortcutsList(): Promise<PageShortcut[]> {
-  const { data } = await supabase
+  const { data } = await dataClient
     .from("page_shortcuts")
     .select("*")
     .eq("is_active", true)
@@ -35,7 +35,7 @@ async function fetchShortcutsList(): Promise<PageShortcut[]> {
 }
 
 async function fetchFavoritesList(userId: string): Promise<string[]> {
-  const { data } = await supabase.from("user_favorite_pages").select("page_url").eq("user_id", userId);
+  const { data } = await dataClient.from("user_favorite_pages").select("page_url").eq("user_id", userId);
   return (data || []).map((d: any) => d.page_url);
 }
 
@@ -86,14 +86,14 @@ export function usePageShortcuts() {
   const toggleFavorite = async (pageUrl: string) => {
     if (!user) return;
     if (favorites.includes(pageUrl)) {
-      await supabase
+      await dataClient
         .from("user_favorite_pages")
         .delete()
         .eq("user_id", user.id)
         .eq("page_url", pageUrl);
       queryClient.setQueryData(favKey, (prev: string[] = []) => prev.filter((f) => f !== pageUrl));
     } else {
-      await supabase
+      await dataClient
         .from("user_favorite_pages")
         .insert({ user_id: user.id, page_url: pageUrl });
       queryClient.setQueryData(favKey, (prev: string[] = []) => [...prev, pageUrl]);

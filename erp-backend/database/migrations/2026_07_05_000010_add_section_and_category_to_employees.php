@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
  * The frontend Add/Edit Employee form has always sent these fields, but on
  * VPS/MySQL they were silently dropped by Eloquent because the columns and
  * the model's fillable list did not include them. This adds parity with the
- * Supabase schema so the values actually persist.
+ * original schema so the values actually persist.
  */
 return new class extends Migration {
     public function up(): void

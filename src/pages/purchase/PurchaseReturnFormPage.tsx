@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,16 +32,16 @@ const PurchaseReturnFormPage = () => {
   useEffect(() => {
     (async () => {
       const [s, b, w, g] = await Promise.all([
-        supabase.from("suppliers" as any).select("id,name").eq("is_active", true),
-        supabase.from("branches").select("id,name"),
-        supabase.from("warehouses").select("id,name"),
-        supabase.from("grns_v2" as any).select("id,grn_no,supplier_id,branch_id,warehouse_id").eq("status", "Approved").limit(200),
+        dataClient.from("suppliers" as any).select("id,name").eq("is_active", true),
+        dataClient.from("branches").select("id,name"),
+        dataClient.from("warehouses").select("id,name"),
+        dataClient.from("grns_v2" as any).select("id,grn_no,supplier_id,branch_id,warehouse_id").eq("status", "Approved").limit(200),
       ]);
       setSuppliers((s.data || []) as any); setBranches((b.data || []) as any);
       setWarehouses((w.data || []) as any); setGrns((g.data || []) as any);
       if (id) {
-        const { data: h } = await supabase.from("purchase_returns_v2" as any).select("*").eq("id", id).maybeSingle();
-        const { data: it } = await supabase.from("purchase_return_items_v2" as any).select("*").eq("return_id", id).order("sort_order");
+        const { data: h } = await dataClient.from("purchase_returns_v2" as any).select("*").eq("id", id).maybeSingle();
+        const { data: it } = await dataClient.from("purchase_return_items_v2" as any).select("*").eq("return_id", id).order("sort_order");
         if (h) setHeader(h as any);
         if (it && it.length) setItems(it as any);
       } else {
@@ -52,8 +52,8 @@ const PurchaseReturnFormPage = () => {
   }, [id]);
 
   const loadFromGrn = async (gid: string) => {
-    const { data: g } = await supabase.from("grns_v2" as any).select("*").eq("id", gid).maybeSingle();
-    const { data: lines } = await supabase.from("grn_items_v2" as any).select("*").eq("grn_id", gid);
+    const { data: g } = await dataClient.from("grns_v2" as any).select("*").eq("id", gid).maybeSingle();
+    const { data: lines } = await dataClient.from("grn_items_v2" as any).select("*").eq("grn_id", gid);
     if (g) setHeader((h: any) => ({ ...h, supplier_id: (g as any).supplier_id, branch_id: (g as any).branch_id, warehouse_id: (g as any).warehouse_id, grn_id: gid }));
     if (lines) setItems((lines as any[]).map((l: any) => ({
       item_id: l.item_id, description: l.description || "", quantity: 0,
@@ -81,13 +81,13 @@ const PurchaseReturnFormPage = () => {
     if (lines.length === 0) return toast.error("Add at least one returned line");
     const payload = { ...header, subtotal, vat_amount: vat, grand_total: grand };
     const op = id
-      ? supabase.from("purchase_returns_v2" as any).update(payload).eq("id", id).select("id").single()
-      : supabase.from("purchase_returns_v2" as any).insert(payload).select("id").single();
+      ? dataClient.from("purchase_returns_v2" as any).update(payload).eq("id", id).select("id").single()
+      : dataClient.from("purchase_returns_v2" as any).insert(payload).select("id").single();
     const { data, error } = await op;
     if (error) return toast.error(error.message);
     const rid = (data as any).id as string;
-    if (id) await supabase.from("purchase_return_items_v2" as any).delete().eq("return_id", rid);
-    await supabase.from("purchase_return_items_v2" as any).insert(lines.map((it, i) => ({ ...it, return_id: rid, sort_order: i })) as any);
+    if (id) await dataClient.from("purchase_return_items_v2" as any).delete().eq("return_id", rid);
+    await dataClient.from("purchase_return_items_v2" as any).insert(lines.map((it, i) => ({ ...it, return_id: rid, sort_order: i })) as any);
     await logAudit({ document_type: "RETURN", document_id: rid, document_no: header.return_no, action: id ? "updated" : "created" });
     toast.success("Return saved");
     nav(`/purchase/returns/${rid}`);

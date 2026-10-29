@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -40,7 +40,7 @@ export default function SmsSettingsPage() {
   // Load settings from system_settings
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("system_settings" as any).select("*").in("setting_key", ["sms_api_key", "sms_sender_id", "sms_enabled"]);
+      const { data } = await dataClient.from("system_settings" as any).select("*").in("setting_key", ["sms_api_key", "sms_sender_id", "sms_enabled"]);
       if (data) {
         (data as any[]).forEach((s: any) => {
           if (s.setting_key === "sms_api_key") setApiKey(s.setting_value || "");
@@ -49,17 +49,17 @@ export default function SmsSettingsPage() {
         });
       }
       // Load logs
-      const { data: logData } = await supabase.from("sms_logs" as any).select("*").order("created_at", { ascending: false }).limit(100);
+      const { data: logData } = await dataClient.from("sms_logs" as any).select("*").order("created_at", { ascending: false }).limit(100);
       if (logData) setLogs(logData as any);
     })();
   }, []);
 
   const saveSetting = async (key: string, value: string) => {
-    const { data: existing } = await supabase.from("system_settings" as any).select("id").eq("setting_key", key).single();
+    const { data: existing } = await dataClient.from("system_settings" as any).select("id").eq("setting_key", key).single();
     if (existing) {
-      await supabase.from("system_settings" as any).update({ setting_value: value } as any).eq("setting_key", key);
+      await dataClient.from("system_settings" as any).update({ setting_value: value } as any).eq("setting_key", key);
     } else {
-      await supabase.from("system_settings" as any).insert({ setting_key: key, setting_value: value } as any);
+      await dataClient.from("system_settings" as any).insert({ setting_key: key, setting_value: value } as any);
     }
   };
 
@@ -93,7 +93,7 @@ export default function SmsSettingsPage() {
         if (!res.ok || !result.success) throw new Error(result.message || `HTTP ${res.status}`);
       } else {
         // Call edge function
-        const { data, error } = await supabase.functions.invoke("send-sms", {
+        const { data, error } = await dataClient.functions.invoke("send-sms", {
           body: { phone: testPhone, message: testMessage, event_type: "test" },
         });
         if (error) throw error;
@@ -101,7 +101,7 @@ export default function SmsSettingsPage() {
       toast.success("Test SMS sent successfully");
       setTestDialog(false);
       // Refresh logs
-      const { data: logData } = await supabase.from("sms_logs" as any).select("*").order("created_at", { ascending: false }).limit(100);
+      const { data: logData } = await dataClient.from("sms_logs" as any).select("*").order("created_at", { ascending: false }).limit(100);
       if (logData) setLogs(logData as any);
     } catch (e: any) {
       toast.error(e.message || "Failed to send SMS");

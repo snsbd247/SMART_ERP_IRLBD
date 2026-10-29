@@ -28,8 +28,8 @@ const { fromMock, lastQuery } = vi.hoisted(() => {
   };
 });
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { from: fromMock },
+vi.mock("@/integrations/data/client", () => ({
+  dataClient: { from: fromMock },
 }));
 
 import { fetchAllVoucherEntries } from "../report-fetch";

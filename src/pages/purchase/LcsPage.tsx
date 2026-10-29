@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,8 +17,8 @@ const LcsPage = () => {
   useEffect(() => {
     (async () => {
       const [r, s] = await Promise.all([
-        supabase.from("lc_documents" as any).select("*").order("created_at", { ascending: false }).limit(500),
-        supabase.from("suppliers" as any).select("id,name"),
+        dataClient.from("lc_documents" as any).select("*").order("created_at", { ascending: false }).limit(500),
+        dataClient.from("suppliers" as any).select("id,name"),
       ]);
       setRows((r.data || []) as any); setSuppliers((s.data || []) as any); setLoading(false);
     })();

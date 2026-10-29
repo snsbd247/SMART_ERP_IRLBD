@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Mirror of Supabase `treasury_entries` for VPS / Laravel-only mode.
+ * MySQL `treasury_entries` table for VPS / Laravel-only mode.
  * Standalone record-keeping table — no FK constraints to keep it portable
  * and decoupled from accounting/CoA (per Treasury Information design).
  */

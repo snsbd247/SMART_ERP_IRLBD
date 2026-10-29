@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ const AuditLogPage = () => {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const { data } = await supabase.from("purchase_audit_log" as any)
+      const { data } = await dataClient.from("purchase_audit_log" as any)
         .select("*").order("created_at", { ascending: false }).limit(500);
       setRows((data || []) as any); setLoading(false);
     })();

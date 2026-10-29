@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,8 +28,8 @@ export default function OvertimePage() {
 
   const fetchData = useCallback(async () => {
     const [empRes, otRes] = await Promise.all([
-      supabase.from("employees" as any).select("id, employee_code, first_name, last_name").eq("status", "active"),
-      supabase.from("overtime_records" as any).select("*").order("date", { ascending: false }).limit(100),
+      dataClient.from("employees" as any).select("id, employee_code, first_name, last_name").eq("status", "active"),
+      dataClient.from("overtime_records" as any).select("*").order("date", { ascending: false }).limit(100),
     ]);
     if (empRes.data) setEmployees(empRes.data as any);
     if (otRes.data) setRecords(otRes.data as any);
@@ -39,12 +39,12 @@ export default function OvertimePage() {
 
   const save = async () => {
     if (!form.employee_id || form.hours <= 0) { toast.error("Select employee and enter hours"); return; }
-    const { error } = await supabase.from("overtime_records" as any).insert(form as any);
+    const { error } = await dataClient.from("overtime_records" as any).insert(form as any);
     if (error) toast.error(error.message); else { toast.success("Overtime recorded"); setDialog(false); fetchData(); }
   };
 
   const approve = async (id: string) => {
-    await supabase.from("overtime_records" as any).update({ status: "approved", approved_by: user?.id } as any).eq("id", id);
+    await dataClient.from("overtime_records" as any).update({ status: "approved", approved_by: user?.id } as any).eq("id", id);
     toast.success("Overtime approved");
     fetchData();
   };

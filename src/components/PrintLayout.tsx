@@ -7,7 +7,7 @@ import { Printer, Download, Mail, X } from "lucide-react";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 
 interface PrintLayoutProps {
@@ -110,7 +110,7 @@ export const PrintLayout = ({
         const result = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
         if (!res.ok || !result.success) throw new Error(result.message || `HTTP ${res.status}`);
       } else {
-        const { error } = await supabase.functions.invoke("send-document-email", {
+        const { error } = await dataClient.functions.invoke("send-document-email", {
           body: {
             to: emailTo,
             subject: emailSubject,

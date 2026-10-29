@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 
 const VOUCHER_SEQUENCES = new Set([
   "journal_voucher",
@@ -13,7 +13,7 @@ const VOUCHER_SEQUENCES = new Set([
  */
 export async function nextNumber(seqId: string, retries = 3): Promise<string> {
   if (VOUCHER_SEQUENCES.has(seqId)) {
-    const { data, error } = await (supabase as any).rpc("reserve_voucher_number", {
+    const { data, error } = await (dataClient as any).rpc("reserve_voucher_number", {
       _sequence_id: seqId,
     });
 
@@ -26,7 +26,7 @@ export async function nextNumber(seqId: string, retries = 3): Promise<string> {
 
   for (let attempt = 0; attempt < retries; attempt++) {
     // Read current
-    const { data: seq, error: readErr } = await supabase
+    const { data: seq, error: readErr } = await dataClient
       .from("number_sequences")
       .select("prefix, current_number, year")
       .eq("id", seqId)
@@ -38,7 +38,7 @@ export async function nextNumber(seqId: string, retries = 3): Promise<string> {
     const newNum = currentNum + 1;
 
     // Update atomically with optimistic lock
-    const { data: updated, error: upErr } = await supabase
+    const { data: updated, error: upErr } = await dataClient
       .from("number_sequences")
       .update({ current_number: newNum } as any)
       .eq("id", seqId)
@@ -64,7 +64,7 @@ export async function nextNumber(seqId: string, retries = 3): Promise<string> {
  * Application-layer replacement for the dropped `get_email_by_username` function.
  */
 export async function getEmailByUsername(username: string): Promise<string | null> {
-  const { data, error } = await supabase.rpc("get_email_by_username", { _username: username });
+  const { data, error } = await dataClient.rpc("get_email_by_username", { _username: username });
   if (error || !data) return null;
   return data as string;
 }

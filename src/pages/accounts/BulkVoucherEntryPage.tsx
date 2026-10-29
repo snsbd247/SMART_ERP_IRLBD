@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { voucherApi } from "@/lib/voucher-api";
 import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
@@ -182,7 +182,7 @@ export default function BulkVoucherEntryPage() {
     // description (not the per-entry narration), so that's the field with
     // real history to suggest from.
     (async () => {
-      const { data } = await supabase
+      const { data } = await dataClient
         .from("acc_vouchers")
         .select("description")
         .neq("description", "")

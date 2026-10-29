@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Phase 2 Backend Sync — Purchase Workflow v2.
  *
- * Mirrors the Supabase schema for the full procure-to-pay workflow so that
- * Laravel/MySQL (cPanel) deployments have parity with the Supabase-hosted
- * frontend. Source-of-truth migrations on Supabase:
+ * Mirrors the original schema for the full procure-to-pay workflow so that
+ * Laravel/MySQL (cPanel) deployments have parity with the original
+ * schema. Source migrations it was ported from:
  *   - 20260609094536  suppliers, purchase_types, purchase_settings,
  *                     purchase_approval_matrix, purchase_audit_log,
  *                     purchase_approval_history, purchase_coa_mapping

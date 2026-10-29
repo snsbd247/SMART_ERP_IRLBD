@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { isLaravelMode, getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 import {
   getInChunkSize,
@@ -13,7 +13,7 @@ import { toast } from "sonner";
  * Fetch ALL voucher_entries for a date range with the parent voucher embedded
  * under `acc_vouchers`. Works in BOTH modes:
  *
- *  - Supabase mode: uses a PostgREST relation embed with `acc_vouchers!inner`
+ *  - legacy mode: uses a PostgREST relation embed with `acc_vouchers!inner`
  *    so the date/status/branch filters live on the parent table.
  *  - Laravel mode (VPS): the generic CRUD endpoint cannot honor foreign-table
  *    filters, so we first fetch the matching `acc_vouchers` rows directly
@@ -41,11 +41,11 @@ export async function fetchAllVoucherEntries(opts: {
     return fetchAllVoucherEntriesLaravel({ ...opts, statuses, pageSize });
   }
 
-  // -------- Supabase mode --------
+  // -------- legacy mode --------
   const all: any[] = [];
   let from = 0;
   for (let safety = 0; safety < 50; safety++) {
-    let q = supabase
+    let q = dataClient
       .from("voucher_entries")
       .select(
         "id, account_id, debit, credit, narration, voucher_id, acc_vouchers!inner(id, voucher_number, voucher_date, voucher_type, status, description, branch_id)"
@@ -192,7 +192,7 @@ async function fetchAllVoucherEntriesLaravel(opts: {
     maxUrlBytes: maxUrl,
   });
 
-  // 3) Sort by voucher_date asc (parity with Supabase branch).
+  // 3) Sort by voucher_date asc (parity with legacy branch).
   entries.sort((a, b) => String(a.acc_vouchers?.voucher_date || "").localeCompare(String(b.acc_vouchers?.voucher_date || "")));
   return entries;
 }
@@ -247,5 +247,5 @@ export async function fetchVoucherCreators(): Promise<{ id: string; name: string
   }
 }
 
-/** Coerce a possibly-string numeric column (Supabase decimal) to a number. */
+/** Coerce a possibly-string numeric column (decimal) to a number. */
 export const num = (v: unknown): number => (v == null ? 0 : Number(v) || 0);

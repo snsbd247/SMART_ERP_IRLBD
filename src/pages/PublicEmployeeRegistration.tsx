@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getApiBaseUrl } from "@/lib/laravel-auth";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,9 +39,9 @@ export default function PublicEmployeeRegistration() {
   const [done, setDone] = useState<{ code: string; username?: string } | null>(null);
 
   useEffect(() => {
-    const loadFromSupabase = async () => {
+    const loadFromDataClient = async () => {
       try {
-        const { data: cs } = await supabase
+        const { data: cs } = await dataClient
           .from("company_settings" as any)
           .select("company_name, company_logo_url, public_employee_registration_enabled")
           .maybeSingle();
@@ -62,11 +62,11 @@ export default function PublicEmployeeRegistration() {
     };
 
     const base = getApiBaseUrl();
-    if (!base) { loadFromSupabase(); return; }
+    if (!base) { loadFromDataClient(); return; }
     fetch(`${base}/v1/public/employee-registration/config`)
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(p => { setConfig((p?.data ?? p) as Config); setLoading(false); })
-      .catch(() => loadFromSupabase());
+      .catch(() => loadFromDataClient());
   }, []);
 
   const validatePassword = (pw: string): string | null => {

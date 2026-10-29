@@ -8,7 +8,7 @@ import { AuditLogViewer } from "./AuditLogViewer";
 // "voucher_date_changed events missing from history" regression.
 const inSpy = vi.fn();
 
-vi.mock("@/integrations/supabase/client", () => {
+vi.mock("@/integrations/data/client", () => {
   const rows = [
     {
       id: "a1",
@@ -44,7 +44,7 @@ vi.mock("@/integrations/supabase/client", () => {
     then: (resolve: any) => resolve({ data: rows, error: null }),
   };
 
-  return { supabase: { from: vi.fn(() => builder) } };
+  return { dataClient: { from: vi.fn(() => builder) } };
 });
 
 describe("AuditLogViewer", () => {

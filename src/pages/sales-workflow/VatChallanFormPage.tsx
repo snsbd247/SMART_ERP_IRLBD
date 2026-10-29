@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { swApi } from "@/lib/sales-workflow-api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -32,7 +32,7 @@ export default function VatChallanFormPage() {
   });
 
   useEffect(() => {
-    supabase
+    dataClient
       .from("purchase_orders")
       .select("id, po_number, po_date, customer:customers(id,name), status")
       .is("deleted_at", null)

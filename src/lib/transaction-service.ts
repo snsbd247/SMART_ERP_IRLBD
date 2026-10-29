@@ -4,7 +4,7 @@
  * operations across all ERP modules.
  */
 
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { nextNumber } from "@/lib/db-utils";
 import { validateFinancialYear } from "@/lib/financial-year-utils";
 import { autoPostAccounting, findAccountByName } from "@/lib/accounting-utils";
@@ -128,7 +128,7 @@ export async function recordBulkStockMovements(
     quantity: i.quantity * quantityMultiplier,
   }));
   const movements = await enrichMovementsWithStockGroup(baseMovements);
-  const { error } = await supabase.from("stock_movements").insert(movements);
+  const { error } = await dataClient.from("stock_movements").insert(movements);
   if (error) throw new Error("Failed to create stock movements: " + error.message);
 }
 
@@ -151,7 +151,7 @@ export async function createSalesInvoice(
   const totalAmount = items.reduce((s, i) => s + i.total, 0);
   const netAmount = totalAmount - discount;
 
-  const { data, error } = await supabase.from("sales_invoices").insert({
+  const { data, error } = await dataClient.from("sales_invoices").insert({
     invoice_number: invoiceNumber,
     invoice_date: ctx.date,
     customer_id: customerId || null,
@@ -174,7 +174,7 @@ export async function createSalesInvoice(
     discount: i.discount,
     total: i.total,
   }));
-  await supabase.from("sales_invoice_items").insert(rows);
+  await dataClient.from("sales_invoice_items").insert(rows);
 
   // Stock movements (decrease)
   await recordBulkStockMovements(
@@ -209,7 +209,7 @@ export async function createSalesReturn(
   const returnNumber = await nextNumber("sales_return");
   const totalAmount = items.reduce((s, i) => s + i.total, 0);
 
-  const { data, error } = await supabase.from("sales_returns").insert({
+  const { data, error } = await dataClient.from("sales_returns").insert({
     return_number: returnNumber,
     return_date: ctx.date,
     customer_id: customerId || null,
@@ -229,7 +229,7 @@ export async function createSalesReturn(
     price: i.price,
     total: i.total,
   }));
-  await supabase.from("sales_return_items").insert(rows);
+  await dataClient.from("sales_return_items").insert(rows);
 
   // Stock movements (increase - stock comes back)
   await recordBulkStockMovements(
@@ -270,7 +270,7 @@ export async function createProductionEntry(
   const totalCost = rawMaterialCost + laborCost + electricityCost;
   const productionNumber = await nextNumber("production");
 
-  const { data, error } = await supabase.from("production_entries").insert({
+  const { data, error } = await dataClient.from("production_entries").insert({
     production_number: productionNumber,
     production_date: ctx.date,
     product_id: productId,
@@ -296,7 +296,7 @@ export async function createProductionEntry(
       quantity: m.quantity,
       cost: m.cost,
     }));
-    await supabase.from("production_materials").insert(matRows);
+    await dataClient.from("production_materials").insert(matRows);
   }
 
   // Stock movements: decrease raw materials, increase finished product
@@ -319,7 +319,7 @@ export async function createProductionEntry(
     },
   ];
   const movements = await enrichMovementsWithStockGroup(baseMovements);
-  const { error: mvErr } = await supabase.from("stock_movements").insert(movements);
+  const { error: mvErr } = await dataClient.from("stock_movements").insert(movements);
   if (mvErr) console.warn("Stock movement insert failed:", mvErr);
 
   // Accounting: Debit Work-in-Progress / Finished Goods, Credit Raw Materials
@@ -359,7 +359,7 @@ export async function createStockTransfer(
 ) {
   const transferNumber = await nextNumber("stock_transfer");
 
-  const { error } = await supabase.from("stock_transfers" as any).insert({
+  const { error } = await dataClient.from("stock_transfers" as any).insert({
     transfer_number: transferNumber,
     from_warehouse_id: fromWarehouseId,
     to_warehouse_id: toWarehouseId,

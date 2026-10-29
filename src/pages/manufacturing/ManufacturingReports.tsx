@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ const ManufacturingReports = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    let query = supabase
+    let query = dataClient
       .from("production_entries")
       .select("*, product:item_master(item_name)")
       .eq("status", "completed")

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,19 +35,19 @@ const RequisitionFormPage = () => {
   useEffect(() => {
     (async () => {
       const [t, b, d, w, im, u] = await Promise.all([
-        supabase.from("purchase_types" as any).select("id,code,name").eq("is_active", true),
-        supabase.from("branches").select("id,name"),
-        supabase.from("departments").select("id,name"),
-        supabase.from("warehouses").select("id,name"),
-        supabase.from("item_master").select("id,name,code").limit(1000),
-        supabase.from("units").select("id,name,abbreviation"),
+        dataClient.from("purchase_types" as any).select("id,code,name").eq("is_active", true),
+        dataClient.from("branches").select("id,name"),
+        dataClient.from("departments").select("id,name"),
+        dataClient.from("warehouses").select("id,name"),
+        dataClient.from("item_master").select("id,name,code").limit(1000),
+        dataClient.from("units").select("id,name,abbreviation"),
       ]);
       setTypes(t.data || []); setBranches(b.data || []); setDepartments(d.data || []);
       setWarehouses(w.data || []); setItems(im.data || []); setUnits(u.data || []);
       if (isEdit) {
         const [{ data: h }, { data: ls }] = await Promise.all([
-          supabase.from("purchase_requisitions" as any).select("*").eq("id", id).single(),
-          supabase.from("purchase_requisition_items" as any).select("*").eq("pr_id", id).order("line_no"),
+          dataClient.from("purchase_requisitions" as any).select("*").eq("id", id).single(),
+          dataClient.from("purchase_requisition_items" as any).select("*").eq("pr_id", id).order("line_no"),
         ]);
         if (h) setHeader(h);
         setLines((ls || []) as any);
@@ -82,15 +82,15 @@ const RequisitionFormPage = () => {
       delete headerPayload.created_at; delete headerPayload.updated_at;
 
       if (isEdit) {
-        const { error } = await supabase.from("purchase_requisitions" as any).update(headerPayload).eq("id", id);
+        const { error } = await dataClient.from("purchase_requisitions" as any).update(headerPayload).eq("id", id);
         if (error) throw error;
-        await supabase.from("purchase_requisition_items" as any).delete().eq("pr_id", id);
+        await dataClient.from("purchase_requisition_items" as any).delete().eq("pr_id", id);
       } else {
         const settings = await getPurchaseSettings();
         prNo = await nextDocNo(settings?.pr_prefix || "PR", "purchase_requisitions", "pr_no");
         headerPayload.pr_no = prNo;
         headerPayload.created_by = user?.id;
-        const { data, error } = await supabase.from("purchase_requisitions" as any).insert(headerPayload).select().single();
+        const { data, error } = await dataClient.from("purchase_requisitions" as any).insert(headerPayload).select().single();
         if (error) throw error;
         prId = (data as any).id;
       }
@@ -103,7 +103,7 @@ const RequisitionFormPage = () => {
         estimated_amount: Number(l.estimated_amount) || 0,
         remarks: l.remarks || null, status: "pending",
       }));
-      const { error: e2 } = await supabase.from("purchase_requisition_items" as any).insert(linesPayload);
+      const { error: e2 } = await dataClient.from("purchase_requisition_items" as any).insert(linesPayload);
       if (e2) throw e2;
 
       await logAudit({

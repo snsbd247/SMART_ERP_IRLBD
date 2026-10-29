@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Clock } from "lucide-react";
 
 interface AgingReportProps {
@@ -20,7 +20,7 @@ const AgingReport = ({ type }: AgingReportProps) => {
     const today = new Date();
 
     if (type === "receivable") {
-      let query = supabase.from("sales_invoices")
+      let query = dataClient.from("sales_invoices")
         .select("*, customers(name)")
         .in("status", ["completed", "sent"]);
       if (branch !== "all") query = query.eq("branch_id", branch);

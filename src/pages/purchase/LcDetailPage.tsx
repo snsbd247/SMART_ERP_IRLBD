@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,11 +22,11 @@ const LcDetailPage = () => {
   const [newCharge, setNewCharge] = useState<any>({ charge_type: "Freight", amount: 0, description: "", charge_date: new Date().toISOString().slice(0, 10) });
 
   const load = async () => {
-    const { data: h } = await supabase.from("lc_documents" as any).select("*").eq("id", id).maybeSingle();
-    const { data: c } = await supabase.from("lc_charges" as any).select("*").eq("lc_id", id).order("created_at");
+    const { data: h } = await dataClient.from("lc_documents" as any).select("*").eq("id", id).maybeSingle();
+    const { data: c } = await dataClient.from("lc_charges" as any).select("*").eq("lc_id", id).order("created_at");
     setLc(h); setCharges((c || []) as any);
     if ((h as any)?.supplier_id) {
-      const { data: s } = await supabase.from("suppliers" as any).select("name").eq("id", (h as any).supplier_id).maybeSingle();
+      const { data: s } = await dataClient.from("suppliers" as any).select("name").eq("id", (h as any).supplier_id).maybeSingle();
       setSupplier(s);
     }
   };
@@ -34,21 +34,21 @@ const LcDetailPage = () => {
 
   const addCharge = async () => {
     if (!newCharge.amount) return toast.error("Amount required");
-    await supabase.from("lc_charges" as any).insert({ ...newCharge, lc_id: id });
+    await dataClient.from("lc_charges" as any).insert({ ...newCharge, lc_id: id });
     await recalcLanded();
     setNewCharge({ charge_type: "Freight", amount: 0, description: "", charge_date: new Date().toISOString().slice(0, 10) });
     load();
   };
   const removeCharge = async (cid: string) => {
-    await supabase.from("lc_charges" as any).delete().eq("id", cid);
+    await dataClient.from("lc_charges" as any).delete().eq("id", cid);
     await recalcLanded();
     load();
   };
   const recalcLanded = async () => {
-    const { data: c } = await supabase.from("lc_charges" as any).select("amount").eq("lc_id", id);
+    const { data: c } = await dataClient.from("lc_charges" as any).select("amount").eq("lc_id", id);
     const total = ((c || []) as any[]).reduce((s: number, x: any) => s + Number(x.amount || 0), 0);
     const lcBdt = Number(lc?.lc_amount || 0) * Number(lc?.exchange_rate || 1);
-    await supabase.from("lc_documents" as any).update({ total_charges: total, landed_cost: lcBdt + total }).eq("id", id);
+    await dataClient.from("lc_documents" as any).update({ total_charges: total, landed_cost: lcBdt + total }).eq("id", id);
   };
 
   if (!lc) return <div className="p-6">Loading…</div>;

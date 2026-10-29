@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,12 +26,12 @@ const LcFormPage = () => {
   useEffect(() => {
     (async () => {
       const [s, b] = await Promise.all([
-        supabase.from("suppliers" as any).select("id,name").eq("is_active", true),
-        supabase.from("branches").select("id,name"),
+        dataClient.from("suppliers" as any).select("id,name").eq("is_active", true),
+        dataClient.from("branches").select("id,name"),
       ]);
       setSuppliers((s.data || []) as any); setBranches((b.data || []) as any);
       if (id) {
-        const { data } = await supabase.from("lc_documents" as any).select("*").eq("id", id).maybeSingle();
+        const { data } = await dataClient.from("lc_documents" as any).select("*").eq("id", id).maybeSingle();
         if (data) setHeader(data as any);
       } else {
         const no = await nextDocNo("LC", "lc_documents", "lc_no");
@@ -46,8 +46,8 @@ const LcFormPage = () => {
     if (!header.supplier_id || !header.lc_amount) { toast.error("Supplier and amount required"); return; }
     const payload = { ...header, margin_amount: margin };
     const op = id
-      ? supabase.from("lc_documents" as any).update(payload).eq("id", id).select("id").single()
-      : supabase.from("lc_documents" as any).insert(payload).select("id").single();
+      ? dataClient.from("lc_documents" as any).update(payload).eq("id", id).select("id").single()
+      : dataClient.from("lc_documents" as any).insert(payload).select("id").single();
     const { data, error } = await op;
     if (error) return toast.error(error.message);
     const lcId = (data as any).id as string;

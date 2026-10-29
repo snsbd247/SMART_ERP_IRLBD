@@ -1,9 +1,9 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { logCreate, logUpdate } from "@/lib/audit-utils";
 
 async function audit(module: string, action: "create" | "update", record: any, details?: string) {
   try {
-    const { data: u } = await supabase.auth.getUser();
+    const { data: u } = await dataClient.auth.getUser();
     const uid = u?.user?.id;
     if (action === "create") {
       await logCreate({ userId: uid, module, recordId: record?.id, newData: record, details });
@@ -16,7 +16,7 @@ async function audit(module: string, action: "create" | "update", record: any, d
 // Helper to fetch the next document number from the number_sequences table.
 async function nextNumber(prefix: string) {
   const year = new Date().getFullYear();
-  const { data: seq } = await supabase
+  const { data: seq } = await dataClient
     .from("number_sequences")
     .select("*")
     .eq("prefix", prefix)
@@ -25,22 +25,22 @@ async function nextNumber(prefix: string) {
   let serial = 1;
   if (seq) {
     serial = (Number((seq as any).current_number) || 0) + 1;
-    await supabase.from("number_sequences").update({ current_number: serial } as any).eq("id", (seq as any).id);
+    await dataClient.from("number_sequences").update({ current_number: serial } as any).eq("id", (seq as any).id);
   } else {
-    await supabase.from("number_sequences").insert([{ prefix, year, current_number: 1, description: prefix } as any]);
+    await dataClient.from("number_sequences").insert([{ prefix, year, current_number: 1, description: prefix } as any]);
   }
   return `${prefix}-${year}-${String(serial).padStart(5, "0")}`;
 }
 
 async function getCurrentUserId() {
-  const { data } = await supabase.auth.getUser();
+  const { data } = await dataClient.auth.getUser();
   return data?.user?.id ?? null;
 }
 
 async function resolveAccount(name: string, fallbackNames: string[] = []) {
   const names = [name, ...fallbackNames];
   for (const accountName of names) {
-    const { data } = await supabase
+    const { data } = await dataClient
       .from("chart_of_accounts")
       .select("id,account_name")
       .ilike("account_name", accountName)
@@ -66,7 +66,7 @@ async function createApprovedVoucher(params: {
   const credit = params.entries.reduce((s, e) => s + Number(e.credit || 0), 0);
   if (Math.abs(debit - credit) > 0.01 || debit <= 0) return null;
   const uid = await getCurrentUserId();
-  const { data: voucher, error } = await supabase.from("acc_vouchers").insert({
+  const { data: voucher, error } = await dataClient.from("acc_vouchers").insert({
     voucher_number: await nextNumber(params.voucherPrefix),
     voucher_type: params.voucherType,
     voucher_date: params.voucherDate,
@@ -80,11 +80,11 @@ async function createApprovedVoucher(params: {
     approved_at: new Date().toISOString(),
   } as any).select().single();
   if (error || !voucher) return null;
-  const { error: entryError } = await supabase.from("voucher_entries").insert(
+  const { error: entryError } = await dataClient.from("voucher_entries").insert(
     params.entries.map((entry, index) => ({ ...entry, voucher_id: (voucher as any).id, sort_order: index }))
   );
   if (entryError) {
-    await supabase.from("acc_vouchers").delete().eq("id", (voucher as any).id);
+    await dataClient.from("acc_vouchers").delete().eq("id", (voucher as any).id);
     return null;
   }
   return voucher as any;
@@ -150,7 +150,7 @@ export const swApi = {
    * pattern of calling getPO() once per row.
    */
   async listPOsFull(filters: any = {}) {
-    let q = supabase.from("purchase_orders").select("*").is("deleted_at", null).order("po_date", { ascending: false });
+    let q = dataClient.from("purchase_orders").select("*").is("deleted_at", null).order("po_date", { ascending: false });
     if (filters.customer_id) q = q.eq("customer_id", filters.customer_id);
     if (filters.status) q = q.eq("status", filters.status);
     if (filters.q) q = q.ilike("po_number", `%${filters.q}%`);
@@ -161,15 +161,15 @@ export const swApi = {
     const ids = rows.map((r) => r.id);
     const customerIds = [...new Set(rows.map((r) => r.customer_id).filter(Boolean))];
     const [{ data: customers }, { data: allItems }] = await Promise.all([
-      customerIds.length ? supabase.from("customers").select("id,name").in("id", customerIds) : Promise.resolve({ data: [] as any[] }),
-      supabase.from("purchase_order_items").select("*").in("po_id", ids),
+      customerIds.length ? dataClient.from("customers").select("id,name").in("id", customerIds) : Promise.resolve({ data: [] as any[] }),
+      dataClient.from("purchase_order_items").select("*").in("po_id", ids),
     ]);
     const customerMap = new Map(((customers as any[]) || []).map((c) => [c.id, c]));
 
     const itemRows = (allItems as any[]) || [];
     const productIds = [...new Set(itemRows.map((i) => i.product_id).filter(Boolean))];
     const { data: products } = productIds.length
-      ? await supabase.from("item_master").select("id,item_name,item_code").in("id", productIds)
+      ? await dataClient.from("item_master").select("id,item_name,item_code").in("id", productIds)
       : { data: [] as any[] };
     const productMap = new Map(((products as any[]) || []).map((p) => [p.id, p]));
 
@@ -197,14 +197,14 @@ export const swApi = {
   async getPO(id: string) {
     // items is has-many (FK on the child row) with a nested product embed —
     // same limitation as getVatChallan/getInvoice above; fetched separately.
-    const { data: po, error } = await supabase.from("purchase_orders").select("*, customer:customers(*)").eq("id", id).maybeSingle();
+    const { data: po, error } = await dataClient.from("purchase_orders").select("*, customer:customers(*)").eq("id", id).maybeSingle();
     if (error || !po) return { data: null, error };
 
-    const { data: items } = await supabase.from("purchase_order_items").select("*").eq("po_id", id).order("sort_order", { ascending: true });
+    const { data: items } = await dataClient.from("purchase_order_items").select("*").eq("po_id", id).order("sort_order", { ascending: true });
     const itemRows = (items as any[]) || [];
     const productIds = [...new Set(itemRows.map((i) => i.product_id).filter(Boolean))];
     const { data: products } = productIds.length
-      ? await supabase.from("item_master").select("id,item_name,item_code").in("id", productIds)
+      ? await dataClient.from("item_master").select("id,item_name,item_code").in("id", productIds)
       : { data: [] as any[] };
     const productMap = new Map(((products as any[]) || []).map((p) => [p.id, p]));
 
@@ -225,7 +225,7 @@ export const swApi = {
     const po_number = await nextNumber("PO");
     const subtotal = items.reduce((s, i) => s + Number(i.qty_ordered) * Number(i.rate), 0);
     const vat_amount = items.reduce((s, i) => s + Number(i.qty_ordered) * Number(i.rate) * (Number(i.vat_pct || 0) / 100), 0);
-    const { data: po, error } = await supabase
+    const { data: po, error } = await dataClient
       .from("purchase_orders")
       .insert({ ...payload, po_number, subtotal, vat_amount, grand_total: subtotal + vat_amount, status: "open" })
       .select()
@@ -240,7 +240,7 @@ export const swApi = {
       vat_pct: i.vat_pct || 0,
       line_total: Number(i.qty_ordered) * Number(i.rate),
     }));
-    await supabase.from("purchase_order_items").insert(rows);
+    await dataClient.from("purchase_order_items").insert(rows);
     await audit("purchase_orders", "create", po, `PO ${po.po_number}`);
     return { data: po, error: null };
   },
@@ -253,13 +253,13 @@ export const swApi = {
     // Laravel bridge's embed emulation can follow (belongs-to only, one
     // level), so the combined embedded select used to silently come back
     // with items/product/delivery_challans all missing. Fetched separately.
-    const { data: challan, error } = await supabase.from("vat_challans").select("*, customer:customers(*), purchase_order:purchase_orders(id,po_number,po_date)").eq("id", id).maybeSingle();
+    const { data: challan, error } = await dataClient.from("vat_challans").select("*, customer:customers(*), purchase_order:purchase_orders(id,po_number,po_date)").eq("id", id).maybeSingle();
     if (error || !challan) return { data: null, error };
 
     const c: any = challan;
     const [{ data: items }, { data: dcs }] = await Promise.all([
-      supabase.from("vat_challan_items").select("*").eq("vat_challan_id", id).order("sort_order", { ascending: true }),
-      supabase.from("delivery_challans").select("*").eq("vat_challan_id", id),
+      dataClient.from("vat_challan_items").select("*").eq("vat_challan_id", id).order("sort_order", { ascending: true }),
+      dataClient.from("delivery_challans").select("*").eq("vat_challan_id", id),
     ]);
 
     const itemRows = (items as any[]) || [];
@@ -267,10 +267,10 @@ export const swApi = {
     const poItemIds = [...new Set(itemRows.map((i) => i.purchase_order_item_id).filter(Boolean))];
     const [{ data: products }, { data: poItems }] = await Promise.all([
       productIds.length
-        ? supabase.from("item_master").select("id,item_name,item_code").in("id", productIds)
+        ? dataClient.from("item_master").select("id,item_name,item_code").in("id", productIds)
         : Promise.resolve({ data: [] as any[] }),
       poItemIds.length
-        ? supabase.from("purchase_order_items").select("id,qty_ordered,qty_delivered,qty_remaining").in("id", poItemIds)
+        ? dataClient.from("purchase_order_items").select("id,qty_ordered,qty_delivered,qty_remaining").in("id", poItemIds)
         : Promise.resolve({ data: [] as any[] }),
     ]);
     const productMap = new Map(((products as any[]) || []).map((p) => [p.id, p]));
@@ -298,7 +298,7 @@ export const swApi = {
    * Challans list page, which also needs items for its per-row Print button.
    */
   async listVatChallansFull(filters: any = {}) {
-    let q = supabase.from("vat_challans").select("*").is("deleted_at", null).order("challan_date", { ascending: false });
+    let q = dataClient.from("vat_challans").select("*").is("deleted_at", null).order("challan_date", { ascending: false });
     if (filters.customer_id) q = q.eq("customer_id", filters.customer_id);
     if (filters.status) q = q.eq("status", filters.status);
     if (filters.q) q = q.ilike("challan_number", `%${filters.q}%`);
@@ -310,9 +310,9 @@ export const swApi = {
     const customerIds = [...new Set(rows.map((r) => r.customer_id).filter(Boolean))];
     const poIds = [...new Set(rows.map((r) => r.purchase_order_id).filter(Boolean))];
     const [{ data: customers }, { data: pos }, { data: allItems }] = await Promise.all([
-      customerIds.length ? supabase.from("customers").select("id,name").in("id", customerIds) : Promise.resolve({ data: [] as any[] }),
-      poIds.length ? supabase.from("purchase_orders").select("id,po_number").in("id", poIds) : Promise.resolve({ data: [] as any[] }),
-      supabase.from("vat_challan_items").select("*").in("vat_challan_id", ids),
+      customerIds.length ? dataClient.from("customers").select("id,name").in("id", customerIds) : Promise.resolve({ data: [] as any[] }),
+      poIds.length ? dataClient.from("purchase_orders").select("id,po_number").in("id", poIds) : Promise.resolve({ data: [] as any[] }),
+      dataClient.from("vat_challan_items").select("*").in("vat_challan_id", ids),
     ]);
     const customerMap = new Map(((customers as any[]) || []).map((c) => [c.id, c]));
     const poMap = new Map(((pos as any[]) || []).map((p) => [p.id, p]));
@@ -320,7 +320,7 @@ export const swApi = {
     const itemRows = (allItems as any[]) || [];
     const productIds = [...new Set(itemRows.map((i) => i.product_id).filter(Boolean))];
     const { data: products } = productIds.length
-      ? await supabase.from("item_master").select("id,item_name,item_code").in("id", productIds)
+      ? await dataClient.from("item_master").select("id,item_name,item_code").in("id", productIds)
       : { data: [] as any[] };
     const productMap = new Map(((products as any[]) || []).map((p) => [p.id, p]));
 
@@ -347,7 +347,7 @@ export const swApi = {
     };
   },
   async getPoAvailability(poId: string) {
-    return supabase
+    return dataClient
       .from("purchase_orders")
       .select("*, customer:customers(id,name), items:purchase_order_items(*, product:item_master(id,name:item_name,sku:item_code))")
       .eq("id", poId)
@@ -361,7 +361,7 @@ export const swApi = {
     if (poItemIds.length !== items.length) {
       return { data: null, error: { message: "Every item must reference a PO item." } as any };
     }
-    const { data: poItems } = await supabase.from("purchase_order_items").select("id,qty_remaining,po_id").in("id", poItemIds);
+    const { data: poItems } = await dataClient.from("purchase_order_items").select("id,qty_remaining,po_id").in("id", poItemIds);
     const byId = new Map((poItems || []).map((p: any) => [p.id, p]));
     for (const it of items) {
       const poi = byId.get(it.purchase_order_item_id);
@@ -377,7 +377,7 @@ export const swApi = {
     const challan_number = await nextNumber("VCH");
     const subtotal = items.reduce((s, i) => s + Number(i.qty) * Number(i.rate), 0);
     const vat_amount = items.reduce((s, i) => s + Number(i.qty) * Number(i.rate) * (Number(i.vat_pct || 0) / 100), 0);
-    const { data: v, error } = await supabase.from("vat_challans").insert({
+    const { data: v, error } = await dataClient.from("vat_challans").insert({
       ...payload, challan_number, subtotal, vat_amount, grand_total: subtotal + vat_amount, status: "issued", source: "purchase_order",
     }).select().single();
     if (error || !v) return { data: null, error };
@@ -394,9 +394,9 @@ export const swApi = {
       vat_amount: Number(i.qty) * Number(i.rate) * (Number(i.vat_pct || 0) / 100),
       line_total: Number(i.qty) * Number(i.rate) * (1 + Number(i.vat_pct || 0) / 100),
     }));
-    const { data: insertedItems, error: itemsErr } = await supabase.from("vat_challan_items").insert(itemRows).select();
+    const { data: insertedItems, error: itemsErr } = await dataClient.from("vat_challan_items").insert(itemRows).select();
     if (itemsErr) {
-      await supabase.from("vat_challans").delete().eq("id", v.id);
+      await dataClient.from("vat_challans").delete().eq("id", v.id);
       return { data: null, error: itemsErr };
     }
 
@@ -404,29 +404,29 @@ export const swApi = {
     if (payload.purchase_order_id) {
       for (const i of items) {
         if (!i.purchase_order_item_id) continue;
-        const { data: poi } = await supabase.from("purchase_order_items").select("qty_ordered,qty_delivered,qty_remaining").eq("id", i.purchase_order_item_id).maybeSingle();
+        const { data: poi } = await dataClient.from("purchase_order_items").select("qty_ordered,qty_delivered,qty_remaining").eq("id", i.purchase_order_item_id).maybeSingle();
         if (poi) {
           const newDelivered = Number((poi as any).qty_delivered) + Number(i.qty);
-          await supabase.from("purchase_order_items").update({
+          await dataClient.from("purchase_order_items").update({
             qty_delivered: newDelivered,
             qty_remaining: Math.max(0, Number((poi as any).qty_ordered) - newDelivered),
           }).eq("id", i.purchase_order_item_id);
         }
       }
-      const { data: remainingItems } = await supabase.from("purchase_order_items").select("qty_remaining,qty_delivered").eq("po_id", payload.purchase_order_id);
+      const { data: remainingItems } = await dataClient.from("purchase_order_items").select("qty_remaining,qty_delivered").eq("po_id", payload.purchase_order_id);
       const totalRemaining = (remainingItems || []).reduce((s: number, r: any) => s + Number(r.qty_remaining || 0), 0);
       const totalDelivered = (remainingItems || []).reduce((s: number, r: any) => s + Number(r.qty_delivered || 0), 0);
       if (totalRemaining <= 0.0001) {
-        await supabase.from("purchase_orders").update({ status: "closed" }).eq("id", payload.purchase_order_id);
+        await dataClient.from("purchase_orders").update({ status: "closed" }).eq("id", payload.purchase_order_id);
       } else if (totalDelivered > 0) {
-        await supabase.from("purchase_orders").update({ status: "partial" }).eq("id", payload.purchase_order_id);
+        await dataClient.from("purchase_orders").update({ status: "partial" }).eq("id", payload.purchase_order_id);
       }
     }
 
     // Auto-create DCs per item
     for (const ii of insertedItems || []) {
       const dc_number = await nextNumber("DC");
-      await supabase.from("delivery_challans").insert({
+      await dataClient.from("delivery_challans").insert({
         dc_number, dc_date: payload.challan_date,
         vat_challan_id: v.id, vat_challan_item_id: ii.id,
         product_id: ii.product_id, qty: ii.qty,
@@ -440,22 +440,22 @@ export const swApi = {
 
   // -------- Delivery Challans --------
   async listDeliveryChallans(filters: any = {}) {
-    let q = supabase.from("delivery_challans").select("*, customer:customers(id,name), product:item_master(name:item_name,sku:item_code), vat_challan:vat_challans(challan_number)").order("dc_date", { ascending: false });
+    let q = dataClient.from("delivery_challans").select("*, customer:customers(id,name), product:item_master(name:item_name,sku:item_code), vat_challan:vat_challans(challan_number)").order("dc_date", { ascending: false });
     if (filters.customer_id) q = q.eq("customer_id", filters.customer_id);
     if (filters.status) q = q.eq("status", filters.status);
     if (filters.q) q = q.ilike("dc_number", `%${filters.q}%`);
     return q;
   },
   async customerReceive(dcId: string, payload: any) {
-    await supabase.from("customer_receives").insert({ delivery_challan_id: dcId, ...payload });
-    await supabase.from("delivery_challans").update({ status: "customer_received" }).eq("id", dcId);
+    await dataClient.from("customer_receives").insert({ delivery_challan_id: dcId, ...payload });
+    await dataClient.from("delivery_challans").update({ status: "customer_received" }).eq("id", dcId);
   },
   async hoReceive(dcId: string, payload: any) {
-    await supabase.from("ho_receives").insert({ delivery_challan_id: dcId, ...payload });
-    await supabase.from("delivery_challans").update({ status: "ho_received" }).eq("id", dcId);
+    await dataClient.from("ho_receives").insert({ delivery_challan_id: dcId, ...payload });
+    await dataClient.from("delivery_challans").update({ status: "ho_received" }).eq("id", dcId);
   },
   async setDCStatus(id: string, status: string) {
-    return supabase.from("delivery_challans").update({ status }).eq("id", id);
+    return dataClient.from("delivery_challans").update({ status }).eq("id", id);
   },
 
   // -------- Invoice V2 --------
@@ -468,7 +468,7 @@ export const swApi = {
   async listInvoicesFull(filters: any = {}) {
     // Plain columns only (no customer embed) — hydrated below via a bulk
     // query instead, for the same reliability reasons as listVatChallansFull.
-    let iq = supabase.from("sales_invoices_v2").select("*").is("deleted_at", null).order("invoice_date", { ascending: false });
+    let iq = dataClient.from("sales_invoices_v2").select("*").is("deleted_at", null).order("invoice_date", { ascending: false });
     if (filters.customer_id) iq = iq.eq("customer_id", filters.customer_id);
     if (filters.status) iq = iq.eq("status", filters.status);
     if (filters.q) iq = iq.ilike("invoice_number", `%${filters.q}%`);
@@ -478,21 +478,21 @@ export const swApi = {
 
     const customerIds = [...new Set(rows.map((r) => r.customer_id).filter(Boolean))];
     const { data: customers } = customerIds.length
-      ? await supabase.from("customers").select("id,name").in("id", customerIds)
+      ? await dataClient.from("customers").select("id,name").in("id", customerIds)
       : { data: [] as any[] };
     const customerMap = new Map(((customers as any[]) || []).map((c) => [c.id, c]));
 
     const ids = rows.map((r) => r.id);
     const [{ data: allItems }, { data: allPayments }, { data: allTds }] = await Promise.all([
-      supabase.from("sales_invoice_items_v2").select("*").in("invoice_id", ids),
-      supabase.from("invoice_payments").select("*").in("invoice_id", ids),
-      supabase.from("tds_entries").select("*").in("invoice_id", ids),
+      dataClient.from("sales_invoice_items_v2").select("*").in("invoice_id", ids),
+      dataClient.from("invoice_payments").select("*").in("invoice_id", ids),
+      dataClient.from("tds_entries").select("*").in("invoice_id", ids),
     ]);
 
     const itemRows = (allItems as any[]) || [];
     const productIds = [...new Set(itemRows.map((i) => i.product_id).filter(Boolean))];
     const { data: products } = productIds.length
-      ? await supabase.from("item_master").select("id,item_name,item_code").in("id", productIds)
+      ? await dataClient.from("item_master").select("id,item_name,item_code").in("id", productIds)
       : { data: [] as any[] };
     const productMap = new Map(((products as any[]) || []).map((p) => [p.id, p]));
 
@@ -526,29 +526,29 @@ export const swApi = {
     };
   },
   async getInvoice(id: string) {
-    // Fetched as separate has-many queries (not a nested Supabase embed) —
+    // Fetched as separate has-many queries (not a nested embed) —
     // the Laravel bridge's embed emulation only supports belongs-to relations
     // (a single FK column on the parent row); it can't follow a has-many
     // child table (items keyed by invoice_id) nor a second embed nested
     // inside one (product:item_master inside items), so a combined embedded
     // select silently comes back with items/product missing.
-    const { data: invoice, error } = await supabase.from("sales_invoices_v2").select("*").eq("id", id).maybeSingle();
+    const { data: invoice, error } = await dataClient.from("sales_invoices_v2").select("*").eq("id", id).maybeSingle();
     if (error || !invoice) return { data: null, error };
 
     const inv: any = invoice;
     const [{ data: customer }, { data: items }, { data: payments }, { data: tdsEntries }] = await Promise.all([
       inv.customer_id
-        ? supabase.from("customers").select("*").eq("id", inv.customer_id).maybeSingle()
+        ? dataClient.from("customers").select("*").eq("id", inv.customer_id).maybeSingle()
         : Promise.resolve({ data: null } as any),
-      supabase.from("sales_invoice_items_v2").select("*").eq("invoice_id", id).order("sort_order", { ascending: true }),
-      supabase.from("invoice_payments").select("*").eq("invoice_id", id),
-      supabase.from("tds_entries").select("*").eq("invoice_id", id),
+      dataClient.from("sales_invoice_items_v2").select("*").eq("invoice_id", id).order("sort_order", { ascending: true }),
+      dataClient.from("invoice_payments").select("*").eq("invoice_id", id),
+      dataClient.from("tds_entries").select("*").eq("invoice_id", id),
     ]);
 
     const itemRows = ((items as any[]) || []);
     const productIds = [...new Set(itemRows.map((i) => i.product_id).filter(Boolean))];
     const { data: products } = productIds.length
-      ? await supabase.from("item_master").select("id,item_name,item_code").in("id", productIds)
+      ? await dataClient.from("item_master").select("id,item_name,item_code").in("id", productIds)
       : { data: [] as any[] };
     const productMap = new Map(((products as any[]) || []).map((p) => [p.id, p]));
 
@@ -575,7 +575,7 @@ export const swApi = {
     // follows belongs-to relations, so embedding them here always came back
     // empty and this silently returned zero challans, ever. Fetched as
     // separate bulk (IN-list) queries instead.
-    let q = supabase.from("vat_challans").select("*, customer:customers(id,name)").neq("status", "invoiced").is("deleted_at", null);
+    let q = dataClient.from("vat_challans").select("*, customer:customers(id,name)").neq("status", "invoiced").is("deleted_at", null);
     if (customer_id) q = q.eq("customer_id", customer_id);
     if (date) q = q.eq("challan_date", date);
     const { data, error } = await q;
@@ -584,8 +584,8 @@ export const swApi = {
 
     const ids = challans.map((c) => c.id);
     const [{ data: allDcs }, { data: allItems }] = await Promise.all([
-      supabase.from("delivery_challans").select("id,status,vat_challan_id").in("vat_challan_id", ids),
-      supabase.from("vat_challan_items").select("*").in("vat_challan_id", ids),
+      dataClient.from("delivery_challans").select("id,status,vat_challan_id").in("vat_challan_id", ids),
+      dataClient.from("vat_challan_items").select("*").in("vat_challan_id", ids),
     ]);
     const dcsByChallan = new Map<string, any[]>();
     for (const dc of (allDcs as any[]) || []) {
@@ -613,11 +613,11 @@ export const swApi = {
   async createInvoice(payload: { invoice_date: string; customer_id: string; mode: string; branch_id?: string; notes?: string }, vatChallanIds: string[]) {
     const invoice_number = await nextNumber("INV");
     // Gather all items
-    const { data: items } = await supabase.from("vat_challan_items").select("*").in("vat_challan_id", vatChallanIds);
+    const { data: items } = await dataClient.from("vat_challan_items").select("*").in("vat_challan_id", vatChallanIds);
     const subtotal = (items || []).reduce((s, i: any) => s + Number(i.qty) * Number(i.rate), 0);
     const vat_total = (items || []).reduce((s, i: any) => s + Number(i.vat_amount || 0), 0);
     const grand_total = subtotal + vat_total;
-    const { data: inv, error } = await supabase.from("sales_invoices_v2").insert({
+    const { data: inv, error } = await dataClient.from("sales_invoices_v2").insert({
       invoice_number, invoice_date: payload.invoice_date, customer_id: payload.customer_id,
       mode: payload.mode, subtotal, vat_total, grand_total, due_amount: grand_total,
       status: "posted", branch_id: payload.branch_id, notes: payload.notes,
@@ -636,41 +636,41 @@ export const swApi = {
       };
     });
     if (invItems.length) {
-      const { error: itemsErr } = await supabase.from("sales_invoice_items_v2").insert(invItems);
+      const { error: itemsErr } = await dataClient.from("sales_invoice_items_v2").insert(invItems);
       if (itemsErr) {
-        await supabase.from("sales_invoices_v2").delete().eq("id", inv.id);
+        await dataClient.from("sales_invoices_v2").delete().eq("id", inv.id);
         return { data: null, error: itemsErr };
       }
     }
-    const { error: chErr } = await supabase.from("invoice_challans").insert(vatChallanIds.map((vcId) => ({ invoice_id: inv.id, vat_challan_id: vcId })));
+    const { error: chErr } = await dataClient.from("invoice_challans").insert(vatChallanIds.map((vcId) => ({ invoice_id: inv.id, vat_challan_id: vcId })));
     if (chErr) {
-      await supabase.from("sales_invoices_v2").delete().eq("id", inv.id);
+      await dataClient.from("sales_invoices_v2").delete().eq("id", inv.id);
       return { data: null, error: chErr };
     }
-    await supabase.from("vat_challans").update({ status: "invoiced" }).in("id", vatChallanIds);
-    await supabase.from("delivery_challans").update({ status: "invoiced" }).in("vat_challan_id", vatChallanIds);
+    await dataClient.from("vat_challans").update({ status: "invoiced" }).in("id", vatChallanIds);
+    await dataClient.from("delivery_challans").update({ status: "invoiced" }).in("vat_challan_id", vatChallanIds);
     const voucher = await postSalesInvoiceVoucher(inv);
-    if (voucher?.id) await supabase.from("sales_invoices_v2").update({ voucher_id: voucher.id } as any).eq("id", inv.id);
+    if (voucher?.id) await dataClient.from("sales_invoices_v2").update({ voucher_id: voucher.id } as any).eq("id", inv.id);
     await audit("invoice_processing", "create", inv, `Invoice ${inv.invoice_number}`);
     return { data: inv, error: null };
   },
   async recordPayment(invoiceId: string, payload: any) {
     const payment_number = await nextNumber("RCP");
     const total_settled = Number(payload.amount_received || 0) + Number(payload.tds_amount || 0);
-    const { data: currentInvoice } = await supabase.from("sales_invoices_v2").select("*").eq("id", invoiceId).maybeSingle();
+    const { data: currentInvoice } = await dataClient.from("sales_invoices_v2").select("*").eq("id", invoiceId).maybeSingle();
     if (!currentInvoice) return { data: null, error: { message: "Invoice not found." } as any };
     if (total_settled <= 0) return { data: null, error: { message: "Payment must be greater than zero." } as any };
     if (total_settled > Number((currentInvoice as any).due_amount || 0) + 0.01) {
       return { data: null, error: { message: `Payment ${total_settled} exceeds outstanding ${(currentInvoice as any).due_amount}.` } as any };
     }
-    const { data: p, error } = await supabase.from("invoice_payments").insert({
+    const { data: p, error } = await dataClient.from("invoice_payments").insert({
       invoice_id: invoiceId, payment_number, ...payload, total_settled,
       branch_id: payload.branch_id ?? (currentInvoice as any).branch_id,
       financial_year_id: payload.financial_year_id ?? (currentInvoice as any).financial_year_id,
     }).select().single();
     if (error || !p) return { data: null, error };
     if (payload.tds_amount && Number(payload.tds_amount) > 0) {
-      await supabase.from("tds_entries").insert({
+      await dataClient.from("tds_entries").insert({
         invoice_id: invoiceId, payment_id: p.id,
         tds_amount: payload.tds_amount,
         tds_pct: payload.tds_pct || 0,
@@ -679,23 +679,23 @@ export const swApi = {
       });
     }
     // Update invoice paid/due
-    const { data: inv } = await supabase.from("sales_invoices_v2").select("paid_amount,tds_amount,grand_total").eq("id", invoiceId).maybeSingle();
+    const { data: inv } = await dataClient.from("sales_invoices_v2").select("paid_amount,tds_amount,grand_total").eq("id", invoiceId).maybeSingle();
     if (inv) {
       const paid = Number(inv.paid_amount || 0) + Number(payload.amount_received || 0);
       const tds = Number(inv.tds_amount || 0) + Number(payload.tds_amount || 0);
       const due = Number(inv.grand_total) - paid - tds;
-      await supabase.from("sales_invoices_v2").update({
+      await dataClient.from("sales_invoices_v2").update({
         paid_amount: paid, tds_amount: tds, due_amount: due,
         status: due <= 0 ? "paid" : "partial_paid",
       }).eq("id", invoiceId);
     }
     const voucher = await postInvoicePaymentVoucher(p, currentInvoice);
-    if (voucher?.id) await supabase.from("invoice_payments").update({ voucher_id: voucher.id } as any).eq("id", p.id);
+    if (voucher?.id) await dataClient.from("invoice_payments").update({ voucher_id: voucher.id } as any).eq("id", p.id);
     await audit("invoice_processing", "create", p, `Payment ${p.payment_number} (TDS ${payload.tds_amount || 0})`);
     return { data: p, error: null };
   },
   async listTds(filters: any = {}) {
-    let q = supabase.from("tds_entries").select("*, invoice:sales_invoices_v2(invoice_number, customer:customers(name))").order("created_at", { ascending: false });
+    let q = dataClient.from("tds_entries").select("*, invoice:sales_invoices_v2(invoice_number, customer:customers(name))").order("created_at", { ascending: false });
     if (filters.from) q = q.gte("created_at", filters.from);
     if (filters.to) q = q.lte("created_at", filters.to);
     return q;
@@ -705,102 +705,102 @@ export const swApi = {
   async updatePO(id: string, payload: any, items: any[]) {
     const subtotal = items.reduce((s, i) => s + Number(i.qty_ordered) * Number(i.rate), 0);
     const vat_amount = items.reduce((s, i) => s + Number(i.qty_ordered) * Number(i.rate) * (Number(i.vat_pct || 0) / 100), 0);
-    const { error } = await supabase.from("purchase_orders").update({ ...payload, subtotal, vat_amount, grand_total: subtotal + vat_amount }).eq("id", id);
+    const { error } = await dataClient.from("purchase_orders").update({ ...payload, subtotal, vat_amount, grand_total: subtotal + vat_amount }).eq("id", id);
     if (error) return { data: null, error };
-    const { data: existing } = await supabase.from("purchase_order_items").select("id,qty_delivered").eq("po_id", id);
+    const { data: existing } = await dataClient.from("purchase_order_items").select("id,qty_delivered").eq("po_id", id);
     if ((existing || []).some((it: any) => Number(it.qty_delivered) > 0)) {
       return { data: null, error: { message: "Cannot edit items after VAT Challan started." } as any };
     }
-    await supabase.from("purchase_order_items").delete().eq("po_id", id);
+    await dataClient.from("purchase_order_items").delete().eq("po_id", id);
     const rows = items.map((i) => ({
       po_id: id, product_id: i.product_id, qty_ordered: i.qty_ordered, qty_remaining: i.qty_ordered,
       rate: i.rate, vat_pct: i.vat_pct || 0, line_total: Number(i.qty_ordered) * Number(i.rate),
     }));
-    await supabase.from("purchase_order_items").insert(rows);
+    await dataClient.from("purchase_order_items").insert(rows);
     await audit("purchase_orders", "update", { id }, "edit");
     return { data: { id }, error: null };
   },
   async deletePO(id: string) {
-    const { error } = await supabase.from("purchase_orders").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
+    const { error } = await dataClient.from("purchase_orders").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
     await audit("purchase_orders", "update", { id }, "delete");
     return { error };
   },
 
   async deleteVatChallan(id: string) {
-    const { data: dcs } = await supabase.from("delivery_challans").select("id,status").eq("vat_challan_id", id);
+    const { data: dcs } = await dataClient.from("delivery_challans").select("id,status").eq("vat_challan_id", id);
     if ((dcs || []).some((d: any) => ["customer_received", "ho_received", "invoiced"].includes(d.status))) {
       return { error: { message: "Cannot delete: DC already received/invoiced" } as any };
     }
     // Restore PO availability for any PO-linked items
-    const { data: challan } = await supabase.from("vat_challans").select("purchase_order_id").eq("id", id).maybeSingle();
-    const { data: items } = await supabase.from("vat_challan_items").select("purchase_order_item_id, qty").eq("vat_challan_id", id);
+    const { data: challan } = await dataClient.from("vat_challans").select("purchase_order_id").eq("id", id).maybeSingle();
+    const { data: items } = await dataClient.from("vat_challan_items").select("purchase_order_item_id, qty").eq("vat_challan_id", id);
     for (const it of items || []) {
       if (!(it as any).purchase_order_item_id) continue;
-      const { data: poi } = await supabase.from("purchase_order_items").select("qty_ordered,qty_delivered").eq("id", (it as any).purchase_order_item_id).maybeSingle();
+      const { data: poi } = await dataClient.from("purchase_order_items").select("qty_ordered,qty_delivered").eq("id", (it as any).purchase_order_item_id).maybeSingle();
       if (poi) {
         const newDelivered = Math.max(0, Number((poi as any).qty_delivered) - Number((it as any).qty));
-        await supabase.from("purchase_order_items").update({
+        await dataClient.from("purchase_order_items").update({
           qty_delivered: newDelivered,
           qty_remaining: Math.max(0, Number((poi as any).qty_ordered) - newDelivered),
         }).eq("id", (it as any).purchase_order_item_id);
       }
     }
     if ((challan as any)?.purchase_order_id) {
-      const { data: poItems } = await supabase.from("purchase_order_items").select("qty_remaining,qty_delivered").eq("po_id", (challan as any).purchase_order_id);
+      const { data: poItems } = await dataClient.from("purchase_order_items").select("qty_remaining,qty_delivered").eq("po_id", (challan as any).purchase_order_id);
       const totalRemaining = (poItems || []).reduce((s: number, r: any) => s + Number(r.qty_remaining || 0), 0);
       const totalDelivered = (poItems || []).reduce((s: number, r: any) => s + Number(r.qty_delivered || 0), 0);
       const status = totalDelivered <= 0 ? "open" : totalRemaining <= 0.0001 ? "closed" : "partial";
-      await supabase.from("purchase_orders").update({ status }).eq("id", (challan as any).purchase_order_id);
+      await dataClient.from("purchase_orders").update({ status }).eq("id", (challan as any).purchase_order_id);
     }
-    await supabase.from("delivery_challans").delete().eq("vat_challan_id", id);
-    const { error } = await supabase.from("vat_challans").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
+    await dataClient.from("delivery_challans").delete().eq("vat_challan_id", id);
+    const { error } = await dataClient.from("vat_challans").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
     await audit("vat_challan", "update", { id }, "delete");
     return { error };
   },
 
   async deleteDeliveryChallan(id: string) {
-    const { data: dc } = await supabase.from("delivery_challans").select("status").eq("id", id).maybeSingle();
+    const { data: dc } = await dataClient.from("delivery_challans").select("status").eq("id", id).maybeSingle();
     if (dc && ["invoiced"].includes((dc as any).status)) return { error: { message: "Cannot delete invoiced DC" } as any };
-    const { error } = await supabase.from("delivery_challans").delete().eq("id", id);
+    const { error } = await dataClient.from("delivery_challans").delete().eq("id", id);
     return { error };
   },
 
   async deleteInvoice(id: string) {
-    const { data: inv } = await supabase.from("sales_invoices_v2").select("paid_amount,tds_amount").eq("id", id).maybeSingle();
+    const { data: inv } = await dataClient.from("sales_invoices_v2").select("paid_amount,tds_amount").eq("id", id).maybeSingle();
     if (inv && (Number((inv as any).paid_amount) > 0 || Number((inv as any).tds_amount) > 0)) {
       return { error: { message: "Cannot delete invoice with payments/TDS recorded" } as any };
     }
-    const { data: links } = await supabase.from("invoice_challans").select("vat_challan_id").eq("invoice_id", id);
+    const { data: links } = await dataClient.from("invoice_challans").select("vat_challan_id").eq("invoice_id", id);
     const vcIds = (links || []).map((l: any) => l.vat_challan_id);
     if (vcIds.length) {
-      await supabase.from("vat_challans").update({ status: "issued" }).in("id", vcIds);
-      await supabase.from("delivery_challans").update({ status: "ho_received" }).in("vat_challan_id", vcIds);
+      await dataClient.from("vat_challans").update({ status: "issued" }).in("id", vcIds);
+      await dataClient.from("delivery_challans").update({ status: "ho_received" }).in("vat_challan_id", vcIds);
     }
-    await supabase.from("invoice_challans").delete().eq("invoice_id", id);
-    const { error } = await supabase.from("sales_invoices_v2").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
+    await dataClient.from("invoice_challans").delete().eq("invoice_id", id);
+    const { error } = await dataClient.from("sales_invoices_v2").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
     await audit("invoice_processing", "update", { id }, "delete");
     return { error };
   },
 
   async listCustomerReceives() {
-    return supabase.from("customer_receives").select("*, dc:delivery_challans(id,dc_number, customer:customers(name))").order("created_at", { ascending: false });
+    return dataClient.from("customer_receives").select("*, dc:delivery_challans(id,dc_number, customer:customers(name))").order("created_at", { ascending: false });
   },
   async listHoReceives() {
-    return supabase.from("ho_receives").select("*, dc:delivery_challans(id,dc_number, customer:customers(name))").order("created_at", { ascending: false });
+    return dataClient.from("ho_receives").select("*, dc:delivery_challans(id,dc_number, customer:customers(name))").order("created_at", { ascending: false });
   },
   async deleteCustomerReceive(id: string, dcId: string) {
-    await supabase.from("customer_receives").delete().eq("id", id);
-    await supabase.from("delivery_challans").update({ status: "delivered" }).eq("id", dcId);
+    await dataClient.from("customer_receives").delete().eq("id", id);
+    await dataClient.from("delivery_challans").update({ status: "delivered" }).eq("id", dcId);
     return { error: null };
   },
   async deleteHoReceive(id: string, dcId: string) {
-    await supabase.from("ho_receives").delete().eq("id", id);
-    await supabase.from("delivery_challans").update({ status: "sent_to_ho" }).eq("id", dcId);
+    await dataClient.from("ho_receives").delete().eq("id", id);
+    await dataClient.from("delivery_challans").update({ status: "sent_to_ho" }).eq("id", dcId);
     return { error: null };
   },
 
   async deleteTds(id: string) {
-    const { error } = await supabase.from("tds_entries").delete().eq("id", id);
+    const { error } = await dataClient.from("tds_entries").delete().eq("id", id);
     return { error };
   },
 
@@ -811,9 +811,9 @@ export const swApi = {
     const dueDate = new Date(submittedAt);
     dueDate.setDate(dueDate.getDate() + days);
     const bill_due_date = dueDate.toISOString().slice(0, 10);
-    const { data: cur } = await supabase.from("sales_invoices_v2").select("status").eq("id", invoiceId).maybeSingle();
+    const { data: cur } = await dataClient.from("sales_invoices_v2").select("status").eq("id", invoiceId).maybeSingle();
     const newStatus = (cur as any)?.status === "posted" ? "bill_submitted" : (cur as any)?.status;
-    const { error } = await supabase.from("sales_invoices_v2").update({
+    const { error } = await dataClient.from("sales_invoices_v2").update({
       bill_submitted_at: submittedAt,
       bill_due_date,
       payment_terms_days: days,
@@ -821,7 +821,7 @@ export const swApi = {
       status: newStatus,
     } as any).eq("id", invoiceId);
     if (error) return { error };
-    await supabase.from("invoice_status_logs").insert({
+    await dataClient.from("invoice_status_logs").insert({
       invoice_id: invoiceId,
       new_status: "bill_submitted",
       notes: `Bill submitted to customer HO (ref: ${payload.bill_submission_ref ?? "-"}). Due in ${days} days (${bill_due_date}).`,

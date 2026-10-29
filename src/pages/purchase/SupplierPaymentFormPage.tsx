@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,14 +30,14 @@ const SupplierPaymentFormPage = () => {
   useEffect(() => {
     (async () => {
       const [s, b] = await Promise.all([
-        supabase.from("suppliers" as any).select("id,name").eq("is_active", true),
-        supabase.from("branches").select("id,name"),
+        dataClient.from("suppliers" as any).select("id,name").eq("is_active", true),
+        dataClient.from("branches").select("id,name"),
       ]);
       setSuppliers((s.data || []) as any); setBranches((b.data || []) as any);
       const no = await nextDocNo("PAY", "supplier_payments_v2", "payment_no");
       setHeader((h: any) => ({ ...h, payment_no: no }));
       if (billId) {
-        const { data: b1 } = await supabase.from("supplier_bills_v2" as any).select("*").eq("id", billId).maybeSingle();
+        const { data: b1 } = await dataClient.from("supplier_bills_v2" as any).select("*").eq("id", billId).maybeSingle();
         if (b1) {
           const due = Number((b1 as any).grand_total) - Number((b1 as any).paid_amount || 0);
           setHeader((h: any) => ({ ...h, supplier_id: (b1 as any).supplier_id, branch_id: (b1 as any).branch_id, amount: due }));
@@ -50,7 +50,7 @@ const SupplierPaymentFormPage = () => {
   useEffect(() => {
     if (!header.supplier_id) return;
     (async () => {
-      const { data } = await supabase.from("supplier_bills_v2" as any).select("*")
+      const { data } = await dataClient.from("supplier_bills_v2" as any).select("*")
         .eq("supplier_id", header.supplier_id).in("status", ["posted", "partially_paid"]).order("bill_date", { ascending: true });
       setBills((data || []) as any);
     })();
@@ -61,19 +61,19 @@ const SupplierPaymentFormPage = () => {
   const save = async () => {
     if (!header.supplier_id || !header.amount) { toast.error("Supplier and amount required"); return; }
     if (totalSelected > Number(header.amount)) { toast.error("Allocations exceed payment amount"); return; }
-    const { data, error } = await supabase.from("supplier_payments_v2" as any).insert({
+    const { data, error } = await dataClient.from("supplier_payments_v2" as any).insert({
       ...header, allocated_amount: totalSelected, status: "draft",
     } as any).select("id").single();
     if (error) return toast.error(error.message);
     const pid = (data as any).id as string;
     const allocs = Object.entries(selected).filter(([, v]) => Number(v) > 0).map(([bill_id, allocated_amount]) => ({ payment_id: pid, bill_id, allocated_amount }));
     if (allocs.length) {
-      await supabase.from("supplier_payment_allocations" as any).insert(allocs as any);
+      await dataClient.from("supplier_payment_allocations" as any).insert(allocs as any);
       for (const a of allocs) {
         const bill = bills.find((b: any) => b.id === a.bill_id);
         if (bill) {
           const newPaid = Number(bill.paid_amount || 0) + Number(a.allocated_amount);
-          await supabase.from("supplier_bills_v2" as any).update({
+          await dataClient.from("supplier_bills_v2" as any).update({
             paid_amount: newPaid,
             status: newPaid >= Number(bill.grand_total) ? "paid" : "partially_paid",
           }).eq("id", bill.id);

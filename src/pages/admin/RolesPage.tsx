@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { usePermission } from "@/hooks/usePermission";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -108,7 +108,7 @@ const RolesPage = () => {
   // ── Audit helper ────────────────────────────────────────────────
   const writeAudit = async (action: string, recordId: string | null, details: string, oldData?: any, newData?: any) => {
     try {
-      await supabase.from("audit_log").insert({
+      await dataClient.from("audit_log").insert({
         user_id: user?.id ?? null,
         user_name: profile?.name || profile?.email || "Unknown",
         module: "Roles & Permissions",
@@ -127,8 +127,8 @@ const RolesPage = () => {
   const fetchAll = async () => {
     setLoading(true);
     const [{ data: rolesData }, { data: permsData }] = await Promise.all([
-      supabase.from("custom_roles").select("*").order("name"),
-      supabase.from("role_permissions").select("*"),
+      dataClient.from("custom_roles").select("*").order("name"),
+      dataClient.from("role_permissions").select("*"),
     ]);
     const rs = (rolesData || []) as CustomRole[];
     setRoles(rs);
@@ -253,14 +253,14 @@ const RolesPage = () => {
       if (editRole) {
         const nameChanged = editRole.name !== formName || (editRole.description || "") !== formDesc;
         if (nameChanged) {
-          const { error } = await supabase.from("custom_roles").update({ name: formName, description: formDesc }).eq("id", editRole.id);
+          const { error } = await dataClient.from("custom_roles").update({ name: formName, description: formDesc }).eq("id", editRole.id);
           if (error) throw error;
         }
         roleId = editRole.id;
-        await supabase.from("role_permissions").delete().eq("custom_role_id", roleId);
+        await dataClient.from("role_permissions").delete().eq("custom_role_id", roleId);
       } else {
         isCreate = true;
-        const { data, error } = await supabase.from("custom_roles").insert({ name: formName, description: formDesc }).select().single();
+        const { data, error } = await dataClient.from("custom_roles").insert({ name: formName, description: formDesc }).select().single();
         if (error) throw error;
         roleId = (data as any).id;
       }
@@ -273,7 +273,7 @@ const RolesPage = () => {
         can_edit: p.can_edit,
         can_delete: p.can_delete,
       }));
-      const { error: permErr } = await supabase.from("role_permissions").insert(permRows);
+      const { error: permErr } = await dataClient.from("role_permissions").insert(permRows);
       if (permErr) throw permErr;
 
       // Audit
@@ -304,7 +304,7 @@ const RolesPage = () => {
   const handleDelete = async (role: CustomRole) => {
     if (!confirm(`Delete role "${role.name}"?`)) return;
     const oldPerms = allRolePermissions[role.id] || [];
-    const { error } = await supabase.from("custom_roles").delete().eq("id", role.id);
+    const { error } = await dataClient.from("custom_roles").delete().eq("id", role.id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {

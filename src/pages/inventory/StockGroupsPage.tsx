@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ const StockGroupsPage = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const { data } = await (supabase.from as any)("stock_groups").select("*").order("name");
+    const { data } = await (dataClient.from as any)("stock_groups").select("*").order("name");
     setGroups((data || []) as StockGroup[]);
     setLoading(false);
   };
@@ -117,14 +117,14 @@ const StockGroupsPage = () => {
     };
     try {
       if (edit) {
-        const { error } = await (supabase.from as any)("stock_groups").update(payload).eq("id", edit.id);
+        const { error } = await (dataClient.from as any)("stock_groups").update(payload).eq("id", edit.id);
         if (error) throw error;
       } else {
-        const { data, error } = await (supabase.from as any)("stock_groups").insert(payload).select().single();
+        const { data, error } = await (dataClient.from as any)("stock_groups").insert(payload).select().single();
         if (error) throw error;
         // self-primary for new roots
         if (!parent_id && !primary_group_id && data?.id) {
-          await (supabase.from as any)("stock_groups").update({ primary_group_id: data.id }).eq("id", data.id);
+          await (dataClient.from as any)("stock_groups").update({ primary_group_id: data.id }).eq("id", data.id);
         }
       }
       toast.success(edit ? "Stock group updated" : "Stock group created");
@@ -137,7 +137,7 @@ const StockGroupsPage = () => {
 
   const handleDelete = async (g: StockGroup) => {
     if (!confirm(`Delete stock group "${g.name}"?`)) return;
-    const { error } = await (supabase.from as any)("stock_groups").delete().eq("id", g.id);
+    const { error } = await (dataClient.from as any)("stock_groups").delete().eq("id", g.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Deleted");
     fetchAll();

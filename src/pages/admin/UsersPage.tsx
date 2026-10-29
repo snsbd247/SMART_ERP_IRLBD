@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,12 +61,12 @@ const UsersPage = () => {
   const fetchData = async () => {
     setLoading(true);
     const [profilesRes, rolesRes, branchesRes, customRolesRes, userCustomRolesRes, userBranchesRes] = await Promise.all([
-      supabase.from("profiles").select("*").is("deleted_at", null).neq("status", "deleted"),
-      supabase.from("user_roles").select("*"),
-      supabase.from("branches").select("id, name"),
-      supabase.from("custom_roles").select("id, name").order("name"),
-      supabase.from("user_custom_roles").select("*"),
-      supabase.from("user_branches" as any).select("user_id, branch_id"),
+      dataClient.from("profiles").select("*").is("deleted_at", null).neq("status", "deleted"),
+      dataClient.from("user_roles").select("*"),
+      dataClient.from("branches").select("id, name"),
+      dataClient.from("custom_roles").select("id, name").order("name"),
+      dataClient.from("user_custom_roles").select("*"),
+      dataClient.from("user_branches" as any).select("user_id, branch_id"),
     ]);
 
     const branchList = (branchesRes.data || []) as Branch[];
@@ -185,7 +185,7 @@ const UsersPage = () => {
         }
       } else if (editUser) {
         const primaryBranch = formBranchIds[0] || formBranch || null;
-        const { error } = await supabase.from("profiles").update({
+        const { error } = await dataClient.from("profiles").update({
           name: formName, username: formUsername, email: formEmail, phone: formPhone,
           branch_id: primaryBranch, status: formStatus,
           updated_at: new Date().toISOString(),
@@ -193,23 +193,23 @@ const UsersPage = () => {
         if (error) throw error;
 
         // Update system role
-        await supabase.from("user_roles").delete().eq("user_id", editUser.id);
-        await supabase.from("user_roles").insert({ user_id: editUser.id, role: formRole as any });
+        await dataClient.from("user_roles").delete().eq("user_id", editUser.id);
+        await dataClient.from("user_roles").insert({ user_id: editUser.id, role: formRole as any });
 
         // Update custom role
-        await supabase.from("user_custom_roles").delete().eq("user_id", editUser.id);
+        await dataClient.from("user_custom_roles").delete().eq("user_id", editUser.id);
         if (formCustomRole && formCustomRole !== "none") {
-          await supabase.from("user_custom_roles").insert({ user_id: editUser.id, custom_role_id: formCustomRole });
+          await dataClient.from("user_custom_roles").insert({ user_id: editUser.id, custom_role_id: formCustomRole });
         }
 
         toast({ title: "User updated" });
       } else {
         // Use edge function to create user without logging out current admin
-        const { data: sessionData } = await supabase.auth.getSession();
+        const { data: sessionData } = await dataClient.auth.getSession();
         const token = sessionData.session?.access_token;
         if (!token) throw new Error("Not authenticated");
 
-        const res = await supabase.functions.invoke("admin-create-user", {
+        const res = await dataClient.functions.invoke("admin-create-user", {
           body: {
             email: formEmail,
             password: formPassword,
@@ -234,7 +234,7 @@ const UsersPage = () => {
           const action = !editUser
             ? "branch_permissions_created"
             : (formBranchIds.length === 0 ? "branch_permissions_removed" : "branch_permissions_updated");
-          await supabase.from("audit_log").insert({
+          await dataClient.from("audit_log").insert({
             user_id: currentUserId,
             module: "user_management",
             action,

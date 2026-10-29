@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
 import { stockTransfersApi } from "@/lib/stock-transfers-api";
@@ -79,9 +79,9 @@ const StockTransferPage = () => {
   const fetchData = async () => {
     setLoading(true);
     const [wRes, iRes, sgRes, tRows] = await Promise.all([
-      supabase.from("warehouses" as any).select("id, code, name, branch_id").eq("is_active", 1).order("name"),
-      supabase.from("item_master" as any).select("id, item_code, item_name, stock_group_id").eq("status", "active").order("item_name"),
-      (supabase.from as any)("stock_groups").select("id, name").eq("is_active", true).order("name"),
+      dataClient.from("warehouses" as any).select("id, code, name, branch_id").eq("is_active", 1).order("name"),
+      dataClient.from("item_master" as any).select("id, item_code, item_name, stock_group_id").eq("status", "active").order("item_name"),
+      (dataClient.from as any)("stock_groups").select("id, name").eq("is_active", true).order("name"),
       stockTransfersApi.list().catch(() => ({ data: [] })),
     ]);
     setWarehouses((wRes.data || []) as any);

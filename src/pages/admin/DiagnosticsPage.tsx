@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ShieldCheck, ShieldAlert, CheckCircle2, XCircle, Loader2, Database, Hash, FileText, HardDrive, RefreshCw, Play } from "lucide-react";
 import { toast } from "sonner";
-import { friendlyRlsMessage } from "@/lib/supabase-errors";
+import { friendlyRlsMessage } from "@/lib/data-errors";
 import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 import { formatDistanceToNow } from "date-fns";
 
@@ -44,7 +44,7 @@ const DiagnosticsPage = () => {
     setAccessLoading(true);
     const results: AccessRow[] = [];
     for (const t of TABLES_TO_TEST) {
-      const { count, error } = await supabase
+      const { count, error } = await dataClient
         .from(t as any)
         .select("*", { count: "exact", head: true });
       if (error) {
@@ -68,7 +68,7 @@ const DiagnosticsPage = () => {
       else details.push(`✓ Authenticated as ${profile?.username || profile?.email || user.email}`);
 
       // Check 2: user_roles row
-      const { data: rolesData, error: rolesErr } = await supabase
+      const { data: rolesData, error: rolesErr } = await dataClient
         .from("user_roles")
         .select("role")
         .eq("user_id", user?.id || "");
@@ -80,12 +80,12 @@ const DiagnosticsPage = () => {
       }
 
       // Check 3: is_super_admin function
-      const { data: rpcData, error: rpcErr } = await supabase.rpc("is_super_admin", { _uid: user?.id });
+      const { data: rpcData, error: rpcErr } = await dataClient.rpc("is_super_admin", { _uid: user?.id });
       if (rpcErr) { ok = false; details.push(`❌ is_super_admin() RPC failed: ${rpcErr.message}`); }
       else details.push(`${rpcData ? "✓" : "❌"} is_super_admin(${user?.id?.slice(0,8)}…) → ${rpcData}`);
 
       // Check 4: protected table count
-      const { count, error: cErr } = await supabase
+      const { count, error: cErr } = await dataClient
         .from("acc_vouchers")
         .select("*", { count: "exact", head: true });
       if (cErr) { ok = false; details.push(`❌ acc_vouchers read failed: ${cErr.message}`); }
@@ -113,7 +113,7 @@ const DiagnosticsPage = () => {
     const results: NumAudit[] = [];
     for (const s of sources) {
       try {
-        const { data, error } = await supabase.from(s.table as any).select(`id, ${s.col}`);
+        const { data, error } = await dataClient.from(s.table as any).select(`id, ${s.col}`);
         if (error) { results.push({ source: s.name, total: 0, missing: 0, duplicates: 0 }); continue; }
         const rows = data as any[];
         const total = rows.length;
@@ -135,7 +135,7 @@ const DiagnosticsPage = () => {
     setFixing(true);
     try {
       // Resync number_sequences.current_number to max serial actually used in tables
-      const { data: seqs } = await supabase.from("number_sequences").select("*");
+      const { data: seqs } = await dataClient.from("number_sequences").select("*");
       const map: Record<string, string> = {
         journal_voucher: "acc_vouchers",
         payment_voucher: "acc_vouchers",
@@ -156,7 +156,7 @@ const DiagnosticsPage = () => {
         if (!tbl) continue;
         const numCol = tbl === "acc_vouchers" ? "voucher_number"
           : tbl === "sales_invoices" ? "invoice_number" : "purchase_number";
-        let q = supabase.from(tbl as any).select(numCol);
+        let q = dataClient.from(tbl as any).select(numCol);
         if (tbl === "acc_vouchers" && typeMap[seq.id]) {
           q = (q as any).eq("voucher_type", typeMap[seq.id]);
         }
@@ -168,7 +168,7 @@ const DiagnosticsPage = () => {
           })
           .reduce((a, b) => Math.max(a, b), 0);
         if (maxSerial > seq.current_number) {
-          await supabase.from("number_sequences").update({ current_number: maxSerial }).eq("id", seq.id);
+          await dataClient.from("number_sequences").update({ current_number: maxSerial }).eq("id", seq.id);
           fixed++;
         }
       }
@@ -183,7 +183,7 @@ const DiagnosticsPage = () => {
 
   // ============ D. VOUCHERS PAGE STATUS ============
   const checkVouchers = async () => {
-    const { count, error } = await supabase
+    const { count, error } = await dataClient
       .from("acc_vouchers")
       .select("*", { count: "exact", head: true });
     if (error) {
@@ -197,8 +197,8 @@ const DiagnosticsPage = () => {
   const loadBackup = async () => {
     setBackupLoading(true);
     const [{ data: latest }, { data: settings }] = await Promise.all([
-      supabase.from("backup_history").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle(),
-      supabase.from("backup_settings").select("*").eq("id", "default").maybeSingle(),
+      dataClient.from("backup_history").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      dataClient.from("backup_settings").select("*").eq("id", "default").maybeSingle(),
     ]);
     setBackup({ latest, settings });
     setBackupLoading(false);
@@ -217,7 +217,7 @@ const DiagnosticsPage = () => {
         const result = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
         if (!res.ok || !result.success) throw new Error(result.message || result.error || `HTTP ${res.status}`);
       } else {
-        const { error } = await supabase.functions.invoke("create-backup", { body: { format: "json" } });
+        const { error } = await dataClient.functions.invoke("create-backup", { body: { format: "json" } });
         if (error) throw error;
       }
       toast.success("Backup completed");

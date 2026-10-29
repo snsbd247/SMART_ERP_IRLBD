@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,8 +30,8 @@ const WarehousesPage = () => {
   const fetchData = async () => {
     setLoading(true);
     const [wRes, bRes] = await Promise.all([
-      supabase.from("warehouses" as any).select("*").order("name"),
-      supabase.from("branches").select("id, name").eq("status", "active"),
+      dataClient.from("warehouses" as any).select("*").order("name"),
+      dataClient.from("branches").select("id, name").eq("status", "active"),
     ]);
     setWarehouses((wRes.data || []) as any);
     setBranches((bRes.data || []) as Branch[]);
@@ -58,10 +58,10 @@ const WarehousesPage = () => {
         is_active: f.status === "active" ? 1 : 0, updated_at: new Date().toISOString(),
       };
       if (editWH) {
-        const { error } = await supabase.from("warehouses" as any).update(payload).eq("id", editWH.id);
+        const { error } = await dataClient.from("warehouses" as any).update(payload).eq("id", editWH.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("warehouses" as any).insert(payload);
+        const { error } = await dataClient.from("warehouses" as any).insert(payload);
         if (error) throw error;
       }
       toast({ title: editWH ? "Warehouse updated" : "Warehouse created" });

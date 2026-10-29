@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Landmark } from "lucide-react";
 import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
 import { computeAggregateAccountPeriodOpening } from "@/lib/period-opening";
@@ -22,7 +22,7 @@ const BankBookReport = () => {
     if (bankAccounts.length === 0) { setData([]); setLoading(false); return; }
 
     const bankIds = bankAccounts.map((a) => a.id);
-    let query = supabase.from("voucher_entries")
+    let query = dataClient.from("voucher_entries")
       .select("*, acc_vouchers!inner(voucher_number, voucher_date, status, description, branch_id)")
       .in("account_id", bankIds)
       .eq("acc_vouchers.status", "approved")

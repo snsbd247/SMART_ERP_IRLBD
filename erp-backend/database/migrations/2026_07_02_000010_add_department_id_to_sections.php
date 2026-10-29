@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Adds the `department_id` column to `sections` so the Sections page
  * (which lets users pick a Department per section) can persist the value.
- * The Supabase schema already has this column; MySQL/VPS was missing it,
+ * The original schema already had this column; MySQL/VPS was missing it,
  * causing "Unknown column 'department_id'" errors on save.
  */
 return new class extends Migration {

@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { moneyReceiptApi, type MoneyReceipt } from "@/lib/money-receipt-api";
 import { voucherApi } from "@/lib/voucher-api";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -96,7 +96,7 @@ export default function MoneyReceiptsPage() {
         // Only customers with a ledger (receivable_account_id) assigned —
         // that ledger is what "Link Receipt Voucher" filters against, so a
         // customer without one can never resolve any RVs there.
-        supabase.from("customers").select("id,name,address").is("receivable_account_id", "notnull").order("name"),
+        dataClient.from("customers").select("id,name,address").is("receivable_account_id", "notnull").order("name"),
         voucherApi.listAccounts(),
       ]);
       setCustomers(((custRes.data || []) as any[]).map((c) => ({ id: c.id, name: c.name, address: c.address })));

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export default function ShiftsPage() {
   const [importOpen, setImportOpen] = useState(false);
 
   const fetch = useCallback(async () => {
-    const { data } = await supabase.from("shifts" as any).select("*").order("shift_name");
+    const { data } = await dataClient.from("shifts" as any).select("*").order("shift_name");
     if (data) setShifts(data as any);
   }, []);
 
@@ -50,17 +50,17 @@ export default function ShiftsPage() {
   const save = async () => {
     if (!form.shift_name) { toast.error("Shift name required"); return; }
     if (editing) {
-      const { error } = await supabase.from("shifts" as any).update(form as any).eq("id", editing.id);
+      const { error } = await dataClient.from("shifts" as any).update(form as any).eq("id", editing.id);
       if (error) toast.error(error.message); else { toast.success("Shift updated"); setDialog(false); fetch(); }
     } else {
-      const { error } = await supabase.from("shifts" as any).insert(form as any);
+      const { error } = await dataClient.from("shifts" as any).insert(form as any);
       if (error) toast.error(error.message); else { toast.success("Shift created"); setDialog(false); fetch(); }
     }
   };
 
   const remove = async (id: string) => {
     if (!confirm("Delete this shift?")) return;
-    await supabase.from("shifts" as any).delete().eq("id", id);
+    await dataClient.from("shifts" as any).delete().eq("id", id);
     toast.success("Shift deleted");
     fetch();
   };

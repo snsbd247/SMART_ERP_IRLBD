@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { usePortalEmployee } from "@/hooks/usePortalEmployee";
@@ -54,9 +54,9 @@ export default function MyDocumentsPage() {
     if (!employee) return;
     (async () => {
       const [d, ds, docsRes] = await Promise.all([
-        employee.department_id ? supabase.from("departments").select("name").eq("id", employee.department_id).single() : Promise.resolve({ data: null }),
-        employee.designation_id ? supabase.from("designations").select("name").eq("id", employee.designation_id).single() : Promise.resolve({ data: null }),
-        supabase.from("employee_documents").select("*").eq("employee_id", employee.id).order("created_at", { ascending: false }),
+        employee.department_id ? dataClient.from("departments").select("name").eq("id", employee.department_id).single() : Promise.resolve({ data: null }),
+        employee.designation_id ? dataClient.from("designations").select("name").eq("id", employee.designation_id).single() : Promise.resolve({ data: null }),
+        dataClient.from("employee_documents").select("*").eq("employee_id", employee.id).order("created_at", { ascending: false }),
       ]);
       if (d.data) setDepartment((d.data as any).name); else setDepartment("");
       if (ds.data) setDesignation((ds.data as any).name); else setDesignation("");

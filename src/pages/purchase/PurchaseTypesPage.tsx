@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +29,7 @@ const PurchaseTypesPage = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from("purchase_types" as any).select("*").order("name");
+    const { data } = await dataClient.from("purchase_types" as any).select("*").order("name");
     setItems((data || []) as any); setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -41,15 +41,15 @@ const PurchaseTypesPage = () => {
     if (!form.code || !form.name) { toast({ title: "Code & Name required", variant: "destructive" }); return; }
     const payload: any = { ...form };
     const { error } = editing
-      ? await supabase.from("purchase_types" as any).update(payload).eq("id", editing.id)
-      : await supabase.from("purchase_types" as any).insert(payload);
+      ? await dataClient.from("purchase_types" as any).update(payload).eq("id", editing.id)
+      : await dataClient.from("purchase_types" as any).insert(payload);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else { toast({ title: "Saved" }); setOpen(false); load(); }
   };
   const remove = async (p: PType) => {
     if (p.is_system) { toast({ title: "System types cannot be deleted", variant: "destructive" }); return; }
     if (!confirm("Delete?")) return;
-    const { error } = await supabase.from("purchase_types" as any).delete().eq("id", p.id);
+    const { error } = await dataClient.from("purchase_types" as any).delete().eq("id", p.id);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else load();
   };

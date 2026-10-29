@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,7 +21,7 @@ const RequisitionsPage = () => {
 
   const load = async () => {
     setLoading(true);
-    let query = supabase.from("purchase_requisitions" as any).select("*").order("created_at", { ascending: false }).limit(500);
+    let query = dataClient.from("purchase_requisitions" as any).select("*").order("created_at", { ascending: false }).limit(500);
     if (status !== "all") query = query.eq("status", status);
     const { data } = await query;
     setRows((data || []) as any);

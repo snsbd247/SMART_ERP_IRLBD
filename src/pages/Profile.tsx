@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { isLaravelMode, laravelChangePassword, laravelUpdateProfile } from "@/lib/laravel-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,7 @@ const Profile = () => {
       setEmail(profile.email || "");
       setPhone(profile.phone || "");
       if (profile.branch_id) {
-        supabase.from("branches").select("name").eq("id", profile.branch_id).single()
+        dataClient.from("branches").select("name").eq("id", profile.branch_id).single()
           .then(({ data }) => setBranchName(data?.name || ""));
       }
     }
@@ -45,7 +45,7 @@ const Profile = () => {
       if (laravelMode) {
         await laravelUpdateProfile({ name, username, email, phone });
       } else {
-        const { error } = await supabase
+        const { error } = await dataClient
           .from("profiles")
           .update({ name, username, email, phone, updated_at: new Date().toISOString() })
           .eq("id", profile!.id);
@@ -75,7 +75,7 @@ const Profile = () => {
       if (laravelMode) {
         await laravelChangePassword(newPassword, confirmPassword);
       } else {
-        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        const { error } = await dataClient.auth.updateUser({ password: newPassword });
         if (error) throw error;
       }
       setNewPassword("");

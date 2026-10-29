@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -35,7 +35,7 @@ export default function ShortcutsPage() {
 
   const fetch = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await dataClient
       .from("page_shortcuts")
       .select("*")
       .order("shortcut_code");
@@ -51,14 +51,14 @@ export default function ShortcutsPage() {
       return;
     }
     if (editId) {
-      const { error } = await supabase
+      const { error } = await dataClient
         .from("page_shortcuts")
         .update({ ...form, updated_at: new Date().toISOString() } as any)
         .eq("id", editId);
       if (error) { toast.error(error.message); return; }
       toast.success("Shortcut updated");
     } else {
-      const { error } = await supabase.from("page_shortcuts").insert(form as any);
+      const { error } = await dataClient.from("page_shortcuts").insert(form as any);
       if (error) { toast.error(error.message); return; }
       toast.success("Shortcut created");
     }
@@ -70,13 +70,13 @@ export default function ShortcutsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this shortcut?")) return;
-    await supabase.from("page_shortcuts").delete().eq("id", id);
+    await dataClient.from("page_shortcuts").delete().eq("id", id);
     toast.success("Deleted");
     fetch();
   };
 
   const handleToggleActive = async (id: string, current: boolean) => {
-    await supabase.from("page_shortcuts").update({ is_active: !current } as any).eq("id", id);
+    await dataClient.from("page_shortcuts").update({ is_active: !current } as any).eq("id", id);
     fetch();
   };
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { usePortalEmployee } from "@/hooks/usePortalEmployee";
 import { PortalEmployeeSelector } from "@/components/portal/PortalEmployeeSelector";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,7 +38,7 @@ export default function MyAttendancePage() {
     const startDate = `${month}-01`;
     const endDate = new Date(Number(month.split("-")[0]), Number(month.split("-")[1]), 0).toISOString().split("T")[0];
     (async () => {
-      const { data } = await supabase.from("attendance").select("*")
+      const { data } = await dataClient.from("attendance").select("*")
         .eq("employee_id", employee.id).gte("date", startDate).lte("date", endDate).order("date");
       if (data) setAttendance(data as any);
     })();

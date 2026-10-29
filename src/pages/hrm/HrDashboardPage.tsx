@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useCurrency } from "@/contexts/CurrencyContext";
@@ -39,12 +39,12 @@ export default function HrDashboardPage() {
     const currentMonth = new Date().getMonth() + 1;
 
     Promise.all([
-      supabase.from("employees" as any).select("id, department_id", { count: "exact" }).eq("status", "active"),
-      supabase.from("attendance" as any).select("status").eq("date", today),
-      supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
-      supabase.from("payroll" as any).select("id, net_salary, status, month, year"),
-      supabase.from("departments").select("id, name"),
-      supabase.from("leave_requests").select("id, status, start_date, end_date")
+      dataClient.from("employees" as any).select("id, department_id", { count: "exact" }).eq("status", "active"),
+      dataClient.from("attendance" as any).select("status").eq("date", today),
+      dataClient.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      dataClient.from("payroll" as any).select("id, net_salary, status, month, year"),
+      dataClient.from("departments").select("id, name"),
+      dataClient.from("leave_requests").select("id, status, start_date, end_date")
         .eq("status", "approved")
         .lte("start_date", today)
         .gte("end_date", today),

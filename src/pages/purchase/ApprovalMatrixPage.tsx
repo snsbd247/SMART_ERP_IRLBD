@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,9 +28,9 @@ const ApprovalMatrixPage = () => {
   const load = async () => {
     setLoading(true);
     const [r, t, b] = await Promise.all([
-      supabase.from("purchase_approval_matrix" as any).select("*").order("document_type").order("step_order"),
-      supabase.from("purchase_types" as any).select("id,code,name").eq("is_active", true),
-      supabase.from("branches").select("id,name"),
+      dataClient.from("purchase_approval_matrix" as any).select("*").order("document_type").order("step_order"),
+      dataClient.from("purchase_types" as any).select("id,code,name").eq("is_active", true),
+      dataClient.from("branches").select("id,name"),
     ]);
     setRows((r.data || []) as any); setTypes(t.data || []); setBranches(b.data || []);
     setLoading(false);
@@ -42,14 +42,14 @@ const ApprovalMatrixPage = () => {
     if (payload.purchase_type_id === "_any") payload.purchase_type_id = null;
     if (payload.branch_id === "_any") payload.branch_id = null;
     const { error } = editing
-      ? await supabase.from("purchase_approval_matrix" as any).update(payload).eq("id", editing.id)
-      : await supabase.from("purchase_approval_matrix" as any).insert(payload);
+      ? await dataClient.from("purchase_approval_matrix" as any).update(payload).eq("id", editing.id)
+      : await dataClient.from("purchase_approval_matrix" as any).insert(payload);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else { toast({ title: "Saved" }); setOpen(false); load(); }
   };
   const remove = async (id: string) => {
     if (!confirm("Delete rule?")) return;
-    await supabase.from("purchase_approval_matrix" as any).delete().eq("id", id);
+    await dataClient.from("purchase_approval_matrix" as any).delete().eq("id", id);
     load();
   };
 

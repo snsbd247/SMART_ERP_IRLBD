@@ -11,7 +11,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { signedOpeningBalance } from "@/lib/balance-format";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { printReport } from "@/lib/report-utils";
 import {
   IFRSLine, IFRS_LINE_LABEL, defaultMapping,
@@ -67,9 +67,9 @@ const IFRSFinancialStatements = () => {
   useEffect(() => {
     (async () => {
       const [a, m, fy] = await Promise.all([
-        supabase.from("chart_of_accounts").select("id, account_name, account_code, account_type, opening_balance, opening_balance_type"),
-        supabase.from("ifrs_account_mapping").select("account_id, ifrs_line"),
-        supabase.from("financial_years").select("id, name, start_date, end_date").order("start_date", { ascending: false }),
+        dataClient.from("chart_of_accounts").select("id, account_name, account_code, account_type, opening_balance, opening_balance_type"),
+        dataClient.from("ifrs_account_mapping").select("account_id, ifrs_line"),
+        dataClient.from("financial_years").select("id, name, start_date, end_date").order("start_date", { ascending: false }),
       ]);
       setAccounts((a.data || []) as Account[]);
       const om = new Map<string, IFRSLine>();
@@ -127,13 +127,13 @@ const IFRSFinancialStatements = () => {
     // both concurrently instead of one after another.
     const [{ data: balRows }, { data: mvRows }] = await Promise.all([
       // All entries up to "to" (for balance)
-      supabase
+      dataClient
         .from("voucher_entries")
         .select("account_id, debit, credit, acc_vouchers!inner(status, voucher_date)")
         .eq("acc_vouchers.status", "approved")
         .lte("acc_vouchers.voucher_date", to),
       // Entries during period (for P&L movement)
-      supabase
+      dataClient
         .from("voucher_entries")
         .select("account_id, debit, credit, acc_vouchers!inner(status, voucher_date)")
         .gte("acc_vouchers.voucher_date", from)

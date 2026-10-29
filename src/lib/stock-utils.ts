@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 
 /**
  * Update warehouse stock for an item.
@@ -9,7 +9,7 @@ export async function updateWarehouseStock(
   warehouseId: string,
   quantityChange: number
 ) {
-  const { data: existing } = await supabase
+  const { data: existing } = await dataClient
     .from("warehouse_stock")
     .select("id, quantity")
     .eq("item_id", itemId)
@@ -18,12 +18,12 @@ export async function updateWarehouseStock(
 
   if (existing) {
     const newQty = Number((existing as any).quantity) + quantityChange;
-    await supabase
+    await dataClient
       .from("warehouse_stock")
       .update({ quantity: newQty, updated_at: new Date().toISOString() } as any)
       .eq("id", (existing as any).id);
   } else {
-    await supabase.from("warehouse_stock").insert({
+    await dataClient.from("warehouse_stock").insert({
       item_id: itemId,
       warehouse_id: warehouseId,
       quantity: quantityChange,
@@ -36,7 +36,7 @@ export async function updateWarehouseStock(
  */
 export async function getStockGroupIdForItem(itemId: string): Promise<string | null> {
   if (!itemId) return null;
-  const { data } = await supabase
+  const { data } = await dataClient
     .from("item_master")
     .select("stock_group_id")
     .eq("id", itemId)
@@ -63,7 +63,7 @@ export async function createStockMovement(params: {
   if (stockGroupId === null) {
     stockGroupId = await getStockGroupIdForItem(params.item_id || params.product_id);
   }
-  const { error } = await supabase.from("stock_movements").insert({
+  const { error } = await dataClient.from("stock_movements").insert({
     product_id: params.product_id,
     item_id: params.item_id || null,
     warehouse_id: params.warehouse_id || null,
@@ -86,7 +86,7 @@ export async function enrichMovementsWithStockGroup<T extends { product_id?: str
 ): Promise<T[]> {
   const ids = Array.from(new Set(rows.map((r) => r.item_id || r.product_id).filter(Boolean) as string[]));
   if (!ids.length) return rows;
-  const { data } = await supabase.from("item_master").select("id, stock_group_id").in("id", ids);
+  const { data } = await dataClient.from("item_master").select("id, stock_group_id").in("id", ids);
   const map = new Map<string, string | null>((data || []).map((d: any) => [d.id, d.stock_group_id]));
   return rows.map((r) => ({
     ...r,

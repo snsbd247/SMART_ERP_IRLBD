@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 
 const VOUCHER_PREFIX_TO_SEQUENCE: Record<string, string> = {
@@ -66,7 +66,7 @@ export async function createVoucherLaravel(params: {
  */
 export async function nextDocNo(prefix: string, table: string, column: string): Promise<string> {
   if (table === "acc_vouchers" && column === "voucher_number" && VOUCHER_PREFIX_TO_SEQUENCE[prefix]) {
-    const { data, error } = await (supabase as any).rpc("reserve_voucher_number", {
+    const { data, error } = await (dataClient as any).rpc("reserve_voucher_number", {
       _sequence_id: VOUCHER_PREFIX_TO_SEQUENCE[prefix],
     });
 
@@ -79,7 +79,7 @@ export async function nextDocNo(prefix: string, table: string, column: string): 
 
   const year = new Date().getFullYear();
   const like = `${prefix}-${year}-%`;
-  const { data } = await supabase
+  const { data } = await dataClient
     .from(table as any)
     .select(column)
     .like(column, like)
@@ -95,7 +95,7 @@ export async function nextDocNo(prefix: string, table: string, column: string): 
 }
 
 export async function getPurchaseSettings() {
-  const { data } = await supabase.from("purchase_settings" as any).select("*").limit(1).maybeSingle();
+  const { data } = await dataClient.from("purchase_settings" as any).select("*").limit(1).maybeSingle();
   return data as any;
 }
 
@@ -110,5 +110,5 @@ export async function logAudit(params: {
   old_value?: any;
   new_value?: any;
 }) {
-  await supabase.from("purchase_audit_log" as any).insert(params as any);
+  await dataClient.from("purchase_audit_log" as any).insert(params as any);
 }

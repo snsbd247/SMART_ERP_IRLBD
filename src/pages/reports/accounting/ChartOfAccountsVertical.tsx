@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
 import { signedOpeningBalance } from "@/lib/balance-format";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { ListTree } from "lucide-react";
 
 interface AccountNode {
@@ -39,7 +39,7 @@ const ChartOfAccountsVertical = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    let query = supabase.from("voucher_entries")
+    let query = dataClient.from("voucher_entries")
       .select("account_id, debit, credit, acc_vouchers!inner(status, voucher_date, branch_id)")
       .eq("acc_vouchers.status", "approved")
       .gte("acc_vouchers.voucher_date", dateFrom)

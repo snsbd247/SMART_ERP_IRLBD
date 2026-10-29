@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,11 +23,11 @@ export default function HrReportsPage() {
 
   const fetchData = useCallback(async () => {
     const [empRes, deptRes, desigRes, attRes, payRes] = await Promise.all([
-      supabase.from("employees" as any).select("*").order("employee_code"),
-      supabase.from("departments" as any).select("*"),
-      supabase.from("designations" as any).select("*"),
-      supabase.from("attendance" as any).select("*").gte("date", dateFrom).lte("date", dateTo),
-      supabase.from("payroll" as any).select("*").order("created_at", { ascending: false }).limit(100),
+      dataClient.from("employees" as any).select("*").order("employee_code"),
+      dataClient.from("departments" as any).select("*"),
+      dataClient.from("designations" as any).select("*"),
+      dataClient.from("attendance" as any).select("*").gte("date", dateFrom).lte("date", dateTo),
+      dataClient.from("payroll" as any).select("*").order("created_at", { ascending: false }).limit(100),
     ]);
     if (empRes.data) setEmployees(empRes.data as any);
     if (deptRes.data) setDepartments(deptRes.data as any);

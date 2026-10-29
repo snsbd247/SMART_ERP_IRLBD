@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ export default function DesignationsPage() {
   const [importOpen, setImportOpen] = useState(false);
 
   const fetch = useCallback(async () => {
-    const { data } = await supabase.from("designations" as any).select("*").order("name");
+    const { data } = await dataClient.from("designations" as any).select("*").order("name");
     if (data) setItems(data as any);
   }, []);
 
@@ -35,17 +35,17 @@ export default function DesignationsPage() {
     if (!name.trim()) { toast.error("Name is required"); return; }
     const payload: any = { name, description: description || null, updated_at: new Date().toISOString() };
     if (editId) {
-      const { error } = await supabase.from("designations" as any).update(payload).eq("id", editId);
+      const { error } = await dataClient.from("designations" as any).update(payload).eq("id", editId);
       if (error) toast.error(error.message); else { toast.success("Updated"); setDialogOpen(false); fetch(); }
     } else {
-      const { error } = await supabase.from("designations" as any).insert(payload);
+      const { error } = await dataClient.from("designations" as any).insert(payload);
       if (error) toast.error(error.message); else { toast.success("Created"); setDialogOpen(false); fetch(); }
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete?")) return;
-    const { error } = await supabase.from("designations" as any).delete().eq("id", id);
+    const { error } = await dataClient.from("designations" as any).delete().eq("id", id);
     if (error) toast.error(error.message); else { toast.success("Deleted"); fetch(); }
   };
 

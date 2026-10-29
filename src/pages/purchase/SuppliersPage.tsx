@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,14 +57,14 @@ const SuppliersPage = () => {
   const load = async () => {
     setLoading(true);
     const [s, a, b] = await Promise.all([
-      supabase.from("suppliers" as any).select("*").order("name"),
-      supabase
+      dataClient.from("suppliers" as any).select("*").order("name"),
+      dataClient
         .from("chart_of_accounts")
         .select("id, account_code, account_name, parent_id, account_type")
         .eq("is_active", true)
         .eq("account_type", "liability")
         .order("account_code"),
-      supabase.from("branches").select("id,name").order("name"),
+      dataClient.from("branches").select("id,name").order("name"),
     ]);
     setItems((s.data || []) as any);
     // Restrict payable-account dropdown to descendants of "Accounts & Other Payable" (2210)
@@ -107,14 +107,14 @@ const SuppliersPage = () => {
       });
       const prevActive = editing?.is_active;
       if (editing) {
-        const { error } = await supabase.from("suppliers" as any).update(payload).eq("id", editing.id);
+        const { error } = await dataClient.from("suppliers" as any).update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
         if (!payload.payable_account_id) {
           const ledgerId = await createSupplierLedger(String(form.name).trim());
           if (ledgerId) payload.payable_account_id = ledgerId;
         }
-        const { error } = await supabase.from("suppliers" as any).insert(payload);
+        const { error } = await dataClient.from("suppliers" as any).insert(payload);
         if (error) throw error;
       }
       await syncPartyOpeningToLedger(payload.payable_account_id, payload.opening_balance, "credit");
@@ -133,7 +133,7 @@ const SuppliersPage = () => {
 
   const remove = async (id: string) => {
     if (!confirm("Delete this supplier?")) return;
-    const { error } = await supabase.from("suppliers" as any).delete().eq("id", id);
+    const { error } = await dataClient.from("suppliers" as any).delete().eq("id", id);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else { toast({ title: "Deleted" }); load(); }
   };

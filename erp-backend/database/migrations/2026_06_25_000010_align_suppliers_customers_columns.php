@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Bring MySQL `suppliers` and `customers` tables in sync with the Supabase
+ * Bring MySQL `suppliers` and `customers` tables in sync with the original
  * schema the frontend writes against. Without these columns, edits to
  * `is_active` and `payable_account_id` / `receivable_account_id` are silently
  * dropped by GenericTableController (column-intersect against Schema listing),

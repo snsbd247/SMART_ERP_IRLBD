@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,8 +42,8 @@ export function useReportData() {
   useEffect(() => {
     const init = async () => {
       const [aRes, bRes] = await Promise.all([
-        supabase.from("chart_of_accounts").select("*").order("account_code"),
-        supabase.from("branches").select("id, name"),
+        dataClient.from("chart_of_accounts").select("*").order("account_code"),
+        dataClient.from("branches").select("id, name"),
       ]);
       setAccounts((aRes.data || []) as Account[]);
       setBranches((bRes.data || []) as Branch[]);

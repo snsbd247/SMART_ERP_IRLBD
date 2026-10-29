@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
 import { createSalesInvoice, createSalesReturn } from "@/lib/transaction-service";
@@ -96,7 +96,7 @@ const SalesPage = () => {
   const [viewItems, setViewItems] = useState<any[]>([]);
 
   const openView = async (inv: SalesInvoice) => {
-    const { data } = await supabase.from("sales_invoice_items").select("*").eq("sales_invoice_id", inv.id);
+    const { data } = await dataClient.from("sales_invoice_items").select("*").eq("sales_invoice_id", inv.id);
     const enriched = (data || []).map((d: any) => {
       const prod = products.find((p) => p.id === d.product_id);
       return { ...d, product_name: prod?.product_name || "—", product_code: prod?.product_code || "" };
@@ -120,11 +120,11 @@ const SalesPage = () => {
   const fetchData = async () => {
     setLoading(true);
     const [pRes, cRes, bRes, sRes, srRes] = await Promise.all([
-      supabase.from("item_master").select("id, item_name, item_code, selling_price, item_type").eq("status", "active").in("item_type", ["product", "finished_goods", "service"]),
-      supabase.from("customers").select("*").eq("status", "active"),
-      supabase.from("branches").select("id, name").eq("status", "active"),
-      supabase.from("sales_invoices").select("*").order("created_at", { ascending: false }),
-      supabase.from("sales_returns").select("*").order("created_at", { ascending: false }),
+      dataClient.from("item_master").select("id, item_name, item_code, selling_price, item_type").eq("status", "active").in("item_type", ["product", "finished_goods", "service"]),
+      dataClient.from("customers").select("*").eq("status", "active"),
+      dataClient.from("branches").select("id, name").eq("status", "active"),
+      dataClient.from("sales_invoices").select("*").order("created_at", { ascending: false }),
+      dataClient.from("sales_returns").select("*").order("created_at", { ascending: false }),
     ]);
     const custList = (cRes.data || []) as Customer[];
     setProducts((pRes.data || []).map((i: any) => ({ id: i.id, product_name: i.item_name, product_code: i.item_code, selling_price: i.selling_price })) as Product[]);
@@ -176,7 +176,7 @@ const SalesPage = () => {
     setFormBranch(inv.branch_id || "");
     setFormDiscount(String(inv.discount));
     setFormNotes(inv.notes || "");
-    const { data } = await supabase.from("sales_invoice_items").select("*").eq("sales_invoice_id", inv.id);
+    const { data } = await dataClient.from("sales_invoice_items").select("*").eq("sales_invoice_id", inv.id);
     if (data && data.length > 0) {
       setItems(data.map((d: any, i: number) => ({
         id: String(i + 1), product_id: d.product_id, quantity: d.quantity, price: d.price, discount: d.discount, total: d.total,
@@ -212,8 +212,8 @@ const SalesPage = () => {
 
   const openPrint = async (inv: SalesInvoice) => {
     const [itemsRes, allocRes] = await Promise.all([
-      supabase.from("sales_invoice_items").select("*").eq("sales_invoice_id", inv.id),
-      supabase.from("payment_allocations" as any).select("allocated_amount, payment:party_payments!inner(deleted_at)").eq("invoice_id", inv.id).eq("invoice_type", "sales_invoice").is("payment.deleted_at", null),
+      dataClient.from("sales_invoice_items").select("*").eq("sales_invoice_id", inv.id),
+      dataClient.from("payment_allocations" as any).select("allocated_amount, payment:party_payments!inner(deleted_at)").eq("invoice_id", inv.id).eq("invoice_type", "sales_invoice").is("payment.deleted_at", null),
     ]);
     const enriched = (itemsRes.data || []).map((d: any) => {
       const prod = products.find((p) => p.id === d.product_id);
@@ -258,14 +258,14 @@ const SalesPage = () => {
             discount: disc, notes: formNotes || null, total_amount: total,
           };
 
-          const { error } = await supabase.from("sales_invoices").update({
+          const { error } = await dataClient.from("sales_invoices").update({
             invoice_date: formDate, customer_id: formCustomer || null, branch_id: formBranch || null,
             discount: disc, notes: formNotes || null, total_amount: total, net_amount: net,
           }).eq("id", editingInvoice.id);
           if (error) throw error;
 
-          await supabase.from("sales_invoice_items").delete().eq("sales_invoice_id", editingInvoice.id);
-          await supabase.from("sales_invoice_items").insert(
+          await dataClient.from("sales_invoice_items").delete().eq("sales_invoice_id", editingInvoice.id);
+          await dataClient.from("sales_invoice_items").insert(
             validItems.map((i) => ({
               sales_invoice_id: editingInvoice.id, product_id: i.product_id,
               quantity: i.quantity, price: i.price, discount: i.discount, total: i.total,
@@ -306,7 +306,7 @@ const SalesPage = () => {
 
   const handleAddCustomer = async () => {
     if (!custName.trim()) return;
-    const { error } = await supabase.from("customers").insert({ name: custName, phone: custPhone });
+    const { error } = await dataClient.from("customers").insert({ name: custName, phone: custPhone });
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else { setCustDialogOpen(false); setCustName(""); setCustPhone(""); fetchData(); toast({ title: "Customer added" }); }
   };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranch } from "@/contexts/BranchContext";
 import { nextNumber } from "@/lib/db-utils";
@@ -64,10 +64,10 @@ const StockAdjustmentPage = () => {
   const fetchData = async () => {
     setLoading(true);
     const [aRes, pRes, wRes, sgRes] = await Promise.all([
-      supabase.from("stock_adjustments" as any).select("*").order("created_at", { ascending: false }).limit(200),
-      supabase.from("item_master").select("id, item_name, item_code, cost_price, stock_group_id").eq("status", "active"),
-      supabase.from("warehouses" as any).select("id, name, code").eq("is_active", 1),
-      (supabase.from as any)("stock_groups").select("id, name").eq("is_active", true).order("name"),
+      dataClient.from("stock_adjustments" as any).select("*").order("created_at", { ascending: false }).limit(200),
+      dataClient.from("item_master").select("id, item_name, item_code, cost_price, stock_group_id").eq("status", "active"),
+      dataClient.from("warehouses" as any).select("id, name, code").eq("is_active", 1),
+      (dataClient.from as any)("stock_groups").select("id, name").eq("is_active", true).order("name"),
     ]);
     const prods = (pRes.data || []).map((i: any) => ({ id: i.id, product_name: i.item_name, product_code: i.item_code, cost_price: i.cost_price, stock_group_id: i.stock_group_id })) as Product[];
     setProducts(prods);
@@ -104,7 +104,7 @@ const StockAdjustmentPage = () => {
       const branchId = userBranchId || null;
 
       // Insert adjustment record
-      const { error } = await supabase.from("stock_adjustments" as any).insert({
+      const { error } = await dataClient.from("stock_adjustments" as any).insert({
         adjustment_number: adjNumber,
         adjustment_date: formDate,
         adjustment_type: formType,
@@ -133,7 +133,7 @@ const StockAdjustmentPage = () => {
       });
 
       // Audit log
-      await supabase.from("audit_log").insert({
+      await dataClient.from("audit_log").insert({
         action: `Stock ${formType}`,
         module: "Stock Adjustment",
         record_id: adjNumber,
@@ -223,7 +223,7 @@ const StockAdjustmentPage = () => {
                 <TableCell className="text-right">
                   {(a.status ?? "posted") === "draft" && (
                     <Button size="sm" variant="outline" onClick={async () => {
-                      const { error } = await supabase.from("stock_adjustments" as any).update({ status: "posted" }).eq("id", a.id);
+                      const { error } = await dataClient.from("stock_adjustments" as any).update({ status: "posted" }).eq("id", a.id);
                       if (error) toast({ title: "Approve failed", description: error.message, variant: "destructive" });
                       else { toast({ title: `Adjustment ${a.adjustment_number} approved` }); fetchData(); }
                     }}>Approve</Button>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -59,7 +59,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
     const fetchLedger = async () => {
       setLoading(true);
       setError(null);
-      const { data, error: fetchErr } = await supabase
+      const { data, error: fetchErr } = await dataClient
         .from("voucher_entries")
         .select("id, debit, credit, narration, voucher_id, acc_vouchers!inner(voucher_number, voucher_date, voucher_type, description, status)")
         .eq("account_id", accountId)
@@ -77,7 +77,7 @@ export function AccountLedgerDialog({ accountId, accountName, openingBalance, op
       let runBal = signedOpeningBalance(openingBalance, openingBalanceType);
 
       const mapped = (data || []).map((e: any) => {
-        // acc_vouchers may come as object (Supabase FK embed) or array (PostgREST
+        // acc_vouchers may come as object (FK embed) or array (PostgREST
         // when relation isn't uniquely detected, or the Laravel bridge stitch).
         const v = Array.isArray(e.acc_vouchers) ? e.acc_vouchers[0] : e.acc_vouchers;
         runBal += Number(e.debit) - Number(e.credit);

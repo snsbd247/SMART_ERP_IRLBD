@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PiggyBank } from "lucide-react";
@@ -11,7 +11,7 @@ const CashBookPage = () => {
 
   useEffect(() => {
     // Cash book = voucher entries involving Cash accounts
-    supabase
+    dataClient
       .from("voucher_entries")
       .select("*, account:chart_of_accounts(account_name, account_code), voucher:acc_vouchers(voucher_number, voucher_date, voucher_type, status)")
       .order("sort_order")

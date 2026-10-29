@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,9 +67,9 @@ export default function FundsPage() {
 
   const fetchData = useCallback(async () => {
     const [empRes, setRes, txRes] = await Promise.all([
-      supabase.from("employees" as any).select("id, employee_code, first_name, last_name, salary").eq("status", "active"),
-      supabase.from("employee_fund_settings" as any).select("*").order("created_at"),
-      supabase.from("fund_transactions" as any).select("*").order("created_at", { ascending: false }).limit(200),
+      dataClient.from("employees" as any).select("id, employee_code, first_name, last_name, salary").eq("status", "active"),
+      dataClient.from("employee_fund_settings" as any).select("*").order("created_at"),
+      dataClient.from("fund_transactions" as any).select("*").order("created_at", { ascending: false }).limit(200),
     ]);
     if (empRes.data) setEmployees(empRes.data as any);
     if (setRes.data) setSettings(setRes.data as any);
@@ -111,11 +111,11 @@ export default function FundsPage() {
     };
 
     if (editId) {
-      const { error } = await supabase.from("employee_fund_settings" as any).update(payload as any).eq("id", editId);
+      const { error } = await dataClient.from("employee_fund_settings" as any).update(payload as any).eq("id", editId);
       if (error) { toast.error(error.message); return; }
       toast.success("Fund setting updated");
     } else {
-      const { error } = await supabase.from("employee_fund_settings" as any).insert(payload as any);
+      const { error } = await dataClient.from("employee_fund_settings" as any).insert(payload as any);
       if (error) {
         if (error.message.includes("unique")) toast.error("This fund is already set up for this employee");
         else toast.error(error.message);
@@ -135,7 +135,7 @@ export default function FundsPage() {
     const total = Number(txForm.employee_amount) + Number(txForm.employer_amount);
     if (total <= 0) { toast.error("Enter amount"); return; }
 
-    const { error } = await supabase.from("fund_transactions" as any).insert({
+    const { error } = await dataClient.from("fund_transactions" as any).insert({
       employee_id: txForm.employee_id,
       fund_type: txForm.fund_type,
       transaction_type: txForm.transaction_type,
@@ -153,7 +153,7 @@ export default function FundsPage() {
   };
 
   const toggleActive = async (id: string, current: boolean) => {
-    await supabase.from("employee_fund_settings" as any).update({ is_active: !current } as any).eq("id", id);
+    await dataClient.from("employee_fund_settings" as any).update({ is_active: !current } as any).eq("id", id);
     fetchData();
   };
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,7 @@ import type { CompanySettings } from "@/hooks/useCompanySettings";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useModules, type ModuleKey } from "@/contexts/ModuleContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode, isSupabaseDisabledError, markSupabaseUnavailable } from "@/lib/laravel-auth";
+import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode, isDataClientDisabledError, markDataClientUnavailable } from "@/lib/laravel-auth";
 
 interface Branch { id: string; name: string; }
 interface FinancialYear { id: string; name: string; is_active: boolean; }
@@ -59,14 +59,14 @@ const GeneralSettingsPage = () => {
     return unwrapLaravelRow(payload) || fallbackSettings;
   };
 
-  const loadSupabaseSettings = async () => {
-    const { data, error } = await supabase
+  const loadDataClientSettings = async () => {
+    const { data, error } = await dataClient
       .from("company_settings" as any)
       .select("*")
       .maybeSingle();
     if (error) {
-      if (isSupabaseDisabledError(error) && getApiBaseUrl()) {
-        markSupabaseUnavailable(error.message);
+      if (isDataClientDisabledError(error) && getApiBaseUrl()) {
+        markDataClientUnavailable(error.message);
         return loadLaravelSettings();
       }
       throw error;
@@ -75,7 +75,7 @@ const GeneralSettingsPage = () => {
   };
 
   // Prefer Laravel API whenever an API base is configured (VPS deploy). The
-  // Supabase path is only used on Lovable Cloud preview. We never silently mix
+  // The legacy path is never used in production. We never silently mix
   // sources: save and load always use the same backend.
   const useLaravel = () => !!getApiBaseUrl();
 
@@ -90,8 +90,8 @@ const GeneralSettingsPage = () => {
       return [(bRes?.data || bRes || []) as Branch[], (yRes?.data || yRes || []) as FinancialYear[]];
     }
     const [bRes, yRes] = await Promise.all([
-      supabase.from("branches").select("id, name").eq("status", "active"),
-      supabase.from("financial_years").select("id, name, is_active").order("start_date", { ascending: false }),
+      dataClient.from("branches").select("id, name").eq("status", "active"),
+      dataClient.from("financial_years").select("id, name, is_active").order("start_date", { ascending: false }),
     ]);
     return [(bRes.data || []) as Branch[], (yRes.data || []) as FinancialYear[]];
   };
@@ -99,7 +99,7 @@ const GeneralSettingsPage = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        const settingsRow = useLaravel() ? await loadLaravelSettings() : await loadSupabaseSettings();
+        const settingsRow = useLaravel() ? await loadLaravelSettings() : await loadDataClientSettings();
         setSettings(settingsRow);
         try {
           const [b, y] = await loadBranchesAndYears();
@@ -151,14 +151,14 @@ const GeneralSettingsPage = () => {
         const fresh = unwrapLaravelRow(payload);
         if (fresh) setSettings(fresh);
       } else {
-        const { data, error } = await supabase
+        const { data, error } = await dataClient
           .from("company_settings" as any)
           .upsert({ id: "default", ...rest, updated_at: new Date().toISOString() } as any, { onConflict: "id" })
           .select()
           .maybeSingle();
         if (error) {
-          if (isSupabaseDisabledError(error) && getApiBaseUrl() && attempt === 1) {
-            markSupabaseUnavailable(error.message);
+          if (isDataClientDisabledError(error) && getApiBaseUrl() && attempt === 1) {
+            markDataClientUnavailable(error.message);
             return handleSave(2);
           }
           throw error;
@@ -200,9 +200,9 @@ const GeneralSettingsPage = () => {
       } else {
         const ext = file.name.split(".").pop();
         const path = `logo.${ext}`;
-        const { error: upErr } = await supabase.storage.from("branding").upload(path, file, { upsert: true });
+        const { error: upErr } = await dataClient.storage.from("branding").upload(path, file, { upsert: true });
         if (upErr) throw upErr;
-        const { data: urlData } = supabase.storage.from("branding").getPublicUrl(path);
+        const { data: urlData } = dataClient.storage.from("branding").getPublicUrl(path);
         update("company_logo_url", urlData.publicUrl);
       }
       toast.success("Logo uploaded");

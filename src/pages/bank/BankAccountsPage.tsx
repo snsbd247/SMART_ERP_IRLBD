@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ const BankAccountsPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase
+    dataClient
       .from("chart_of_accounts")
       .select("*")
       .ilike("account_name", "%bank%")

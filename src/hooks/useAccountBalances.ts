@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 import { signedOpeningBalance } from "@/lib/balance-format";
 import { BALANCE_VOUCHER_STATUSES } from "@/lib/shared-balance";
@@ -104,7 +104,7 @@ export function useAccountBalances(filters: Filters = {}) {
       // 1. Get all accounts (paginated to bypass 1000-row default cap)
       const accs: AccountRow[] = [];
       for (let from = 0; ; from += PAGE_SIZE) {
-        const { data, error } = await supabase
+        const { data, error } = await dataClient
           .from("chart_of_accounts")
           .select("*")
           .order("account_code")
@@ -129,7 +129,7 @@ export function useAccountBalances(filters: Filters = {}) {
       setLoading(false);
 
       // 2. Fetch approved+posted voucher IDs (matches Account Ledger default).
-      let vq = supabase
+      let vq = dataClient
         .from("acc_vouchers")
         .select("id")
         .in("status", [...BALANCE_VOUCHER_STATUSES]);
@@ -142,15 +142,15 @@ export function useAccountBalances(filters: Filters = {}) {
       const voucherIds = (vouchers || []).map((v: any) => v.id);
 
       // 3. Fetch entries for those vouchers, batched in chunks.
-      //    Supabase's PostgREST accepts larger IN clauses than Apache, but we
+      //    PostgREST-style backends accept larger IN clauses than Apache, but we
       //    still centralize the size so it can be tuned per deployment.
       const { chunkIds: chunkIdsSb, getInChunkSize: getSizeSb, logChunkMetrics: logSb } = await import("@/lib/in-chunk");
       const entries: VoucherEntryBalanceRow[] = [];
-      const sbChunkSize = Math.max(getSizeSb(), 500); // Supabase can safely go higher
+      const sbChunkSize = Math.max(getSizeSb(), 500); // non-Apache backends can go higher
       const sbChunks = chunkIdsSb(voucherIds, sbChunkSize);
       for (const chunk of sbChunks) {
         for (let from = 0; ; from += PAGE_SIZE) {
-          const { data, error } = await supabase
+          const { data, error } = await dataClient
             .from("voucher_entries")
             .select("account_id, debit, credit")
             .in("voucher_id", chunk)
@@ -160,7 +160,7 @@ export function useAccountBalances(filters: Filters = {}) {
           if (!data || data.length < PAGE_SIZE) break;
         }
       }
-      logSb("useAccountBalances/supabase", { totalIds: voucherIds.length, chunkSize: sbChunkSize, chunkCount: sbChunks.length });
+      logSb("useAccountBalances/dataClient", { totalIds: voucherIds.length, chunkSize: sbChunkSize, chunkCount: sbChunks.length });
 
       // 4. Aggregate by account
       const balMap = new Map<string, { debit: number; credit: number }>();

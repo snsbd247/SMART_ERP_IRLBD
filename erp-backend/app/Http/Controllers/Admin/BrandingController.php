@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /**
- * BrandingController — Laravel VPS equivalent of the Supabase
+ * BrandingController — Laravel endpoint replacing the former
  * `system_settings` upsert + `branding` storage bucket used by the
  * React Branding & White-Label page.
  *

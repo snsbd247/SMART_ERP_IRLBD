@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { swApi } from "@/lib/sales-workflow-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,8 +29,8 @@ export default function PurchaseOrderFormPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    supabase.from("customers").select("id,name").order("name").then(({ data }) => setCustomers(data || []));
-    supabase.from("item_master").select("id,name:item_name,sku:item_code").order("item_name").then(({ data }) => setProducts(data || []));
+    dataClient.from("customers").select("id,name").order("name").then(({ data }) => setCustomers(data || []));
+    dataClient.from("item_master").select("id,name:item_name,sku:item_code").order("item_name").then(({ data }) => setProducts(data || []));
     if (isEdit) {
       swApi.getPO(id!).then(({ data }) => {
         if (!data) return;

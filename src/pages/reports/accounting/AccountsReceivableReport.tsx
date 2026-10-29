@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { UserCheck } from "lucide-react";
 
 const AccountsReceivableReport = () => {
@@ -12,7 +12,7 @@ const AccountsReceivableReport = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    let query = supabase.from("sales_invoices")
+    let query = dataClient.from("sales_invoices")
       .select("*, customers(name)")
       .in("status", ["completed", "sent"])
       .gte("invoice_date", dateFrom)

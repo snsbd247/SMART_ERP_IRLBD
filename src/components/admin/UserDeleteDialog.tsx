@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase, IS_LARAVEL_ONLY } from "@/integrations/supabase/client";
+import { dataClient, IS_LARAVEL_ONLY } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -73,7 +73,7 @@ const UserDeleteDialog = ({ user, allUsers, isSuperAdmin, onDeleted }: Props) =>
         hasRelated = !!data?.has_related_data;
         related = data?.related_tables || [];
       } else {
-        const res = await supabase.functions.invoke("admin-delete-user", {
+        const res = await dataClient.functions.invoke("admin-delete-user", {
           body: { action: "check", user_id: user.id },
         });
         const errMsg = res.data?.error || res.error?.message;
@@ -100,7 +100,7 @@ const UserDeleteDialog = ({ user, allUsers, isSuperAdmin, onDeleted }: Props) =>
       if (USE_LARAVEL()) {
         await laravelUserApi(`/v1/users/${user.id}`, { method: "DELETE" });
       } else {
-        const res = await supabase.functions.invoke("admin-delete-user", {
+        const res = await dataClient.functions.invoke("admin-delete-user", {
           body: { action: "delete", user_id: user.id },
         });
         const errMsg = res.data?.error || res.error?.message;
@@ -136,7 +136,7 @@ const UserDeleteDialog = ({ user, allUsers, isSuperAdmin, onDeleted }: Props) =>
         });
         transfers = data?.transfers || [];
       } else {
-        const res = await supabase.functions.invoke("admin-delete-user", {
+        const res = await dataClient.functions.invoke("admin-delete-user", {
           body: {
             action: "transfer_and_delete",
             user_id: user.id,

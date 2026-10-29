@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,8 +26,8 @@ const StockLedger = () => {
   useEffect(() => {
     const init = async () => {
       const [pRes, bRes] = await Promise.all([
-        supabase.from("item_master").select("id, item_name, item_code").order("item_name"),
-        supabase.from("branches").select("id, name"),
+        dataClient.from("item_master").select("id, item_name, item_code").order("item_name"),
+        dataClient.from("branches").select("id, name"),
       ]);
       setProducts((pRes.data || []).map((i: any) => ({ id: i.id, product_name: i.item_name, product_code: i.item_code })) as Product[]);
       setBranches((bRes.data || []) as Branch[]);
@@ -37,7 +37,7 @@ const StockLedger = () => {
 
   const fetchMovements = async () => {
     setLoading(true);
-    let query = supabase.from("stock_movements").select("*").order("created_at", { ascending: true });
+    let query = dataClient.from("stock_movements").select("*").order("created_at", { ascending: true });
     if (filterProduct && filterProduct !== "__all__") query = query.eq("product_id", filterProduct);
     if (filterBranch && filterBranch !== "__all__") query = query.eq("branch_id", filterBranch);
 

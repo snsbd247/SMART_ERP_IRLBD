@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,10 +52,10 @@ const ItemMasterPage = () => {
   const fetchData = async () => {
     setLoading(true);
     const [iRes, cRes, uRes, sgRes] = await Promise.all([
-      supabase.from("item_master" as any).select("*").order("item_code"),
-      supabase.from("item_categories" as any).select("id, name").eq("is_active", true).order("name"),
-      supabase.from("units" as any).select("*").order("name"),
-      (supabase.from as any)("stock_groups").select("id, name").eq("is_active", true).order("name"),
+      dataClient.from("item_master" as any).select("*").order("item_code"),
+      dataClient.from("item_categories" as any).select("id, name").eq("is_active", true).order("name"),
+      dataClient.from("units" as any).select("*").order("name"),
+      (dataClient.from as any)("stock_groups").select("id, name").eq("is_active", true).order("name"),
     ]);
     setItems((iRes.data || []) as any);
     setCategories((cRes.data || []) as any);
@@ -95,10 +95,10 @@ const ItemMasterPage = () => {
         description: f.description || null, updated_at: new Date().toISOString(),
       };
       if (editItem) {
-        const { error } = await supabase.from("item_master" as any).update(payload).eq("id", editItem.id);
+        const { error } = await dataClient.from("item_master" as any).update(payload).eq("id", editItem.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("item_master" as any).insert(payload);
+        const { error } = await dataClient.from("item_master" as any).insert(payload);
         if (error) throw error;
       }
       toast({ title: editItem ? "Item updated" : "Item created" });
@@ -147,7 +147,7 @@ const ItemMasterPage = () => {
     setBulkSaving(true);
     try {
       const newGroup = bulkGroupId === "__none__" ? null : bulkGroupId;
-      const { error } = await supabase.from("item_master" as any)
+      const { error } = await dataClient.from("item_master" as any)
         .update({ stock_group_id: newGroup, updated_at: new Date().toISOString() } as any)
         .in("id", Array.from(selectedIds));
       if (error) throw error;

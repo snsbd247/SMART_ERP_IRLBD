@@ -6,9 +6,9 @@ vi.mock("@/lib/laravel-auth", () => ({
   getLaravelToken: () => "token",
 }));
 
-import { laravelSupabaseBridge } from "../laravel-bridge";
+import { laravelDataBridge } from "../laravel-bridge";
 
-describe("laravelSupabaseBridge relation embeds", () => {
+describe("laravelDataBridge relation embeds", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
@@ -29,7 +29,7 @@ describe("laravelSupabaseBridge relation embeds", () => {
       return new Response(JSON.stringify([]), { status: 404, headers: { "content-type": "application/json" } });
     });
 
-    const { data, error } = await laravelSupabaseBridge
+    const { data, error } = await laravelDataBridge
       .from("voucher_entries")
       .select("id, voucher_id, account_id, debit, credit, acc_vouchers!inner(id, voucher_number, voucher_date, description)")
       .eq("account_id", "account-1");
@@ -66,7 +66,7 @@ describe("laravelSupabaseBridge relation embeds", () => {
       return new Response(JSON.stringify([]), { status: 404, headers: { "content-type": "application/json" } });
     });
 
-    const { data, error } = await laravelSupabaseBridge
+    const { data, error } = await laravelDataBridge
       .from("voucher_entries")
       .select("id, account_id, debit, account:chart_of_accounts(account_name, account_code)");
 
@@ -95,7 +95,7 @@ describe("laravelSupabaseBridge relation embeds", () => {
       return new Response(JSON.stringify([]), { status: 404, headers: { "content-type": "application/json" } });
     });
 
-    const { data, error } = await laravelSupabaseBridge
+    const { data, error } = await laravelDataBridge
       .from("purchase_order_items")
       .select("*, po:purchase_orders!inner(po_number,po_date,status)");
 
@@ -132,7 +132,7 @@ describe("laravelSupabaseBridge relation embeds", () => {
       return new Response(JSON.stringify([]), { status: 404 });
     });
 
-    const { data, error } = await laravelSupabaseBridge
+    const { data, error } = await laravelDataBridge
       .from("voucher_entries")
       .select("id, voucher_id, account_id, debit, credit")
       .eq("account_id", "acc-1")
@@ -169,7 +169,7 @@ describe("laravelSupabaseBridge relation embeds", () => {
       return new Response(JSON.stringify([]), { status: 404 });
     });
 
-    const { data, error } = await laravelSupabaseBridge
+    const { data, error } = await laravelDataBridge
       .from("voucher_entries")
       .select("id, voucher_id")
       .in("acc_vouchers.status", ["approved"]);

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { fetchAllVoucherEntries, fetchAccountLedgerEntriesLaravel, fetchVoucherCreators } from "@/lib/report-fetch";
 import { applyEntry, verifyClosingBalance } from "@/lib/ledger-balance";
 import { aggregateEntriesByVoucherAccount } from "@/lib/ledger-entry-aggregation";
@@ -102,7 +102,7 @@ const AccountLedgerReport = () => {
         const chunkSize = getInChunkSize();
         const chunks = chunkIds(voucherIdsForCounter as string[], chunkSize);
         const chunkResults = await Promise.all(chunks.map((slice) =>
-          supabase.from("voucher_entries").select("voucher_id, account_id").in("voucher_id", slice as any)
+          dataClient.from("voucher_entries").select("voucher_id, account_id").in("voucher_id", slice as any)
         ));
         for (const { data: allEntries } of chunkResults) {
           (allEntries || []).forEach((r: any) => {
@@ -143,13 +143,13 @@ const AccountLedgerReport = () => {
 
   // Auto-refresh on voucher status changes (post/approve)
   useEffect(() => {
-    const channel = supabase
+    const channel = dataClient
       .channel("account-ledger-vouchers")
       .on("postgres_changes", { event: "*", schema: "public", table: "acc_vouchers" }, () => {
         if (hasFetched.current) fetchData();
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { dataClient.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccount, statusFilter, dateFrom, dateTo, branch, selectedUser]);
 

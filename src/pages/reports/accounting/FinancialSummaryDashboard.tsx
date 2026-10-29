@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { DollarSign, TrendingUp, TrendingDown, PiggyBank, Landmark, BarChart3 } from "lucide-react";
 import { signedOpeningBalance } from "@/lib/balance-format";
@@ -13,8 +13,8 @@ const FinancialSummaryDashboard = () => {
   useEffect(() => {
     const fetch = async () => {
       const [accountsRes, entriesRes] = await Promise.all([
-        supabase.from("chart_of_accounts").select("*"),
-        supabase.from("voucher_entries")
+        dataClient.from("chart_of_accounts").select("*"),
+        dataClient.from("voucher_entries")
           .select("account_id, debit, credit, acc_vouchers!inner(status)")
           .eq("acc_vouchers.status", "approved"),
       ]);

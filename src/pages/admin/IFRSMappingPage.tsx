@@ -7,7 +7,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { toast } from "sonner";
 import {
   IFRSLine, IFRS_LINE_LABEL, defaultMapping, normalizeIFRSLine,
@@ -40,8 +40,8 @@ const IFRSMappingPage = () => {
   const load = async () => {
     setLoading(true);
     const [a, m] = await Promise.all([
-      supabase.from("chart_of_accounts").select("id, account_name, account_code, account_type").order("account_code"),
-      supabase.from("ifrs_account_mapping" as any).select("account_id, ifrs_line"),
+      dataClient.from("chart_of_accounts").select("id, account_name, account_code, account_type").order("account_code"),
+      dataClient.from("ifrs_account_mapping" as any).select("account_id, ifrs_line"),
     ]);
     setAccounts((a.data || []) as Account[]);
     const om = new Map<string, IFRSLine>();
@@ -92,11 +92,11 @@ const IFRSMappingPage = () => {
 
     try {
       if (deletes.length > 0) {
-        const { error } = await supabase.from("ifrs_account_mapping" as any).delete().in("account_id", deletes);
+        const { error } = await dataClient.from("ifrs_account_mapping" as any).delete().in("account_id", deletes);
         if (error) throw error;
       }
       if (upserts.length > 0) {
-        const { error } = await supabase.from("ifrs_account_mapping" as any).upsert(upserts as any, { onConflict: "account_id" });
+        const { error } = await dataClient.from("ifrs_account_mapping" as any).upsert(upserts as any, { onConflict: "account_id" });
         if (error) throw error;
       }
       toast.success(`Saved ${pending.size} change${pending.size > 1 ? "s" : ""}`);
@@ -116,7 +116,7 @@ const IFRSMappingPage = () => {
         ifrs_line: effectiveLine(a).line,
         notes: overrides.has(a.id) ? "normalized" : "auto-mapped",
       }));
-      const { error } = await supabase
+      const { error } = await dataClient
         .from("ifrs_account_mapping" as any)
         .upsert(rows as any, { onConflict: "account_id" });
       if (error) throw error;

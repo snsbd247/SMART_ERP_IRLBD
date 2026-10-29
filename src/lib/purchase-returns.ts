@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { nextDocNo, logAudit, createVoucherLaravel } from "@/lib/purchase-numbering";
 import { isLaravelMode } from "@/lib/laravel-auth";
 
@@ -9,7 +9,7 @@ export async function postPurchaseReturn(ret: any, lines: any[], supplierTypeId?
   // 1) stock out
   for (const ln of lines) {
     if (!ln.item_id || !(ln.quantity > 0)) continue;
-    const { data: prev } = await supabase
+    const { data: prev } = await dataClient
       .from("stock_ledger")
       .select("balance_quantity")
       .eq("item_id", ln.item_id)
@@ -17,7 +17,7 @@ export async function postPurchaseReturn(ret: any, lines: any[], supplierTypeId?
       .limit(1)
       .maybeSingle();
     const balance = Number(prev?.balance_quantity || 0) - Number(ln.quantity);
-    await supabase.from("stock_ledger").insert({
+    await dataClient.from("stock_ledger").insert({
       transaction_type: "PURCHASE_RETURN",
       transaction_id: ret.id,
       item_id: ln.item_id,
@@ -34,7 +34,7 @@ export async function postPurchaseReturn(ret: any, lines: any[], supplierTypeId?
   }
 
   // 2) JV Dr Payable / Cr Inventory
-  const { data: mapping } = await supabase
+  const { data: mapping } = await dataClient
     .from("purchase_coa_mapping" as any)
     .select("*")
     .eq("is_active", true)
@@ -64,7 +64,7 @@ export async function postPurchaseReturn(ret: any, lines: any[], supplierTypeId?
       voucherId = created.voucherId;
     } else {
       const voucherNo = await nextDocNo("JV", "acc_vouchers", "voucher_number");
-      const { data: v } = await supabase.from("acc_vouchers").insert({
+      const { data: v } = await dataClient.from("acc_vouchers").insert({
         voucher_number: voucherNo, voucher_type: "journal", voucher_date: ret.return_date,
         branch_id: ret.branch_id, description: `Purchase Return ${ret.return_no}`,
         total_amount: total, status: "posted", created_by: userId,
@@ -78,12 +78,12 @@ export async function postPurchaseReturn(ret: any, lines: any[], supplierTypeId?
         if (Number(ret.vat_amount || 0) > 0 && m.vat_account_id) {
           entries.push({ voucher_id: voucherId, account_id: m.vat_account_id, debit: 0, credit: ret.vat_amount, sort_order: 3, narration: "VAT reversal" });
         }
-        await supabase.from("voucher_entries").insert(entries as any);
+        await dataClient.from("voucher_entries").insert(entries as any);
       }
     }
   }
 
-  await supabase.from("purchase_returns_v2" as any).update({ voucher_id: voucherId, status: "posted" }).eq("id", ret.id);
+  await dataClient.from("purchase_returns_v2" as any).update({ voucher_id: voucherId, status: "posted" }).eq("id", ret.id);
   await logAudit({ document_type: "RETURN", document_id: ret.id, document_no: ret.return_no, action: "posted", performed_by: userId });
   return voucherId;
 }

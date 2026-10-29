@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 
 type SoftDeletableTable = "sales_invoices_v2" | "party_payments";
 
@@ -8,7 +8,7 @@ interface Ctx {
 }
 
 async function audit(module: string, action: string, recordId: string, details: string, ctx: Ctx) {
-  await supabase.from("audit_log").insert({
+  await dataClient.from("audit_log").insert({
     user_id: ctx.userId,
     user_name: ctx.userName,
     module,
@@ -33,7 +33,7 @@ export async function softDelete(
     patch.prev_status = opts.prevStatus ?? null;
     patch.status = "deleted";
   }
-  const { error } = await supabase.from(table).update(patch as any).eq("id", id);
+  const { error } = await dataClient.from(table).update(patch as any).eq("id", id);
   if (error) throw error;
   await audit(
     opts.module || table,
@@ -49,7 +49,7 @@ export async function softRestore(table: SoftDeletableTable, id: string, ctx: Ct
   // Read prev_status when applicable
   let restoreStatus: string | null = null;
   if (table !== "party_payments") {
-    const { data } = await supabase.from(table).select("prev_status").eq("id", id).single();
+    const { data } = await dataClient.from(table).select("prev_status").eq("id", id).single();
     restoreStatus = (data as any)?.prev_status || "draft";
   }
   const patch: Record<string, any> = {
@@ -60,7 +60,7 @@ export async function softRestore(table: SoftDeletableTable, id: string, ctx: Ct
     patch.status = restoreStatus;
     patch.prev_status = null;
   }
-  const { error } = await supabase.from(table).update(patch as any).eq("id", id);
+  const { error } = await dataClient.from(table).update(patch as any).eq("id", id);
   if (error) throw error;
   await audit(opts.module || table, `${table}_restored`, id, "Restored", ctx);
 }

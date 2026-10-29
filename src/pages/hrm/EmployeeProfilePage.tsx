@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
@@ -136,15 +136,15 @@ export default function EmployeeProfilePage() {
   const fetchAll = useCallback(async () => {
     if (!id) return;
     const [empRes, salRes, bankRes, eduRes, expRes, ecRes, deptRes, desigRes, branchRes] = await Promise.all([
-      supabase.from("employees" as any).select("*").eq("id", id).single(),
-      supabase.from("salary_structures" as any).select("*").eq("employee_id", id).order("effective_from", { ascending: false }).limit(1),
-      supabase.from("employee_bank_info" as any).select("*").eq("employee_id", id).single(),
-      supabase.from("employee_education" as any).select("*").eq("employee_id", id).order("passing_year", { ascending: false }),
-      supabase.from("employee_experience" as any).select("*").eq("employee_id", id).order("start_date", { ascending: false }),
-      supabase.from("employee_emergency_contacts" as any).select("*").eq("employee_id", id),
-      supabase.from("departments" as any).select("id, name").eq("status", "active"),
-      supabase.from("designations" as any).select("id, name").eq("status", "active"),
-      supabase.from("branches").select("id, name").eq("status", "active"),
+      dataClient.from("employees" as any).select("*").eq("id", id).single(),
+      dataClient.from("salary_structures" as any).select("*").eq("employee_id", id).order("effective_from", { ascending: false }).limit(1),
+      dataClient.from("employee_bank_info" as any).select("*").eq("employee_id", id).single(),
+      dataClient.from("employee_education" as any).select("*").eq("employee_id", id).order("passing_year", { ascending: false }),
+      dataClient.from("employee_experience" as any).select("*").eq("employee_id", id).order("start_date", { ascending: false }),
+      dataClient.from("employee_emergency_contacts" as any).select("*").eq("employee_id", id),
+      dataClient.from("departments" as any).select("id, name").eq("status", "active"),
+      dataClient.from("designations" as any).select("id, name").eq("status", "active"),
+      dataClient.from("branches").select("id, name").eq("status", "active"),
     ]);
 
     if (empRes.data) setEmployee(empRes.data as any);
@@ -184,10 +184,10 @@ export default function EmployeeProfilePage() {
     setSaving(true);
     const payload: any = { ...salaryForm, employee_id: id, updated_at: new Date().toISOString() };
     if (salary) {
-      const { error } = await supabase.from("salary_structures" as any).update(payload).eq("id", salary.id);
+      const { error } = await dataClient.from("salary_structures" as any).update(payload).eq("id", salary.id);
       if (error) toast.error(error.message); else { toast.success("Salary updated"); fetchAll(); }
     } else {
-      const { error } = await supabase.from("salary_structures" as any).insert(payload);
+      const { error } = await dataClient.from("salary_structures" as any).insert(payload);
       if (error) toast.error(error.message); else { toast.success("Salary saved"); fetchAll(); }
     }
     setSaving(false);
@@ -199,10 +199,10 @@ export default function EmployeeProfilePage() {
     setSaving(true);
     const payload: any = { ...bankForm, employee_id: id, updated_at: new Date().toISOString() };
     if (bankInfo) {
-      const { error } = await supabase.from("employee_bank_info" as any).update(payload).eq("id", bankInfo.id);
+      const { error } = await dataClient.from("employee_bank_info" as any).update(payload).eq("id", bankInfo.id);
       if (error) toast.error(error.message); else { toast.success("Bank info updated"); fetchAll(); }
     } else {
-      const { error } = await supabase.from("employee_bank_info" as any).insert(payload);
+      const { error } = await dataClient.from("employee_bank_info" as any).insert(payload);
       if (error) toast.error(error.message); else { toast.success("Bank info saved"); fetchAll(); }
     }
     setSaving(false);
@@ -216,17 +216,17 @@ export default function EmployeeProfilePage() {
     setSaving(true);
     const payload: any = { ...eduForm, employee_id: id };
     if (eduEditId) {
-      const { error } = await supabase.from("employee_education" as any).update(payload).eq("id", eduEditId);
+      const { error } = await dataClient.from("employee_education" as any).update(payload).eq("id", eduEditId);
       if (error) toast.error(error.message); else { toast.success("Education updated"); setEduDialog(false); fetchAll(); }
     } else {
-      const { error } = await supabase.from("employee_education" as any).insert(payload);
+      const { error } = await dataClient.from("employee_education" as any).insert(payload);
       if (error) toast.error(error.message); else { toast.success("Education added"); setEduDialog(false); fetchAll(); }
     }
     setSaving(false);
   };
   const deleteEdu = async (eduId: string) => {
     if (!confirm("Delete this education record?")) return;
-    const { error } = await supabase.from("employee_education" as any).delete().eq("id", eduId);
+    const { error } = await dataClient.from("employee_education" as any).delete().eq("id", eduId);
     if (error) toast.error(error.message); else { toast.success("Deleted"); fetchAll(); }
   };
 
@@ -238,17 +238,17 @@ export default function EmployeeProfilePage() {
     setSaving(true);
     const payload: any = { ...expForm, employee_id: id, start_date: expForm.start_date || null, end_date: expForm.end_date || null };
     if (expEditId) {
-      const { error } = await supabase.from("employee_experience" as any).update(payload).eq("id", expEditId);
+      const { error } = await dataClient.from("employee_experience" as any).update(payload).eq("id", expEditId);
       if (error) toast.error(error.message); else { toast.success("Experience updated"); setExpDialog(false); fetchAll(); }
     } else {
-      const { error } = await supabase.from("employee_experience" as any).insert(payload);
+      const { error } = await dataClient.from("employee_experience" as any).insert(payload);
       if (error) toast.error(error.message); else { toast.success("Experience added"); setExpDialog(false); fetchAll(); }
     }
     setSaving(false);
   };
   const deleteExp = async (expId: string) => {
     if (!confirm("Delete this experience record?")) return;
-    const { error } = await supabase.from("employee_experience" as any).delete().eq("id", expId);
+    const { error } = await dataClient.from("employee_experience" as any).delete().eq("id", expId);
     if (error) toast.error(error.message); else { toast.success("Deleted"); fetchAll(); }
   };
 
@@ -260,17 +260,17 @@ export default function EmployeeProfilePage() {
     setSaving(true);
     const payload: any = { ...ecForm, employee_id: id };
     if (ecEditId) {
-      const { error } = await supabase.from("employee_emergency_contacts" as any).update(payload).eq("id", ecEditId);
+      const { error } = await dataClient.from("employee_emergency_contacts" as any).update(payload).eq("id", ecEditId);
       if (error) toast.error(error.message); else { toast.success("Contact updated"); setEcDialog(false); fetchAll(); }
     } else {
-      const { error } = await supabase.from("employee_emergency_contacts" as any).insert(payload);
+      const { error } = await dataClient.from("employee_emergency_contacts" as any).insert(payload);
       if (error) toast.error(error.message); else { toast.success("Contact added"); setEcDialog(false); fetchAll(); }
     }
     setSaving(false);
   };
   const deleteEc = async (ecId: string) => {
     if (!confirm("Delete this emergency contact?")) return;
-    const { error } = await supabase.from("employee_emergency_contacts" as any).delete().eq("id", ecId);
+    const { error } = await dataClient.from("employee_emergency_contacts" as any).delete().eq("id", ecId);
     if (error) toast.error(error.message); else { toast.success("Deleted"); fetchAll(); }
   };
 
@@ -326,11 +326,11 @@ export default function EmployeeProfilePage() {
       if (employee.photo_url) {
         const oldPath = employee.photo_url.split('/employee-photos/')[1];
         if (oldPath) {
-          await supabase.storage.from('employee-photos').remove([oldPath]);
+          await dataClient.storage.from('employee-photos').remove([oldPath]);
         }
       }
 
-      const { data: upData, error: uploadError } = await supabase.storage
+      const { data: upData, error: uploadError } = await dataClient.storage
         .from('employee-photos')
         .upload(filePath, file, { upsert: true });
 
@@ -339,11 +339,11 @@ export default function EmployeeProfilePage() {
       // Use the path returned by the server so we don't drift from any
       // server-side name sanitisation (e.g. Laravel Str::slug on the bridge).
       const storedPath = upData?.path || filePath;
-      const { data: urlData } = supabase.storage
+      const { data: urlData } = dataClient.storage
         .from('employee-photos')
         .getPublicUrl(storedPath);
 
-      await supabase
+      await dataClient
         .from("employees" as any)
         .update({ photo_url: urlData.publicUrl })
         .eq("id", id);

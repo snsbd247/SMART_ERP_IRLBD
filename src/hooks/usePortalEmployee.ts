@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Employee {
@@ -27,7 +27,7 @@ export function usePortalEmployee() {
   // Fetch own employee record
   const fetchOwnEmployee = useCallback(async () => {
     if (!user) return null;
-    const { data } = await supabase
+    const { data } = await dataClient
       .from("employees")
       .select("*")
       .eq("user_id", user.id)
@@ -37,7 +37,7 @@ export function usePortalEmployee() {
 
   // Fetch all employees (for admin selector)
   const fetchAllEmployees = useCallback(async () => {
-    const { data } = await supabase
+    const { data } = await dataClient
       .from("employees")
       .select("id, employee_code, first_name, last_name")
       .eq("status", "active")
@@ -47,7 +47,7 @@ export function usePortalEmployee() {
 
   // Fetch full employee by id
   const fetchEmployeeById = useCallback(async (id: string) => {
-    const { data } = await supabase
+    const { data } = await dataClient
       .from("employees")
       .select("*")
       .eq("id", id)

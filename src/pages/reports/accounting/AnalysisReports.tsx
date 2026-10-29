@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { useReportData } from "@/hooks/useReportData";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { TrendingDown, TrendingUp } from "lucide-react";
 
 interface AnalysisReportProps {
@@ -18,7 +18,7 @@ const AnalysisReport = ({ type }: AnalysisReportProps) => {
 
   const fetchData = async () => {
     setLoading(true);
-    let query = supabase.from("voucher_entries")
+    let query = dataClient.from("voucher_entries")
       .select("account_id, debit, credit, acc_vouchers!inner(status, voucher_date, branch_id)")
       .eq("acc_vouchers.status", "approved")
       .gte("acc_vouchers.voucher_date", dateFrom)

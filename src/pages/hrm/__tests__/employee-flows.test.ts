@@ -6,7 +6,7 @@
  *  3. Create Employee with `create_login` sends username/password in the
  *     same request so the user account is created atomically.
  *  4. The create/update payloads only touch the employees endpoint — they
- *     do not fall back to the removed supabase edge function (which would
+ *     do not fall back to the removed dataClient edge function (which would
  *     have broken other HRM modules like audit-log / profiles).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -134,7 +134,7 @@ describe("HRM employee flows (Laravel/VPS mode)", () => {
   });
 
   it("4. No calls fall back to the deprecated admin-create-user edge function", async () => {
-    // If any code path attempted supabase.functions.invoke('admin-create-user'),
+    // If any code path attempted dataClient.functions.invoke('admin-create-user'),
     // the Laravel bridge returns an error which our earlier tests would catch.
     // Here we simply assert that the only fetch performed for a create-with-login
     // flow is the single /v1/employees POST — proving the flow no longer depends
@@ -157,7 +157,7 @@ describe("HRM employee flows (Laravel/VPS mode)", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [url] = fetchSpy.mock.calls[0] as any;
     expect(url).toContain("/v1/employees");
-    // Ensure nothing was routed to the Supabase functions gateway.
+    // Ensure nothing was routed to the legacy functions gateway.
     for (const call of fetchSpy.mock.calls) {
       expect(String(call[0])).not.toContain("/functions/v1/admin-create-user");
     }

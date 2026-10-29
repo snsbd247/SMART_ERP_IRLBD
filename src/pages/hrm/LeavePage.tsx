@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,9 +36,9 @@ export default function LeavePage() {
 
   const fetchData = useCallback(async () => {
     const [ltRes, empRes, reqRes] = await Promise.all([
-      supabase.from("leave_types" as any).select("*").order("name"),
-      supabase.from("employees" as any).select("id, employee_code, first_name, last_name").eq("status", "active"),
-      supabase.from("leave_requests" as any).select("*").order("created_at", { ascending: false }),
+      dataClient.from("leave_types" as any).select("*").order("name"),
+      dataClient.from("employees" as any).select("id, employee_code, first_name, last_name").eq("status", "active"),
+      dataClient.from("leave_requests" as any).select("*").order("created_at", { ascending: false }),
     ]);
     if (ltRes.data) setLeaveTypes(ltRes.data as any);
     if (empRes.data) setEmployees(empRes.data as any);
@@ -51,7 +51,7 @@ export default function LeavePage() {
     if (!form.employee_id || !form.leave_type_id || !form.start_date || !form.end_date) {
       toast.error("All fields are required"); return;
     }
-    const { error } = await supabase.from("leave_requests" as any).insert({
+    const { error } = await dataClient.from("leave_requests" as any).insert({
       employee_id: form.employee_id, leave_type_id: form.leave_type_id,
       start_date: form.start_date, end_date: form.end_date, reason: form.reason || null,
     });
@@ -59,7 +59,7 @@ export default function LeavePage() {
   };
 
   const handleAction = async (id: string, status: string) => {
-    const { error } = await supabase.from("leave_requests" as any).update({ status, approved_by: user?.id }).eq("id", id);
+    const { error } = await dataClient.from("leave_requests" as any).update({ status, approved_by: user?.id }).eq("id", id);
     if (error) toast.error(error.message); else { toast.success(`Leave ${status}`); fetchData(); }
   };
 

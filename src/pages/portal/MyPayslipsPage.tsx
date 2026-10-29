@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { usePortalEmployee } from "@/hooks/usePortalEmployee";
@@ -24,7 +24,7 @@ export default function MyPayslipsPage() {
   useEffect(() => {
     if (!employee) return;
     (async () => {
-      const { data } = await supabase.from("payroll").select("*").eq("employee_id", employee.id).order("year", { ascending: false }).order("month", { ascending: false });
+      const { data } = await dataClient.from("payroll").select("*").eq("employee_id", employee.id).order("year", { ascending: false }).order("month", { ascending: false });
       if (data) setPayroll(data as any);
     })();
   }, [employee]);

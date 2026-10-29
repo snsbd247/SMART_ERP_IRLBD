@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -52,10 +52,10 @@ const BOMPage = () => {
   const fetchAll = async () => {
     setLoading(true);
     const [bomRes, prodRes, unitRes, accRes] = await Promise.all([
-      supabase.from("bill_of_materials").select("*, product:item_master!bill_of_materials_product_id_fkey(item_name, item_code), uom:units(name, abbreviation)").order("created_at", { ascending: false }),
-      supabase.from("item_master").select("id, item_name, item_code, unit_id, cost_price").eq("status", "active").order("item_name"),
-      supabase.from("units").select("id, name, abbreviation").order("name"),
-      supabase.from("chart_of_accounts").select("id, account_code, account_name, account_type").eq("is_active", true).eq("account_type", "expense").order("account_code"),
+      dataClient.from("bill_of_materials").select("*, product:item_master!bill_of_materials_product_id_fkey(item_name, item_code), uom:units(name, abbreviation)").order("created_at", { ascending: false }),
+      dataClient.from("item_master").select("id, item_name, item_code, unit_id, cost_price").eq("status", "active").order("item_name"),
+      dataClient.from("units").select("id, name, abbreviation").order("name"),
+      dataClient.from("chart_of_accounts").select("id, account_code, account_name, account_type").eq("is_active", true).eq("account_type", "expense").order("account_code"),
     ]);
     setBoms(((bomRes.data || []) as unknown) as BomRow[]);
     const items = (prodRes.data || []) as unknown as ItemRow[];
@@ -69,7 +69,7 @@ const BOMPage = () => {
   useEffect(() => { fetchAll(); }, []);
 
   const computeNextBomNumber = async () => {
-    const { data } = await supabase.from("number_sequences").select("id, prefix, current_number, year").eq("id", "bom").maybeSingle();
+    const { data } = await dataClient.from("number_sequences").select("id, prefix, current_number, year").eq("id", "bom").maybeSingle();
     if (!data) {
       const year = new Date().getFullYear().toString().slice(-2) + String(new Date().getFullYear() + 1).slice(-2);
       return `BOM-${year}-00001`;
@@ -91,8 +91,8 @@ const BOMPage = () => {
   const openEdit = async (bom: BomRow) => {
     setEditId(bom.id);
     const [itRes, exRes] = await Promise.all([
-      supabase.from("bom_items").select("*").eq("bom_id", bom.id),
-      (supabase.from as any)("bom_expenses").select("*").eq("bom_id", bom.id),
+      dataClient.from("bom_items").select("*").eq("bom_id", bom.id),
+      (dataClient.from as any)("bom_expenses").select("*").eq("bom_id", bom.id),
     ]);
     setForm({
       bom_number: bom.bom_number || "",
@@ -163,33 +163,33 @@ const BOMPage = () => {
     };
 
     if (editId) {
-      await (supabase.from("bill_of_materials") as any).update(payload).eq("id", editId);
-      await supabase.from("bom_items").delete().eq("bom_id", editId);
-      await (supabase.from as any)("bom_expenses").delete().eq("bom_id", editId);
-      await supabase.from("bom_items").insert(items.map((i) => ({
+      await (dataClient.from("bill_of_materials") as any).update(payload).eq("id", editId);
+      await dataClient.from("bom_items").delete().eq("bom_id", editId);
+      await (dataClient.from as any)("bom_expenses").delete().eq("bom_id", editId);
+      await dataClient.from("bom_items").insert(items.map((i) => ({
         bom_id: editId, material_id: i.material_id, quantity: i.required_qty,
         wastage_pct: i.wastage_pct, unit_price: i.unit_price, unit: i.unit || "pcs",
       })) as any);
       if (expenses.some((e) => e.account_id)) {
-        await (supabase.from as any)("bom_expenses").insert(expenses.filter((e) => e.account_id).map((e) => ({ bom_id: editId, account_id: e.account_id, rate: e.rate })));
+        await (dataClient.from as any)("bom_expenses").insert(expenses.filter((e) => e.account_id).map((e) => ({ bom_id: editId, account_id: e.account_id, rate: e.rate })));
       }
       toast.success("BOM updated");
     } else {
-      const { data, error } = await supabase.from("bill_of_materials").insert(payload as any).select().single();
+      const { data, error } = await dataClient.from("bill_of_materials").insert(payload as any).select().single();
       if (error || !data) { toast.error(error?.message || "Failed"); return; }
       const newId = (data as any).id;
-      await supabase.from("bom_items").insert(items.map((i) => ({
+      await dataClient.from("bom_items").insert(items.map((i) => ({
         bom_id: newId, material_id: i.material_id, quantity: i.required_qty,
         wastage_pct: i.wastage_pct, unit_price: i.unit_price, unit: i.unit || "pcs",
       })) as any);
       if (expenses.some((e) => e.account_id)) {
-        await (supabase.from as any)("bom_expenses").insert(expenses.filter((e) => e.account_id).map((e) => ({ bom_id: newId, account_id: e.account_id, rate: e.rate })));
+        await (dataClient.from as any)("bom_expenses").insert(expenses.filter((e) => e.account_id).map((e) => ({ bom_id: newId, account_id: e.account_id, rate: e.rate })));
       }
       // bump number sequence
-      const seq = await supabase.from("number_sequences").select("id, current_number").eq("id", "bom").maybeSingle();
+      const seq = await dataClient.from("number_sequences").select("id, current_number").eq("id", "bom").maybeSingle();
       if (seq.data?.id) {
         const cur = (seq.data.current_number || 0) + 1;
-        await (supabase.from("number_sequences") as any).update({ current_number: cur }).eq("id", seq.data.id);
+        await (dataClient.from("number_sequences") as any).update({ current_number: cur }).eq("id", seq.data.id);
       }
       toast.success(`BOM created: ${form.bom_number}`);
     }
@@ -199,15 +199,15 @@ const BOMPage = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this BOM?")) return;
-    await supabase.from("bill_of_materials").delete().eq("id", id);
+    await dataClient.from("bill_of_materials").delete().eq("id", id);
     toast.success("BOM deleted");
     fetchAll();
   };
 
   const openPreview = async (bom: BomRow) => {
     const [itRes, exRes] = await Promise.all([
-      supabase.from("bom_items").select("*, material:item_master(item_name, item_code)").eq("bom_id", bom.id),
-      (supabase.from as any)("bom_expenses").select("*, account:chart_of_accounts(account_code, account_name)").eq("bom_id", bom.id),
+      dataClient.from("bom_items").select("*, material:item_master(item_name, item_code)").eq("bom_id", bom.id),
+      (dataClient.from as any)("bom_expenses").select("*, account:chart_of_accounts(account_code, account_name)").eq("bom_id", bom.id),
     ]);
     setPreviewBom(bom);
     setPreviewItems(((itRes.data || []) as any[]).map((i) => ({
@@ -253,8 +253,8 @@ const BOMPage = () => {
 
   const handlePdf = async (bom: BomRow, mode: "open" | "save" = "open") => {
     const [itRes, exRes] = await Promise.all([
-      supabase.from("bom_items").select("*, material:item_master(item_name, item_code)").eq("bom_id", bom.id),
-      (supabase.from as any)("bom_expenses").select("*, account:chart_of_accounts(account_code, account_name)").eq("bom_id", bom.id),
+      dataClient.from("bom_items").select("*, material:item_master(item_name, item_code)").eq("bom_id", bom.id),
+      (dataClient.from as any)("bom_expenses").select("*, account:chart_of_accounts(account_code, account_name)").eq("bom_id", bom.id),
     ]);
     const its = ((itRes.data || []) as any[]).map((i) => ({ ...i, required_qty: Number(i.quantity) || 0 }));
     generateBomPdf(buildPdfData(bom, its, (exRes.data || []) as any[]), mode);

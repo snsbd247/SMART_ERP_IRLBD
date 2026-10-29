@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Generic Super-Admin-only soft delete & restore for whitelisted tables.
- * Mirrors src/lib/soft-delete.ts + supabase voucher-api behaviour.
+ * Mirrors src/lib/soft-delete.ts + voucher-api behaviour.
  */
 class SoftDeleteController extends BaseController
 {

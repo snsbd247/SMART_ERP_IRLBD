@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Stock Adjustments API — Safe Extension (additive).
- * Backs the generic `stock_adjustments` table without touching existing direct-supabase paths.
+ * Backs the generic `stock_adjustments` table without touching the existing direct data-client paths.
  * On approve: writes a stock_movement (±qty) and posts a balanced journal voucher.
  */
 class StockAdjustmentController extends BaseController

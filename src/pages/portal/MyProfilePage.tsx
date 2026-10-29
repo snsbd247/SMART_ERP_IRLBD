@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { usePortalEmployee } from "@/hooks/usePortalEmployee";
@@ -28,12 +28,12 @@ export default function MyProfilePage() {
     if (!employee) return;
     (async () => {
       const [dRes, dsRes, bRes, salRes, bankRes, ecRes] = await Promise.all([
-        employee.department_id ? supabase.from("departments").select("name").eq("id", employee.department_id).single() : Promise.resolve({ data: null }),
-        employee.designation_id ? supabase.from("designations").select("name").eq("id", employee.designation_id).single() : Promise.resolve({ data: null }),
-        employee.branch_id ? supabase.from("branches").select("name").eq("id", employee.branch_id).single() : Promise.resolve({ data: null }),
-        supabase.from("salary_structures").select("*").eq("employee_id", employee.id).order("effective_from", { ascending: false }).limit(1),
-        supabase.from("employee_bank_info").select("*").eq("employee_id", employee.id).maybeSingle(),
-        supabase.from("employee_emergency_contacts").select("*").eq("employee_id", employee.id),
+        employee.department_id ? dataClient.from("departments").select("name").eq("id", employee.department_id).single() : Promise.resolve({ data: null }),
+        employee.designation_id ? dataClient.from("designations").select("name").eq("id", employee.designation_id).single() : Promise.resolve({ data: null }),
+        employee.branch_id ? dataClient.from("branches").select("name").eq("id", employee.branch_id).single() : Promise.resolve({ data: null }),
+        dataClient.from("salary_structures").select("*").eq("employee_id", employee.id).order("effective_from", { ascending: false }).limit(1),
+        dataClient.from("employee_bank_info").select("*").eq("employee_id", employee.id).maybeSingle(),
+        dataClient.from("employee_emergency_contacts").select("*").eq("employee_id", employee.id),
       ]);
       if (dRes.data) setDepartment((dRes.data as any).name); else setDepartment("");
       if (dsRes.data) setDesignation((dsRes.data as any).name); else setDesignation("");

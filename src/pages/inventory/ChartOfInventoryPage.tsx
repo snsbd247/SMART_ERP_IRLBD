@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -24,8 +24,8 @@ const ChartOfInventoryPage = () => {
     (async () => {
       setLoading(true);
       const [gRes, iRes] = await Promise.all([
-        (supabase.from as any)("stock_groups").select("id, name, parent_id").order("name"),
-        supabase.from("item_master").select("id, item_code, item_name, item_type, stock_group_id, opening_stock, cost_price, selling_price").order("item_name"),
+        (dataClient.from as any)("stock_groups").select("id, name, parent_id").order("name"),
+        dataClient.from("item_master").select("id, item_code, item_name, item_type, stock_group_id, opening_stock, cost_price, selling_price").order("item_name"),
       ]);
       setGroups((gRes.data || []) as StockGroup[]);
       setItems(((iRes.data || []) as unknown) as Item[]);

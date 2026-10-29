@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { isLaravelMode, laravelChangePassword } from "@/lib/laravel-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ const ChangePasswordPage = () => {
       if (laravelMode) {
         await laravelChangePassword(password, confirm);
       } else {
-        const { error } = await supabase.auth.updateUser({ password });
+        const { error } = await dataClient.auth.updateUser({ password });
         if (error) throw error;
       }
       toast({ title: "Password updated successfully" });

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Adds FK constraints between BD VAT Sales Workflow tables and the
- * central customers / item_master tables. Mirrors Supabase migrations
+ * central customers / item_master tables. Mirrors original migrations
  * 20260608125251 (grants — N/A on MySQL) and 20260608125646 (FKs).
  *
  * Safe extension: only adds constraints, no structural change.

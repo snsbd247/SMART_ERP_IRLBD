@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Align the Laravel inventory schema with the column names the React
- * frontend expects (Supabase-style):
+ * frontend expects (PostgREST-style):
  *   - stock_groups table (was missing)
  *   - item_master.stock_group_id, item_master.is_active
  *   - warehouses.warehouse_name / warehouse_code / status mirrors

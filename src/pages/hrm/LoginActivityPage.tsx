@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ export default function LoginActivityPage() {
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     // Fetch login logs with profile info
-    const { data: logData } = await supabase
+    const { data: logData } = await dataClient
       .from("login_logs" as any)
       .select("*")
       .order("login_time", { ascending: false })
@@ -36,7 +36,7 @@ export default function LoginActivityPage() {
     if (logData && (logData as any[]).length > 0) {
       // Get unique user IDs and fetch profiles
       const userIds = [...new Set((logData as any[]).map((l: any) => l.user_id))];
-      const { data: profiles } = await supabase
+      const { data: profiles } = await dataClient
         .from("profiles")
         .select("id, name, username")
         .in("id", userIds);

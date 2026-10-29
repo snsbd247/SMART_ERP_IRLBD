@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logEditAudit } from "@/lib/audit-utils";
 import { documentApi } from "@/lib/document-api";
@@ -69,12 +69,12 @@ const CustomersPage = () => {
   useEffect(() => { load(); loadAccounts(); }, []);
 
   const load = async () => {
-    const { data } = await supabase.from("customers").select("*").order("name");
+    const { data } = await dataClient.from("customers").select("*").order("name");
     setCustomers(data || []);
   };
 
   const loadAccounts = async () => {
-    const { data } = await supabase
+    const { data } = await dataClient
       .from("chart_of_accounts")
       .select("id, account_code, account_name, parent_id")
       .eq("account_type", "asset")
@@ -153,14 +153,14 @@ const CustomersPage = () => {
             code: editingCustomer.code ?? null,
             name: editingCustomer.name, email: editingCustomer.email, phone: editingCustomer.phone, address: editingCustomer.address, bin_number: editingCustomer.bin_number,
             opening_balance: editingCustomer.opening_balance ?? 0, opening_balance_date: editingCustomer.opening_balance_date ?? null };
-          const { error } = await supabase.from("customers").update(newValues).eq("id", editingCustomer.id);
+          const { error } = await dataClient.from("customers").update(newValues).eq("id", editingCustomer.id);
           if (error) throw error;
           await logEditAudit({ userId: user?.id, userName: profile?.name, module: "Sales", action: "Edit Customer", recordId: editingCustomer.id, oldValues, newValues });
         }
         await syncPartyOpeningToLedger(receivableLedgerId || editingCustomer.receivable_account_id || null, openingAmt, "debit");
         toast({ title: "Customer updated" });
       } else {
-        const { data: inserted, error } = await supabase.from("customers").insert({
+        const { data: inserted, error } = await dataClient.from("customers").insert({
           ...form,
           code: codeVal,
           opening_balance: openingAmt,
@@ -175,7 +175,7 @@ const CustomersPage = () => {
           linkId = await createCustomerLedger(form.name.trim(), parentAccountId || undefined);
         }
         if (linkId && inserted?.id) {
-          await supabase.from("customers").update({ receivable_account_id: linkId } as any).eq("id", inserted.id);
+          await dataClient.from("customers").update({ receivable_account_id: linkId } as any).eq("id", inserted.id);
           await syncPartyOpeningToLedger(linkId, openingAmt, "debit");
         }
         const parentName = parentAccountId ? assetAccounts.find((a) => a.id === parentAccountId)?.account_name : "Accounts Receivable";

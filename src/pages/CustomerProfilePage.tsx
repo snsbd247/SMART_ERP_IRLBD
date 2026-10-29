@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatSignedBalance } from "@/lib/balance-format";
 import { computeCustomerPeriodOpening } from "@/lib/period-opening";
@@ -79,15 +79,15 @@ const CustomerProfilePage = () => {
     setLoading(true);
 
     const [custRes, invRes, retRes, notesRes, payRes, poRes, vcRes, dcRes, invV2Res] = await Promise.all([
-      supabase.from("customers").select("*").eq("id", id).single(),
-      supabase.from("sales_invoices").select("*").eq("customer_id", id).order("invoice_date", { ascending: true }),
-      supabase.from("sales_returns").select("*").eq("customer_id", id).order("return_date", { ascending: true }),
-      supabase.from("party_notes" as any).select("*").eq("party_type", "customer").eq("party_id", id).order("created_at", { ascending: false }),
-      supabase.from("party_payments" as any).select("*").eq("party_type", "customer").eq("party_id", id).is("deleted_at", null).order("payment_date", { ascending: false }),
-      supabase.from("purchase_orders").select("*").eq("customer_id", id).order("po_date", { ascending: false }),
-      supabase.from("vat_challans").select("*").eq("customer_id", id).order("challan_date", { ascending: false }),
-      supabase.from("delivery_challans").select("*").eq("customer_id", id).order("dc_date", { ascending: false }),
-      supabase.from("sales_invoices_v2").select("*").eq("customer_id", id).order("invoice_date", { ascending: false }),
+      dataClient.from("customers").select("*").eq("id", id).single(),
+      dataClient.from("sales_invoices").select("*").eq("customer_id", id).order("invoice_date", { ascending: true }),
+      dataClient.from("sales_returns").select("*").eq("customer_id", id).order("return_date", { ascending: true }),
+      dataClient.from("party_notes" as any).select("*").eq("party_type", "customer").eq("party_id", id).order("created_at", { ascending: false }),
+      dataClient.from("party_payments" as any).select("*").eq("party_type", "customer").eq("party_id", id).is("deleted_at", null).order("payment_date", { ascending: false }),
+      dataClient.from("purchase_orders").select("*").eq("customer_id", id).order("po_date", { ascending: false }),
+      dataClient.from("vat_challans").select("*").eq("customer_id", id).order("challan_date", { ascending: false }),
+      dataClient.from("delivery_challans").select("*").eq("customer_id", id).order("dc_date", { ascending: false }),
+      dataClient.from("sales_invoices_v2").select("*").eq("customer_id", id).order("invoice_date", { ascending: false }),
     ]);
     setPurchaseOrders(poRes.data || []);
     setVatChallans(vcRes.data || []);
@@ -107,7 +107,7 @@ const CustomerProfilePage = () => {
     const payIds = pays.map((p: any) => p.id);
     let allocs: any[] = [];
     if (payIds.length > 0) {
-      const { data: allocData } = await supabase
+      const { data: allocData } = await dataClient
         .from("payment_allocations" as any)
         .select("*")
         .in("payment_id", payIds);
@@ -121,7 +121,7 @@ const CustomerProfilePage = () => {
     const voucherTxns: Array<{ date: string; type: string; ref: string; dr: number; cr: number; id: string }> = [];
     let priorVoucherNet = 0; // sum of (debit - credit) strictly before dateFrom
     if (receivableAccountId) {
-      const { data: vEntries, error: vErr } = await supabase
+      const { data: vEntries, error: vErr } = await dataClient
         .from("voucher_entries")
         .select("id, debit, credit, narration, voucher_id, acc_vouchers!inner(id, voucher_number, voucher_date, voucher_type, description, status)")
         .eq("account_id", receivableAccountId)
@@ -212,13 +212,13 @@ const CustomerProfilePage = () => {
 
   const addNote = async () => {
     if (!newNote.trim() || !id) return;
-    const { error } = await supabase.from("party_notes" as any).insert({ party_type: "customer", party_id: id, note: newNote.trim(), created_by: user?.id || null } as any);
+    const { error } = await dataClient.from("party_notes" as any).insert({ party_type: "customer", party_id: id, note: newNote.trim(), created_by: user?.id || null } as any);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
     else { setNewNote(""); fetchData(); }
   };
 
   const deleteNote = async (noteId: string) => {
-    await supabase.from("party_notes" as any).delete().eq("id", noteId);
+    await dataClient.from("party_notes" as any).delete().eq("id", noteId);
     fetchData();
   };
 
@@ -259,7 +259,7 @@ const CustomerProfilePage = () => {
     }
 
     // Insert payment
-    const { data: payData, error } = await supabase.from("party_payments" as any).insert({
+    const { data: payData, error } = await dataClient.from("party_payments" as any).insert({
       party_type: "customer",
       party_id: id,
       payment_date: newPayment.payment_date,
@@ -286,7 +286,7 @@ const CustomerProfilePage = () => {
       }));
 
     if (allocsToInsert.length > 0) {
-      await supabase.from("payment_allocations" as any).insert(allocsToInsert as any);
+      await dataClient.from("payment_allocations" as any).insert(allocsToInsert as any);
     }
 
     setNewPayment({ amount: "", payment_method: "cash", reference: "", notes: "", payment_date: new Date().toISOString().split("T")[0] });
@@ -297,7 +297,7 @@ const CustomerProfilePage = () => {
 
   const deletePayment = async (payId: string) => {
     // Allocations cascade-deleted via FK
-    await supabase.from("party_payments" as any).delete().eq("id", payId);
+    await dataClient.from("party_payments" as any).delete().eq("id", payId);
     toast({ title: "Payment deleted" });
     fetchData();
   };

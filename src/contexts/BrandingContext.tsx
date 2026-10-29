@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { isLaravelMode, getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 
 export interface BrandingSettings {
@@ -119,7 +119,7 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
           rows = payload?.data || [];
         }
       } else {
-        const { data } = await supabase
+        const { data } = await dataClient
           .from("system_settings")
           .select("setting_key, setting_value")
           .in("setting_key", BRANDING_KEYS);
@@ -144,9 +144,9 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
 
     // Per-user override (only when logged in) wins over system-wide branding.
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await dataClient.auth.getUser();
       if (user) {
-        const { data: pref } = await supabase
+        const { data: pref } = await dataClient
           .from("user_theme_preferences")
           .select("primary_color, secondary_color")
           .eq("user_id", user.id)
@@ -168,7 +168,7 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetchBranding();
     // Re-load when auth state changes so each user gets their own theme.
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+    const { data: sub } = dataClient.auth.onAuthStateChange(() => {
       fetchBranding();
     });
     return () => sub.subscription.unsubscribe();
@@ -206,9 +206,9 @@ export const BrandingProvider = ({ children }: { children: ReactNode }) => {
     applyThemeColors(primary, secondary);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await dataClient.auth.getUser();
       if (!user) return;
-      await supabase
+      await dataClient
         .from("user_theme_preferences")
         .upsert(
           { user_id: user.id, primary_color: primary, secondary_color: secondary },

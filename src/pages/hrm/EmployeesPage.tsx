@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { getApiBaseUrl, getLaravelAuthHeaders, isLaravelMode } from "@/lib/laravel-auth";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -78,11 +78,11 @@ export default function EmployeesPage() {
 
   const fetchAll = useCallback(async () => {
     const [empRes, deptRes, desigRes, branchRes, secRes] = await Promise.all([
-      supabase.from("employees" as any).select("*").neq("approval_status", "pending").order("employee_code"),
-      supabase.from("departments" as any).select("id, name").eq("status", "active"),
-      supabase.from("designations" as any).select("id, name").eq("status", "active"),
-      supabase.from("branches").select("id, name").eq("status", "active"),
-      supabase.from("sections" as any).select("id, name, branch_id").eq("status", "active"),
+      dataClient.from("employees" as any).select("*").neq("approval_status", "pending").order("employee_code"),
+      dataClient.from("departments" as any).select("id, name").eq("status", "active"),
+      dataClient.from("designations" as any).select("id, name").eq("status", "active"),
+      dataClient.from("branches").select("id, name").eq("status", "active"),
+      dataClient.from("sections" as any).select("id, name, branch_id").eq("status", "active"),
     ]);
     if (empRes.data) setEmployees(empRes.data as any);
     if (deptRes.data) setDepartments(deptRes.data as any);
@@ -93,7 +93,7 @@ export default function EmployeesPage() {
     // Fetch which employees have linked user accounts.
     // Filter client-side so we don't depend on bridge-specific "IS NOT NULL"
     // translation (the Laravel bridge maps .not("col","is",null) to "!= NULL").
-    const { data: profiles } = await supabase.from("profiles").select("id, employee_id, username");
+    const { data: profiles } = await dataClient.from("profiles").select("id, employee_id, username");
     if (profiles) {
       const map: Record<string, string> = {};
       (profiles as any[]).forEach(p => {
@@ -226,21 +226,21 @@ export default function EmployeesPage() {
       }
 
       if (editId) {
-        const { error } = await supabase.from("employees" as any).update(payload).eq("id", editId);
+        const { error } = await dataClient.from("employees" as any).update(payload).eq("id", editId);
         if (error) { toast.error(error.message); setLoading(false); return; }
 
         // Handle login account changes
         if (form.create_login) {
-          const { data: existingProfile } = await supabase.from("profiles").select("id, username").eq("employee_id", editId).single();
+          const { data: existingProfile } = await dataClient.from("profiles").select("id, username").eq("employee_id", editId).single();
           if (existingProfile) {
             // Update existing profile - restore active status and username
             const updateData: any = { username: form.username, status: "active" };
-            await supabase.from("profiles").update(updateData).eq("id", existingProfile.id);
+            await dataClient.from("profiles").update(updateData).eq("id", existingProfile.id);
             // Re-link employee user_id if it was cleared
-            await supabase.from("employees" as any).update({ user_id: (existingProfile as any).id }).eq("id", editId);
+            await dataClient.from("employees" as any).update({ user_id: (existingProfile as any).id }).eq("id", editId);
             // If password provided, update via edge function
             if (form.password) {
-              const { error: fnError } = await supabase.functions.invoke("admin-create-user", {
+              const { error: fnError } = await dataClient.functions.invoke("admin-create-user", {
                 body: {
                   email: form.email || `${form.username}@erp.local`,
                   password: form.password,
@@ -254,7 +254,7 @@ export default function EmployeesPage() {
             }
           } else {
             // Create new login for existing employee
-            const { data: fnData, error: fnError } = await supabase.functions.invoke("admin-create-user", {
+            const { data: fnData, error: fnError } = await dataClient.functions.invoke("admin-create-user", {
               body: {
                 email: form.email || `${form.username}@erp.local`,
                 password: form.password,
@@ -267,15 +267,15 @@ export default function EmployeesPage() {
             if (fnError) {
               toast.error("Login account creation failed: " + fnError.message);
             } else if (fnData?.user_id) {
-              await supabase.from("employees" as any).update({ user_id: fnData.user_id }).eq("id", editId);
+              await dataClient.from("employees" as any).update({ user_id: fnData.user_id }).eq("id", editId);
             }
           }
         } else {
           // Toggle OFF: disable login by setting profile status to inactive
-          const { data: existingProfile } = await supabase.from("profiles").select("id").eq("employee_id", editId).single();
+          const { data: existingProfile } = await dataClient.from("profiles").select("id").eq("employee_id", editId).single();
           if (existingProfile) {
-            await supabase.from("profiles").update({ status: "inactive", username: null }).eq("id", existingProfile.id);
-            await supabase.from("employees" as any).update({ user_id: null }).eq("id", editId);
+            await dataClient.from("profiles").update({ status: "inactive", username: null }).eq("id", existingProfile.id);
+            await dataClient.from("employees" as any).update({ user_id: null }).eq("id", editId);
           }
         }
 
@@ -283,13 +283,13 @@ export default function EmployeesPage() {
         setDialogOpen(false);
         fetchAll();
       } else {
-        const { data, error } = await supabase.from("employees" as any).insert(payload).select().single();
+        const { data, error } = await dataClient.from("employees" as any).insert(payload).select().single();
         if (error) { toast.error(error.message); setLoading(false); return; }
 
         // Create login account if toggle is ON
         if (form.create_login && data) {
           try {
-            const { data: fnData, error: fnError } = await supabase.functions.invoke("admin-create-user", {
+            const { data: fnData, error: fnError } = await dataClient.functions.invoke("admin-create-user", {
               body: {
                 email: form.email || `${form.username}@erp.local`,
                 password: form.password,
@@ -301,7 +301,7 @@ export default function EmployeesPage() {
             });
             if (fnError) throw fnError;
             if (fnData?.user_id) {
-              await supabase.from("employees" as any).update({ user_id: fnData.user_id }).eq("id", (data as any).id);
+              await dataClient.from("employees" as any).update({ user_id: fnData.user_id }).eq("id", (data as any).id);
             }
           } catch (err: any) {
             toast.error("Employee created but login account failed: " + (err.message || "Unknown error"));
@@ -319,7 +319,7 @@ export default function EmployeesPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this employee?")) return;
-    const { error } = await supabase.from("employees" as any).delete().eq("id", id);
+    const { error } = await dataClient.from("employees" as any).delete().eq("id", id);
     if (error) toast.error(error.message); else { toast.success("Employee deleted"); fetchAll(); }
   };
 

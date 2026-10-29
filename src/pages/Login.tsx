@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { getEmailByUsername } from "@/lib/db-utils";
 import { isLaravelMode } from "@/lib/laravel-auth";
 import { useBranding } from "@/contexts/BrandingContext";
@@ -90,7 +90,7 @@ const Login = () => {
         setForgotStep("verify");
         return;
       }
-      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      const { error } = await dataClient.auth.resetPasswordForEmail(forgotEmail, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) throw error;

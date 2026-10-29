@@ -1,10 +1,10 @@
-import { supabase, IS_LARAVEL_ONLY } from "@/integrations/supabase/client";
+import { dataClient, IS_LARAVEL_ONLY } from "@/integrations/data/client";
 import { getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 
 const FUNCTION_NAME = "document-api";
 
 async function invoke<T = any>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(FUNCTION_NAME, {
+  const { data, error } = await dataClient.functions.invoke(FUNCTION_NAME, {
     body,
   });
   if (error) throw new Error(error.message || "API error");
@@ -30,7 +30,7 @@ async function laravelSimpleUpdate(docType: DocumentType, id: string, fields: Re
   if (!table) {
     throw new Error(`Action not supported for '${docType}' in Laravel mode.`);
   }
-  const { error } = await (supabase.from(table as any) as any).update(fields).eq("id", id);
+  const { error } = await (dataClient.from(table as any) as any).update(fields).eq("id", id);
   if (error) throw new Error(error.message);
   return { success: true };
 }

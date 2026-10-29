@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { signedOpeningBalance } from "@/lib/balance-format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,7 +105,7 @@ const Dashboard = () => {
     const isEmployeeOnly = !isSuperAdmin && !hasPermission("accounts.view") && !hasPermission("sales.view") && !hasPermission("settings.view");
     if (isEmployeeOnly) {
       (async () => {
-        const { data } = await supabase.from("employees").select("id").eq("user_id", user.id).maybeSingle();
+        const { data } = await dataClient.from("employees").select("id").eq("user_id", user.id).maybeSingle();
         if (data) navigate("/portal/dashboard", { replace: true });
         setCheckedRedirect(true);
       })();
@@ -132,11 +132,11 @@ const Dashboard = () => {
     };
 
     const [salesV1Res, salesV2Res, billsV2Res, voucherRes, coaRes] = await Promise.all([
-      settle(supabase.from("sales_invoices").select("total_amount, net_amount, invoice_date"), "sales_invoices"),
-      settle(supabase.from("sales_invoices_v2").select("grand_total, invoice_date"), "sales_invoices_v2"),
-      settle(supabase.from("supplier_bills_v2").select("grand_total, bill_date"), "supplier_bills_v2"),
-      settle(supabase.from("acc_vouchers").select("id, voucher_type, voucher_date, total_amount, status").neq("status", "cancelled").is("deleted_at", null), "acc_vouchers"),
-      settle(supabase.from("chart_of_accounts").select("id, account_name, account_type, opening_balance, opening_balance_type"), "chart_of_accounts"),
+      settle(dataClient.from("sales_invoices").select("total_amount, net_amount, invoice_date"), "sales_invoices"),
+      settle(dataClient.from("sales_invoices_v2").select("grand_total, invoice_date"), "sales_invoices_v2"),
+      settle(dataClient.from("supplier_bills_v2").select("grand_total, bill_date"), "supplier_bills_v2"),
+      settle(dataClient.from("acc_vouchers").select("id, voucher_type, voucher_date, total_amount, status").neq("status", "cancelled").is("deleted_at", null), "acc_vouchers"),
+      settle(dataClient.from("chart_of_accounts").select("id, account_name, account_type, opening_balance, opening_balance_type"), "chart_of_accounts"),
     ]);
 
     const salesV1 = ((salesV1Res as any)?.data || []).map((s: any) => ({ amount: Number(s.net_amount ?? s.total_amount ?? 0), date: s.invoice_date }));
@@ -165,7 +165,7 @@ const Dashboard = () => {
     let entries: any[] = [];
     if (accountIds.length > 0) {
       const validVoucherIds = new Set(vouchers.map((v: any) => v.id));
-      const entryRes = await settle(supabase.from("voucher_entries").select("account_id, debit, credit, voucher_id").in("account_id", accountIds), "voucher_entries (cash/bank)");
+      const entryRes = await settle(dataClient.from("voucher_entries").select("account_id, debit, credit, voucher_id").in("account_id", accountIds), "voucher_entries (cash/bank)");
       entries = ((entryRes as any)?.data || []).filter((e: any) => validVoucherIds.has(e.voucher_id));
       const sumFor = (ids: string[]) => entries.filter((e: any) => ids.includes(e.account_id)).reduce((s: number, e: any) => s + (Number(e.debit || 0) - Number(e.credit || 0)), 0);
       const openingFor = (ids: string[]) => coa.filter((a: any) => ids.includes(a.id)).reduce((s: number, a: any) => s + signedOpeningBalance(a.opening_balance, a.opening_balance_type), 0);
@@ -186,7 +186,7 @@ const Dashboard = () => {
     const monthPaymentIds = new Set<string>(paymentVouchers.filter((v: any) => v.voucher_date && inMonth(v.voucher_date)).map((v: any) => v.id));
     let paymentEntries: any[] = [];
     if (monthPaymentIds.size > 0) {
-      const peRes = await settle(supabase.from("voucher_entries").select("account_id, debit, credit, voucher_id").in("voucher_id", Array.from(monthPaymentIds)), "voucher_entries (top expenses)");
+      const peRes = await settle(dataClient.from("voucher_entries").select("account_id, debit, credit, voucher_id").in("voucher_id", Array.from(monthPaymentIds)), "voucher_entries (top expenses)");
       paymentEntries = (peRes as any)?.data || [];
     }
     const coaNameMap = new Map<string, string>(coa.map((a: any) => [a.id, a.account_name]));
@@ -227,9 +227,9 @@ const Dashboard = () => {
     // Second batch: recent lists, shown below the fold, staged after the
     // first batch finishes so we never hold 10+ requests open at once.
     const [auditRes, recentVoucherRes, paymentRowsRes] = await Promise.all([
-      settle(supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(6), "audit_log"),
-      settle(supabase.from("acc_vouchers").select("id, voucher_number, voucher_type, voucher_date, description, total_amount, status").is("deleted_at", null).order("created_at", { ascending: false }).limit(5), "recent acc_vouchers"),
-      settle(supabase.from("party_payments").select("amount, party_type"), "party_payments"),
+      settle(dataClient.from("audit_log").select("*").order("created_at", { ascending: false }).limit(6), "audit_log"),
+      settle(dataClient.from("acc_vouchers").select("id, voucher_number, voucher_type, voucher_date, description, total_amount, status").is("deleted_at", null).order("created_at", { ascending: false }).limit(5), "recent acc_vouchers"),
+      settle(dataClient.from("party_payments").select("amount, party_type"), "party_payments"),
     ]);
     setRecentActivities((auditRes as any)?.data || []);
     setRecentVouchers((recentVoucherRes as any)?.data || []);
@@ -247,11 +247,11 @@ const Dashboard = () => {
     // Third batch: bottom stat strip (customers/suppliers/products/low-stock)
     // plus the Top Products by Sales chart.
     const [customersRes, suppliersRes, itemsRes, movementsRes, invoiceItemsRes] = await Promise.all([
-      settle(supabase.from("customers").select("id"), "customers count"),
-      settle(supabase.from("suppliers").select("id"), "suppliers count"),
-      settle(supabase.from("item_master").select("id, item_name, min_stock_level").eq("status", "active"), "item_master"),
-      settle(supabase.from("stock_movements").select("product_id, quantity"), "stock_movements"),
-      settle(supabase.from("sales_invoice_items").select("product_id, total"), "sales_invoice_items"),
+      settle(dataClient.from("customers").select("id"), "customers count"),
+      settle(dataClient.from("suppliers").select("id"), "suppliers count"),
+      settle(dataClient.from("item_master").select("id, item_name, min_stock_level").eq("status", "active"), "item_master"),
+      settle(dataClient.from("stock_movements").select("product_id, quantity"), "stock_movements"),
+      settle(dataClient.from("sales_invoice_items").select("product_id, total"), "sales_invoice_items"),
     ]);
 
     // Low-stock count mirrors LowStockPage's logic (current qty <= min_stock_level).

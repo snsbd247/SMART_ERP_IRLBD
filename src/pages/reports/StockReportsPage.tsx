@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,11 +36,11 @@ const StockReportsPage = () => {
   useEffect(() => {
     const init = async () => {
       const [wRes, iRes, sRes, bRes, mRes] = await Promise.all([
-        supabase.from("warehouses").select("*").order("name"),
-        supabase.from("item_master").select("*").order("item_name"),
-        supabase.from("warehouse_stock").select("*"),
-        supabase.from("branches").select("id, name"),
-        supabase.from("stock_movements").select("*").order("created_at", { ascending: false }).limit(1000),
+        dataClient.from("warehouses").select("*").order("name"),
+        dataClient.from("item_master").select("*").order("item_name"),
+        dataClient.from("warehouse_stock").select("*"),
+        dataClient.from("branches").select("id, name"),
+        dataClient.from("stock_movements").select("*").order("created_at", { ascending: false }).limit(1000),
       ]);
       setWarehouses((wRes.data || []) as any);
       setItems((iRes.data || []) as any);

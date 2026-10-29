@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { swApi } from "@/lib/sales-workflow-api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,7 +20,7 @@ export default function InvoiceQueuePage() {
   const [mode, setMode] = useState<"single" | "same_day" | "custom">("custom");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
 
-  useEffect(() => { supabase.from("customers").select("id,name").order("name").then(({ data }) => setCustomers(data || [])); }, []);
+  useEffect(() => { dataClient.from("customers").select("id,name").order("name").then(({ data }) => setCustomers(data || [])); }, []);
   useEffect(() => { swApi.eligibleVatChallans(customer || undefined, date || undefined).then((r) => setEligible(r.data || [])); }, [customer, date]);
 
   const submit = async () => {

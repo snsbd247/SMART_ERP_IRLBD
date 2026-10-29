@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,7 +43,7 @@ const BranchesPage = () => {
 
   const fetchBranches = async () => {
     setLoading(true);
-    const { data } = await supabase.from("branches").select("*").order("name");
+    const { data } = await dataClient.from("branches").select("*").order("name");
     setBranches(((data || []) as unknown as Branch[]));
     setLoading(false);
   };
@@ -101,10 +101,10 @@ const BranchesPage = () => {
         geofence_radius_m: radiusNum,
       };
       if (editBranch) {
-        const { error } = await supabase.from("branches").update(payload).eq("id", editBranch.id);
+        const { error } = await dataClient.from("branches").update(payload).eq("id", editBranch.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("branches").insert(payload);
+        const { error } = await dataClient.from("branches").insert(payload);
         if (error) throw error;
       }
       toast({ title: editBranch ? "Branch updated" : "Branch created" });
@@ -120,7 +120,7 @@ const BranchesPage = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this branch?")) return;
-    const { error } = await supabase.from("branches").delete().eq("id", id);
+    const { error } = await dataClient.from("branches").delete().eq("id", id);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else fetchBranches();
   };

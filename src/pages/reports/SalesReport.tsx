@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,12 +39,12 @@ export default function SalesReport() {
   const load = async () => {
     setLoading(true);
     const [sRes, cRes] = await Promise.all([
-      supabase.from("sales_invoices")
+      dataClient.from("sales_invoices")
         .select("id,invoice_number,invoice_date,customer_id,total_amount,net_amount,discount,status")
         .gte("invoice_date", from)
         .lte("invoice_date", to)
         .order("invoice_date", { ascending: false }),
-      supabase.from("customers").select("id,name"),
+      dataClient.from("customers").select("id,name"),
     ]);
     const cMap: Record<string, string> = {};
     ((cRes.data as any[]) || []).forEach((c) => { cMap[c.id] = c.name; });

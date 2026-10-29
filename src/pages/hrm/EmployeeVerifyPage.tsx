@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { getApiBaseUrl, isLaravelMode } from "@/lib/laravel-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -106,7 +106,7 @@ export default function EmployeeVerifyPage() {
         } catch { /* ignore */ }
         return;
       }
-      const { data } = await supabase
+      const { data } = await dataClient
         .from("company_settings")
         .select("company_name, company_logo_url, address")
         .eq("id", "default")
@@ -169,7 +169,7 @@ export default function EmployeeVerifyPage() {
       return;
     }
 
-    const { data: emp } = await supabase
+    const { data: emp } = await dataClient
       .from("employees" as any)
       .select("first_name, last_name, employee_code, photo_url, status, department_id, designation_id, joining_date")
       .eq("employee_code", trimmed)
@@ -186,10 +186,10 @@ export default function EmployeeVerifyPage() {
 
     const [deptRes, desigRes] = await Promise.all([
       e.department_id
-        ? supabase.from("departments" as any).select("name").eq("id", e.department_id).single()
+        ? dataClient.from("departments" as any).select("name").eq("id", e.department_id).single()
         : Promise.resolve({ data: null }),
       e.designation_id
-        ? supabase.from("designations" as any).select("name").eq("id", e.designation_id).single()
+        ? dataClient.from("designations" as any).select("name").eq("id", e.designation_id).single()
         : Promise.resolve({ data: null }),
     ]);
 

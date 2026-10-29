@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useBranding, contrastRatio, parseHsl } from "@/contexts/BrandingContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import {
   getApiBaseUrl,
   getLaravelAuthHeaders,
   isLaravelMode,
-  isSupabaseDisabledError,
-  markSupabaseUnavailable,
+  isDataClientDisabledError,
+  markDataClientUnavailable,
 } from "@/lib/laravel-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -94,16 +94,16 @@ export default function BrandingPage() {
           throw new Error(`Laravel API: ${detail}`);
         }
       } else {
-        const { error } = await supabase
+        const { error } = await dataClient
           .from("system_settings")
           .upsert(rows, { onConflict: "setting_key" });
         if (error) {
-          // Auto-fallback: Supabase returned 503 / LARAVEL_ONLY_MODE.
-          if (isSupabaseDisabledError(error) && getApiBaseUrl() && attempt === 1) {
-            markSupabaseUnavailable(error.message);
+          // Auto-fallback: legacy path returned 503 / LARAVEL_ONLY_MODE.
+          if (isDataClientDisabledError(error) && getApiBaseUrl() && attempt === 1) {
+            markDataClientUnavailable(error.message);
             toast({
               title: "Switching to Laravel API",
-              description: "Supabase is disabled on this server. Retrying via Laravel…",
+              description: "Retrying via Laravel API…",
             });
             setSaving(false);
             return handleSave(2);
@@ -179,12 +179,12 @@ export default function BrandingPage() {
         const fileName = `${settingKey}_${Date.now()}.${ext}`;
         const filePath = `logos/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await dataClient.storage
           .from("branding")
           .upload(filePath, file, { upsert: true });
         if (uploadError) {
-          if (isSupabaseDisabledError(uploadError) && getApiBaseUrl() && attempt === 1) {
-            markSupabaseUnavailable(uploadError.message);
+          if (isDataClientDisabledError(uploadError) && getApiBaseUrl() && attempt === 1) {
+            markDataClientUnavailable(uploadError.message);
             toast({ title: "Switching to Laravel API", description: "Retrying upload via Laravel…" });
             setUploading(null);
             return handleLogoUpload(e, settingKey, 2);
@@ -192,7 +192,7 @@ export default function BrandingPage() {
           throw uploadError;
         }
 
-        const { data: urlData } = supabase.storage.from("branding").getPublicUrl(filePath);
+        const { data: urlData } = dataClient.storage.from("branding").getPublicUrl(filePath);
         publicUrl = urlData.publicUrl;
       }
 

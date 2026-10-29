@@ -420,7 +420,7 @@ class DemoConfigImportController extends BaseController
     }
 
     /**
-     * The Laravel/MySQL deploy table and Supabase preview table have existed in
+     * The Laravel/MySQL deploy table and the legacy preview table have existed in
      * two compatible shapes. Import only columns that are present, while mapping
      * canonical demo keys to the older Laravel column names when needed.
      */

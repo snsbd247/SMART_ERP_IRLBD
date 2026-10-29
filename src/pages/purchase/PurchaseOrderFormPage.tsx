@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,27 +36,27 @@ const PurchaseOrderFormPage = () => {
   useEffect(() => {
     (async () => {
       const [t, s, b, w, im, u] = await Promise.all([
-        supabase.from("purchase_types" as any).select("id,code").eq("is_active", true),
-        supabase.from("suppliers" as any).select("id,code,name").eq("is_active", true),
-        supabase.from("branches").select("id,name"),
-        supabase.from("warehouses").select("id,name"),
-        supabase.from("item_master").select("id,name,code").limit(1000),
-        supabase.from("units").select("id,abbreviation"),
+        dataClient.from("purchase_types" as any).select("id,code").eq("is_active", true),
+        dataClient.from("suppliers" as any).select("id,code,name").eq("is_active", true),
+        dataClient.from("branches").select("id,name"),
+        dataClient.from("warehouses").select("id,name"),
+        dataClient.from("item_master").select("id,name,code").limit(1000),
+        dataClient.from("units").select("id,abbreviation"),
       ]);
       setTypes(t.data || []); setSuppliers(s.data || []); setBranches(b.data || []);
       setWarehouses(w.data || []); setItems(im.data || []); setUnits(u.data || []);
 
       if (isEdit) {
         const [{ data: hd }, { data: ls }] = await Promise.all([
-          supabase.from("purchase_orders_v2" as any).select("*").eq("id", id).single(),
-          supabase.from("purchase_order_items_v2" as any).select("*").eq("po_id", id).order("line_no"),
+          dataClient.from("purchase_orders_v2" as any).select("*").eq("id", id).single(),
+          dataClient.from("purchase_order_items_v2" as any).select("*").eq("po_id", id).order("line_no"),
         ]);
         if (hd) setH(hd);
         setLines((ls || []) as any);
       } else if (fromPr) {
         const [{ data: pr }, { data: pls }] = await Promise.all([
-          supabase.from("purchase_requisitions" as any).select("*").eq("id", fromPr).single(),
-          supabase.from("purchase_requisition_items" as any).select("*").eq("pr_id", fromPr).order("line_no"),
+          dataClient.from("purchase_requisitions" as any).select("*").eq("id", fromPr).single(),
+          dataClient.from("purchase_requisition_items" as any).select("*").eq("pr_id", fromPr).order("line_no"),
         ]);
         if (pr) setH((p: any) => ({ ...p, branch_id: (pr as any).branch_id, warehouse_id: (pr as any).warehouse_id, purchase_type_id: (pr as any).purchase_type_id, remarks: `From PR ${(pr as any).pr_no}` }));
         const newLines = (pls || []).map((l: any, i: number) => ({
@@ -103,14 +103,14 @@ const PurchaseOrderFormPage = () => {
       delete payload.created_at; delete payload.updated_at;
 
       if (isEdit) {
-        const { error } = await supabase.from("purchase_orders_v2" as any).update(payload).eq("id", id);
+        const { error } = await dataClient.from("purchase_orders_v2" as any).update(payload).eq("id", id);
         if (error) throw error;
-        await supabase.from("purchase_order_items_v2" as any).delete().eq("po_id", id);
+        await dataClient.from("purchase_order_items_v2" as any).delete().eq("po_id", id);
       } else {
         const settings = await getPurchaseSettings();
         poNo = await nextDocNo(settings?.po_prefix || "PO", "purchase_orders_v2", "po_no");
         payload.po_no = poNo;
-        const { data, error } = await supabase.from("purchase_orders_v2" as any).insert(payload).select().single();
+        const { data, error } = await dataClient.from("purchase_orders_v2" as any).insert(payload).select().single();
         if (error) throw error;
         poId = (data as any).id;
       }
@@ -121,20 +121,20 @@ const PurchaseOrderFormPage = () => {
         discount_percent: Number(l.discount_percent) || 0, vat_percent: Number(l.vat_percent) || 0,
         ait_percent: Number(l.ait_percent) || 0, line_total: Number(l.line_total) || 0,
       }));
-      const { data: insLines, error: e2 } = await supabase.from("purchase_order_items_v2" as any).insert(linesPayload).select();
+      const { data: insLines, error: e2 } = await dataClient.from("purchase_order_items_v2" as any).insert(linesPayload).select();
       if (e2) throw e2;
 
       // wire PR ↔ PO links + update PR.ordered_qty
       if (insLines && Object.keys(prLinks).length > 0) {
         const links = (insLines as any[]).map((il: any, i: number) => prLinks[i] ? { po_item_id: il.id, pr_item_id: prLinks[i], linked_qty: Number(lines[i].quantity) || 0 } : null).filter(Boolean);
-        if (links.length > 0) await supabase.from("po_pr_links" as any).insert(links);
+        if (links.length > 0) await dataClient.from("po_pr_links" as any).insert(links);
         for (const i in prLinks) {
           const prItemId = prLinks[i];
-          const { data: pri } = await supabase.from("purchase_requisition_items" as any).select("ordered_qty,quantity").eq("id", prItemId).single();
+          const { data: pri } = await dataClient.from("purchase_requisition_items" as any).select("ordered_qty,quantity").eq("id", prItemId).single();
           if (pri) {
             const newOrdered = Number((pri as any).ordered_qty || 0) + Number(lines[i].quantity || 0);
             const status = newOrdered >= Number((pri as any).quantity) ? "ordered" : "pending";
-            await supabase.from("purchase_requisition_items" as any).update({ ordered_qty: newOrdered, status }).eq("id", prItemId);
+            await dataClient.from("purchase_requisition_items" as any).update({ ordered_qty: newOrdered, status }).eq("id", prItemId);
           }
         }
       }

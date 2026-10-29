@@ -1,6 +1,6 @@
 /**
  * Supplier form helpers extracted for testability.
- * Pure functions only — no Supabase / network calls.
+ * Pure functions only — no network calls.
  */
 
 export interface SupplierLike {
@@ -73,7 +73,7 @@ export interface SupplierFormInput {
 }
 
 /**
- * Build the whitelisted payload sent to Supabase / Laravel.
+ * Build the whitelisted payload sent to the Laravel API.
  * Critically, `is_active` is always coerced to a real boolean so that
  * undefined / null never silently flips a row to inactive.
  */

@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -42,7 +42,7 @@ export default function AccountingAuditLogPage() {
   const load = async () => {
     setLoading(true);
     try {
-      let query: any = supabase
+      let query: any = dataClient
         .from("audit_log" as any)
         .select("id,user_id,user_name,module,action,record_id,details,new_data,ip_address,created_at")
         .eq("module", "accounting")

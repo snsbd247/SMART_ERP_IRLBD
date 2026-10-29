@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -130,8 +130,8 @@ export default function IdCardsPage() {
   useEffect(() => {
     (async () => {
       const [e, ds] = await Promise.all([
-        supabase.from("employees" as any).select("*").order("first_name"),
-        supabase.from("designations" as any).select("id, name"),
+        dataClient.from("employees" as any).select("*").order("first_name"),
+        dataClient.from("designations" as any).select("id, name"),
       ]);
       if (e.data) setEmployees(e.data as any);
       if (ds.data) setDesignations(ds.data as any);
@@ -186,7 +186,7 @@ export default function IdCardsPage() {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } else {
-        const { error } = await supabase
+        const { error } = await dataClient
           .from("company_settings" as any)
           .update({ address: combined, updated_at: new Date().toISOString() })
           .eq("id", settings.id);

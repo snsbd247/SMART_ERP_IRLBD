@@ -632,7 +632,7 @@ class BackupController extends BaseController
                         $ok += $this->restoreInsertStatement($stmt);
                     } else {
                         // Same-app Laravel backups contain DROP/CREATE statements.
-                        // Execute those normally; imported Supabase/Lovable backups
+                        // Execute those normally; rows from other backup formats
                         // are handled through the column-filtered INSERT path above.
                         DB::unprepared(rtrim($stmt, ';') . ';');
                         $ok++;
@@ -780,8 +780,8 @@ class BackupController extends BaseController
 
     private function mapRestoreRow(string $table, array $row): array
     {
-        // Lovable/Supabase backups export auth-facing users as `profiles`,
-        // while the VPS app stores them in Laravel's `users` table.
+        // Some backups carry auth-facing users as `profiles` rows (the
+        // profiles view), while the app stores them in the `users` table.
         if ($table === 'profiles' && Schema::hasTable('users')) {
             $existingPassword = !empty($row['id']) ? DB::table('users')->where('id', $row['id'])->value('password') : null;
             return ['users', [

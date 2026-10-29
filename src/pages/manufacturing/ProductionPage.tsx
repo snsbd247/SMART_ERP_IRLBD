@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -26,10 +26,10 @@ const ProductionPage = () => {
   const fetchAll = async () => {
     setLoading(true);
     const [entRes, prodRes, matRes, bomRes] = await Promise.all([
-      supabase.from("production_entries").select("*, product:item_master(item_name)").order("production_date", { ascending: false }),
-      supabase.from("item_master").select("id, item_name").eq("status", "active").order("item_name"),
-      supabase.from("item_master").select("id, item_name, cost_price").eq("status", "active").order("item_name"),
-      supabase.from("bill_of_materials").select("id, name, product_id").order("name"),
+      dataClient.from("production_entries").select("*, product:item_master(item_name)").order("production_date", { ascending: false }),
+      dataClient.from("item_master").select("id, item_name").eq("status", "active").order("item_name"),
+      dataClient.from("item_master").select("id, item_name, cost_price").eq("status", "active").order("item_name"),
+      dataClient.from("bill_of_materials").select("id, name, product_id").order("name"),
     ]);
     setEntries((entRes.data || []) as any[]);
     setProducts((prodRes.data || []) as any[]);
@@ -47,7 +47,7 @@ const ProductionPage = () => {
   };
 
   const loadBomMaterials = async (bomId: string) => {
-    const { data } = await supabase.from("bom_items").select("material_id, quantity, material:item_master(cost_price)").eq("bom_id", bomId);
+    const { data } = await dataClient.from("bom_items").select("material_id, quantity, material:item_master(cost_price)").eq("bom_id", bomId);
     if (data) {
       setMatItems((data as any[]).map((i) => ({ material_id: i.material_id, quantity: i.quantity, cost: Number(i.material?.cost_price || 0) * i.quantity })));
     }
@@ -62,15 +62,15 @@ const ProductionPage = () => {
     const totalCost = rawCost + Number(form.labor_cost) + Number(form.electricity_cost);
 
     // Generate production number
-    const { data: seq } = await supabase.from("number_sequences").select("*").eq("id", "production").maybeSingle();
+    const { data: seq } = await dataClient.from("number_sequences").select("*").eq("id", "production").maybeSingle();
     const nextNum = ((seq as any)?.current_number || 0) + 1;
     const year = (seq as any)?.year ? `-${(seq as any).year}` : "";
     const prodNumber = `${(seq as any)?.prefix || "PRD"}${year}-${String(nextNum).padStart(5, "0")}`;
     if ((seq as any)?.id) {
-      await supabase.from("number_sequences").update({ current_number: nextNum } as any).eq("id", (seq as any).id);
+      await dataClient.from("number_sequences").update({ current_number: nextNum } as any).eq("id", (seq as any).id);
     }
 
-    const { data: entry, error } = await supabase.from("production_entries").insert({
+    const { data: entry, error } = await dataClient.from("production_entries").insert({
       production_number: prodNumber,
       production_date: form.production_date,
       product_id: form.product_id,
@@ -87,7 +87,7 @@ const ProductionPage = () => {
     if (error) { toast.error(error.message); return; }
 
     if (entry) {
-      await supabase.from("production_materials").insert(matItems.map((i) => ({ production_id: (entry as any).id, ...i })));
+      await dataClient.from("production_materials").insert(matItems.map((i) => ({ production_id: (entry as any).id, ...i })));
     }
 
     toast.success("Production entry created");
@@ -97,14 +97,14 @@ const ProductionPage = () => {
 
   const handleComplete = async (id: string) => {
     if (!confirm("Mark this production as completed? This will update stock.")) return;
-    await supabase.from("production_entries").update({ status: "completed" } as any).eq("id", id);
+    await dataClient.from("production_entries").update({ status: "completed" } as any).eq("id", id);
     toast.success("Production completed");
     fetchAll();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this production entry?")) return;
-    await supabase.from("production_entries").delete().eq("id", id);
+    await dataClient.from("production_entries").delete().eq("id", id);
     toast.success("Deleted");
     fetchAll();
   };

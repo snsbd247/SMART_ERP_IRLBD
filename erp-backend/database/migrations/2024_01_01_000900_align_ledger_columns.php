@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Safe Extension Only — align Laravel schema with frontend expectations.
  *
- * Adds nullable columns the React frontend / Supabase typed schema already
+ * Adds nullable columns the React frontend schema already
  * references but that were missing from the Laravel migrations:
  *
  *   - customers.receivable_account_id  -> chart_of_accounts.id  (auto-posting)

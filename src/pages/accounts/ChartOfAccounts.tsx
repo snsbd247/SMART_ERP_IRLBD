@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,7 +73,7 @@ const ChartOfAccounts = () => {
   };
   const suggestAccountCode = async (type: string, parentId: string): Promise<string> => {
     try {
-      const { data, error } = await supabase.rpc("suggest_account_code", {
+      const { data, error } = await dataClient.rpc("suggest_account_code", {
         _type: type,
         _parent_id: parentId || null,
       });
@@ -87,8 +87,8 @@ const ChartOfAccounts = () => {
 
   useEffect(() => {
     Promise.all([
-      supabase.from("financial_years").select("id, name").order("start_date", { ascending: false }),
-      supabase.from("branches").select("id, name").eq("status", "active"),
+      dataClient.from("financial_years").select("id, name").order("start_date", { ascending: false }),
+      dataClient.from("branches").select("id, name").eq("status", "active"),
     ]).then(([fyRes, brRes]) => {
       setFinancialYears((fyRes.data || []) as any[]);
       setBranches((brRes.data || []) as any[]);
@@ -165,7 +165,7 @@ const ChartOfAccounts = () => {
       return;
     }
     // Block delete when account has voucher entries (DB FK is RESTRICT)
-    const { count, error: cntErr } = await supabase
+    const { count, error: cntErr } = await dataClient
       .from("voucher_entries")
       .select("id", { count: "exact", head: true })
       .eq("account_id", a.id);
@@ -180,8 +180,8 @@ const ChartOfAccounts = () => {
     if (!confirm(`Delete account "${a.account_code} — ${a.account_name}"?\n\nIts IFRS mapping will also be removed.`)) return;
     try {
       // ifrs_account_mapping cascades via FK, but remove explicitly to be safe
-      await supabase.from("ifrs_account_mapping").delete().eq("account_id", a.id);
-      const { error } = await supabase.from("chart_of_accounts").delete().eq("id", a.id);
+      await dataClient.from("ifrs_account_mapping").delete().eq("account_id", a.id);
+      const { error } = await dataClient.from("chart_of_accounts").delete().eq("id", a.id);
       if (error) throw error;
       toast({ title: "Account deleted" });
       refetch();
@@ -272,7 +272,7 @@ const ChartOfAccounts = () => {
       const codeSource = formCodeTouched ? "manual" : "auto";
 
       if (editAcc) {
-        const { error } = await supabase.from("chart_of_accounts").update(payload).eq("id", editAcc.id);
+        const { error } = await dataClient.from("chart_of_accounts").update(payload).eq("id", editAcc.id);
         if (error) throw error;
         // Audit log: capture opening-balance changes explicitly with before/after values.
         if (
@@ -309,7 +309,7 @@ const ChartOfAccounts = () => {
           } catch { /* ignore */ }
         }
       } else {
-        const { data: inserted, error } = await supabase
+        const { data: inserted, error } = await dataClient
           .from("chart_of_accounts")
           .insert(payload)
           .select("id")

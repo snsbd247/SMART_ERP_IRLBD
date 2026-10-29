@@ -14,8 +14,8 @@ vi.mock("@/contexts/CurrencyContext", () => ({ useCurrency: () => ({ refetch: ()
 vi.mock("../../../contexts/CurrencyContext", () => ({ useCurrency: () => ({ refetch: () => {} }) }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: () => {} }) }));
 vi.mock("../../../hooks/use-toast", () => ({ useToast: () => ({ toast: () => {} }) }));
-vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: { invoke: async () => ({ data: null, error: null }) } } }));
-vi.mock("../../../integrations/supabase/client", () => ({ supabase: { functions: { invoke: async () => ({ data: null, error: null }) } } }));
+vi.mock("@/integrations/data/client", () => ({ dataClient: { functions: { invoke: async () => ({ data: null, error: null }) } } }));
+vi.mock("../../../integrations/data/client", () => ({ dataClient: { functions: { invoke: async () => ({ data: null, error: null }) } } }));
 import {
   PrintPO,
   PrintTaxInvoice,

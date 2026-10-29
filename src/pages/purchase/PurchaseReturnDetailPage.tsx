@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,18 +16,18 @@ const PurchaseReturnDetailPage = () => {
   const [supplier, setSupplier] = useState<any>(null);
 
   const load = async () => {
-    const { data: h } = await supabase.from("purchase_returns_v2" as any).select("*").eq("id", id).maybeSingle();
-    const { data: it } = await supabase.from("purchase_return_items_v2" as any).select("*").eq("return_id", id).order("sort_order");
+    const { data: h } = await dataClient.from("purchase_returns_v2" as any).select("*").eq("id", id).maybeSingle();
+    const { data: it } = await dataClient.from("purchase_return_items_v2" as any).select("*").eq("return_id", id).order("sort_order");
     setRet(h); setItems((it || []) as any);
     if ((h as any)?.supplier_id) {
-      const { data: s } = await supabase.from("suppliers" as any).select("*").eq("id", (h as any).supplier_id).maybeSingle();
+      const { data: s } = await dataClient.from("suppliers" as any).select("*").eq("id", (h as any).supplier_id).maybeSingle();
       setSupplier(s);
     }
   };
   useEffect(() => { if (id) load(); }, [id]);
 
   const post = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await dataClient.auth.getUser();
     await postPurchaseReturn(ret, items, supplier?.purchase_type_id, user?.id);
     toast.success("Return posted (stock + GL)");
     load();

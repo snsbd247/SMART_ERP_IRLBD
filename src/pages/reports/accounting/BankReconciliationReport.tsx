@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SearchableAccountSelect } from "@/components/accounts/SearchableAccountSelect";
 import { useReportData } from "@/hooks/useReportData";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { GitCompare, Printer, Download, FileSpreadsheet } from "lucide-react";
 import { signedOpeningBalance } from "@/lib/balance-format";
 
@@ -21,7 +21,7 @@ const BankReconciliationReport = () => {
 
   const fetchBalance = async () => {
     if (!selectedBank) return;
-    const { data: entries } = await supabase.from("voucher_entries")
+    const { data: entries } = await dataClient.from("voucher_entries")
       .select("debit, credit, acc_vouchers!inner(status)")
       .eq("account_id", selectedBank)
       .eq("acc_vouchers.status", "approved");

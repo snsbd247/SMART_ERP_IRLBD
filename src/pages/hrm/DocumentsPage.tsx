@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useCurrency } from "@/contexts/CurrencyContext";
@@ -69,10 +69,10 @@ export default function DocumentsPage() {
   useEffect(() => {
     (async () => {
       const [e, d, ds, docsRes] = await Promise.all([
-        supabase.from("employees" as any).select("*").order("first_name"),
-        supabase.from("departments" as any).select("id, name"),
-        supabase.from("designations" as any).select("id, name"),
-        supabase.from("employee_documents" as any).select("*").order("created_at", { ascending: false }).limit(50),
+        dataClient.from("employees" as any).select("*").order("first_name"),
+        dataClient.from("departments" as any).select("id, name"),
+        dataClient.from("designations" as any).select("id, name"),
+        dataClient.from("employee_documents" as any).select("*").order("created_at", { ascending: false }).limit(50),
       ]);
       if (e.data) setEmployees(e.data as any);
       if (d.data) setDepartments(d.data as any);
@@ -200,7 +200,7 @@ export default function DocumentsPage() {
   const handleSave = async () => {
     if (!emp || !preview) return;
     const docLabel = docTypes.find(d => d.value === docType)?.label || docType;
-    const { error } = await supabase.from("employee_documents" as any).insert({
+    const { error } = await dataClient.from("employee_documents" as any).insert({
       employee_id: emp.id,
       document_type: docType,
       document_title: `${docLabel} - ${emp.first_name} ${emp.last_name}`,
@@ -210,14 +210,14 @@ export default function DocumentsPage() {
     if (error) toast.error(error.message);
     else {
       toast.success("Document saved to employee record");
-      const { data } = await supabase.from("employee_documents" as any).select("*").order("created_at", { ascending: false }).limit(50);
+      const { data } = await dataClient.from("employee_documents" as any).select("*").order("created_at", { ascending: false }).limit(50);
       if (data) setSavedDocs(data as any);
     }
   };
 
   const handleDeleteDoc = async (id: string) => {
     if (!confirm("Delete this document?")) return;
-    const { error } = await supabase.from("employee_documents" as any).delete().eq("id", id);
+    const { error } = await dataClient.from("employee_documents" as any).delete().eq("id", id);
     if (error) toast.error(error.message);
     else {
       toast.success("Deleted");

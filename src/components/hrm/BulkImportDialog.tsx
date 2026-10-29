@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -150,11 +150,11 @@ export function BulkImportDialog({ open, onOpenChange, config }: Props) {
     for (let i = 0; i < valid.length; i += CHUNK) {
       if (cancelRef.current) { cancelled = true; break; }
       const chunk = valid.slice(i, i + CHUNK);
-      const { error } = await supabase.from(config.table as any).insert(chunk.map(r => r.payload));
+      const { error } = await dataClient.from(config.table as any).insert(chunk.map(r => r.payload));
       if (error) {
         for (const r of chunk) {
           if (cancelRef.current) { cancelled = true; break; }
-          const { error: e2 } = await supabase.from(config.table as any).insert(r.payload as any);
+          const { error: e2 } = await dataClient.from(config.table as any).insert(r.payload as any);
           if (e2) errors.push({ ...r, error: e2.message }); else ok++;
         }
       } else {

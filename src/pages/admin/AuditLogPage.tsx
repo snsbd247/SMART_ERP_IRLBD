@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -70,13 +70,13 @@ const AuditLogPage = () => {
   const [securityAlerts, setSecurityAlerts] = useState<SecurityAlert[]>([]);
 
   const fetchUsers = useCallback(async () => {
-    const { data } = await supabase.from("profiles").select("id, name").order("name");
+    const { data } = await dataClient.from("profiles").select("id, name").order("name");
     setUsers((data || []) as any);
   }, []);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
-    let query = supabase.from("audit_log").select("*").order("created_at", { ascending: false }).limit(500);
+    let query = dataClient.from("audit_log").select("*").order("created_at", { ascending: false }).limit(500);
     if (filterModule !== "__all__") query = query.eq("module", filterModule);
     if (filterAction !== "__all__") query = query.eq("action", filterAction);
     if (filterUser !== "__all__") query = query.eq("user_id", filterUser);
@@ -88,7 +88,7 @@ const AuditLogPage = () => {
   }, [filterModule, filterAction, filterUser, filterFrom, filterTo]);
 
   const fetchActivities = useCallback(async () => {
-    let query = supabase.from("user_activities" as any).select("*").order("created_at", { ascending: false }).limit(200);
+    let query = dataClient.from("user_activities" as any).select("*").order("created_at", { ascending: false }).limit(200);
     if (filterUser !== "__all__") query = query.eq("user_id", filterUser);
     const { data } = await query;
     setActivities((data || []) as any);
@@ -99,7 +99,7 @@ const AuditLogPage = () => {
 
     // Check for multiple failed logins in last hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { data: failedLogins } = await supabase
+    const { data: failedLogins } = await dataClient
       .from("user_activities" as any)
       .select("*")
       .eq("activity_type", "failed_login")
@@ -117,7 +117,7 @@ const AuditLogPage = () => {
 
     // Check for logins from different IPs for same user (last 24h)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: recentLogins } = await supabase
+    const { data: recentLogins } = await dataClient
       .from("user_activities" as any)
       .select("user_id, ip_address")
       .eq("activity_type", "login")
@@ -145,7 +145,7 @@ const AuditLogPage = () => {
     }
 
     // Check for unusual delete activity
-    const { data: recentDeletes } = await supabase
+    const { data: recentDeletes } = await dataClient
       .from("audit_log")
       .select("user_name")
       .eq("action", "delete")

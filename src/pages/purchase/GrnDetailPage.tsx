@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,14 +24,14 @@ const GrnDetailPage = () => {
 
   const load = async () => {
     const [{ data: hd }, { data: ls }] = await Promise.all([
-      supabase.from("grns_v2" as any).select("*").eq("id", id).single(),
-      supabase.from("grn_items_v2" as any).select("*").eq("grn_id", id).order("line_no"),
+      dataClient.from("grns_v2" as any).select("*").eq("id", id).single(),
+      dataClient.from("grn_items_v2" as any).select("*").eq("grn_id", id).order("line_no"),
     ]);
     setH(hd); setLines((ls || []) as any);
     if (hd) {
       const [s, p] = await Promise.all([
-        supabase.from("suppliers" as any).select("*").eq("id", (hd as any).supplier_id).maybeSingle(),
-        (hd as any).po_id ? supabase.from("purchase_orders_v2" as any).select("*").eq("id", (hd as any).po_id).maybeSingle() : Promise.resolve({ data: null }),
+        dataClient.from("suppliers" as any).select("*").eq("id", (hd as any).supplier_id).maybeSingle(),
+        (hd as any).po_id ? dataClient.from("purchase_orders_v2" as any).select("*").eq("id", (hd as any).po_id).maybeSingle() : Promise.resolve({ data: null }),
       ]);
       setSupplier(s.data); setPo((p as any).data);
     }
@@ -43,7 +43,7 @@ const GrnDetailPage = () => {
     setBusy(true);
     try {
       const vid = await postGrn(h, lines, po, user?.id);
-      await supabase.from("grns_v2" as any).update({ status: "Approved", approved_by: user?.id, approved_at: new Date().toISOString(), voucher_id: vid }).eq("id", id);
+      await dataClient.from("grns_v2" as any).update({ status: "Approved", approved_by: user?.id, approved_at: new Date().toISOString(), voucher_id: vid }).eq("id", id);
       toast({ title: "Approved", description: vid ? "Stock & journal voucher posted" : "Stock posted (no COA mapping → no JV)" });
       load();
     } catch (e: any) {
@@ -53,7 +53,7 @@ const GrnDetailPage = () => {
 
   const cancel = async () => {
     if (!confirm("Cancel this GRN?")) return;
-    await supabase.from("grns_v2" as any).update({ status: "Cancelled" }).eq("id", id);
+    await dataClient.from("grns_v2" as any).update({ status: "Cancelled" }).eq("id", id);
     await logAudit({ document_type: "GRN", document_id: id!, document_no: h.grn_no, action: "cancelled", performed_by: user?.id });
     load();
   };

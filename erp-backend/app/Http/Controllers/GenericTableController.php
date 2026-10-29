@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Generic PostgREST-compatible CRUD controller for whitelisted public-schema
- * tables. Used by the frontend Laravel-mode Supabase bridge
- * (`src/integrations/supabase/laravel-bridge.ts`) so all pages that call
- * `supabase.from(...)` work on VPS without touching Supabase.
+ * tables. Used by the frontend data bridge
+ * (`src/integrations/data/laravel-bridge.ts`) so all pages that call
+ * `dataClient.from(...)` work against this API.
  *
  * Query-string protocol (URL-friendly, decoded by bridge):
  *   ?select=col1,col2                — column projection
@@ -21,8 +21,8 @@ use Illuminate\Support\Facades\Schema;
  *   ?limit=N&offset=N                — pagination
  *   ?single=1                        — return first row as object (not array)
  *
- * Bodies (POST/PATCH) accept the same row shape Supabase clients send.
- * Responses match Supabase: `{ data, error }` is shaped by the bridge; this
+ * Bodies (POST/PATCH) accept the same row shape the frontend data client sends.
+ * Responses match the data client: `{ data, error }` is shaped by the bridge; this
  * controller returns raw arrays/objects with proper HTTP status codes.
  */
 class GenericTableController extends BaseController
@@ -53,7 +53,7 @@ class GenericTableController extends BaseController
 
     /**
      * Per-table virtual column aliases. Lets frontend code written against the
-     * Supabase schema (e.g. item_master.name / item_master.sku) keep working
+     * legacy schema (e.g. item_master.name / item_master.sku) keep working
      * against the Laravel/MySQL schema (item_name / item_code). Applied to
      * select projection, filters, order, insert and update bodies.
      */
@@ -107,7 +107,7 @@ class GenericTableController extends BaseController
     }
 
     /**
-     * Browser/Supabase-style clients often send ISO timestamps such as
+     * Browser/PostgREST-style clients often send ISO timestamps such as
      * 2026-06-10T16:03:58.512Z. MySQL DATETIME columns reject that format, so
      * normalize all incoming full ISO timestamps before insert/update/upsert.
      */

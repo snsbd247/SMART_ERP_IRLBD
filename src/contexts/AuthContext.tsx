@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { logLoginAttempt, logLogout } from "@/lib/audit-utils";
 import {
   isLaravelMode,
@@ -9,7 +9,16 @@ import {
   getLaravelToken,
   type LaravelUser,
 } from "@/lib/laravel-auth";
-import type { User, Session } from "@supabase/supabase-js";
+
+export interface User {
+  id: string;
+  email?: string | null;
+}
+
+export interface Session {
+  access_token: string;
+  user: User;
+}
 
 interface Profile {
   id: string;
@@ -73,9 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession({ access_token: getLaravelToken() ?? "", user: { id: u.id } } as unknown as Session);
   }, []);
 
-  // ───────── Supabase profile fetch (unchanged) ─────────
+  // ───────── Profile fetch (unchanged) ─────────
   const fetchProfile = useCallback(async (userId: string) => {
-    const { data: profileData } = await supabase
+    const { data: profileData } = await dataClient
       .from("profiles")
       .select("*")
       .eq("id", userId)
@@ -98,14 +107,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isSA) {
         setPermissions(["*"]);
       } else {
-        const { data: customRoleLinks } = await supabase
+        const { data: customRoleLinks } = await dataClient
           .from("user_custom_roles" as any)
           .select("custom_role_id")
           .eq("user_id", userId);
 
         if (customRoleLinks && customRoleLinks.length > 0) {
           const roleIds = customRoleLinks.map((r: any) => r.custom_role_id);
-          const { data: perms } = await supabase
+          const { data: perms } = await dataClient
             .from("role_permissions")
             .select("*")
             .in("custom_role_id", roleIds);
@@ -158,7 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = dataClient.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -170,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    dataClient.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) fetchProfile(session.user.id);
@@ -192,17 +201,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email: emailOrUsername, password });
+    const { data, error } = await dataClient.auth.signInWithPassword({ email: emailOrUsername, password });
     try {
       await logLoginAttempt({ userId: data?.user?.id, email: emailOrUsername, success: !error });
       if (!error && data?.user?.id) {
-        await supabase.from("login_logs" as any).insert({
+        await dataClient.from("login_logs" as any).insert({
           user_id: data.user.id,
           ip_address: null,
           user_agent: navigator.userAgent,
           login_time: new Date().toISOString(),
         });
-        await supabase.from("profiles").update({ last_login_at: new Date().toISOString() }).eq("id", data.user.id);
+        await dataClient.from("profiles").update({ last_login_at: new Date().toISOString() }).eq("id", data.user.id);
       }
     } catch { /* ignore */ }
     return { error: error as Error | null };
@@ -212,7 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (LARAVEL) {
       return { error: new Error("Signup not supported in Laravel mode. Ask an admin to create your account.") };
     }
-    const { error } = await supabase.auth.signUp({
+    const { error } = await dataClient.auth.signUp({
       email,
       password,
       options: { data: meta, emailRedirectTo: window.location.origin },
@@ -233,7 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await logLogout(user?.id);
       if (user?.id) {
-        const { data: latestLog } = await supabase
+        const { data: latestLog } = await dataClient
           .from("login_logs" as any)
           .select("id")
           .eq("user_id", user.id)
@@ -242,11 +251,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .limit(1)
           .single();
         if (latestLog) {
-          await supabase.from("login_logs" as any).update({ logout_time: new Date().toISOString() }).eq("id", (latestLog as any).id);
+          await dataClient.from("login_logs" as any).update({ logout_time: new Date().toISOString() }).eq("id", (latestLog as any).id);
         }
       }
     } catch { /* ignore */ }
-    await supabase.auth.signOut();
+    await dataClient.auth.signOut();
   };
 
   const isSuperAdmin = profile?.employee_id === null || profile?.employee_id === undefined || permissions.includes("*");

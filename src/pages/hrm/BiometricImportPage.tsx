@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,12 +45,12 @@ export default function BiometricImportPage() {
   const [deviceForm, setDeviceForm] = useState({ device_name: "", ip_address: "", port: 4370, location: "" });
 
   const fetchLogs = useCallback(async () => {
-    const { data } = await supabase.from("biometric_logs" as any).select("*").order("date", { ascending: false }).limit(200);
+    const { data } = await dataClient.from("biometric_logs" as any).select("*").order("date", { ascending: false }).limit(200);
     if (data) setLogs(data as any);
   }, []);
 
   const fetchDevices = useCallback(async () => {
-    const { data } = await supabase.from("biometric_devices" as any).select("*").order("device_name");
+    const { data } = await dataClient.from("biometric_devices" as any).select("*").order("device_name");
     if (data) setDevices(data as any);
   }, []);
 
@@ -72,17 +72,17 @@ export default function BiometricImportPage() {
   const saveDevice = async () => {
     if (!deviceForm.device_name || !deviceForm.ip_address) { toast.error("Device name and IP are required"); return; }
     if (editDevice) {
-      const { error } = await supabase.from("biometric_devices" as any).update(deviceForm as any).eq("id", editDevice.id);
+      const { error } = await dataClient.from("biometric_devices" as any).update(deviceForm as any).eq("id", editDevice.id);
       if (error) toast.error(error.message); else { toast.success("Device updated"); fetchDevices(); setDeviceDialog(false); }
     } else {
-      const { error } = await supabase.from("biometric_devices" as any).insert(deviceForm as any);
+      const { error } = await dataClient.from("biometric_devices" as any).insert(deviceForm as any);
       if (error) toast.error(error.message); else { toast.success("Device added"); fetchDevices(); setDeviceDialog(false); }
     }
   };
 
   const deleteDevice = async (id: string) => {
     if (!confirm("Delete this device?")) return;
-    const { error } = await supabase.from("biometric_devices" as any).delete().eq("id", id);
+    const { error } = await dataClient.from("biometric_devices" as any).delete().eq("id", id);
     if (error) toast.error(error.message); else { toast.success("Device deleted"); fetchDevices(); }
   };
 
@@ -107,7 +107,7 @@ export default function BiometricImportPage() {
       });
     }
     if (records.length === 0) { toast.error("No valid records found"); return; }
-    const { error } = await supabase.from("biometric_logs" as any).insert(records);
+    const { error } = await dataClient.from("biometric_logs" as any).insert(records);
     if (error) toast.error(error.message);
     else { toast.success(`Imported ${records.length} biometric logs`); fetchLogs(); }
     e.target.value = "";
@@ -119,24 +119,24 @@ export default function BiometricImportPage() {
     const unprocessed = logs.filter(l => !l.processed);
     let count = 0;
     for (const log of unprocessed) {
-      const { data: emp } = await supabase.from("employees" as any).select("id, shift_id").eq("employee_code", log.employee_code).single();
+      const { data: emp } = await dataClient.from("employees" as any).select("id, shift_id").eq("employee_code", log.employee_code).single();
       if (!emp) continue;
       let status = "present";
       if ((emp as any).shift_id) {
-        const { data: shift } = await supabase.from("shifts" as any).select("start_time, late_after_minutes").eq("id", (emp as any).shift_id).single();
+        const { data: shift } = await dataClient.from("shifts" as any).select("start_time, late_after_minutes").eq("id", (emp as any).shift_id).single();
         if (shift && log.check_in_time) {
           const [sh, sm] = (shift as any).start_time.split(":").map(Number);
           const [ch, cm] = log.check_in_time.split(":").map(Number);
           if (ch * 60 + cm > sh * 60 + sm + ((shift as any).late_after_minutes || 15)) status = "late";
         }
       }
-      const { data: existing } = await supabase.from("attendance" as any).select("id").eq("employee_id", (emp as any).id).eq("date", log.date).single();
+      const { data: existing } = await dataClient.from("attendance" as any).select("id").eq("employee_id", (emp as any).id).eq("date", log.date).single();
       if (existing) {
-        await supabase.from("attendance" as any).update({ check_in: log.check_in_time, check_out: log.check_out_time, status }).eq("id", (existing as any).id);
+        await dataClient.from("attendance" as any).update({ check_in: log.check_in_time, check_out: log.check_out_time, status }).eq("id", (existing as any).id);
       } else {
-        await supabase.from("attendance" as any).insert({ employee_id: (emp as any).id, date: log.date, check_in: log.check_in_time, check_out: log.check_out_time, status });
+        await dataClient.from("attendance" as any).insert({ employee_id: (emp as any).id, date: log.date, check_in: log.check_in_time, check_out: log.check_out_time, status });
       }
-      await supabase.from("biometric_logs" as any).update({ processed: true } as any).eq("id", log.id);
+      await dataClient.from("biometric_logs" as any).update({ processed: true } as any).eq("id", log.id);
       count++;
     }
     toast.success(`Processed ${count} biometric records into attendance`);

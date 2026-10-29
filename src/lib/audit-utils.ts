@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 
 /**
  * Comprehensive audit logging utility for ERP operations.
@@ -20,7 +20,7 @@ export async function logCreate(params: {
   newData?: Record<string, any>;
   details?: string;
 }) {
-  await supabase.from("audit_log").insert({
+  await dataClient.from("audit_log").insert({
     user_id: params.userId || null,
     user_name: params.userName || null,
     module: params.module,
@@ -58,7 +58,7 @@ export async function logUpdate(params: {
 
   if (Object.keys(diff).length === 0) return; // No changes
 
-  await supabase.from("audit_log").insert({
+  await dataClient.from("audit_log").insert({
     user_id: params.userId || null,
     user_name: params.userName || null,
     module: params.module,
@@ -82,7 +82,7 @@ export async function logDelete(params: {
   oldData?: Record<string, any>;
   details?: string;
 }) {
-  await supabase.from("audit_log").insert({
+  await dataClient.from("audit_log").insert({
     user_id: params.userId || null,
     user_name: params.userName || null,
     module: params.module,
@@ -104,7 +104,7 @@ export async function logApprove(params: {
   recordId: string;
   details?: string;
 }) {
-  await supabase.from("audit_log").insert({
+  await dataClient.from("audit_log").insert({
     user_id: params.userId || null,
     user_name: params.userName || null,
     module: params.module,
@@ -128,7 +128,7 @@ export async function logAudit(params: {
   oldData?: Record<string, any>;
   newData?: Record<string, any>;
 }) {
-  await supabase.from("audit_log").insert({
+  await dataClient.from("audit_log").insert({
     user_id: params.userId || null,
     user_name: params.userName || null,
     module: params.module,
@@ -176,7 +176,7 @@ export async function logActivity(params: {
   description?: string;
   metadata?: Record<string, any>;
 }) {
-  await supabase.from("user_activities" as any).insert({
+  await dataClient.from("user_activities" as any).insert({
     user_id: params.userId || null,
     activity_type: params.activityType,
     description: params.description || null,

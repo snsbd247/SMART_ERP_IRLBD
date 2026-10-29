@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -23,14 +23,14 @@ const PurchaseOrderDetailPage = () => {
 
   const load = async () => {
     const [{ data: h }, { data: ls }, { data: am }, { data: au }] = await Promise.all([
-      supabase.from("purchase_orders_v2" as any).select("*").eq("id", id).single(),
-      supabase.from("purchase_order_items_v2" as any).select("*").eq("po_id", id).order("line_no"),
-      supabase.from("po_amendments_v2" as any).select("*").eq("po_id", id).order("revision_no", { ascending: false }),
-      supabase.from("purchase_audit_log" as any).select("*").eq("document_type", "PO").eq("document_id", id).order("created_at", { ascending: false }),
+      dataClient.from("purchase_orders_v2" as any).select("*").eq("id", id).single(),
+      dataClient.from("purchase_order_items_v2" as any).select("*").eq("po_id", id).order("line_no"),
+      dataClient.from("po_amendments_v2" as any).select("*").eq("po_id", id).order("revision_no", { ascending: false }),
+      dataClient.from("purchase_audit_log" as any).select("*").eq("document_type", "PO").eq("document_id", id).order("created_at", { ascending: false }),
     ]);
     setPo(h as any); setLines((ls || []) as any); setAmendments((am || []) as any); setAudit((au || []) as any);
     if ((h as any)?.supplier_id) {
-      const { data: s } = await supabase.from("suppliers" as any).select("*").eq("id", (h as any).supplier_id).single();
+      const { data: s } = await dataClient.from("suppliers" as any).select("*").eq("id", (h as any).supplier_id).single();
       setSupplier(s);
     }
   };
@@ -41,7 +41,7 @@ const PurchaseOrderDetailPage = () => {
     if (status === "cancelled") payload.cancelled_reason = reason;
     if (status === "closed") payload.closed_reason = reason;
     if (status === "approved") { payload.approved_by = user?.id; payload.approved_at = new Date().toISOString(); }
-    const { error } = await supabase.from("purchase_orders_v2" as any).update(payload).eq("id", id);
+    const { error } = await dataClient.from("purchase_orders_v2" as any).update(payload).eq("id", id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     await logAudit({ document_type: "PO", document_id: id!, document_no: po?.po_no,
       action: status.toUpperCase(), notes: reason, performed_by: user?.id, performed_by_name: profile?.name || user?.email });
@@ -51,12 +51,12 @@ const PurchaseOrderDetailPage = () => {
   const amend = async () => {
     const reason = prompt("Amendment reason?");
     if (!reason) return;
-    await supabase.from("po_amendments_v2" as any).insert({
+    await dataClient.from("po_amendments_v2" as any).insert({
       po_id: id, revision_no: (po?.revision_no || 0) + 1, reason,
       amended_by: user?.id, amended_by_name: profile?.name || user?.email,
       snapshot: { header: po, lines } as any,
     });
-    await supabase.from("purchase_orders_v2" as any).update({ revision_no: (po?.revision_no || 0) + 1, status: "draft" }).eq("id", id);
+    await dataClient.from("purchase_orders_v2" as any).update({ revision_no: (po?.revision_no || 0) + 1, status: "draft" }).eq("id", id);
     await logAudit({ document_type: "PO", document_id: id!, document_no: po?.po_no, action: "AMENDED", notes: reason, performed_by: user?.id, performed_by_name: profile?.name || user?.email });
     toast({ title: "Amendment created — PO is now in Draft for re-approval" }); load();
   };

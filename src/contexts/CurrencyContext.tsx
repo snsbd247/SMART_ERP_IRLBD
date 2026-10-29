@@ -1,6 +1,6 @@
 import { createContext, useContext, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { getApiBaseUrl, getLaravelAuthHeaders, getLaravelToken, setLaravelToken } from "@/lib/laravel-auth";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -43,7 +43,7 @@ async function fetchCompanySettings(): Promise<CompanySettingsRow | null> {
     if (res.status === 401) setLaravelToken(null);
     return null;
   }
-  const { data } = await supabase.from("company_settings" as any).select("*").maybeSingle();
+  const { data } = await dataClient.from("company_settings" as any).select("*").maybeSingle();
   return (data as unknown) as CompanySettingsRow | null;
 }
 

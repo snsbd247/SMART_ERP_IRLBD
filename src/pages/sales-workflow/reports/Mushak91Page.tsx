@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, Printer } from "lucide-react";
@@ -30,11 +30,11 @@ export default function Mushak91Page() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      supabase.from("sales_invoice_items_v2")
+      dataClient.from("sales_invoice_items_v2")
         .select("qty,rate,vat_pct,vat_amount,line_total,invoice:sales_invoices_v2!inner(invoice_number,invoice_date,status,customer:customers(name))")
         .gte("invoice.invoice_date", from)
         .lte("invoice.invoice_date", to),
-      supabase.from("invoice_payments")
+      dataClient.from("invoice_payments")
         .select("payment_number,payment_date,amount_received,tds_amount,total_settled,invoice_id,invoice:sales_invoices_v2(invoice_number,customer:customers(name))")
         .gte("payment_date", from)
         .lte("payment_date", to),

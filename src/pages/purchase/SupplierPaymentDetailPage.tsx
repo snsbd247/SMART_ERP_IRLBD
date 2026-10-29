@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,19 +16,19 @@ const SupplierPaymentDetailPage = () => {
   const [supplier, setSupplier] = useState<any>(null);
 
   const load = async () => {
-    const { data: p } = await supabase.from("supplier_payments_v2" as any).select("*").eq("id", id).maybeSingle();
-    const { data: a } = await supabase.from("supplier_payment_allocations" as any)
+    const { data: p } = await dataClient.from("supplier_payments_v2" as any).select("*").eq("id", id).maybeSingle();
+    const { data: a } = await dataClient.from("supplier_payment_allocations" as any)
       .select("*,supplier_bills_v2(bill_no,bill_date,grand_total)").eq("payment_id", id);
     setPmt(p); setAllocs((a || []) as any);
     if ((p as any)?.supplier_id) {
-      const { data: s } = await supabase.from("suppliers" as any).select("name").eq("id", (p as any).supplier_id).maybeSingle();
+      const { data: s } = await dataClient.from("suppliers" as any).select("name").eq("id", (p as any).supplier_id).maybeSingle();
       setSupplier(s);
     }
   };
   useEffect(() => { if (id) load(); }, [id]);
 
   const post = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await dataClient.auth.getUser();
     const v = await postSupplierPayment(pmt, user?.id);
     if (v) { toast.success("Payment posted to GL"); load(); }
     else toast.error("Posting failed — check COA mapping (cash/bank/payable)");

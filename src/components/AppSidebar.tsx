@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink } from "@/components/NavLink";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useModules, type ModuleKey } from "@/contexts/ModuleContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -339,7 +339,7 @@ export const AppSidebar = () => {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase.from("employees").select("id").eq("user_id", user.id).maybeSingle();
+      const { data } = await dataClient.from("employees").select("id").eq("user_id", user.id).maybeSingle();
       setHasEmployeeRecord(!!data);
     })();
   }, [user]);

@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const updateCalls: any[] = [];
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
+vi.mock("@/integrations/data/client", () => ({
+  dataClient: {
     from: (_t: string) => ({
       update: (payload: any) => {
         const chain: any = {

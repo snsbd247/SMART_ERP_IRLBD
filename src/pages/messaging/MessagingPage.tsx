@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,7 +60,7 @@ const MessagingPage = () => {
   useEffect(() => {
     if (!user) return;
     const updateOnline = () => {
-      supabase
+      dataClient
         .from("profiles")
         .update({ is_online: true, last_seen_at: new Date().toISOString() } as any)
         .eq("id", user.id)
@@ -71,7 +71,7 @@ const MessagingPage = () => {
     return () => {
       clearInterval(interval);
       // Mark offline on unmount
-      supabase
+      dataClient
         .from("profiles")
         .update({ is_online: false, last_seen_at: new Date().toISOString() } as any)
         .eq("id", user.id)
@@ -81,7 +81,7 @@ const MessagingPage = () => {
 
   const fetchConversations = useCallback(async () => {
     if (!user) return;
-    const { data: participantData } = await supabase
+    const { data: participantData } = await dataClient
       .from("conversation_participants")
       .select("conversation_id")
       .eq("user_id", user.id);
@@ -93,7 +93,7 @@ const MessagingPage = () => {
     }
 
     const convIds = participantData.map((p: any) => p.conversation_id);
-    const { data: convData } = await supabase
+    const { data: convData } = await dataClient
       .from("conversations")
       .select("*")
       .in("id", convIds)
@@ -107,13 +107,13 @@ const MessagingPage = () => {
 
     const convList: ConversationItem[] = [];
     for (const conv of convData as any[]) {
-      const { data: parts } = await supabase
+      const { data: parts } = await dataClient
         .from("conversation_participants")
         .select("user_id")
         .eq("conversation_id", conv.id);
 
       const partIds = (parts as any[] || []).map((p: any) => p.user_id);
-      const { data: partProfiles } = await supabase
+      const { data: partProfiles } = await dataClient
         .from("profiles")
         .select("id, name, username, is_online, last_seen_at, employee_id")
         .in("id", partIds);
@@ -122,7 +122,7 @@ const MessagingPage = () => {
       const empIds = (partProfiles as any[] || []).filter((p: any) => p.employee_id).map((p: any) => p.employee_id);
       let empPhotoMap = new Map<string, string>();
       if (empIds.length > 0) {
-        const { data: empData } = await supabase
+        const { data: empData } = await dataClient
           .from("employees" as any)
           .select("id, photo_url")
           .in("id", empIds);
@@ -133,14 +133,14 @@ const MessagingPage = () => {
         }
       }
 
-      const { data: latestMsg } = await supabase
+      const { data: latestMsg } = await dataClient
         .from("messages")
         .select("message, sender_id")
         .eq("conversation_id", conv.id)
         .order("created_at", { ascending: false })
         .limit(1);
 
-      const { count: unreadCount } = await supabase
+      const { count: unreadCount } = await dataClient
         .from("messages")
         .select("id", { count: "exact", head: true })
         .eq("conversation_id", conv.id)
@@ -179,7 +179,7 @@ const MessagingPage = () => {
 
   const fetchMessages = useCallback(async (convId: string) => {
     if (!user) return;
-    const { data } = await supabase
+    const { data } = await dataClient
       .from("messages")
       .select("*")
       .eq("conversation_id", convId)
@@ -188,7 +188,7 @@ const MessagingPage = () => {
     if (!data) return;
 
     const senderIds = [...new Set((data as any[]).map((m: any) => m.sender_id))];
-    const { data: profiles } = await supabase
+    const { data: profiles } = await dataClient
       .from("profiles")
       .select("id, name, username")
       .in("id", senderIds);
@@ -208,7 +208,7 @@ const MessagingPage = () => {
       .map((m: any) => m.id);
 
     if (unreadIds.length > 0) {
-      await supabase
+      await dataClient
         .from("messages")
         .update({ is_read: true } as any)
         .in("id", unreadIds);
@@ -240,12 +240,12 @@ const MessagingPage = () => {
     if (!newMessage.trim() || !selectedConvId || !user) return;
     setSending(true);
     try {
-      await supabase.from("messages").insert({
+      await dataClient.from("messages").insert({
         conversation_id: selectedConvId,
         sender_id: user.id,
         message: newMessage.trim(),
       } as any);
-      await supabase.from("conversations").update({ updated_at: new Date().toISOString() } as any).eq("id", selectedConvId);
+      await dataClient.from("conversations").update({ updated_at: new Date().toISOString() } as any).eq("id", selectedConvId);
       setNewMessage("");
       fetchMessages(selectedConvId);
       fetchConversations();
@@ -260,12 +260,12 @@ const MessagingPage = () => {
     if (!selectedUserId || !user) return;
     setSending(true);
     try {
-      const { data: myParticipations } = await supabase
+      const { data: myParticipations } = await dataClient
         .from("conversation_participants")
         .select("conversation_id")
         .eq("user_id", user.id);
 
-      const { data: theirParticipations } = await supabase
+      const { data: theirParticipations } = await dataClient
         .from("conversation_participants")
         .select("conversation_id")
         .eq("user_id", selectedUserId);
@@ -277,25 +277,25 @@ const MessagingPage = () => {
       if (existingConvId) {
         convId = existingConvId;
       } else {
-        const { data: newConv } = await supabase
+        const { data: newConv } = await dataClient
           .from("conversations")
           .insert({ subject: null } as any)
           .select()
           .single();
         convId = (newConv as any).id;
-        await supabase.from("conversation_participants").insert([
+        await dataClient.from("conversation_participants").insert([
           { conversation_id: convId, user_id: user.id },
           { conversation_id: convId, user_id: selectedUserId },
         ] as any);
       }
 
       if (initialMessage.trim()) {
-        await supabase.from("messages").insert({
+        await dataClient.from("messages").insert({
           conversation_id: convId,
           sender_id: user.id,
           message: initialMessage.trim(),
         } as any);
-        await supabase.from("conversations").update({ updated_at: new Date().toISOString() } as any).eq("id", convId);
+        await dataClient.from("conversations").update({ updated_at: new Date().toISOString() } as any).eq("id", convId);
       }
 
       setNewDialogOpen(false);
@@ -312,7 +312,7 @@ const MessagingPage = () => {
   };
 
   const openNewDialog = async () => {
-    const { data } = await supabase
+    const { data } = await dataClient
       .from("profiles")
       .select("id, name, username, is_online")
       .is("deleted_at", null)

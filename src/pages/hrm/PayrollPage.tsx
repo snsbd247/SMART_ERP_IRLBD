@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -79,11 +79,11 @@ export default function PayrollPage() {
 
   const fetchData = useCallback(async () => {
     const [empRes, strRes, payRes, brRes, secRes] = await Promise.all([
-      supabase.from("employees" as any).select("id, employee_code, first_name, last_name, salary, branch_id, department_id, section_id, employee_category").eq("status", "active"),
-      supabase.from("salary_structures" as any).select("*").order("effective_from", { ascending: false }),
-      supabase.from("payroll" as any).select("*").eq("month", selMonth).eq("year", selYear).order("created_at"),
-      supabase.from("branches").select("id, name").eq("status", "active"),
-      supabase.from("sections" as any).select("id, name, branch_id"),
+      dataClient.from("employees" as any).select("id, employee_code, first_name, last_name, salary, branch_id, department_id, section_id, employee_category").eq("status", "active"),
+      dataClient.from("salary_structures" as any).select("*").order("effective_from", { ascending: false }),
+      dataClient.from("payroll" as any).select("*").eq("month", selMonth).eq("year", selYear).order("created_at"),
+      dataClient.from("branches").select("id, name").eq("status", "active"),
+      dataClient.from("sections" as any).select("id, name, branch_id"),
     ]);
     if (empRes.data) setEmployees(empRes.data as any);
     if (strRes.data) setStructures(strRes.data as any);
@@ -116,7 +116,7 @@ export default function PayrollPage() {
     const totalSalary = struct?.total_salary ?? (basic + houseRent + medical + otherAllowance);
 
     // Fetch attendance
-    const { data: attendance } = await supabase.from("attendance" as any)
+    const { data: attendance } = await dataClient.from("attendance" as any)
       .select("status")
       .eq("employee_id", emp.id)
       .gte("date", startDate)
@@ -129,7 +129,7 @@ export default function PayrollPage() {
     const absentDays = Math.max(0, totalWorkingDays - presentDays - lateDays - leaveDays);
 
     // Fetch approved overtime
-    const { data: overtime } = await supabase.from("overtime_records" as any)
+    const { data: overtime } = await dataClient.from("overtime_records" as any)
       .select("hours")
       .eq("employee_id", emp.id)
       .eq("status", "approved")
@@ -144,7 +144,7 @@ export default function PayrollPage() {
     const lateDeduction = lateDays * LATE_PENALTY;
 
     // Fetch fund settings for PF & Savings Fund
-    const { data: fundSettings } = await supabase.from("employee_fund_settings" as any)
+    const { data: fundSettings } = await dataClient.from("employee_fund_settings" as any)
       .select("*").eq("employee_id", emp.id).eq("is_active", true);
     
     let pfEmployee = 0, pfEmployer = 0, sfEmployee = 0, sfEmployer = 0;
@@ -232,7 +232,7 @@ export default function PayrollPage() {
     for (const emp of toGenerate) {
       const detail = await calculatePayrollForEmployee(emp, daysInMonth, totalWorkingDays, startDate, endDate);
 
-      const { data: payrollData, error } = await supabase.from("payroll" as any).insert({
+      const { data: payrollData, error } = await dataClient.from("payroll" as any).insert({
         employee_id: emp.id, month: selMonth, year: selYear,
         basic_salary: detail.basic_salary,
         allowances: detail.house_rent + detail.medical + detail.other_allowance + detail.overtime_pay,
@@ -249,7 +249,7 @@ export default function PayrollPage() {
           { type: "savings_fund", empAmt: detail.sf_employee, erAmt: detail.sf_employer },
         ]) {
           if (ft.empAmt > 0 || ft.erAmt > 0) {
-            await supabase.from("fund_transactions" as any).insert({
+            await dataClient.from("fund_transactions" as any).insert({
               employee_id: emp.id, fund_type: ft.type, transaction_type: "contribution",
               employee_amount: ft.empAmt, employer_amount: ft.erAmt,
               total_amount: ft.empAmt + ft.erAmt,
@@ -273,12 +273,12 @@ export default function PayrollPage() {
     if (!record) return;
 
     // Update status
-    const { error } = await supabase.from("payroll" as any).update({ status: "approved" }).eq("id", id);
+    const { error } = await dataClient.from("payroll" as any).update({ status: "approved" }).eq("id", id);
     if (error) { toast.error(error.message); return; }
 
     // Create accounting entry (Debit Salary Expense, Credit Cash)
     try {
-      const { data: accounts } = await supabase.from("chart_of_accounts")
+      const { data: accounts } = await dataClient.from("chart_of_accounts")
         .select("id, account_name")
         .in("account_name", ["Salary Expense", "Cash"]);
 
@@ -437,7 +437,7 @@ export default function PayrollPage() {
   const saveStructure = async () => {
     if (!structForm.employee_id) { toast.error("Select employee"); return; }
     const total = structForm.basic_salary + structForm.house_rent + structForm.medical_allowance + structForm.other_allowance;
-    const { error } = await supabase.from("salary_structures" as any).insert({
+    const { error } = await dataClient.from("salary_structures" as any).insert({
       employee_id: structForm.employee_id,
       basic_salary: structForm.basic_salary,
       house_rent: structForm.house_rent,

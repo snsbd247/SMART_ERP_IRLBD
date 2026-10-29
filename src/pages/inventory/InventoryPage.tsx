@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,9 +24,9 @@ const InventoryPage = () => {
   const fetchData = async () => {
     setLoading(true);
     const [pRes, smRes, cRes] = await Promise.all([
-      supabase.from("item_master").select("*").eq("status", "active").order("item_name"),
-      supabase.from("stock_movements").select("product_id, quantity"),
-      supabase.from("item_categories").select("*"),
+      dataClient.from("item_master").select("*").eq("status", "active").order("item_name"),
+      dataClient.from("stock_movements").select("product_id, quantity"),
+      dataClient.from("item_categories").select("*"),
     ]);
 
     const cats = (cRes.data || []) as any[];

@@ -511,8 +511,8 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         Route::put('admin/branding', [\App\Http\Controllers\Admin\BrandingController::class, 'update']);
         Route::post('admin/branding/logo', [\App\Http\Controllers\Admin\BrandingController::class, 'uploadLogo']);
 
-        // ─── Generic CRUD bridge (used by frontend Supabase-compat layer) ────
-        // Keeps every page that calls supabase.from(...) functional on VPS
+        // ─── Generic CRUD bridge (used by the frontend data client) ────
+        // Keeps every page that calls dataClient.from(...) functional
         // without needing per-table controllers. Auth is enforced by the
         // outer auth:sanctum middleware; per-table security lives in the
         // denylist inside GenericTableController.

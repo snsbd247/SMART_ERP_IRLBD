@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -21,9 +21,9 @@ const RequisitionDetailPage = () => {
 
   const load = async () => {
     const [{ data: h }, { data: ls }, { data: au }] = await Promise.all([
-      supabase.from("purchase_requisitions" as any).select("*").eq("id", id).single(),
-      supabase.from("purchase_requisition_items" as any).select("*").eq("pr_id", id).order("line_no"),
-      supabase.from("purchase_audit_log" as any).select("*").eq("document_type", "PR").eq("document_id", id).order("created_at", { ascending: false }),
+      dataClient.from("purchase_requisitions" as any).select("*").eq("id", id).single(),
+      dataClient.from("purchase_requisition_items" as any).select("*").eq("pr_id", id).order("line_no"),
+      dataClient.from("purchase_audit_log" as any).select("*").eq("document_type", "PR").eq("document_id", id).order("created_at", { ascending: false }),
     ]);
     setPr(h as any); setLines((ls || []) as any); setAudit((au || []) as any);
   };
@@ -33,7 +33,7 @@ const RequisitionDetailPage = () => {
     const payload: any = { status };
     if (status === "rejected") payload.rejected_reason = reason;
     if (status === "closed") payload.closed_reason = reason;
-    const { error } = await supabase.from("purchase_requisitions" as any).update(payload).eq("id", id);
+    const { error } = await dataClient.from("purchase_requisitions" as any).update(payload).eq("id", id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     await logAudit({ document_type: "PR", document_id: id!, document_no: pr?.pr_no,
       action: status.toUpperCase(), notes: reason, performed_by: user?.id, performed_by_name: profile?.name || user?.email });

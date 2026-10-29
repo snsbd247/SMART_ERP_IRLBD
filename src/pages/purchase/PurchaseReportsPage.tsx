@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +24,7 @@ const PurchaseReportsPage = () => {
   const [pos, setPos] = useState<any[]>([]);
 
   useEffect(() => {
-    supabase.from("suppliers" as any).select("id,name").eq("is_active", true).then(({ data }) => setSuppliers((data || []) as any));
+    dataClient.from("suppliers" as any).select("id,name").eq("is_active", true).then(({ data }) => setSuppliers((data || []) as any));
   }, []);
 
   useEffect(() => {
@@ -35,10 +35,10 @@ const PurchaseReportsPage = () => {
         return r;
       };
       const [b, p, r, o] = await Promise.all([
-        f(supabase.from("supplier_bills_v2" as any).select("*")),
-        f(supabase.from("supplier_payments_v2" as any).select("*")),
-        f(supabase.from("purchase_returns_v2" as any).select("*")),
-        f(supabase.from("purchase_orders_v2" as any).select("*")),
+        f(dataClient.from("supplier_bills_v2" as any).select("*")),
+        f(dataClient.from("supplier_payments_v2" as any).select("*")),
+        f(dataClient.from("purchase_returns_v2" as any).select("*")),
+        f(dataClient.from("purchase_orders_v2" as any).select("*")),
       ]);
       setBills((b.data || []) as any); setPayments((p.data || []) as any);
       setReturns((r.data || []) as any); setPos((o.data || []) as any);

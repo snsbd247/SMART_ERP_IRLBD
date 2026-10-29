@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,14 +35,14 @@ const SupplierBillFormPage = () => {
   useEffect(() => {
     (async () => {
       const [s, b, g] = await Promise.all([
-        supabase.from("suppliers" as any).select("id,name").eq("is_active", true),
-        supabase.from("branches").select("id,name"),
-        supabase.from("grns_v2" as any).select("id,grn_no,supplier_id,po_id,grand_total").eq("status", "Approved").limit(200),
+        dataClient.from("suppliers" as any).select("id,name").eq("is_active", true),
+        dataClient.from("branches").select("id,name"),
+        dataClient.from("grns_v2" as any).select("id,grn_no,supplier_id,po_id,grand_total").eq("status", "Approved").limit(200),
       ]);
       setSuppliers((s.data || []) as any); setBranches((b.data || []) as any); setGrns((g.data || []) as any);
       if (id) {
-        const { data: h } = await supabase.from("supplier_bills_v2" as any).select("*").eq("id", id).maybeSingle();
-        const { data: it } = await supabase.from("supplier_bill_items_v2" as any).select("*").eq("bill_id", id).order("sort_order");
+        const { data: h } = await dataClient.from("supplier_bills_v2" as any).select("*").eq("id", id).maybeSingle();
+        const { data: it } = await dataClient.from("supplier_bill_items_v2" as any).select("*").eq("bill_id", id).order("sort_order");
         if (h) setHeader(h as any);
         if (it && it.length) setItems(it as any);
       } else {
@@ -54,8 +54,8 @@ const SupplierBillFormPage = () => {
   }, [id]);
 
   const prefillFromGrn = async (gid: string) => {
-    const { data: g } = await supabase.from("grns_v2" as any).select("*").eq("id", gid).maybeSingle();
-    const { data: lines } = await supabase.from("grn_items_v2" as any).select("*").eq("grn_id", gid);
+    const { data: g } = await dataClient.from("grns_v2" as any).select("*").eq("id", gid).maybeSingle();
+    const { data: lines } = await dataClient.from("grn_items_v2" as any).select("*").eq("grn_id", gid);
     if (g) setHeader((h: any) => ({ ...h, supplier_id: (g as any).supplier_id, branch_id: (g as any).branch_id, grn_id: gid, po_id: (g as any).po_id }));
     if (lines) setItems((lines as any[]).map((l: any) => ({
       item_id: l.item_id, description: l.description || "", quantity: Number(l.accepted_qty || 0), unit_price: Number(l.unit_cost || 0),
@@ -78,13 +78,13 @@ const SupplierBillFormPage = () => {
     if (!header.supplier_id) { toast.error("Select supplier"); return; }
     const payload = { ...header, subtotal, vat_amount: vat, ait_amount: ait, grand_total: grand };
     const op = id
-      ? supabase.from("supplier_bills_v2" as any).update(payload).eq("id", id).select("id").single()
-      : supabase.from("supplier_bills_v2" as any).insert(payload).select("id").single();
+      ? dataClient.from("supplier_bills_v2" as any).update(payload).eq("id", id).select("id").single()
+      : dataClient.from("supplier_bills_v2" as any).insert(payload).select("id").single();
     const { data, error } = await op;
     if (error) return toast.error(error.message);
     const billId = (data as any).id as string;
-    if (id) await supabase.from("supplier_bill_items_v2" as any).delete().eq("bill_id", billId);
-    await supabase.from("supplier_bill_items_v2" as any).insert(items.map((it, i) => ({ ...it, bill_id: billId, sort_order: i })) as any);
+    if (id) await dataClient.from("supplier_bill_items_v2" as any).delete().eq("bill_id", billId);
+    await dataClient.from("supplier_bill_items_v2" as any).insert(items.map((it, i) => ({ ...it, bill_id: billId, sort_order: i })) as any);
     await logAudit({ document_type: "BILL", document_id: billId, document_no: header.bill_no, action: id ? "updated" : "created" });
     toast.success("Bill saved");
     nav(`/purchase/bills/${billId}`);

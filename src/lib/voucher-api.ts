@@ -1,9 +1,9 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { getApiBaseUrl, getLaravelAuthHeaders } from "@/lib/laravel-auth";
 
 const FUNCTION_NAME = "voucher-api";
 
-// Detect Laravel-mode (VPS) vs Supabase-mode (Lovable preview).
+// Detect Laravel-mode vs legacy mode.
 function isLaravelMode(): boolean {
   return (import.meta as any).env?.VITE_LARAVEL_ONLY_MODE === "true" || Boolean(getApiBaseUrl());
 }
@@ -52,7 +52,7 @@ async function laravelFetch<T = any>(path: string, init?: RequestInit): Promise<
 }
 
 async function invokeEdge<T = any>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(FUNCTION_NAME, { body });
+  const { data, error } = await dataClient.functions.invoke(FUNCTION_NAME, { body });
   if (error) throw new Error(error.message || "API error");
   if ((data as any)?.error) {
     const err = new Error((data as any).error) as Error & { status?: number; correlationId?: string };
@@ -131,7 +131,7 @@ export const voucherApi = {
       const json = await laravelFetch<any>("db/chart_of_accounts?select=id,account_name,account_code,account_type,parent_id,opening_balance,opening_balance_type,is_active&order[account_code]=asc");
       return { data: unwrapList(json) } as { data: any[] };
     }
-    return supabase.from("chart_of_accounts").select("id, account_name, account_code, account_type, parent_id, opening_balance, opening_balance_type, is_active").order("account_code");
+    return dataClient.from("chart_of_accounts").select("id, account_name, account_code, account_type, parent_id, opening_balance, opening_balance_type, is_active").order("account_code");
   },
 
   listBranches: async () => {
@@ -139,7 +139,7 @@ export const voucherApi = {
       const json = await laravelFetch<any>("db/branches?select=id,name&order[name]=asc");
       return { data: unwrapList(json) } as { data: any[] };
     }
-    return supabase.from("branches").select("id, name");
+    return dataClient.from("branches").select("id, name");
   },
 
   listFinancialYears: async () => {
@@ -147,7 +147,7 @@ export const voucherApi = {
       const json = await laravelFetch<any>("db/financial_years?select=id,name,start_date,end_date,is_active&order[start_date]=desc");
       return { data: unwrapList(json) } as { data: any[] };
     }
-    return supabase.from("financial_years").select("id, name, start_date, end_date, is_active").order("start_date", { ascending: false });
+    return dataClient.from("financial_years").select("id, name, start_date, end_date, is_active").order("start_date", { ascending: false });
   },
 
   listUsers: async () => {
@@ -159,7 +159,7 @@ export const voucherApi = {
       const json = await laravelFetch<any>("vouchers/creators");
       return { data: unwrapList(json) } as { data: any[] };
     }
-    return supabase.from("users").select("id, name, username").order("name");
+    return dataClient.from("users").select("id, name, username").order("name");
   },
 
   create: async (params: {
@@ -200,7 +200,7 @@ export const voucherApi = {
       throw new Error("Voucher date is required and must be YYYY-MM-DD.");
     }
     const totalDebit = body.entries.reduce((s, e) => s + (Number(e.debit) || 0), 0);
-    const { error: voucherError } = await supabase.from("acc_vouchers").update({
+    const { error: voucherError } = await dataClient.from("acc_vouchers").update({
       voucher_date: body.voucher_date,
       branch_id: body.branch_id || null,
       financial_year_id: body.financial_year_id || null,
@@ -210,9 +210,9 @@ export const voucherApi = {
       updated_at: new Date().toISOString(),
     }).eq("id", id);
     if (voucherError) throw voucherError;
-    const { error: deleteError } = await supabase.from("voucher_entries").delete().eq("voucher_id", id);
+    const { error: deleteError } = await dataClient.from("voucher_entries").delete().eq("voucher_id", id);
     if (deleteError) throw deleteError;
-    const { error: insertError } = await supabase.from("voucher_entries").insert(body.entries.map((e, i) => ({ ...e, voucher_id: id, sort_order: i })));
+    const { error: insertError } = await dataClient.from("voucher_entries").insert(body.entries.map((e, i) => ({ ...e, voucher_id: id, sort_order: i })));
     if (insertError) throw insertError;
     return { voucher: { id } };
   },
@@ -254,23 +254,23 @@ export const voucherApi = {
     if (isLaravelMode()) return laravelFetch(`vouchers/${id}/purge`, { method: "POST", body: JSON.stringify({ reason }) });
 
     // Authorization: only Super Admin (null employee_id) may permanently delete.
-    const { data: auth } = await supabase.auth.getUser();
+    const { data: auth } = await dataClient.auth.getUser();
     const uid = auth?.user?.id;
     if (!uid) throw new Error("Not authenticated");
-    const { data: profile } = await supabase.from("profiles").select("id, name, employee_id").eq("id", uid).single();
+    const { data: profile } = await dataClient.from("profiles").select("id, name, employee_id").eq("id", uid).single();
     if (!profile || (profile as any).employee_id !== null) {
       throw new Error("Permanent delete is restricted to Super Admins.");
     }
 
     // Capture voucher snapshot for audit before deletion.
-    const { data: voucher } = await supabase.from("acc_vouchers").select("voucher_number, voucher_type, total_amount, status").eq("id", id).single();
+    const { data: voucher } = await dataClient.from("acc_vouchers").select("voucher_number, voucher_type, total_amount, status").eq("id", id).single();
 
-    await supabase.from("voucher_entries").delete().eq("voucher_id", id);
-    const { error } = await supabase.from("acc_vouchers").delete().eq("id", id);
+    await dataClient.from("voucher_entries").delete().eq("voucher_id", id);
+    const { error } = await dataClient.from("acc_vouchers").delete().eq("id", id);
     if (error) throw error;
 
     // Audit log entry with voucher id, user, timestamp + reason.
-    await supabase.from("audit_log").insert({
+    await dataClient.from("audit_log").insert({
       user_id: uid,
       user_name: (profile as any).name || "Super Admin",
       module: "accounting_vouchers",

@@ -10,7 +10,7 @@
  *   rg "acc_vouchers|voucher_entries|chart_of_accounts" this file
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateDMY, toDateInputValue } from "@/lib/date-format";
@@ -243,7 +243,7 @@ export default function TreasuryInformationPage() {
   async function openHistory(r: TreasuryRow) {
     setHistoryTarget(r);
     setHistoryLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await dataClient
       .from("audit_log")
       .select("id, action, user_name, details, old_data, new_data, created_at")
       .eq("module", "treasury")
@@ -258,7 +258,7 @@ export default function TreasuryInformationPage() {
 
   async function load() {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await dataClient
       .from("treasury_entries" as any)
       .select("*")
       .order("treasury_date", { ascending: false });
@@ -289,11 +289,11 @@ export default function TreasuryInformationPage() {
 
   async function loadParties() {
     const [emp, cus, sup] = await Promise.all([
-      supabase.from("employees")
+      dataClient.from("employees")
         .select("id, first_name, last_name, employee_code, tin_no, designation_id, branch_id, designation:designations(name), branch:branches(name)")
         .order("first_name"),
-      supabase.from("customers").select("id, name, code, tin_no").order("name"),
-      supabase.from("suppliers").select("id, name, code, tin_no").order("name"),
+      dataClient.from("customers").select("id, name, code, tin_no").order("name"),
+      dataClient.from("suppliers").select("id, name, code, tin_no").order("name"),
     ]);
     setEmployees(((emp.data as any[]) || []).map((e) => ({
       id: e.id,
@@ -435,12 +435,12 @@ export default function TreasuryInformationPage() {
     if (form.id) {
       if (!canEdit) { setSaving(false); toast({ title: "Permission denied", description: "treasury.can_edit required", variant: "destructive" }); return; }
       prevRow = rows.find((r) => r.id === form.id);
-      ({ error } = await supabase.from("treasury_entries" as any).update(payload).eq("id", form.id));
+      ({ error } = await dataClient.from("treasury_entries" as any).update(payload).eq("id", form.id));
     } else {
       if (!canAdd) { setSaving(false); toast({ title: "Permission denied", description: "treasury.can_add required", variant: "destructive" }); return; }
       payload.created_by = user?.id ?? null;
       payload.status = "active";
-      const { data: inserted, error: insErr } = await supabase
+      const { data: inserted, error: insErr } = await dataClient
         .from("treasury_entries" as any).insert(payload).select().single();
       error = insErr;
       savedId = (inserted as any)?.id ?? "";
@@ -471,7 +471,7 @@ export default function TreasuryInformationPage() {
     if (!deleteTarget) return;
     if (!canDelete) { toast({ title: "Permission denied", description: "treasury.can_delete required", variant: "destructive" }); return; }
     const snapshot = deleteTarget;
-    const { error } = await supabase.from("treasury_entries" as any).delete().eq("id", deleteTarget.id);
+    const { error } = await dataClient.from("treasury_entries" as any).delete().eq("id", deleteTarget.id);
     if (error) {
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     } else {
@@ -700,7 +700,7 @@ export default function TreasuryInformationPage() {
     for (let i = 0; i < valid.length; i += CHUNK) {
       if (bulkCancelRef.current) break;
       const slice = valid.slice(i, i + CHUNK);
-      const { data, error } = await supabase
+      const { data, error } = await dataClient
         .from("treasury_entries" as any)
         .insert(slice.map((r) => r.payload))
         .select("id");
@@ -708,7 +708,7 @@ export default function TreasuryInformationPage() {
         // Per-row fallback so successful rows still import and errors are attributed.
         for (const s of slice) {
           if (bulkCancelRef.current) break;
-          const { data: d2, error: e2 } = await supabase
+          const { data: d2, error: e2 } = await dataClient
             .from("treasury_entries" as any)
             .insert(s.payload)
             .select("id")

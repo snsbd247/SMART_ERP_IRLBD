@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatSignedBalance } from "@/lib/balance-format";
 import { computeCustomerPeriodOpening, type CustomerPriorRow } from "@/lib/period-opening";
@@ -54,7 +54,7 @@ const CustomerStatementPage = () => {
   const [drilldownOpen, setDrilldownOpen] = useState(false);
 
   useEffect(() => {
-    supabase.from("customers").select("id, name, phone, email, address").order("name").then(({ data }) => {
+    dataClient.from("customers").select("id, name, phone, email, address").order("name").then(({ data }) => {
       setCustomers((data || []) as Customer[]);
     });
   }, []);
@@ -70,14 +70,14 @@ const CustomerStatementPage = () => {
     // are all independent — fetch concurrently instead of one after another.
     const [open, { data: invoices }, { data: payments }, { data: returns }] = await Promise.all([
       computeCustomerPeriodOpening({ customerId: selectedCustomer, dateFrom }),
-      supabase
+      dataClient
         .from("sales_invoices")
         .select("id, invoice_number, invoice_date, net_amount, total_amount, discount")
         .eq("customer_id", selectedCustomer)
         .gte("invoice_date", dateFrom)
         .lte("invoice_date", dateTo)
         .order("invoice_date"),
-      supabase
+      dataClient
         .from("party_payments")
         .select("id, payment_date, amount, payment_method, reference")
         .eq("party_id", selectedCustomer)
@@ -85,7 +85,7 @@ const CustomerStatementPage = () => {
         .gte("payment_date", dateFrom)
         .lte("payment_date", dateTo)
         .order("payment_date"),
-      supabase
+      dataClient
         .from("sales_returns")
         .select("id, return_number, return_date, total_amount")
         .eq("customer_id", selectedCustomer)

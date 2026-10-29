@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertTriangle } from "lucide-react";
@@ -10,8 +10,8 @@ const LowStockPage = () => {
   useEffect(() => {
     (async () => {
       const [prodRes, movRes] = await Promise.all([
-        supabase.from("item_master").select("*").eq("status", "active").neq("item_type", "service"),
-        supabase.from("stock_movements").select("product_id, movement_type, quantity"),
+        dataClient.from("item_master").select("*").eq("status", "active").neq("item_type", "service"),
+        dataClient.from("stock_movements").select("product_id, movement_type, quantity"),
       ]);
       const movements = movRes.data || [];
       const stockMap: Record<string, number> = {};

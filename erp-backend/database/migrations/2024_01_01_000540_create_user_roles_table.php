@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Legacy Supabase `user_roles` table — referenced by Admin > Users page and
+ * Legacy `user_roles` table — referenced by Admin > Users page and
  * Diagnostics. Stores app_role enum-style values: super_admin / admin / staff.
  */
 return new class extends Migration {

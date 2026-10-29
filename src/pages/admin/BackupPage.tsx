@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { dataClient } from "@/integrations/data/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -72,7 +72,7 @@ async function laravelApiCall(url: string, options: RequestInit = {}) {
 
 async function logDemoAudit(action: "demo_seed_full" | "demo_seed_reset" | "demo_seed_transactions_only", mode: string, status: "started" | "success" | "failed", details: string, user: { id?: string; name?: string; email?: string } | null) {
   try {
-    await supabase.from("audit_log").insert({
+    await dataClient.from("audit_log").insert({
       user_id: user?.id ?? null,
       user_name: user?.name || user?.email || "unknown",
       module: "backup",
@@ -192,7 +192,7 @@ const BackupPage = () => {
         payload = await res.json().catch(() => ({ message: `Failed (HTTP ${res.status})` }));
         if (!res.ok) throw new Error(payload.message || payload.error || `HTTP ${res.status}`);
       } else {
-        const { data, error } = await supabase.functions.invoke("import-demo-config", { body });
+        const { data, error } = await dataClient.functions.invoke("import-demo-config", { body });
         if (error) throw error;
         payload = data;
         if (payload && payload.success === false && !payload.results) throw new Error(payload.error || "Import failed");
@@ -265,7 +265,7 @@ const BackupPage = () => {
         data = await res.json().catch(() => ({}));
         if (!res.ok || data?.success === false) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
       } else {
-        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: {} });
+        const r = await dataClient.functions.invoke("reset-and-seed-demo", { body: {} });
         if (r.error) throw r.error;
         data = r.data;
         if (data?.success === false) throw new Error(data.error || "Seed failed");
@@ -305,7 +305,7 @@ const BackupPage = () => {
         data = await res.json().catch(() => ({}));
         if (!res.ok || data?.success === false) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
       } else {
-        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "reset" } });
+        const r = await dataClient.functions.invoke("reset-and-seed-demo", { body: { mode: "reset" } });
         if (r.error) throw r.error;
         data = r.data;
         if (data?.success === false) throw new Error(data.error || "Reset failed");
@@ -353,7 +353,7 @@ const BackupPage = () => {
         data = await res.json().catch(() => ({}));
         if (!res.ok || data?.success === false) throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
       } else {
-        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "transactions", dry_run: dryRun } });
+        const r = await dataClient.functions.invoke("reset-and-seed-demo", { body: { mode: "transactions", dry_run: dryRun } });
         if (r.error) throw r.error;
         data = r.data;
         if (data?.success === false) throw new Error(data.error || "Reset failed");
@@ -392,7 +392,7 @@ const BackupPage = () => {
         if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
         setAuditTablesData(json.data ?? json);
       } else {
-        const r = await supabase.functions.invoke("reset-and-seed-demo", { body: { mode: "audit" } });
+        const r = await dataClient.functions.invoke("reset-and-seed-demo", { body: { mode: "audit" } });
         if (r.error) throw r.error;
         setAuditTablesData(r.data?.data ?? r.data);
       }
@@ -416,7 +416,7 @@ const BackupPage = () => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         csv = await res.text();
       } else {
-        const { data, error } = await supabase
+        const { data, error } = await dataClient
           .from("audit_log")
           .select("created_at,user_name,action,details,ip_address,user_agent")
           .eq("module", "backup")
@@ -457,7 +457,7 @@ const BackupPage = () => {
         const result = await res.json();
         setHistory(result.data || []);
       } else {
-        const { data, error } = await supabase
+        const { data, error } = await dataClient
           .from("backup_history")
           .select("*")
           .order("created_at", { ascending: false })
@@ -476,7 +476,7 @@ const BackupPage = () => {
         const result = await res.json();
         if (result.data) setSettings(result.data);
       } else {
-        const { data, error } = await supabase
+        const { data, error } = await dataClient
           .from("backup_settings")
           .select("*")
           .eq("id", "default")
@@ -661,9 +661,9 @@ const BackupPage = () => {
         const result = await res.json();
         toast({ title: "Backup created", description: `${result.data?.file_name || "Backup"} created successfully.` });
       } else {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await dataClient.auth.getSession();
         if (!session) throw new Error("Not authenticated");
-        const { data, error } = await supabase.functions.invoke("create-backup", {
+        const { data, error } = await dataClient.functions.invoke("create-backup", {
           body: { format: backupFormat, backup_type: "manual" },
         });
         if (error) throw error;
@@ -701,7 +701,7 @@ const BackupPage = () => {
         a.href = url; a.download = record.file_name; a.click();
         URL.revokeObjectURL(url);
       } else if (record.storage_path) {
-        const { data, error } = await supabase.storage.from("backups").download(record.storage_path);
+        const { data, error } = await dataClient.storage.from("backups").download(record.storage_path);
         if (error) throw error;
         const url = URL.createObjectURL(data);
         const a = document.createElement("a");
@@ -753,7 +753,7 @@ const BackupPage = () => {
         // Read file content and invoke edge function
         const content = await restoreFile.text();
         setProgress(50);
-        const { data, error } = await supabase.functions.invoke("restore-backup", {
+        const { data, error } = await dataClient.functions.invoke("restore-backup", {
           body: { content, sql_content: content, file_name: restoreFile.name },
         });
         if (error) throw error;
@@ -778,9 +778,9 @@ const BackupPage = () => {
         // Get storage path first, then delete
         const record = history.find(r => r.id === id);
         if (record?.storage_path) {
-          await supabase.storage.from("backups").remove([record.storage_path]);
+          await dataClient.storage.from("backups").remove([record.storage_path]);
         }
-        const { error } = await supabase.from("backup_history").delete().eq("id", id);
+        const { error } = await dataClient.from("backup_history").delete().eq("id", id);
         if (error) throw error;
       }
       setConfirmDelete(null);
@@ -801,7 +801,7 @@ const BackupPage = () => {
           body: JSON.stringify(updates),
         });
       } else {
-        const { error } = await supabase
+        const { error } = await dataClient
           .from("backup_settings")
           .update({ ...updates, updated_at: new Date().toISOString() } as any)
           .eq("id", "default");
