@@ -22,11 +22,15 @@ const LARAVEL_SIMPLE_TABLES: Partial<Record<DocumentType, string>> = {
 };
 
 async function laravelStatusUpdate(docType: DocumentType, id: string, status: string) {
+  return laravelSimpleUpdate(docType, id, { status });
+}
+
+async function laravelSimpleUpdate(docType: DocumentType, id: string, fields: Record<string, any>) {
   const table = LARAVEL_SIMPLE_TABLES[docType];
   if (!table) {
     throw new Error(`Action not supported for '${docType}' in Laravel mode.`);
   }
-  const { error } = await (supabase.from(table as any) as any).update({ status }).eq("id", id);
+  const { error } = await (supabase.from(table as any) as any).update(fields).eq("id", id);
   if (error) throw new Error(error.message);
   return { success: true };
 }
@@ -95,6 +99,9 @@ export const documentApi = {
   },
 
   editApproved: (docType: DocumentType, id: string, updates?: Record<string, any>, newItems?: any[]) => {
+    if (IS_LARAVEL_ONLY && LARAVEL_SIMPLE_TABLES[docType]) {
+      return laravelSimpleUpdate(docType, id, updates || {});
+    }
     if (IS_LARAVEL_ONLY && LARAVEL_ROUTE_PREFIX[docType]) {
       // NOTE: newItems is sent for backward compatibility with callers that
       // pass an item list, but the Laravel edit-approved endpoints for these
