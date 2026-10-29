@@ -46,7 +46,7 @@ const SupplierPaymentDetailPage = () => {
         </div>
         <div className="flex gap-2">
           {pmt.status === "draft" && <Button size="sm" onClick={post}><CheckCircle className="w-4 h-4 mr-1" />Post to GL</Button>}
-          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
+          <Button className="print:hidden" variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
         </div>
       </div>
       <Card><CardContent className="p-4 grid md:grid-cols-4 gap-3 text-sm">

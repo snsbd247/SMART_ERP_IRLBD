@@ -279,7 +279,7 @@ export default function DocumentsPage() {
                   <Button onClick={generateDoc}>Generate</Button>
                   {preview && (
                     <>
-                      <Button variant="outline" onClick={handlePrint}><Printer className="w-4 h-4 mr-2" />Print</Button>
+                      <Button className="print:hidden" variant="outline" onClick={handlePrint}><Printer className="w-4 h-4 mr-2" />Print</Button>
                       {isAdmin && <Button variant="secondary" onClick={handleSave}><Save className="w-4 h-4 mr-2" />Save</Button>}
                     </>
                   )}

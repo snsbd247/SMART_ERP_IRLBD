@@ -71,7 +71,7 @@ const GrnDetailPage = () => {
         </div>
         <div className="flex gap-2">
           {isDraft && <Button variant="outline" asChild><Link to={`/purchase/grns/${id}/edit`}><Pencil className="w-4 h-4 mr-1" />Edit</Link></Button>}
-          <Button variant="outline" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
+          <Button className="print:hidden" variant="outline" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
           {isDraft && <Button onClick={approve} disabled={busy}><CheckCircle className="w-4 h-4 mr-1" />Approve & Post</Button>}
           {isDraft && <Button variant="destructive" onClick={cancel}><XCircle className="w-4 h-4 mr-1" />Cancel</Button>}
         </div>

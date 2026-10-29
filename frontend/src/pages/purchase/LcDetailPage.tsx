@@ -65,7 +65,7 @@ const LcDetailPage = () => {
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline" size="sm"><Link to={`/purchase/lc/${lc.id}/edit`}><Edit className="w-4 h-4 mr-1" />Edit</Link></Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
+          <Button className="print:hidden" variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
         </div>
       </div>
       <Card><CardContent className="p-4 grid md:grid-cols-4 gap-3 text-sm">

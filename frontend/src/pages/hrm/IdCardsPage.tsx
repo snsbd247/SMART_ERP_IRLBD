@@ -355,7 +355,7 @@ export default function IdCardsPage() {
             <Button variant="outline" onClick={openAddrDialog}><MapPin className="w-4 h-4 mr-2" />Configure Addresses</Button>
             {emp && (
               <>
-                <Button variant="outline" onClick={handlePrint}><Printer className="w-4 h-4 mr-2" />Print</Button>
+                <Button className="print:hidden" variant="outline" onClick={handlePrint}><Printer className="w-4 h-4 mr-2" />Print</Button>
                 <Button onClick={handleDownloadPdf}><Download className="w-4 h-4 mr-2" />Download PDF</Button>
               </>
             )}

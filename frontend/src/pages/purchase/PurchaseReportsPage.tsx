@@ -90,7 +90,7 @@ const PurchaseReportsPage = () => {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2"><BarChart3 className="w-5 h-5 text-primary" /><h1 className="text-xl font-semibold">Purchase Reports</h1></div>
-        <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
+        <Button className="print:hidden" variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
       </div>
 
       <Card><CardContent className="p-4 grid md:grid-cols-4 gap-3">

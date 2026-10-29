@@ -78,7 +78,7 @@ export default function SalesReport() {
           <Receipt className="w-5 h-5 text-primary" />
           <h1 className="text-xl font-semibold text-foreground">Sales Report</h1>
         </div>
-        <Button variant="outline" size="sm" onClick={() => window.print()}>
+        <Button className="print:hidden" variant="outline" size="sm" onClick={() => window.print()}>
           <Printer className="w-4 h-4 mr-2" /> Print
         </Button>
       </div>

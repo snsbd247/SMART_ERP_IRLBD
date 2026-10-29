@@ -74,7 +74,7 @@ const PurchaseOrderDetailPage = () => {
           {locked && <Lock className="w-4 h-4 text-muted-foreground" />}
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
+          <Button className="print:hidden" variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
           {po.status === "draft" && <Button variant="outline" size="sm" asChild><Link to={`/purchase/orders/${id}/edit`}><Pencil className="w-4 h-4 mr-1" />Edit</Link></Button>}
           {po.status === "pending_approval" && (
             <>

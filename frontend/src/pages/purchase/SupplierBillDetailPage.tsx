@@ -51,7 +51,7 @@ const SupplierBillDetailPage = () => {
           {bill.status === "draft" && <Button asChild variant="outline" size="sm"><Link to={`/purchase/bills/${bill.id}/edit`}><Edit className="w-4 h-4 mr-1" />Edit</Link></Button>}
           {bill.status === "draft" && <Button size="sm" onClick={post}><CheckCircle className="w-4 h-4 mr-1" />Post to GL</Button>}
           {bill.status !== "draft" && due > 0 && <Button asChild size="sm"><Link to={`/purchase/payments/new?bill=${bill.id}`}><CreditCard className="w-4 h-4 mr-1" />Pay</Link></Button>}
-          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
+          <Button className="print:hidden" variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
         </div>
       </div>
 

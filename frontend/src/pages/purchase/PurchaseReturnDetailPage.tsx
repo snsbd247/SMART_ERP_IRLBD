@@ -46,7 +46,7 @@ const PurchaseReturnDetailPage = () => {
         <div className="flex gap-2">
           {ret.status === "draft" && <Button asChild variant="outline" size="sm"><Link to={`/purchase/returns/${ret.id}/edit`}><Edit className="w-4 h-4 mr-1" />Edit</Link></Button>}
           {ret.status === "draft" && <Button size="sm" onClick={post}><CheckCircle className="w-4 h-4 mr-1" />Post</Button>}
-          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
+          <Button className="print:hidden" variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
         </div>
       </div>
       <Card><CardContent className="p-4 grid md:grid-cols-4 gap-3 text-sm">

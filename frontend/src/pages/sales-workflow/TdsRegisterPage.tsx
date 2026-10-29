@@ -61,7 +61,7 @@ export default function TdsRegisterPage() {
     <div className="p-6 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">TDS Register</h1>
-        <Button variant="outline" onClick={handlePrint}>Print</Button>
+        <Button className="print:hidden" variant="outline" onClick={handlePrint}>Print</Button>
       </div>
       <Card className="p-4 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex gap-3">

@@ -26,7 +26,7 @@ export default function ArAgingReport() {
         <h1 className="text-2xl font-bold">AR Aging (Sales Workflow)</h1>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => exportCsv("ar-aging.csv", flat, ["invoice","date","customer","days","bucket","due"])}><Download className="w-4 h-4 mr-1" />CSV</Button>
-          <Button size="sm" variant="outline" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
+          <Button className="print:hidden" size="sm" variant="outline" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
         </div>
       </div>
       <Card className="p-4 grid grid-cols-4 gap-4">

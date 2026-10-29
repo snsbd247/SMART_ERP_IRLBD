@@ -829,7 +829,7 @@ export default function TreasuryInformationPage() {
             <FileText className="w-4 h-4 mr-1" /> TDS Reports
           </Button>
           <Button variant="outline" size="sm" onClick={exportCsv}><Download className="w-4 h-4 mr-1" /> CSV</Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" /> Print</Button>
+          <Button className="print:hidden" variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" /> Print</Button>
           {canAdd && (
             <>
               <Button variant="outline" size="sm" onClick={() => { setBulkRows([]); setBulkFileName(""); setBulkProgress({ done: 0, total: 0, ok: 0, fail: 0 }); setBulkOpen(true); }}>

@@ -24,7 +24,7 @@ export function ReportShell({
         <h1 className="text-2xl font-bold">{title}</h1>
         <div className="flex gap-2">
           {onExport && <Button size="sm" variant="outline" onClick={onExport}><Download className="w-4 h-4 mr-1" />CSV</Button>}
-          <Button size="sm" variant="outline" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
+          <Button className="print:hidden" size="sm" variant="outline" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Print</Button>
         </div>
       </div>
       {children}
