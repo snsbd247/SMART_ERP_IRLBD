@@ -32,6 +32,15 @@ class DocumentMailController extends BaseController
                 $request->document_title
             ));
 
+            // Accountability: every email sent from the company address is traceable to a user.
+            Log::info('Document email sent', [
+                'user_id' => $request->user()?->id,
+                'user' => $request->user()?->username,
+                'to' => $request->to,
+                'subject' => mb_substr((string) $request->subject, 0, 200),
+                'ip' => $request->ip(),
+            ]);
+
             return $this->success(null, 'Email sent successfully');
         } catch (\Throwable $e) {
             Log::error('Document email send failed: ' . $e->getMessage());

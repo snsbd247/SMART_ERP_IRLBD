@@ -62,7 +62,7 @@ class AuthController extends BaseController
                 'login_time' => now(),
             ]);
             $this->activityService->logLogin($user->id, $request, true);
-            Log::info("User logged in: {$user->username}, Super Admin: " . ($user->isSuperAdmin() ? 'YES' : 'NO') . ", Permissions: " . json_encode($permissions));
+            Log::info("User logged in: {$user->username}, Super Admin: " . ($user->isSuperAdmin() ? 'YES' : 'NO'));
         } catch (\Throwable) {
             // Login/audit logging must never turn a successful auth into a 500.
         }

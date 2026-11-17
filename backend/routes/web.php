@@ -13,5 +13,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return file_get_contents(public_path('index.html'));
+    // The SPA's index.html lives in the web root (public_html/erp.irlbd.com), which
+    // .htaccess normally serves directly; erp_app/public has no copy of it.
+    $index = realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ? rtrim($_SERVER['DOCUMENT_ROOT'], '/') . '/index.html' : public_path('index.html');
+    if (!is_file($index)) $index = public_path('index.html');
+    abort_unless(is_file($index), 404);
+    return response()->file($index, ['Content-Type' => 'text/html; charset=UTF-8', 'Cache-Control' => 'no-cache, no-store, must-revalidate']);
 });

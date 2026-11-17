@@ -17,7 +17,7 @@
 #    bash deploy/cpanel/deploy.sh                        # SSH-key auth (ssh/scp)
 #
 #  Options (env):
-#    CPANEL_HOST   default 163.227.239.146
+#    CPANEL_HOST   default 169.40.116.146
 #    CPANEL_USER   default ismail162
 #    REMOTE_APP    default erp_app                       (relative to ~)
 #    REMOTE_WEB    default public_html/erp.irlbd.com     (relative to ~)
@@ -29,7 +29,7 @@
 # ============================================================
 set -euo pipefail
 
-CPANEL_HOST="${CPANEL_HOST:-163.227.239.146}"
+CPANEL_HOST="${CPANEL_HOST:-169.40.116.146}"
 CPANEL_USER="${CPANEL_USER:-ismail162}"
 REMOTE_APP="${REMOTE_APP:-erp_app}"
 REMOTE_WEB="${REMOTE_WEB:-public_html/erp.irlbd.com}"

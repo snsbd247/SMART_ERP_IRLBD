@@ -24,11 +24,25 @@ class BrandingController extends BaseController
         'company_logo_url', 'login_logo_url', 'favicon_url',
     ];
 
-    /** Allowed MIME types for logo / favicon uploads. */
+    /**
+     * Allowed MIME types (detected from the file contents) for logo / favicon
+     * uploads, with the extension the file is stored under. The client's own file
+     * name is never used for the extension: a ".php" name must not reach a folder
+     * the web server serves.
+     */
     private const ALLOWED_MIMES = [
-        'image/png', 'image/jpeg', 'image/jpg', 'image/gif',
-        'image/webp', 'image/svg+xml', 'image/x-icon', 'image/vnd.microsoft.icon',
+        'image/png' => 'png', 'image/jpeg' => 'jpg', 'image/jpg' => 'jpg', 'image/gif' => 'gif',
+        'image/webp' => 'webp', 'image/svg+xml' => 'svg', 'image/x-icon' => 'ico', 'image/vnd.microsoft.icon' => 'ico',
     ];
+
+    /** Branding changes are app-wide: Super Admin or the settings.edit permission. */
+    private function authorizeEdit(Request $request): void
+    {
+        $user = $request->user();
+        if (!$user || !($user->isSuperAdmin() || $user->hasPermission('settings.edit'))) {
+            abort(response()->json(['success' => false, 'message' => 'Permission denied: settings.edit'], 403));
+        }
+    }
 
     private const MAX_KB = 2048; // 2 MB
 
@@ -41,6 +55,7 @@ class BrandingController extends BaseController
 
     public function update(Request $request)
     {
+        $this->authorizeEdit($request);
         $data = $request->validate([
             'settings' => 'required|array|min:1',
             'settings.*.setting_key' => 'required|string|in:' . implode(',', self::KEYS),
@@ -59,6 +74,7 @@ class BrandingController extends BaseController
 
     public function uploadLogo(Request $request)
     {
+        $this->authorizeEdit($request);
         try {
             $request->validate([
                 'file' => 'required|file|max:' . self::MAX_KB,
@@ -79,7 +95,7 @@ class BrandingController extends BaseController
         $file = $request->file('file');
         $mime = strtolower((string) $file->getMimeType());
 
-        if (!in_array($mime, self::ALLOWED_MIMES, true)) {
+        if (!isset(self::ALLOWED_MIMES[$mime])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unsupported file type. Allowed: PNG, JPG, GIF, WEBP, SVG, ICO.',
@@ -88,7 +104,7 @@ class BrandingController extends BaseController
         }
 
         try {
-            $ext = strtolower($file->getClientOriginalExtension() ?: 'png');
+            $ext = self::ALLOWED_MIMES[$mime];
             $name = $request->input('setting_key') . '_' . time() . '.' . $ext;
             $path = $file->storeAs('branding', $name, 'public');
             $publicUrl = url(Storage::url($path));
@@ -97,7 +113,7 @@ class BrandingController extends BaseController
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save uploaded file: ' . $e->getMessage(),
+                'message' => 'Failed to save uploaded file.',
             ], 500);
         }
     }

@@ -20,9 +20,13 @@ class BackupController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
+        if (!$request->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admins can view backups.', 403);
+        }
+
         $history = DB::table('backup_history')
             ->orderByDesc('created_at')
-            ->limit($request->input('limit', 50))
+            ->limit(min(500, max(1, (int) $request->input('limit', 50))))
             ->get();
 
         return $this->success($history);
@@ -63,15 +67,21 @@ class BackupController extends BaseController
     /**
      * Download a backup file.
      */
-    public function download(string $id): \Symfony\Component\HttpFoundation\BinaryFileResponse|JsonResponse
+    public function download(string $id, Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse|JsonResponse
     {
+        if (!$request->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admins can download backups.', 403);
+        }
+
         $record = DB::table('backup_history')->where('id', $id)->first();
         if (!$record || !$record->storage_path) {
             return $this->error('Backup file not found.', 404);
         }
 
-        $fullPath = storage_path('app/' . $record->storage_path);
-        if (!file_exists($fullPath)) {
+        // Only files inside storage/app/backups may be sent, whatever storage_path says.
+        $fullPath = realpath(storage_path('app/' . $record->storage_path));
+        $backupsDir = realpath(storage_path('app/backups'));
+        if (!$fullPath || !$backupsDir || !str_starts_with($fullPath, $backupsDir . DIRECTORY_SEPARATOR) || !is_file($fullPath)) {
             return $this->error('Backup file not found on disk.', 404);
         }
 
@@ -249,6 +259,10 @@ class BackupController extends BaseController
      */
     public function settings(Request $request): JsonResponse
     {
+        if (!$request->user()->isSuperAdmin()) {
+            return $this->error('Only Super Admins can manage backup settings.', 403);
+        }
+
         if ($request->isMethod('get')) {
             $settings = DB::table('backup_settings')->where('id', 'default')->first();
             if (!$settings) {

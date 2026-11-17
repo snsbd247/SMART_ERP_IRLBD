@@ -49,7 +49,35 @@ class GenericTableController extends BaseController
         'user_custom_roles' => ['read' => ['users.view'], 'write' => ['users.create', 'users.edit'], 'delete' => ['users.edit']],
         'sms_logs' => ['read' => ['sms.view', 'settings.view'], 'write' => ['sms.edit', 'settings.edit'], 'delete' => ['sms.delete', 'settings.edit']],
         'login_logs' => ['read' => ['hrm.view', 'users.view'], 'write' => ['users.edit'], 'delete' => ['users.delete']],
+        // App-wide settings: readable by everyone (the SPA needs them), changed only by admins.
+        'system_settings' => ['write' => ['settings.edit', 'sms.edit'], 'delete' => ['settings.edit']],
+        'company_settings' => ['write' => ['settings.edit'], 'delete' => ['settings.edit']],
+        'module_settings' => ['write' => ['settings.edit', 'modules.edit'], 'delete' => ['settings.edit', 'modules.edit']],
+        // Salary and bank data: HR/payroll staff, or the employee's own rows (see OWN_ROW_TABLES).
+        'payroll' => ['read' => ['payroll.view', 'hrm.view'], 'write' => ['payroll.create', 'payroll.edit'], 'delete' => ['payroll.delete']],
+        'salary_structures' => ['read' => ['payroll.view', 'hrm.view', 'employees.view'], 'write' => ['payroll.create', 'payroll.edit', 'hrm.edit', 'employees.edit'], 'delete' => ['payroll.delete', 'hrm.delete']],
+        'employee_bank_info' => ['read' => ['hrm.view', 'employees.view', 'payroll.view'], 'write' => ['hrm.create', 'hrm.edit', 'employees.create', 'employees.edit'], 'delete' => ['hrm.delete', 'employees.delete']],
     ];
+
+    /** Whole-database backups and Google Drive credentials: Super Admin only, every operation. */
+    private const SUPER_ADMIN_TABLES = ['backup_settings', 'backup_history', 'backups'];
+
+    /** Audit trails: anyone may append, only a Super Admin may change or remove entries. */
+    private const APPEND_ONLY_TABLES = ['audit_log', 'purchase_audit_log', 'user_activities', 'invoice_status_logs'];
+
+    /**
+     * Tables keyed by employee_id where an employee without the module permission may
+     * still read (and, if 'write' is listed, edit) rows that belong to themselves —
+     * the self-service portal (My Payslips, My Profile).
+     */
+    private const OWN_ROW_TABLES = [
+        'payroll' => ['read'],
+        'salary_structures' => ['read'],
+        'employee_bank_info' => ['read', 'write'],
+    ];
+
+    /** system_settings keys whose values are secrets: hidden from users who cannot edit settings. */
+    private const SECRET_SETTING_KEYS = ['sms_api_key', 'github_deploy_sync_settings'];
 
     /**
      * Per-table virtual column aliases. Lets frontend code written against the
@@ -160,24 +188,92 @@ class GenericTableController extends BaseController
         }
     }
 
-    private function assertTablePermission(Request $request, string $table, string $action): void
+    /**
+     * Checks the caller may perform $action ('read' | 'write' | 'delete') on $table.
+     *
+     * Returns null for unrestricted access, or an employee_id when the caller may only
+     * touch their own rows (OWN_ROW_TABLES); callers must then scope the query to it.
+     */
+    private function assertTablePermission(Request $request, string $table, string $action): ?string
     {
-        $rules = self::TABLE_PERMISSIONS[$table][$action] ?? null;
-        if (!$rules) return;
         $user = $request->user();
         if (!$user) abort(401);
-        foreach ($rules as $permission) {
-            if ($user->hasPermission($permission)) return;
+        if ($user->isSuperAdmin()) return null;
+
+        if (in_array($table, self::SUPER_ADMIN_TABLES, true)) {
+            abort(403, "Only Super Admins can access {$table}");
         }
+        if ($action !== 'read' && in_array($table, self::APPEND_ONLY_TABLES, true) && $request->isMethod('post') === false) {
+            // POST = insert (allowed); PATCH/PUT/DELETE would rewrite or erase the audit trail.
+            abort(403, "Entries in {$table} cannot be changed or deleted");
+        }
+
+        $rules = self::TABLE_PERMISSIONS[$table][$action] ?? null;
+        if (!$rules) return null;
+        foreach ($rules as $permission) {
+            if ($user->hasPermission($permission)) return null;
+        }
+
+        if ($action !== 'delete' && in_array($action, self::OWN_ROW_TABLES[$table] ?? [], true) && $user->employee_id) {
+            return (string) $user->employee_id;
+        }
+
         abort(403, "Permission denied for {$table}");
+    }
+
+    /** True when the caller may see secret settings values. */
+    private function canSeeSecrets(Request $request): bool
+    {
+        $user = $request->user();
+        return $user && ($user->isSuperAdmin() || $user->hasPermission('settings.edit') || $user->hasPermission('sms.edit'));
+    }
+
+    /** Blank out secret system_settings values for callers who cannot edit settings. */
+    private function maskSecrets(Request $request, string $table, $rows)
+    {
+        if ($table !== 'system_settings' || $this->canSeeSecrets($request)) return $rows;
+        $mask = function ($row) {
+            if (is_object($row) && isset($row->setting_key) && in_array($row->setting_key, self::SECRET_SETTING_KEYS, true) && property_exists($row, 'setting_value')) {
+                $row->setting_value = null;
+            }
+            return $row;
+        };
+        if ($rows instanceof \Illuminate\Support\Collection) return $rows->map($mask);
+        return $mask($rows);
+    }
+
+    /**
+     * user_roles: only a Super Admin may grant the 'super_admin' role, and other users'
+     * changes never touch existing super_admin rows (so they cannot remove the owner).
+     */
+    private function guardSuperAdminRole(Request $request, string $table, array $rows, $query = null): void
+    {
+        if ($table !== 'user_roles' || $request->user()?->isSuperAdmin()) return;
+        foreach ($rows as $r) {
+            if (is_array($r) && ($r['role'] ?? null) === 'super_admin') {
+                abort(403, 'Only a Super Admin can grant the super_admin role');
+            }
+        }
+        if ($query) $query->where('role', '!=', 'super_admin');
+    }
+
+    /** Production error responses must not reveal SQL, table structure or submitted data. */
+    private function failure(string $message, \Throwable $e, string $table)
+    {
+        \Illuminate\Support\Facades\Log::error("db {$table}: {$message}: " . $e->getMessage());
+        return response()->json(
+            config('app.debug') ? ['message' => $message, 'error' => $e->getMessage()] : ['message' => $message, 'error' => $message],
+            500
+        );
     }
 
     public function index(Request $request, string $table)
     {
         $this->assertTable($table);
-        $this->assertTablePermission($request, $table, 'read');
+        $ownEmployee = $this->assertTablePermission($request, $table, 'read');
 
         $query = DB::table($table);
+        if ($ownEmployee !== null) $query->where('employee_id', $ownEmployee);
         $tableCols = Schema::getColumnListing($table);
         $aliasMap = $this->aliasMap($table); // virtual => real
 
@@ -234,7 +330,7 @@ class GenericTableController extends BaseController
         if ($offset = (int) $request->query('offset')) $query->offset($offset);
 
         $rows = $query->get();
-        $rows = $this->applyAliasesToRows($table, $rows);
+        $rows = $this->maskSecrets($request, $table, $this->applyAliasesToRows($table, $rows));
 
         if ($request->boolean('single')) {
             return response()->json(is_object($rows) ? $rows : ($rows->first() ?? null));
@@ -245,21 +341,51 @@ class GenericTableController extends BaseController
     public function show(Request $request, string $table, $id)
     {
         $this->assertTable($table);
-        $this->assertTablePermission($request, $table, 'read');
+        $ownEmployee = $this->assertTablePermission($request, $table, 'read');
         $pk = $this->primaryKey($table);
-        $row = DB::table($table)->where($pk, $id)->first();
+        $query = DB::table($table)->where($pk, $id);
+        if ($ownEmployee !== null) $query->where('employee_id', $ownEmployee);
+        $row = $query->first();
         if (!$row) abort(404);
-        return response()->json($this->applyAliasesToRows($table, $row));
+        return response()->json($this->maskSecrets($request, $table, $this->applyAliasesToRows($table, $row)));
+    }
+
+    /** Own-row writers may only write rows for themselves and never move a row to someone else. */
+    private function assertOwnRows(?string $ownEmployee, array $rows, bool $requireKey): void
+    {
+        if ($ownEmployee === null) return;
+        foreach ($rows as $r) {
+            if (!is_array($r)) continue;
+            $has = array_key_exists('employee_id', $r);
+            if (($requireKey && !$has) || ($has && (string) $r['employee_id'] !== $ownEmployee)) {
+                abort(403, 'You can only change your own records');
+            }
+        }
+    }
+
+    /** Filters for UPDATE/DELETE: only real columns, only eq / in. */
+    private function applyWriteFilters($q, string $table, array $filters, array $cols): void
+    {
+        foreach ($filters as $col => $ops) {
+            $realCol = $this->resolveCol($table, (string) $col);
+            if (!is_array($ops) || !in_array($realCol, $cols, true)) abort(400, "Unknown filter column '{$col}'");
+            foreach ($ops as $op => $val) {
+                if ($op === 'eq') $q->where($realCol, $val);
+                elseif ($op === 'in') $q->whereIn($realCol, is_array($val) ? $val : explode(',', (string) $val));
+            }
+        }
     }
 
     public function store(Request $request, string $table)
     {
         $this->assertTable($table);
-        $this->assertTablePermission($request, $table, 'write');
+        $ownEmployee = $this->assertTablePermission($request, $table, 'write');
         $payload = $request->json()->all();
         if (!is_array($payload)) abort(400, 'Body must be JSON object or array');
 
         $rows = $this->isAssoc($payload) ? [$payload] : $payload;
+        $this->assertOwnRows($ownEmployee, $rows, true);
+        $this->guardSuperAdminRole($request, $table, $rows);
         $rows = array_map(fn ($r) => $this->stampTimestamps($table, $this->encodeJsonValues($this->normalizeTemporalValues($this->rewriteBody($table, $r))), true), $rows);
 
         $inserted = [];
@@ -284,14 +410,7 @@ class GenericTableController extends BaseController
                 }
             });
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("db insert {$table} failed: " . $e->getMessage(), [
-                'sql' => method_exists($e, 'getSql') ? $e->getSql() : null,
-                'bindings' => method_exists($e, 'getBindings') ? $e->getBindings() : null,
-            ]);
-            return response()->json([
-                'message' => 'Insert failed',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->failure('Insert failed', $e, $table);
         }
 
         return response()->json($this->applyAliasesToRows($table, $inserted), 201);
@@ -300,25 +419,24 @@ class GenericTableController extends BaseController
     public function update(Request $request, string $table)
     {
         $this->assertTable($table);
-        $this->assertTablePermission($request, $table, 'write');
+        $ownEmployee = $this->assertTablePermission($request, $table, 'write');
         $payload = $request->json()->all();
+        if (!is_array($payload)) abort(400, 'Body must be a JSON object');
         $filters = (array) $request->query('f', []);
         if (empty($filters)) abort(400, 'UPDATE requires at least one filter (f[col][eq]=...)');
+        $this->assertOwnRows($ownEmployee, [$payload], false);
+        $this->guardSuperAdminRole($request, $table, [$payload]);
+        $cols = Schema::getColumnListing($table);
 
-        $applyFilters = function ($q) use ($table, $filters) {
-            foreach ($filters as $col => $ops) {
-                $realCol = $this->resolveCol($table, (string) $col);
-                foreach ($ops as $op => $val) {
-                    if ($op === 'eq') $q->where($realCol, $val);
-                    elseif ($op === 'in') $q->whereIn($realCol, is_array($val) ? $val : explode(',', (string) $val));
-                }
-            }
+        $applyFilters = function ($q) use ($request, $table, $filters, $cols, $ownEmployee) {
+            $this->applyWriteFilters($q, $table, $filters, $cols);
+            if ($ownEmployee !== null) $q->where('employee_id', $ownEmployee);
+            $this->guardSuperAdminRole($request, $table, [], $q);
         };
 
         try {
             $q = DB::table($table);
             $applyFilters($q);
-            $cols = Schema::getColumnListing($table);
             $clean = array_intersect_key(
                 $this->stampTimestamps($table, $this->encodeJsonValues($this->normalizeTemporalValues($this->rewriteBody($table, $payload))), false),
                 array_flip($cols)
@@ -333,12 +451,7 @@ class GenericTableController extends BaseController
             $applyFilters($q2);
             return response()->json($this->applyAliasesToRows($table, $q2->get()));
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("db update $table failed: " . $e->getMessage());
-            return response()->json([
-                'error'   => $e->getMessage(),
-                'table'   => $table,
-                'payload' => $payload,
-            ], 500);
+            return $this->failure('Update failed', $e, $table);
         }
     }
 
@@ -347,9 +460,12 @@ class GenericTableController extends BaseController
     public function upsert(Request $request, string $table)
     {
         $this->assertTable($table);
-        $this->assertTablePermission($request, $table, 'write');
+        $ownEmployee = $this->assertTablePermission($request, $table, 'write');
         $payload = $request->json()->all();
+        if (!is_array($payload)) abort(400, 'Body must be JSON object or array');
         $rows = $this->isAssoc($payload) ? [$payload] : $payload;
+        $this->assertOwnRows($ownEmployee, $rows, true);
+        $this->guardSuperAdminRole($request, $table, $rows);
         $onConflict = $request->query('on_conflict');
         $conflictCols = $onConflict
             ? array_filter(array_map('trim', explode(',', $onConflict)))
@@ -366,13 +482,17 @@ class GenericTableController extends BaseController
             $rows
         );
 
+        $conflictCols = array_values(array_filter($conflictCols, fn ($c) => in_array($c, $cols, true)));
+
         $out = [];
-        DB::transaction(function () use ($table, $clean, $conflictCols, &$out) {
+        DB::transaction(function () use ($table, $clean, $conflictCols, $ownEmployee, &$out) {
             foreach ($clean as $r) {
                 $where = [];
                 foreach ($conflictCols as $c) {
                     if (array_key_exists($c, $r)) $where[$c] = $r[$c];
                 }
+                // An own-row writer must never overwrite another employee's row that shares the key.
+                if ($ownEmployee !== null && $where) $where['employee_id'] = $ownEmployee;
                 if ($where) {
                     DB::table($table)->updateOrInsert($where, $r);
                 } else {
@@ -394,13 +514,8 @@ class GenericTableController extends BaseController
         if (empty($filters)) abort(400, 'DELETE requires at least one filter');
 
         $q = DB::table($table);
-        foreach ($filters as $col => $ops) {
-            $realCol = $this->resolveCol($table, (string) $col);
-            foreach ($ops as $op => $val) {
-                if ($op === 'eq') $q->where($realCol, $val);
-                elseif ($op === 'in') $q->whereIn($realCol, is_array($val) ? $val : explode(',', (string) $val));
-            }
-        }
+        $this->applyWriteFilters($q, $table, $filters, Schema::getColumnListing($table));
+        $this->guardSuperAdminRole($request, $table, [], $q);
         $deleted = $q->delete();
         return response()->json(['deleted' => $deleted]);
     }

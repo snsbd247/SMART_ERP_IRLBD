@@ -24,13 +24,11 @@ class Kernel extends ConsoleKernel
         // Drive is connected/enabled from the Backup & Restore page.
         $schedule->command('backup:database --type=auto_gdrive')->hourly();
 
-        // Weekly legacy purchases cleanup (after 60-day verification window).
-        // Logs cleanup_failed / cleanup_aborted to audit_log so alerts can pick it up.
-        $schedule->command('legacy:cleanup-purchases --days=60')
-            ->weeklyOn(0, '03:30')
-            ->onFailure(function () {
-                \Log::error('Scheduled legacy:cleanup-purchases failed');
-            });
+        // Remove expired login tokens (see sanctum.expiration).
+        $schedule->command('sanctum:prune-expired --hours=24')->daily();
+
+        // (Removed: weekly `legacy:cleanup-purchases` — that command does not exist in
+        // this release, so the schedule only produced an error in the log every week.)
     }
 
     protected function commands(): void

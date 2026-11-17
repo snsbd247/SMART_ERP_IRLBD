@@ -14,17 +14,21 @@ Route::prefix('install')->middleware(\App\Http\Middleware\InstallGuard::class)->
 
 // Auth (public)
 Route::prefix('auth')->group(function () {
-    Route::post('login', [\App\Http\Controllers\Auth\AuthController::class, 'login']);
-    Route::post('forgot-password', [\App\Http\Controllers\Auth\AuthController::class, 'forgotPassword']);
-    Route::post('reset-password', [\App\Http\Controllers\Auth\AuthController::class, 'resetPassword']);
+    // Rate limiters are defined in RouteServiceProvider.
+    Route::post('login', [\App\Http\Controllers\Auth\AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('forgot-password', [\App\Http\Controllers\Auth\AuthController::class, 'forgotPassword'])->middleware('throttle:password-reset');
+    Route::post('reset-password', [\App\Http\Controllers\Auth\AuthController::class, 'resetPassword'])->middleware('throttle:login');
 });
+
+// Everything below up to the authenticated groups is public (no login): rate-limited.
+Route::middleware('throttle:public')->group(function () {
 
 // Public branding (read-only) — login page needs it before auth
 Route::get('v1/public/branding', [\App\Http\Controllers\Admin\BrandingController::class, 'show']);
 
 // Public employee registration (toggle-gated inside the controller)
 Route::get('v1/public/employee-registration/config', [\App\Http\Controllers\PublicEmployeeRegistrationController::class, 'config']);
-Route::post('v1/public/employee-registration', [\App\Http\Controllers\PublicEmployeeRegistrationController::class, 'register']);
+Route::post('v1/public/employee-registration', [\App\Http\Controllers\PublicEmployeeRegistrationController::class, 'register'])->middleware('throttle:public-forms');
 
 // Public Money Receipt verification (used by /verify/money-receipt/{code} SPA route + QR)
 Route::get('v1/public/money-receipt-verify/{code}', [\App\Http\Controllers\MoneyReceiptVerifyController::class, 'show']);
@@ -75,6 +79,7 @@ Route::get('v1/public/employee-verify/{code}/signature', function (string $code)
 // Protected instead by a signed, time-limited `state` param (see
 // BackupController::gdriveAuthUrl / gdriveCallback).
 Route::get('v1/backups/gdrive/callback', [\App\Http\Controllers\Admin\BackupController::class, 'gdriveCallback']);
+}); // end of public, rate-limited routes
 
 // License status/activation — same auth/scope as the main group below,
 // same "v1" prefix so the frontend can call it consistently, but
@@ -575,7 +580,7 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\BranchScope::class, \App
         });
 
         // ─── Document Email (printed documents sent via PrintLayout) ────
-        Route::post('documents/email', [\App\Http\Controllers\DocumentMailController::class, 'send']);
+        Route::post('documents/email', [\App\Http\Controllers\DocumentMailController::class, 'send'])->middleware('throttle:document-email');
 
         // ─── Payments & Ledger ──────────────────────────────────
         Route::prefix('payments')->group(function () {

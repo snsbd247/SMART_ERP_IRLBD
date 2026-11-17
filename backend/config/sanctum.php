@@ -12,7 +12,9 @@ return [
 
     'guard' => ['web'],
 
-    'expiration' => null,
+    // Login tokens expire after 7 days (minutes); a stolen token stops working.
+    // Override with SANCTUM_EXPIRATION in .env (empty = never, not recommended).
+    'expiration' => env('SANCTUM_EXPIRATION', 60 * 24 * 7),
 
     'token_prefix' => env('SANCTUM_TOKEN_PREFIX', ''),
 
